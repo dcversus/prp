@@ -348,6 +348,19 @@ Update version in:
 - [Cookiecutter](https://github.com/cookiecutter/cookiecutter)
 - [Plop](https://plopjs.com/)
 
+## Mandatory Policies for AI Agents
+
+**⚠️ CRITICAL**: All AI agents working on this project MUST read and follow **AGENTS.md**.
+
+AGENTS.md contains **non-negotiable mandatory policies** including:
+- **CHANGELOG.md update policy** (MANDATORY for every release)
+- Version synchronization requirements
+- Git commit message conventions
+- Testing and validation requirements
+- Release process checklist
+
+**Before starting ANY work, read AGENTS.md first!**
+
 ## Contact
 
 For questions or issues:
@@ -357,4 +370,4 @@ For questions or issues:
 ---
 
 **Last Updated**: 2025-10-28
-**Version**: 0.1.0
+**Version**: 0.1.1

@@ -8,29 +8,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial project setup with TypeScript and Ink
-- CLI entry point with Commander.js
-- Basic project structure (src/, tests/, templates/)
-- Configuration files (tsconfig.json, eslint, prettier)
-- Essential documentation (README, LICENSE, CHANGELOG, CLAUDE)
-- GitHub repository creation
+- **CI/CD Infrastructure** - Complete GitHub Actions setup
+  - Parallel CI jobs (lint, typecheck, test, security, build) for faster feedback
+  - CHANGELOG.md check workflow (enforces mandatory updates on PRs)
+  - Claude Code Review workflow (automated AI code review)
+  - Quality gate job (requires all checks to pass)
+- **Pre-commit Hooks** - Automated quality checks before commits
+  - Husky for git hook management
+  - lint-staged for incremental linting and formatting
+  - TypeScript type checking on pre-commit
+- **Testing Infrastructure**
+  - Unit tests for validation utilities (9 tests passing)
+  - Jest configuration fixed (`coverageThreshold` typo corrected)
+  - Test directory structure (`tests/unit/`, `tests/integration/`)
+- **GitHub Templates**
+  - Pull Request template with DOD checklist and CHANGELOG reminder
+  - Bug report issue template
+  - Feature request issue template
+  - Template request issue template
+- **Development Tools**
+  - `.editorconfig` for consistent code formatting across editors
+  - Updated `lint-staged` configuration in package.json
+- **Documentation**
+  - AGENTS.md with mandatory CHANGELOG policy (comprehensive)
+  - CLAUDE.md updated with AGENTS.md reference
 
 ### Changed
-- None
-
-### Deprecated
-- None
-
-### Removed
-- None
+- **CI Workflow** - Restructured from matrix to parallel jobs (EdgeCraft pattern)
+  - Faster feedback (5 parallel jobs vs sequential matrix)
+  - Separate security audit job
+  - Build artifact retention (7 days)
+- **Package.json** - Added husky and lint-staged as dev dependencies
 
 ### Fixed
-- None
+- Jest configuration warning (`coverageThresholds` → `coverageThreshold`)
 
 ### Security
 - None
 
-## [0.1.0] - 2024-10-28
+## [0.1.1] - 2025-10-28
+
+### Fixed
+- **package.json bin path**: Corrected bin path to `dist/cli.js` for proper npm global installation
+- **ESLint configuration**: Added Node.js globals (\_\_dirname, \_\_filename) to ESLint config to fix publishing errors
+- **Jest configuration**: Added `--passWithNoTests` flag to allow npm publish without test files in initial release
+
+### Changed
+- Updated build process to ensure executable permissions on `dist/cli.js`
+
+## [0.1.0] - 2025-10-28
 
 ### Added
 - **Interactive CLI** with beautiful Ink-based terminal UI
@@ -85,5 +111,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - execa for subprocess execution
 - Full ESM module system
 
-[Unreleased]: https://github.com/dcversus/prp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/dcversus/prp/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/dcversus/prp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/dcversus/prp/releases/tag/v0.1.0

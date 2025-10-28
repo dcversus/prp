@@ -24,7 +24,7 @@ export default {
     '!src/**/*.test.ts'
   ],
   coverageDirectory: 'coverage',
-  coverageThresholds: {
+  coverageThreshold: {
     global: {
       branches: 0,
       functions: 0,

@@ -27,7 +27,8 @@
     "typecheck": "tsc --noEmit",
     "typecheck:watch": "tsc --noEmit --watch",
     "validate": "npm run typecheck && npm run lint && npm run test",
-    "prepublishOnly": "npm run validate && npm run build"
+    "prepublishOnly": "npm run validate && npm run build",
+    "prepare": "husky"
   },
   "keywords": [
     "cli",
@@ -59,25 +60,25 @@
     "npm": ">=10.0.0"
   },
   "dependencies": {
-    "ink": "^5.0.1",
-    "react": "^18.3.1",
-    "commander": "^12.1.0",
-    "ink-spinner": "^5.0.0",
-    "ink-text-input": "^6.0.0",
-    "ink-select-input": "^6.0.0",
     "chalk": "^5.3.0",
-    "ora": "^8.1.0",
+    "commander": "^12.1.0",
     "execa": "^9.4.0",
     "fs-extra": "^11.2.0",
     "handlebars": "^4.7.8",
+    "ink": "^5.0.1",
+    "ink-select-input": "^6.0.0",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
     "inquirer": "^12.0.1",
     "nanoid": "^5.0.7",
+    "ora": "^8.1.0",
+    "react": "^18.3.1",
     "yaml": "^2.6.0"
   },
   "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
     "@types/node": "^22.7.5",
     "@types/react": "^18.3.11",
-    "@types/fs-extra": "^11.0.4",
     "@typescript-eslint/eslint-plugin": "^8.8.1",
     "@typescript-eslint/parser": "^8.8.1",
     "eslint": "^9.12.0",
@@ -85,10 +86,21 @@
     "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-react": "^7.37.1",
     "eslint-plugin-react-hooks": "^5.1.0-rc-fb9a90fa48-20240614",
+    "husky": "^9.1.7",
     "jest": "^29.7.0",
+    "lint-staged": "^16.2.6",
     "prettier": "^3.3.3",
     "ts-jest": "^29.2.5",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   }
 }
