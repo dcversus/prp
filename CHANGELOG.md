@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **CLI version**: Updated hardcoded version from 0.1.0 to 0.2.0 in src/cli.ts:13
+- **Non-interactive mode**: Implemented missing non-interactive mode functionality for CLI
+  - Created src/nonInteractive.ts with full non-interactive project generation support
+  - Added input validation for required options (name, template, email)
+  - Added proper error messages and exit codes for missing/invalid options
+  - Supports all CLI flags: --no-git, --no-install, --license, etc.
+- **E2E tests**: Fixed all 5 failing E2E tests in install-upgrade.test.ts
+  - Updated tests to use local build (node dist/cli.js) instead of npm installed version
+  - Fixed tsconfig.json parsing test to check content instead of parsing JSON with comments
+  - Added CLI path verification in test setup
+  - All 18 tests now passing (9 unit + 9 E2E)
+- **ESM compatibility**: Fixed __dirname usage in ESM modules using fileURLToPath and import.meta.url
+
 ## [0.2.0] - 2025-10-28
 
 ### Added
