@@ -6,7 +6,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "prp": "./dist/cli.js"
+    "prp": "dist/cli.js"
   },
   "files": [
     "dist",
@@ -48,7 +48,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dcversus/prp.git"
+    "url": "git+https://github.com/dcversus/prp.git"
   },
   "bugs": {
     "url": "https://github.com/dcversus/prp/issues"
