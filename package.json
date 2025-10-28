@@ -1,0 +1,94 @@
+{
+  "name": "@dcversus/prp",
+  "version": "0.1.0",
+  "description": "Interactive Project Bootstrap CLI - Modern scaffolding tool with AI integration for multiple frameworks",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "prp": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsc && chmod +x dist/cli.js",
+    "build:watch": "tsc --watch",
+    "start": "node dist/cli.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src tests --ext .ts,.tsx",
+    "lint:fix": "eslint src tests --ext .ts,.tsx --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "typecheck:watch": "tsc --noEmit --watch",
+    "validate": "npm run typecheck && npm run lint && npm run test",
+    "prepublishOnly": "npm run validate && npm run build"
+  },
+  "keywords": [
+    "cli",
+    "scaffolding",
+    "generator",
+    "bootstrap",
+    "project-setup",
+    "yeoman",
+    "cookiecutter",
+    "ai",
+    "codex",
+    "typescript",
+    "react",
+    "fastapi",
+    "nestjs"
+  ],
+  "author": "dcversus",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dcversus/prp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dcversus/prp/issues"
+  },
+  "homepage": "https://github.com/dcversus/prp#readme",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "dependencies": {
+    "ink": "^5.0.1",
+    "react": "^18.3.1",
+    "commander": "^12.1.0",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
+    "ink-select-input": "^6.0.0",
+    "chalk": "^5.3.0",
+    "ora": "^8.1.0",
+    "execa": "^9.4.0",
+    "fs-extra": "^11.2.0",
+    "handlebars": "^4.7.8",
+    "inquirer": "^12.0.1",
+    "nanoid": "^5.0.7",
+    "yaml": "^2.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/react": "^18.3.11",
+    "@types/fs-extra": "^11.0.4",
+    "@typescript-eslint/eslint-plugin": "^8.8.1",
+    "@typescript-eslint/parser": "^8.8.1",
+    "eslint": "^9.12.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-react": "^7.37.1",
+    "eslint-plugin-react-hooks": "^5.1.0-rc-fb9a90fa48-20240614",
+    "jest": "^29.7.0",
+    "prettier": "^3.3.3",
+    "ts-jest": "^29.2.5",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  }
+}
