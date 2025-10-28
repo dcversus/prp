@@ -11,6 +11,31 @@ This document provides specific instructions for AI coding assistants (Claude, G
 
 **Every agent session MUST follow this workflow:**
 
+### PRP File Organization Rules
+
+**⚠️ CRITICAL: PRPs folder structure MUST be FLAT - NO subdirectories allowed.**
+
+**Naming Convention**:
+- Format: `PRP-XXX-what-will-change.md`
+- **XXX**: Sequential number (001, 002, 003, etc.)
+- **what-will-change**: 2-4 words describing the outcome when PRP is complete
+- Use kebab-case (lowercase with hyphens)
+
+**Examples**:
+- ✅ `PRP-001-bootstrap-cli-created.md` - CLI tool will be created
+- ✅ `PRP-002-landing-page-deployed.md` - Landing page will be deployed
+- ✅ `PRP-007-signal-system-implemented.md` - Signal system will be implemented
+- ✅ `PRP-015-auth-module-integrated.md` - Auth module will be integrated
+- ❌ `PRP-002-Landing-Page.md` - Not outcome-focused, uses PascalCase
+- ❌ `PRPs/research/analysis.md` - Subdirectory not allowed
+- ❌ `PRP-003.md` - Missing descriptive name
+
+**Rationale**:
+- **Flat structure** = Easy to find, no navigation complexity
+- **Outcome-focused names** = Clear value proposition at a glance
+- **Sequential numbers** = Chronological order, easy reference
+- **Short names** = Quick to scan, fits in terminal width
+
 ### Step 1: Find Related PRP
 **BEFORE doing ANY work**, agent must:
 1. Check if a PRP exists for the current task
