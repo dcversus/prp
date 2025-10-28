@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2025-10-28
+
 ### Changed
 - **Wiki.js Template Articles** - All 13 stub articles completed with comprehensive content
   - Article 10 (PRP Overview): Expanded from 17 lines to 267 lines with complete LOOP MODE workflow

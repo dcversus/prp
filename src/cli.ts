@@ -10,7 +10,7 @@ const program = new Command();
 program
   .name('prp')
   .description('Interactive Project Bootstrap CLI - Modern scaffolding tool with AI integration')
-  .version('0.3.0')
+  .version('0.4.1')
   .option('-n, --name <name>', 'project name')
   .option('-d, --description <description>', 'project description')
   .option('-a, --author <author>', 'author name')
