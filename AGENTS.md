@@ -201,30 +201,133 @@ Agents can have unique personalities reflected in signals:
 - Example: "found 10 bugs", "edge case missed", "coverage too low"
 - Focus on quality and completeness
 
-### Signal Reaction Patterns
+### Signal Reaction Patterns - COMPREHENSIVE ALGORITHMS
 
-**When encountering signals, agent must react appropriately:**
+**⚠️ CRITICAL: When encountering ANY signal, agent MUST follow these exact algorithms.**
 
-#### ATTENTION (🔴, Strength 10)
+Each signal defines:
+- **WHO** should react (which role/agent)
+- **WHAT** to do (specific actions)
+- **HOW** to do it (step-by-step algorithm)
+- **WHO LIKES** this signal (which roles appreciate seeing it)
+- **WHO HATES** this signal (which roles dislike seeing it)
+
+---
+
+#### 🔴 ATTENTION (Strength 10) - DEFAULT SIGNAL FOR USER COMMUNICATION
+
+**MEANING**: New PRP created OR need to ask user a question OR need user clarification
+
+**WHO SHOULD REACT**: ANY agent, but MUST use NUDGE system if needs user input
+
+**WHO LIKES**: System Analyst (loves new work), Project Manager (wants clarity)
+**WHO HATES**: Developer (interrupts flow), Tester (can't test incomplete specs)
+
+**WHAT TO DO**:
+1. **IF** PRP is new → Review and begin planning
+2. **IF** need user clarification → **USE NUDGE SYSTEM** (see below)
+3. **IF** unclear requirements → Document questions, then NUDGE
+
+**HOW TO DO IT - Algorithm**:
 ```
-Action:
-1. Read entire PRP thoroughly
-2. Assess complexity and value
-3. Check DoR (Definition of Ready)
-4. Begin planning or research phase
-5. Update progress log with initial assessment
+IF signal_reason == "new_prp":
+    1. Read entire PRP thoroughly (title, description, goal, DoR, DoD)
+    2. Assess complexity (1-10 scale)
+    3. Assess value (LOW/MEDIUM/HIGH)
+    4. Check DoR - is it ready to start?
+       - IF DoR not met → Leave BLOCKED signal with missing items
+       - IF DoR met → Leave RESEARCHING signal and begin
+    5. Create initial plan/architecture
+    6. Update progress log with assessment
+
+ELSE IF signal_reason == "need_user_input":
+    1. **TRIGGER NUDGE SYSTEM** (MANDATORY)
+    2. Format question clearly with context
+    3. Call nudge API with:
+       - Question text
+       - Related PRP link
+       - Urgency level
+       - Expected response format
+    4. Wait for user response (async)
+    5. When response received:
+       - Add user response to PRP Progress Log
+       - Role: "user (via telegram)"
+       - Extract user's intent
+       - Continue work based on answer
+       - Leave appropriate signal
+    6. **NEVER** guess or assume - always ask if uncertain
+
+ELSE IF signal_reason == "incident":
+    1. **IMMEDIATE NUDGE** (highest priority)
+    2. Include:
+       - What broke
+       - Impact assessment
+       - Immediate actions taken
+       - Options for user to decide
+    3. Wait for user decision
+    4. Execute based on user choice
 ```
 
-#### BLOCKED (🚫, Strength 9)
+**EXAMPLE**:
+```markdown
+| developer | 2025-10-28 | I'm implementing the auth system but unclear if we should use JWT or sessions. This affects architecture significantly. Need user decision before continuing. | 🔴 ATTENTION |
 ```
-Action:
-1. Identify exact blocker
-2. Document blocker in PRP
-3. Escalate to user if external dependency
-4. Find alternative approach if possible
-5. Switch to different PRP if cannot proceed
-6. Leave BLOCKED signal with details
+**→ System triggers NUDGE to user via Telegram**
+**→ User responds: "Use JWT, it's more scalable"**
+**→ System adds response to PRP and continues**
+
+---
+
+#### 🚫 BLOCKED (Strength 9)
+
+**MEANING**: Cannot proceed due to external dependency or missing requirement
+
+**WHO SHOULD REACT**: ANY agent encountering blocker, Project Manager to escalate
+
+**WHO LIKES**: Project Manager (visibility into blockers), System Analyst (can find alternatives)
+**WHO HATES**: Developer (hates being blocked), Tester (can't test blocked work)
+
+**WHAT TO DO**: Identify blocker, document it, escalate if external, find workaround
+
+**HOW TO DO IT - Algorithm**:
 ```
+1. STOP current work immediately
+2. Identify exact blocker:
+   - External API not ready?
+   - Missing credentials/access?
+   - Dependency not available?
+   - User decision needed?
+   - Technical limitation?
+3. Document blocker in PRP:
+   ### BLOCKER
+   - **Type**: [API/Credentials/Dependency/Decision/Technical]
+   - **Description**: [Detailed explanation]
+   - **Impact**: [What can't be done]
+   - **Owner**: [Who can unblock]
+   - **ETA**: [When might be resolved]
+4. IF blocker is external dependency:
+   - **TRIGGER NUDGE** to user
+   - Explain blocker and impact
+   - Ask for help/escalation
+5. IF blocker has workaround:
+   - Document workaround
+   - Implement temporary solution
+   - Leave CAUTIOUS signal
+6. IF no workaround:
+   - Leave BLOCKED signal with full details
+   - Switch to different PRP
+   - Check back later
+7. When blocker resolved:
+   - Update PRP with resolution
+   - Leave OPTIMISTIC signal
+   - Continue work
+```
+
+**EXAMPLE**:
+```markdown
+| developer | 2025-10-28 | BLOCKED on PRP-005. Need API credentials for Stripe integration but don't have access. Can't test payment flow without them. Implemented mock for now but need real credentials to complete. | 🚫 BLOCKED |
+```
+**→ System triggers NUDGE asking user to provide Stripe credentials**
 
 #### TIRED (😫, Strength 6)
 ```
@@ -850,6 +953,468 @@ When a tag is pushed (`v*.*.*`):
 - **Keep a Changelog** - https://keepachangelog.com/
 - **Conventional Commits** - https://www.conventionalcommits.org/
 - **Semantic Versioning** - https://semver.org/
+
+---
+
+## 📞 NUDGE SYSTEM - User Communication Protocol
+
+**⚠️ CRITICAL: Use NUDGE system ANY time you need user input. NEVER guess or assume.**
+
+### What is NUDGE?
+
+**NUDGE** is the asynchronous communication system between AI agents and human users via Telegram. It enables agents to ask questions, report incidents, and get clarification without blocking work.
+
+### When to Use NUDGE
+
+**MANDATORY scenarios**:
+1. **ATTENTION signal** with unclear requirements
+2. **BLOCKED signal** with external dependency
+3. **Incidents** (production issues, security concerns)
+4. **Major architectural decisions**
+5. **Budget/timeline concerns**
+6. **ANY uncertainty** that blocks progress
+
+**Treat user as a manager**:
+- User hasn't dived deep into implementation
+- User wants brief summaries with clear options
+- User appreciates being kept in the loop
+- User values agent's expertise and recommendations
+
+### NUDGE System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    PRP Orchestrator (CI)                     │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │ Agent encounters ATTENTION/BLOCKED signal               │ │
+│  │ ↓                                                        │ │
+│  │ Triggers NUDGE system                                   │ │
+│  │ ↓                                                        │ │
+│  │ POST https://dcmaid.theedgestory.org/nudge              │ │
+│  │ Headers:                                                 │ │
+│  │   Authorization: Bearer <NUDGE_SECRET>                   │ │
+│  │   Content-Type: application/json                         │ │
+│  │ Body:                                                    │ │
+│  │ {                                                        │ │
+│  │   "message": "Question from agent...",                   │ │
+│  │   "prp_link": "https://github.com/dcversus/prp/...",     │ │
+│  │   "urgency": "high",                                     │ │
+│  │   "agent_role": "developer",                             │ │
+│  │   "callback_url": "https://api.github.com/repos/..."     │ │
+│  │ }                                                        │ │
+│  └────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│                dcmaidbot (/nudge endpoint)                   │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │ 1. Validate NUDGE_SECRET                                 │ │
+│  │ 2. Run internal LLM with orchestrator instructions      │ │
+│  │ 3. Format message for Telegram (markdown)               │ │
+│  │ 4. Include PRP link, agent context, options             │ │
+│  │ 5. Send to admin Telegram users (from config)           │ │
+│  └────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│              Admin receives Telegram message                 │
+│  ╔════════════════════════════════════════════════════════╗ │
+│  ║ 🔴 ATTENTION from developer                             ║ │
+│  ║                                                          ║ │
+│  ║ **PRP**: PRP-005 Authentication System                  ║ │
+│  ║ [View PRP](https://github.com/dcversus/prp/...)         ║ │
+│  ║                                                          ║ │
+│  ║ **Question**: Should we use JWT or session-based auth?  ║ │
+│  ║                                                          ║ │
+│  ║ **Context**: JWT is stateless (scalable) but requires  ║ │
+│  ║ client-side token storage. Sessions are simpler but     ║ │
+│  ║ require server-side state management.                   ║ │
+│  ║                                                          ║ │
+│  ║ **Agent Recommendation**: JWT for scalability           ║ │
+│  ║                                                          ║ │
+│  ║ Reply to this message to respond...                     ║ │
+│  ╚════════════════════════════════════════════════════════╝ │
+│                                                              │
+│  Admin types: "Agreed, use JWT. Also add refresh tokens."   │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│          dcmaidbot captures response & validates             │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │ 1. Validate admin is in dcmaidbot config                 │ │
+│  │ 2. Extract response text                                 │ │
+│  │ 3. Trigger GitHub Action via repository_dispatch        │ │
+│  │    POST https://api.github.com/repos/dcversus/prp/       │ │
+│  │         dispatches                                       │ │
+│  │    Headers:                                              │ │
+│  │      Authorization: Bearer <GITHUB_TOKEN>                │ │
+│  │      Accept: application/vnd.github+json                 │ │
+│  │    Body:                                                 │ │
+│  │    {                                                     │ │
+│  │      "event_type": "nudge_response",                     │ │
+│  │      "client_payload": {                                 │ │
+│  │        "prp": "PRP-005",                                  │ │
+│  │        "user_handle": "dcversus",                        │ │
+│  │        "response": "Agreed, use JWT. Add refresh tokens",│ │
+│  │        "nudge_secret": "<SECRET>",                       │ │
+│  │        "timestamp": "2025-10-28T10:00:00Z"               │ │
+│  │      }                                                    │ │
+│  │    }                                                     │ │
+│  └────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│         GitHub Actions (CI) receives dispatch                │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │ Workflow: .github/workflows/nudge-response.yml           │ │
+│  │                                                          │ │
+│  │ on:                                                      │ │
+│  │   repository_dispatch:                                   │ │
+│  │     types: [nudge_response]                              │ │
+│  │                                                          │ │
+│  │ jobs:                                                    │ │
+│  │   process-response:                                      │ │
+│  │     runs-on: ubuntu-latest                               │ │
+│  │     steps:                                               │ │
+│  │       - Validate NUDGE_SECRET matches                    │ │
+│  │       - Extract PRP, user response                       │ │
+│  │       - Run Claude with instructions:                    │ │
+│  │         * Read PRP-005                                   │ │
+│  │         * Add user response to Progress Log              │ │
+│  │         * Role: "user (via telegram @dcversus)"          │ │
+│  │         * Extract intent                                 │ │
+│  │         * Continue work based on response                │ │
+│  │         * Leave appropriate signal (OPTIMISTIC)          │ │
+│  │       - Commit updated PRP                               │ │
+│  │       - Restart LOOP MODE                                │ │
+│  └────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### NUDGE Security
+
+**Secret Management**:
+1. User obtains `NUDGE_SECRET` from dcmaidbot Telegram bot
+   - Command: `/getsecret` in Telegram
+   - Bot responds with unique secret for user
+2. User adds `NUDGE_SECRET` to GitHub repository secrets:
+   - Go to: https://github.com/dcversus/prp/settings/secrets/actions
+   - Click "New repository secret"
+   - Name: `NUDGE_SECRET`
+   - Value: [secret from bot]
+   - Click "Add secret"
+3. CI uses secret for both:
+   - Outgoing nudge requests (to dcmaidbot)
+   - Validating incoming responses (from dcmaidbot)
+
+**Validation Flow**:
+```
+Agent → [NUDGE_SECRET] → dcmaidbot
+dcmaidbot → [NUDGE_SECRET] → GitHub CI
+GitHub CI validates secret matches → Process response
+```
+
+**Admin Validation**:
+- Only admins configured in dcmaidbot can respond
+- dcmaidbot checks Telegram user ID against admin list
+- Non-admin responses are rejected
+
+### NUDGE Message Format
+
+**Good NUDGE message**:
+```markdown
+**Role**: developer
+**PRP**: PRP-005 Authentication System
+[View PRP](https://github.com/dcversus/prp/blob/main/PRPs/PRP-005-auth-implemented.md)
+
+**Question**: Should we use JWT or session-based auth?
+
+**Context**:
+- JWT: Stateless, scalable, requires client storage
+- Sessions: Simple, server-side state, less scalable
+
+**My recommendation**: JWT (better for API-first architecture)
+
+**Options**:
+1. JWT with refresh tokens (recommended)
+2. Session-based with Redis
+3. Hybrid approach
+
+What do you prefer?
+```
+
+**Bad NUDGE message**:
+```
+Should we use JWT?
+```
+
+### Post-NUDGE Workflow
+
+**After user responds**:
+1. ✅ CI validates NUDGE_SECRET
+2. ✅ Agent adds response to PRP Progress Log:
+```markdown
+| user (via telegram @dcversus) | 2025-10-28 | Agreed, use JWT. Also add refresh token functionality for better UX. | 🎯 DECISION |
+```
+3. ✅ Agent extracts intent: "Use JWT + refresh tokens"
+4. ✅ Agent continues work with user decision
+5. ✅ Agent leaves new signal: OPTIMISTIC
+
+**Restart LOOP MODE**:
+- Agent now has clear direction
+- Blocked → Unblocked
+- ATTENTION resolved
+- Work continues
+
+---
+
+## 🧪 POST-RELEASE QA WORKFLOW
+
+**⚠️ MANDATORY: After EVERY release, QA must validate ALL features.**
+
+### Overview
+
+After publishing a new version (e.g., v0.2.0):
+1. **Automated E2E tests** run on CI
+2. **QA agent** reviews test results
+3. **QA agent** manually verifies DoD from all completed PRPs
+4. **QA agent** leaves comment in each PRP with findings and signal
+5. **IF bugs found**: Create new PRP, work in new branch
+6. **IF all good**: Leave VALIDATED signal, celebrate
+
+### Automated E2E Test Suite
+
+**Location**: `tests/e2e/*.test.ts`
+
+**Tests must cover**:
+1. **Installation test**
+   - Install from npm: `npm install -g @dcversus/prp@latest`
+   - Verify version: `prp --version`
+   - Verify help: `prp --help`
+2. **Upgrade test**
+   - Install old version: `npm install -g @dcversus/prp@0.1.1`
+   - Upgrade: `npm update -g @dcversus/prp`
+   - Verify new version installed
+3. **Bootstrap test** (for each feature)
+   - Run in `/tmp` directory: `cd /tmp/test-prp-$(date +%s)`
+   - Bootstrap project: `prp --name test-app --template react --no-interactive`
+   - Verify files created: `test -f package.json && test -f README.md`
+   - Install dependencies: `npm install`
+   - Run tests: `npm test`
+   - Run build: `npm run build`
+4. **Feature-specific tests** (one per completed PRP)
+   - Read DoD from PRP
+   - Create test case for each DoD item
+   - Verify feature works as specified
+
+**Example E2E test**:
+```typescript
+// tests/e2e/install-upgrade.test.ts
+import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import * as os from 'os';
+
+const execAsync = promisify(exec);
+
+describe('E2E: Installation and Upgrade', () => {
+  let testDir: string;
+
+  beforeAll(async () => {
+    testDir = path.join(os.tmpdir(), `prp-e2e-${Date.now()}`);
+    await fs.mkdir(testDir, { recursive: true });
+  });
+
+  afterAll(async () => {
+    await fs.rm(testDir, { recursive: true, force: true });
+  });
+
+  it('should install latest version from npm', async () => {
+    const { stdout } = await execAsync('npm install -g @dcversus/prp@latest');
+    expect(stdout).toContain('@dcversus/prp');
+  }, 60000);
+
+  it('should show correct version', async () => {
+    const { stdout } = await execAsync('prp --version');
+    expect(stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  it('should bootstrap React project', async () => {
+    const projectDir = path.join(testDir, 'test-react-app');
+    const cmd = `prp --name test-react-app --template react --license MIT --no-interactive`;
+
+    await execAsync(cmd, { cwd: testDir });
+
+    // Verify files created
+    const files = await fs.readdir(projectDir);
+    expect(files).toContain('package.json');
+    expect(files).toContain('README.md');
+    expect(files).toContain('tsconfig.json');
+  }, 120000);
+});
+```
+
+### Manual QA Checklist
+
+**QA agent MUST**:
+1. **Review all completed PRPs** since last release
+2. **For each PRP**:
+   - Read DoD (Definition of Done)
+   - Manually verify each DoD item
+   - Test the actual feature
+   - Document results
+3. **Leave comment in PRP** with findings:
+
+**Good QA comment template**:
+```markdown
+| qa-agent (claude-sonnet-4-5) | 2025-10-28 | Post-release QA for v0.2.0 completed.
+
+**DoD Verification**:
+- [x] Signal system documented ✅
+- [x] 14 signals defined ✅
+- [x] AGENTS.md updated ✅
+- [x] README.md updated ✅
+- [x] All tests passing (9/9) ✅
+
+**Manual Testing**:
+- Tested signal workflow: ✅ Works as expected
+- Tested LOOP MODE docs: ✅ Clear and actionable
+- Tested flat PRP structure: ✅ All PRPs follow convention
+
+**Findings**:
+- No bugs found
+- Documentation is comprehensive
+- Ready for production use
+
+| ✅ VALIDATED |
+```
+
+**If bugs found**:
+```markdown
+| qa-agent | 2025-10-28 | Post-release QA found issues.
+
+**DoD Verification**:
+- [x] Feature implemented ✅
+- [ ] Edge case handling ❌ (Bug found)
+- [ ] Documentation complete ❌ (Missing examples)
+
+**Bugs Found**:
+1. **Bug**: Signal system crashes when reading malformed PRP
+   - **Steps**: Open PRP with missing Progress Log table
+   - **Expected**: Graceful error
+   - **Actual**: Crashes with undefined error
+   - **Severity**: HIGH
+
+2. **Bug**: NUDGE system documentation incomplete
+   - **Issue**: Missing setup instructions
+   - **Severity**: MEDIUM
+
+**Next Steps**:
+- Create PRP-009 for bug fixes
+- Create branch: `fix/v0.2.1-bugs`
+- Address bugs
+- Re-release as v0.2.1
+
+| 🚨 URGENT |
+```
+
+### QA Workflow Algorithm
+
+```
+1. Release published (v0.2.0)
+   ↓
+2. CI automatically runs E2E tests
+   - tests/e2e/*.test.ts
+   - Report: tests/e2e/report.html
+   ↓
+3. QA agent reviews test results
+   IF tests fail:
+     - Leave URGENT signal in related PRP
+     - Create new PRP for fixes
+     - STOP release (pull back if possible)
+   IF tests pass:
+     - Continue to manual QA
+   ↓
+4. QA agent gets list of completed PRPs since last release
+   - Query: git log v0.1.1..v0.2.0 --grep="closes PRP-"
+   - List: [PRP-002, PRP-007]
+   ↓
+5. FOR EACH completed PRP:
+   a. Read PRP file
+   b. Read DoD section
+   c. FOR EACH DoD item:
+      - Test feature manually
+      - Document result (✅ or ❌)
+   d. IF all DoD items ✅:
+      - Leave VALIDATED signal
+      - Move to next PRP
+   e. IF any DoD item ❌:
+      - Document bug details
+      - Leave URGENT signal
+      - Add to bug list
+   ↓
+6. IF bug list NOT empty:
+   a. Create new PRP-XXX for bug fixes
+   b. Create branch: fix/vX.Y.Z-bugs
+   c. Update CHANGELOG.md with patch notes
+   d. Work on fixes in new branch
+   e. Create PR for fixes
+   f. Release patch version (v0.2.1)
+   g. Repeat QA workflow
+   ↓
+7. IF bug list empty:
+   a. Leave VALIDATED in all PRPs
+   b. Update main PRP with release link
+   c. Celebrate 🎉
+   d. Signal: COMPLETED
+```
+
+### CI Integration
+
+**Workflow**: `.github/workflows/post-release-qa.yml`
+```yaml
+name: Post-Release QA
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run E2E tests
+        run: |
+          npm ci
+          npm run test:e2e
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: tests/e2e/report.html
+
+  manual-qa:
+    needs: e2e-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trigger manual QA checklist
+        run: |
+          echo "📋 Manual QA required"
+          echo "Review all PRPs since last release"
+          echo "Follow QA workflow in AGENTS.md"
+          # TODO: Trigger NUDGE to QA team
+```
 
 ---
 

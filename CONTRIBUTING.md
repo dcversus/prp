@@ -47,6 +47,49 @@ Feature requests are welcome! Please create an issue with:
 - Ensure code is properly formatted: `npm run format:check`
 - Ensure no linting errors: `npm run lint`
 
+## 📡 Working with Signals
+
+**PRP uses a Signal System to track progress and communicate state.**
+
+### What is a Signal?
+
+A **signal** is an emotional/status indicator that tells other agents and contributors what state the work is in. Every PRP progress log entry must include a signal.
+
+### How to Leave a Signal
+
+When updating a PRP Progress Log, add a signal in the last column:
+
+```markdown
+| Role | DateTime | Comment | Signal |
+|------|----------|---------|--------|
+| developer | 2025-10-28 | Implemented auth module, all tests passing. | ✅ CONFIDENT |
+```
+
+### Common Signals
+
+- **🔴 ATTENTION** (10) - Need user input or new PRP created
+- **🚫 BLOCKED** (9) - Cannot proceed, external dependency needed
+- **🚨 URGENT** (9) - Time-sensitive, immediate action required
+- **😫 TIRED** (6) - Work incomplete, needs inventory
+- **✅ CONFIDENT** (3) - Work complete, ready for review
+- **🎯 VALIDATED** (2) - Reviewed and approved
+- **🏁 COMPLETED** (1) - DoD met, PRP done
+
+**Full signal reference**: See [AGENTS.md](AGENTS.md#signal-system)
+
+### How to Read Signals
+
+**Before starting work on a PRP**:
+1. Read the entire PRP
+2. Check Progress Log for latest signal
+3. React to strongest signal (highest strength number)
+4. Follow the signal's algorithm (see AGENTS.md)
+
+**Example**:
+- If you see **BLOCKED** → Check blocker details, see if you can resolve it
+- If you see **TIRED** → Review inventory, continue where left off
+- If you see **CONFIDENT** → Review work, create PR if ready
+
 ## Development Setup
 
 ### Prerequisites

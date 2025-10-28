@@ -26,7 +26,27 @@ Every development task follows this cycle:
 6. **🎯 Leave Signal** - Express current state (TIRED, CONFIDENT, BLOCKED, etc.)
 7. **🔄 Loop** - Continue until Done or checkpoint reached
 
+**Quick Start with PRPs**:
+```bash
+# List all PRPs
+ls PRPs/
+
+# Start working on a PRP
+# 1. Read the PRP file
+# 2. Check Progress Log for latest signal
+# 3. Follow signal's algorithm (see AGENTS.md)
+# 4. Do work
+# 5. Update Progress Log with your signal
+```
+
+**Signal Examples**:
+- 🔴 **ATTENTION** (10) - New work or need user input (triggers NUDGE system)
+- 🚫 **BLOCKED** (9) - Can't proceed, need external help
+- ✅ **CONFIDENT** (3) - Work done, ready for review
+- 🏁 **COMPLETED** (1) - PRP finished, DoD met
+
 **For detailed workflow instructions, see [AGENTS.md](AGENTS.md)**
+**For contributing guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md)**
 
 [![npm version](https://img.shields.io/npm/v/@dcversus/prp)](https://www.npmjs.com/package/@dcversus/prp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
