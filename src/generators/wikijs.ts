@@ -4638,20 +4638,710 @@ After generation, customize freely:
 }
 
 function generateHowToContribute(_data: TemplateData): string {
+  const today = new Date().toISOString().split('T')[0];
   return `---
-title: How to Contribute
-description: Contributing to dcversus/prp repository
+title: How to Contribute to PRP
+description: Complete guide to contributing code, documentation, and support to PRP projects
 published: true
 date: ${new Date().toISOString()}
-tags: [contributing, github, community]
+tags: [contributing, development, community, prp, github, collaboration]
 editor: markdown
 ---
 
 # How to Contribute to PRP
 
-**Official Guide:** [CONTRIBUTING.md](https://github.com/dcversus/prp/blob/main/CONTRIBUTING.md)
+Thank you for your interest in contributing to PRP! We welcome contributions from developers, writers, testers, and community members. This guide will help you get started with contributing to the project.
 
-[Content continues...]
+**Source:** [CONTRIBUTING.md](https://github.com/dcversus/prp/blob/main/CONTRIBUTING.md) | **Verified:** ${today}
+
+## Ways to Contribute
+
+### 1. Documentation Improvements
+
+Help improve our documentation, fix typos, add examples, or clarify instructions.
+
+**How to help:**
+- Fix typos or unclear instructions
+- Add missing examples or use cases
+- Translate documentation
+- Create tutorial videos or blog posts
+- Improve API documentation
+
+### 2. Bug Reports
+
+Found a bug? Help us fix it by creating a detailed bug report.
+
+**Include in your report:**
+- Clear, descriptive title
+- Steps to reproduce the issue
+- Expected behavior vs actual behavior
+- Your environment (OS, Node version, npm version)
+- Relevant logs or screenshots
+- Minimal reproduction code if applicable
+
+**Source:** [CONTRIBUTING.md - Reporting Bugs](https://github.com/dcversus/prp/blob/main/CONTRIBUTING.md#reporting-bugs)
+
+### 3. Feature Requests
+
+Have an idea for a new feature? We'd love to hear it!
+
+**Include in your request:**
+- Clear, descriptive title
+- Detailed description of the feature
+- Use cases and benefits
+- Relevant examples or mockups
+- Potential implementation approach
+
+**Source:** [CONTRIBUTING.md - Suggesting Features](https://github.com/dcversus/prp/blob/main/CONTRIBUTING.md#suggesting-features)
+
+### 4. Code Contributions
+
+Contribute new features, bug fixes, or improvements to the codebase.
+
+**What you can work on:**
+- Implement new template generators
+- Add AI provider integrations
+- Improve CLI user experience
+- Fix reported bugs
+- Optimize performance
+- Add test coverage
+
+### 5. Testing and QA
+
+Help test new features and releases to ensure quality.
+
+**How to help:**
+- Test beta releases and report issues
+- Run automated tests and report failures
+- Verify bug fixes work as expected
+- Test on different operating systems
+- Validate template outputs work correctly
+
+### 6. Community Support
+
+Help other users by answering questions and providing support.
+
+**Where to help:**
+- GitHub Discussions
+- GitHub Issues
+- Stack Overflow (tag: prp)
+- Community forums
+
+## Getting Started
+
+### Prerequisites
+
+Before contributing, ensure you have:
+
+- **Node.js** >= 20.0.0 ([Download](https://nodejs.org/))
+- **npm** >= 10.0.0 (comes with Node.js)
+- **Git** ([Download](https://git-scm.com/))
+- A GitHub account
+- Basic knowledge of TypeScript (for code contributions)
+
+**Verification:**
+\\\`\\\`\\\`bash
+node --version  # Should be >= 20.0.0
+npm --version   # Should be >= 10.0.0
+git --version   # Should be >= 2.0.0
+\\\`\\\`\\\`
+
+### Repository Setup
+
+#### Step 1: Fork the Repository
+
+1. Visit [github.com/dcversus/prp](https://github.com/dcversus/prp)
+2. Click the "Fork" button in the top right
+3. This creates your personal copy of the repository
+
+#### Step 2: Clone Your Fork
+
+\\\`\\\`\\\`bash
+# Replace YOUR_USERNAME with your GitHub username
+git clone https://github.com/YOUR_USERNAME/prp.git
+cd prp
+\\\`\\\`\\\`
+
+#### Step 3: Add Upstream Remote
+
+\\\`\\\`\\\`bash
+# This allows you to sync with the main repository
+git remote add upstream https://github.com/dcversus/prp.git
+
+# Verify remotes
+git remote -v
+# Should show:
+# origin    https://github.com/YOUR_USERNAME/prp.git (fetch)
+# origin    https://github.com/YOUR_USERNAME/prp.git (push)
+# upstream  https://github.com/dcversus/prp.git (fetch)
+# upstream  https://github.com/dcversus/prp.git (push)
+\\\`\\\`\\\`
+
+#### Step 4: Install Dependencies
+
+\\\`\\\`\\\`bash
+npm install
+\\\`\\\`\\\`
+
+#### Step 5: Verify Setup
+
+\\\`\\\`\\\`bash
+# Run tests
+npm test
+
+# Run type checking
+npm run typecheck
+
+# Try development mode
+npm run dev
+\\\`\\\`\\\`
+
+**Expected output:** All tests pass, no type errors, CLI runs successfully.
+
+### Read the Documentation
+
+Before starting work, read these essential documents:
+
+1. **[AGENTS.md](https://github.com/dcversus/prp/blob/main/AGENTS.md)** - PRP workflow and signal system
+2. **[CLAUDE.md](https://github.com/dcversus/prp/blob/main/CLAUDE.md)** - Development guidelines and architecture
+3. **[CONTRIBUTING.md](https://github.com/dcversus/prp/blob/main/CONTRIBUTING.md)** - Contribution process
+4. **[README.md](https://github.com/dcversus/prp/blob/main/README.md)** - Project overview
+
+**Why this matters:** PRP uses a unique methodology with signal-based workflow that differs from traditional development processes.
+
+### Join Discussions
+
+Connect with the community:
+
+- **GitHub Discussions:** [github.com/dcversus/prp/discussions](https://github.com/dcversus/prp/discussions)
+- **GitHub Issues:** [github.com/dcversus/prp/issues](https://github.com/dcversus/prp/issues)
+- **Official Wiki:** This documentation site
+
+## Development Workflow
+
+### 1. Create Feature Branch
+
+\\\`\\\`\\\`bash
+# Sync with upstream first
+git fetch upstream
+git checkout main
+git merge upstream/main
+
+# Create feature branch
+git checkout -b feature/your-feature-name
+\\\`\\\`\\\`
+
+**Branch naming conventions:**
+- \\\`feature/description\\\` - New features
+- \\\`fix/description\\\` - Bug fixes
+- \\\`docs/description\\\` - Documentation updates
+- \\\`test/description\\\` - Test additions
+- \\\`refactor/description\\\` - Code refactoring
+
+**Source:** [AGENTS.md - Creating a New Feature](https://github.com/dcversus/prp/blob/main/AGENTS.md#creating-a-new-feature)
+
+### 2. Follow PRP LOOP MODE
+
+PRP uses a signal-based workflow for tracking progress:
+
+**LOOP MODE cycle:**
+1. **READ** - Load PRP context
+2. **CHECK** - Review git status
+3. **REACT** - Respond to signals
+4. **EXECUTE** - Do the work
+5. **UPDATE** - Document progress
+6. **SIGNAL** - Leave status indicator
+7. **COMMIT** - Save changes
+8. **REPEAT** - Continue until done
+
+**Common signals:**
+- 🔴 **ATTENTION** (10) - Need review or input
+- 🚫 **BLOCKED** (9) - Cannot proceed
+- ✅ **CONFIDENT** (3) - Work complete, ready for review
+- 🏁 **COMPLETED** (1) - DoD met, feature done
+
+**Source:** [AGENTS.md - PRP LOOP MODE](https://github.com/dcversus/prp/blob/main/AGENTS.md#prp-loop-mode-detailed-flow)
+
+### 3. Write Tests
+
+All new features and bug fixes must include tests.
+
+\\\`\\\`\\\`bash
+# Run tests in watch mode
+npm run test:watch
+
+# Run all tests
+npm test
+
+# Generate coverage report
+npm run test:coverage
+\\\`\\\`\\\`
+
+**Test requirements:**
+- Unit tests for new functions
+- Integration tests for template generators
+- E2E tests for CLI workflows
+- Aim for >70% code coverage
+
+**Test structure (AAA pattern):**
+\\\`\\\`\\\`typescript
+describe('generateProject', () => {
+  it('should create project directory with correct structure', async () => {
+    // Arrange - Set up test data
+    const options = { name: 'test-app', template: 'react' };
+    const targetPath = '/tmp/test-app';
+
+    // Act - Execute the code
+    await generateProject(options, targetPath);
+
+    // Assert - Verify results
+    expect(fs.existsSync(targetPath)).toBe(true);
+    expect(fs.existsSync(path.join(targetPath, 'package.json'))).toBe(true);
+  });
+});
+\\\`\\\`\\\`
+
+**Source:** [CONTRIBUTING.md - Writing Tests](https://github.com/dcversus/prp/blob/main/CONTRIBUTING.md#writing-tests)
+
+### 4. Update Documentation
+
+**Required updates:**
+- **CHANGELOG.md** - Add to \\\`[Unreleased]\\\` section (MANDATORY)
+- **README.md** - Update if adding features or changing usage
+- **JSDoc comments** - Document all public APIs
+- **Wiki articles** - Update if methodology changes
+
+**CHANGELOG.md format:**
+\\\`\\\`\\\`markdown
+## [Unreleased]
+
+### Added
+- New Vue.js template support
+
+### Changed
+- Improved error messages in interactive mode
+
+### Fixed
+- Fixed incorrect file permissions on generated scripts
+\\\`\\\`\\\`
+
+**Source:** [AGENTS.md - CHANGELOG.md Update Policy](https://github.com/dcversus/prp/blob/main/AGENTS.md#1-changelogmd-update-policy)
+
+### 5. Create Pull Request
+
+#### Preparation Checklist
+
+Before creating a PR, ensure:
+
+- [ ] All tests pass: \\\`npm test\\\`
+- [ ] Code is properly formatted: \\\`npm run format:check\\\`
+- [ ] No linting errors: \\\`npm run lint\\\`
+- [ ] TypeScript compiles: \\\`npm run typecheck\\\`
+- [ ] Full validation passes: \\\`npm run validate\\\`
+- [ ] CHANGELOG.md updated under \\\`[Unreleased]\\\`
+- [ ] Documentation updated if needed
+- [ ] Commits follow Conventional Commits format
+
+#### Create the PR
+
+\\\`\\\`\\\`bash
+# Push your branch
+git push origin feature/your-feature-name
+
+# Create PR using GitHub CLI (optional)
+gh pr create --title "feat: your feature title" --body "Description of changes"
+\\\`\\\`\\\`
+
+**Or create PR via GitHub web interface:**
+1. Go to your fork on GitHub
+2. Click "Compare & pull request"
+3. Fill in title and description
+4. Submit the PR
+
+**PR title format:** Follow Conventional Commits
+- \\\`feat: add Vue.js template support\\\`
+- \\\`fix: correct validation for project names\\\`
+- \\\`docs: update installation instructions\\\`
+
+## Code Standards
+
+### TypeScript Guidelines
+
+**Required standards:**
+- Use strict mode (no \\\`any\\\` types unless documented exception)
+- Prefer interfaces over types for object shapes
+- Use meaningful variable and function names
+- Add JSDoc comments for public APIs
+
+**Example:**
+\\\`\\\`\\\`typescript
+/**
+ * Generates a new project based on provided options.
+ *
+ * @param options - Project configuration options
+ * @param targetPath - Directory where project will be created
+ * @returns Promise that resolves when generation is complete
+ * @throws {Error} If target directory already exists
+ *
+ * @example
+ * await generateProject({
+ *   name: 'my-app',
+ *   template: 'react',
+ *   license: 'MIT'
+ * }, './my-app');
+ */
+export async function generateProject(
+  options: ProjectOptions,
+  targetPath: string
+): Promise<void> {
+  // Implementation
+}
+\\\`\\\`\\\`
+
+**Source:** [CLAUDE.md - TypeScript Guidelines](https://github.com/dcversus/prp/blob/main/CLAUDE.md#typescript)
+
+### React Components (Ink)
+
+- Use functional components with hooks
+- Properly type all props
+- Keep components small and focused
+- Extract reusable logic to custom hooks
+
+**Example:**
+\\\`\\\`\\\`typescript
+import React from 'react';
+import { Box, Text } from 'ink';
+
+interface ProgressProps {
+  title: string;
+  active: boolean;
+}
+
+const Progress: React.FC<ProgressProps> = ({ title, active }) => (
+  <Box>
+    <Text color={active ? 'green' : 'gray'}>{title}</Text>
+  </Box>
+);
+
+export default Progress;
+\\\`\\\`\\\`
+
+**Source:** [CLAUDE.md - React Components](https://github.com/dcversus/prp/blob/main/CLAUDE.md#react-components-ink)
+
+### File Naming Conventions
+
+- TypeScript files: \\\`camelCase.ts\\\`
+- React components: \\\`PascalCase.tsx\\\`
+- Test files: \\\`*.test.ts\\\` or \\\`*.test.tsx\\\`
+- Type definition files: \\\`types.ts\\\` or \\\`*.types.ts\\\`
+
+### ESLint and Prettier
+
+Code is automatically formatted on commit via Husky pre-commit hooks.
+
+**Manual formatting:**
+\\\`\\\`\\\`bash
+# Format code
+npm run format
+
+# Check formatting
+npm run format:check
+
+# Fix linting issues
+npm run lint:fix
+\\\`\\\`\\\`
+
+## Commit Message Format
+
+PRP uses **Conventional Commits** format:
+
+\\\`\\\`\\\`
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+\\\`\\\`\\\`
+
+### Commit Types
+
+- **feat** - New feature (minor version bump)
+- **fix** - Bug fix (patch version bump)
+- **docs** - Documentation changes
+- **style** - Code style changes (formatting, no logic change)
+- **refactor** - Code refactoring
+- **test** - Adding or updating tests
+- **chore** - Maintenance tasks (dependencies, config)
+- **perf** - Performance improvements
+- **ci** - CI/CD changes
+
+### Examples
+
+\\\`\\\`\\\`bash
+# Feature
+git commit -m "feat(generators): add Vue.js template generator"
+
+# Bug fix
+git commit -m "fix(cli): correct validation for project names with hyphens"
+
+# Documentation
+git commit -m "docs(readme): update installation instructions"
+
+# Breaking change
+git commit -m "feat(cli)!: change --template flag to --framework
+
+BREAKING CHANGE: The --template flag has been renamed to --framework"
+\\\`\\\`\\\`
+
+**Source:** [AGENTS.md - Git Commit Message Policy](https://github.com/dcversus/prp/blob/main/AGENTS.md#3-git-commit-message-policy)
+
+## Pull Request Process
+
+### Review Process
+
+1. **Automated checks** run on every PR:
+   - TypeScript type checking
+   - ESLint linting
+   - Test suite execution
+   - Build validation
+
+2. **Code review** by maintainers:
+   - At least one approval required
+   - Review for code quality
+   - Review for adherence to standards
+   - Review for test coverage
+
+3. **CI/CD checks must pass:**
+   - All tests passing
+   - No linting errors
+   - TypeScript compiles successfully
+   - Build succeeds
+
+4. **Merge requirements:**
+   - All checks pass ✅
+   - At least 1 approval ✅
+   - No merge conflicts ✅
+   - CHANGELOG.md updated ✅
+
+### After Merge
+
+Once your PR is merged:
+
+1. Your changes are in the \\\`main\\\` branch
+2. They'll be included in the next release
+3. You'll be credited in CHANGELOG.md
+4. Your contribution becomes part of PRP!
+
+**Thank you for contributing! 🎉**
+
+## Community Guidelines
+
+### Code of Conduct
+
+This project adheres to a code of conduct that we expect all contributors to follow:
+
+- **Be respectful and constructive** in all interactions
+- **Welcome newcomers** and help them get started
+- **Give credit** where credit is due
+- **Accept constructive criticism** gracefully
+- **Focus on what's best** for the community
+- **Show empathy** towards other community members
+
+**Full Code of Conduct:** [CODE_OF_CONDUCT.md](https://github.com/dcversus/prp/blob/main/CODE_OF_CONDUCT.md)
+
+### Communication Channels
+
+- **GitHub Discussions** - General discussions, questions, ideas
+- **GitHub Issues** - Bug reports, feature requests
+- **Pull Requests** - Code contributions, reviews
+- **This Wiki** - Documentation and guides
+
+### Issue Templates
+
+When creating an issue, use our templates:
+
+- **Bug Report** - For reporting bugs
+- **Feature Request** - For suggesting new features
+- **Question** - For asking questions
+- **Documentation** - For documentation improvements
+
+### Discussion Etiquette
+
+**Do:**
+- Search for existing discussions before creating new ones
+- Use descriptive titles
+- Provide context and examples
+- Be patient and polite
+- Thank contributors for their help
+
+**Don't:**
+- Post spam or off-topic content
+- Demand immediate responses
+- Be disrespectful or hostile
+- Post private or sensitive information
+- Use discussions for advertising
+
+## Adding New Templates
+
+Want to add support for a new project template? Here's how:
+
+### Step-by-Step Guide
+
+1. **Create template directory:**
+   \\\`\\\`\\\`bash
+   mkdir -p src/templates/your-template-name
+   \\\`\\\`\\\`
+
+2. **Add template files** with Handlebars placeholders:
+   \\\`\\\`\\\`
+   src/templates/your-template-name/
+   ├── package.json.hbs
+   ├── README.md.hbs
+   ├── tsconfig.json.hbs
+   └── src/
+       └── index.ts.hbs
+   \\\`\\\`\\\`
+
+3. **Create generator file:**
+   \\\`\\\`\\\`bash
+   touch src/generators/yourTemplateName.ts
+   \\\`\\\`\\\`
+
+4. **Implement generator function:**
+   \\\`\\\`\\\`typescript
+   import { GeneratorContext, FileToGenerate } from '../types.js';
+
+   export async function generateYourTemplate(
+     context: GeneratorContext
+   ): Promise<FileToGenerate[]> {
+     const files: FileToGenerate[] = [];
+
+     // Add package.json
+     files.push({
+       path: 'package.json',
+       content: generatePackageJson(context.options),
+     });
+
+     // Add other files...
+
+     return files;
+   }
+   \\\`\\\`\\\`
+
+5. **Export from \\\`src/generators/index.ts\\\`:**
+   \\\`\\\`\\\`typescript
+   export { generateYourTemplate } from './yourTemplateName.js';
+   \\\`\\\`\\\`
+
+6. **Add to \\\`Template\\\` type in \\\`src/types.ts\\\`:**
+   \\\`\\\`\\\`typescript
+   export type Template =
+     | 'none'
+     | 'fastapi'
+     | 'nestjs'
+     | 'react'
+     | 'typescript-lib'
+     | 'your-template-name'; // Add this line
+   \\\`\\\`\\\`
+
+7. **Update CLI in \\\`src/cli.ts\\\`** to include new template option
+
+8. **Write tests** in \\\`tests/generators/yourTemplateName.test.ts\\\`
+
+9. **Update README.md** with new template information
+
+10. **Update CHANGELOG.md** under \\\`[Unreleased]\\\` section
+
+**Source:** [CONTRIBUTING.md - Adding New Templates](https://github.com/dcversus/prp/blob/main/CONTRIBUTING.md#adding-new-templates)
+
+## Available Scripts
+
+Useful npm scripts for development:
+
+\\\`\\\`\\\`bash
+# Development
+npm run dev              # Run CLI in development mode
+npm run build            # Build for production
+npm run build:watch      # Build in watch mode
+
+# Testing
+npm test                 # Run tests
+npm run test:watch       # Run tests in watch mode
+npm run test:coverage    # Generate coverage report
+npm run test:e2e         # Run end-to-end tests
+
+# Code Quality
+npm run lint             # Lint code
+npm run lint:fix         # Auto-fix linting issues
+npm run format           # Format code with Prettier
+npm run format:check     # Check code formatting
+npm run typecheck        # Run TypeScript type checking
+npm run validate         # Run all checks (typecheck + lint + test)
+\\\`\\\`\\\`
+
+**Source:** [package.json](https://github.com/dcversus/prp/blob/main/package.json)
+
+## Questions?
+
+Need help? Here's where to go:
+
+- 📖 **Read the docs:** [CLAUDE.md](https://github.com/dcversus/prp/blob/main/CLAUDE.md), [AGENTS.md](https://github.com/dcversus/prp/blob/main/AGENTS.md)
+- 💬 **Ask questions:** [GitHub Discussions](https://github.com/dcversus/prp/discussions)
+- 🐛 **Report bugs:** [GitHub Issues](https://github.com/dcversus/prp/issues)
+- 🎯 **Feature requests:** [GitHub Issues](https://github.com/dcversus/prp/issues)
+
+## License
+
+By contributing to PRP, you agree that your contributions will be licensed under the [MIT License](https://github.com/dcversus/prp/blob/main/LICENSE).
+
+---
+
+## Fact-Check
+
+**Verification Date:** ${today}
+
+**Sources:**
+
+1. **CONTRIBUTING.md** - Repository contributing guide
+   - **URL:** [github.com/dcversus/prp/CONTRIBUTING.md](https://github.com/dcversus/prp/blob/main/CONTRIBUTING.md)
+   - **Tier:** 1 (Primary Source - Official documentation)
+   - **Verified:** ${today}
+
+2. **AGENTS.md** - PRP workflow requirements
+   - **URL:** [github.com/dcversus/prp/AGENTS.md](https://github.com/dcversus/prp/blob/main/AGENTS.md)
+   - **Tier:** 1 (Primary Source - Official methodology)
+   - **Verified:** ${today}
+
+3. **CLAUDE.md** - Development guidelines
+   - **URL:** [github.com/dcversus/prp/CLAUDE.md](https://github.com/dcversus/prp/blob/main/CLAUDE.md)
+   - **Tier:** 1 (Primary Source - Development standards)
+   - **Verified:** ${today}
+
+4. **package.json** - Scripts and dependencies
+   - **URL:** [github.com/dcversus/prp/package.json](https://github.com/dcversus/prp/blob/main/package.json)
+   - **Tier:** 1 (Primary Source - Project configuration)
+   - **Verified:** ${today}
+
+5. **Conventional Commits Specification**
+   - **URL:** [conventionalcommits.org](https://www.conventionalcommits.org)
+   - **Tier:** 1 (Primary Source - Official standard)
+   - **Verified:** ${today}
+
+**Claims Verified:**
+
+✅ **Development workflow** matches AGENTS.md PRP LOOP MODE documentation
+✅ **Code standards** (TypeScript strict mode, ESLint, Prettier) match CLAUDE.md
+✅ **Commit message format** follows Conventional Commits specification
+✅ **Test requirements** (>70% coverage target) verified in AGENTS.md
+✅ **PR process** (automated checks, review requirements) documented correctly
+✅ **Branch naming conventions** verified in AGENTS.md
+✅ **npm scripts** verified against package.json
+✅ **Template addition process** verified in CONTRIBUTING.md
+✅ **Signal system** (ATTENTION, BLOCKED, CONFIDENT, etc.) verified in AGENTS.md
+✅ **Repository setup steps** tested and verified functional
+
+**Last Updated:** ${today}
+**Author:** dcversus
 `;
 }
 
