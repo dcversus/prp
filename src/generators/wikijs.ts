@@ -1872,7 +1872,377 @@ editor: markdown
 
 # Human as Subordinate Agent to Orchestrator
 
-[Content about human-AI collaboration patterns...]
+**Key Concept:** In PRP methodology, AI orchestrators make autonomous decisions while humans provide context and approve critical actions. This inverts the traditional human-command / AI-execute hierarchy.
+
+## Traditional vs PRP Hierarchy
+
+### Traditional Approach (Human as Manager)
+
+\`\`\`
+┌──────────────────────────────────────┐
+│           Human Manager              │
+│  (Makes all decisions)               │
+└────────────────┬─────────────────────┘
+                 │
+                 ▼
+        ┌────────────────┐
+        │   AI Assistant  │
+        │   (Executes)    │
+        └────────────────┘
+\`\`\`
+
+**Problems:**
+- AI waits for human input at every decision point
+- Humans become bottlenecks
+- Decision latency kills momentum
+- AI doesn't utilize its analytical capabilities
+- Context switching exhausts human bandwidth
+
+### PRP Approach (Human as Agent)
+
+\`\`\`
+┌──────────────────────────────────────┐
+│        AI Orchestrator               │
+│  • Analyzes signals across all PRPs  │
+│  • Makes autonomous decisions        │
+│  • Prioritizes work                  │
+│  • Executes implementations          │
+└────────────────┬─────────────────────┘
+                 │
+                 ▼
+        ┌────────────────┐
+        │  Human Agent    │
+        │  (Provides      │
+        │   context via   │
+        │   signals)      │
+        └────────────────┘
+\`\`\`
+
+**Benefits:**
+- AI works continuously without waiting
+- Humans focus on high-level context
+- Faster decision cycles
+- Better utilization of AI capabilities
+- Async communication reduces interruptions
+
+## Why Invert the Hierarchy?
+
+### 1. **Speed of Execution**
+
+**Traditional:** Human decides (minutes-hours) → AI executes (seconds)
+
+**PRP:** AI analyzes signals (seconds) → AI decides (seconds) → AI executes (seconds)
+
+**Result:** 100-1000x faster iteration cycles.
+
+### 2. **Context Preservation**
+
+Humans provide **ATTENTION** signals with context. AI orchestrator:
+- Reads context once
+- Makes multiple decisions based on it
+- Doesn't need repeated explanations
+- Maintains context across sessions
+
+### 3. **Better Decision Quality**
+
+AI orchestrator considers:
+- All signals across all PRPs simultaneously
+- Dependencies between tasks
+- Risk/value analysis
+- Historical patterns
+
+Humans can't process this much information quickly.
+
+### 4. **Reduced Cognitive Load**
+
+Humans freed from:
+- Micro-management decisions
+- Implementation details
+- Priority ordering
+- Task sequencing
+
+Humans focus on:
+- High-level goals
+- Business priorities
+- Critical approvals
+
+## Orchestrator Autonomy Protocol
+
+The PRP orchestrator follows 4 core rules:
+
+### Rule 1: NO QUESTIONS TO HUMANS
+
+❌ **NEVER ASK:** "Which option should we choose?"
+❌ **NEVER ASK:** "Do you want me to proceed?"
+❌ **NEVER ASK:** "What should I do next?"
+
+✅ **INSTEAD:** Analyze signals, make decision, execute, document in PRP.
+
+**Example:**
+
+\`\`\`markdown
+| Orchestrator | 2025-10-28 12:30 | Analyzed signals. Found
+ATTENTION(8) for incomplete articles. **AUTONOMOUS DECISION:**
+Complete core methodology articles (10-13) first as they provide
+highest user value. Starting with 10-prp-overview.md. No human
+input required. | 💚 PROGRESS (5) |
+\`\`\`
+
+### Rule 2: ASYNC COMMUNICATION ONLY
+
+When human input is REQUIRED (rare):
+1. Add **🔴 ATTENTION** signal to PRP with specific question
+2. Document decision deadline (e.g., "If no response by 2025-10-29, will proceed with Option A")
+3. Continue working on other tasks
+4. If deadline passes, make autonomous decision
+
+**Example:**
+
+\`\`\`markdown
+| Orchestrator | 2025-10-28 12:00 | Need clarification on API
+design. Options: REST vs GraphQL. Adding ATTENTION signal.
+**Will decide autonomously in 2 hours if no input.** Leaning
+toward REST for simplicity. | 🔴 ATTENTION (8) |
+
+| Orchestrator | 2025-10-28 14:00 | No input received on API
+design. **AUTONOMOUS DECISION:** REST API. Rationale: Simpler,
+well-documented, team familiar. Proceeding with implementation.
+| 💚 PROGRESS (5) |
+\`\`\`
+
+### Rule 3: NUDGE FOR CRITICAL BLOCKS ONLY
+
+Use NUDGE system (Telegram alerts) ONLY when:
+- **🔴 BLOCKED** (Priority 10) - Cannot proceed at all
+- **⚠️ SECURITY** issue detected
+- **💥 PRODUCTION** incident
+- Multiple PRPs blocked for >24 hours
+
+**DO NOT** nudge for:
+- Normal decision-making
+- Feature prioritization
+- Implementation choices
+- Code review requests
+
+**Good NUDGE:**
+\`\`\`
+🔴 BLOCKED: Production deploy failed, rollback needed immediately
+\`\`\`
+
+**Bad NUDGE:**
+\`\`\`
+Should I use JWT or sessions?
+\`\`\`
+
+### Rule 4: AUTONOMOUS DECISION MAKING
+
+Orchestrator MUST decide based on:
+1. **Signal Priority** - Highest priority signals first
+2. **PRP Value** - Business value stated in PRP
+3. **Dependencies** - Unblock other PRPs
+4. **Risk** - Minimize risk, maximize value
+5. **Effort** - Quick wins before long tasks
+
+## How Humans Provide Context
+
+Humans use **ATTENTION signals** to communicate priorities:
+
+\`\`\`markdown
+| user (via Claude) | 2025-10-28 | User wants wiki template
+with comprehensive documentation. Articles should be complete,
+not stubs. Priority: HIGH - template not useful without content.
+| 🔴 ATTENTION (10) |
+\`\`\`
+
+Orchestrator reads this signal and:
+1. **Analyzes** the priority (10 = highest)
+2. **Decides** to complete articles before other work
+3. **Executes** article completion
+4. **Documents** decision rationale
+5. **Updates** signal when complete
+
+**Human doesn't:**
+- Decide which articles to complete first
+- Specify implementation approach
+- Micro-manage execution
+- Wait for progress updates
+
+## NUDGE System for Critical Blocks
+
+When orchestrator encounters **BLOCKED** signal:
+
+\`\`\`
+┌─────────────────────────────────────┐
+│  Orchestrator hits BLOCKED signal   │
+│  (e.g., needs production access)    │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│  Sends NUDGE to dcmaidbot           │
+│  POST /nudge with:                  │
+│  • Message: "Need prod credentials" │
+│  • PRP link                          │
+│  • Urgency: HIGH                     │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│  dcmaidbot sends Telegram alert     │
+│  to admin users                      │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│  Human responds via Telegram        │
+│  "Here are the credentials: ..."    │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│  Response triggers GitHub Action    │
+│  Orchestrator continues work        │
+└─────────────────────────────────────┘
+\`\`\`
+
+**Key:** Communication is asynchronous. Orchestrator doesn't wait, works on other PRPs.
+
+## Autonomous Decision Examples
+
+### Example 1: Article Completion Priority
+
+**Scenario:** PRP-009 has 13 incomplete articles. Which to complete first?
+
+**Orchestrator Analysis:**
+- Signal: 🔴 ATTENTION (8)
+- Impact: Users can't use template effectively
+- Options: Core articles (10-13), CLI guides (20-22), Admin guides (40-42)
+- Value: Core articles = highest (explain methodology)
+- Dependencies: None blocking
+- Risk: Low - can iterate
+
+**Decision:**
+\`\`\`markdown
+**AUTONOMOUS DECISION:** Complete core PRP articles (10-13) before
+other articles. **RATIONALE:** Highest user value, unblocks
+documentation consumers, establishes foundation for other articles.
+**ALTERNATIVES CONSIDERED:** CLI guides first (rejected: users
+need methodology understanding first), All articles simultaneously
+(rejected: too slow, delays value delivery). **RISK:** Low - can
+adjust based on feedback. **EXECUTION:** Starting with
+10-prp-overview.md now.
+\`\`\`
+
+### Example 2: Multi-PRP Prioritization
+
+**Scenario:** Multiple PRPs with different signals
+
+\`\`\`
+PRP-007: 💚 PROGRESS (5) - Signal system working
+PRP-008: 💙 ENCANTADO (1) - NUDGE endpoint deployed
+PRP-009: 🔴 ATTENTION (8) - Articles incomplete
+PRP-010: 🔴 BLOCKED (10) - Database migration failed
+\`\`\`
+
+**Orchestrator Decision:**
+1. Work on PRP-010 FIRST (Priority 10, unblocks)
+2. Then PRP-009 (Priority 8, high value)
+3. Ignore PRP-007 and PRP-008 (lower priority, already progressing)
+
+**No human input needed.** Priority is mathematically determined.
+
+### Example 3: Ambiguous Requirements
+
+**Scenario:** Article says "Document all templates" but doesn't specify which.
+
+**Traditional Approach:**
+\`\`\`
+AI: "Which templates should I document?"
+[WAITS FOR HUMAN]
+\`\`\`
+
+**PRP Approach:**
+\`\`\`markdown
+**ASSUMPTION:** User wants all templates in codebase documented.
+**BASIS:** Found 6 templates in src/generators/: react, typescript-lib,
+fastapi, nestjs, wikijs, vue. **IMPLEMENTATION:** Documenting all 6
+with examples and best practices. **VERIFICATION:** Can adjust if
+assumption incorrect. | 💚 PROGRESS (5) |
+\`\`\`
+
+**Result:** Work continues, value delivered, adjustment possible if needed.
+
+## Benefits of This Approach
+
+### 1. **Continuous Progress**
+- No waiting for human decisions
+- Work proceeds 24/7 (if automated)
+- Multiple PRPs progress in parallel
+
+### 2. **Better Human Experience**
+- Humans provide context when convenient
+- No constant interruptions
+- Focus on strategic decisions
+
+### 3. **Higher Quality Decisions**
+- AI considers more factors simultaneously
+- Consistent decision criteria
+- Documented rationale for review
+
+### 4. **Scalability**
+- One human can oversee 10+ PRPs
+- AI orchestrates, human guides
+- Async communication prevents bottlenecks
+
+### 5. **Transparency**
+- All decisions documented in PRPs
+- Rationale visible for review
+- Easy to audit decision quality
+
+## When Humans DO Intervene
+
+Humans MUST approve:
+- **Destructive actions** (delete database, remove code)
+- **Security changes** (expose endpoints, change auth)
+- **Financial decisions** (purchase services, scale infrastructure)
+- **Legal/compliance** (license changes, data handling)
+
+For these cases:
+1. Orchestrator adds **🔴 ATTENTION (10)** signal
+2. Documents proposed action and risks
+3. Waits for explicit human approval
+4. Defaults to SAFE option if no response
+
+\`\`\`markdown
+| Orchestrator | 2025-10-28 14:00 | **ATTENTION REQUIRED:**
+About to delete old user data per retention policy. **ACTION:**
+Adding ATTENTION signal, waiting 24 hours for human override.
+**SAFETY DEFAULT:** If no response, will archive instead of delete.
+| 🔴 ATTENTION (10) |
+\`\`\`
+
+## Fact-Check
+
+✅ **Orchestrator Autonomy Protocol:** [AGENTS.md Lines 1855-2110](https://github.com/dcversus/prp/blob/main/AGENTS.md#L1855-L2110)
+✅ **NUDGE System:** [AGENTS.md Lines 959-1169](https://github.com/dcversus/prp/blob/main/AGENTS.md#L959-L1169)
+✅ **Signal System:** [AGENTS.md Lines 142-200](https://github.com/dcversus/prp/blob/main/AGENTS.md#L142-L200)
+✅ **Decision Examples:** [PRP-009 Progress Log](https://github.com/dcversus/prp/blob/main/PRPs/PRP-009-wikijs-template-deployed.md)
+
+**Verification Date:** 2025-10-28
+**Last Updated:** 2025-10-28
+**Author:** dcversus
+
+---
+
+## Related Articles
+
+- [PRP Overview](/docs/10-prp-overview) - Understanding the methodology
+- [Signal System](/docs/11-signal-system) - How signals guide work
+- [Context-Driven Development](/docs/12-context-driven-development) - Why context matters
+
+---
+
+**Remember:** In PRP, humans are strategic agents who provide context. AI orchestrators are tactical agents who execute. This inverted hierarchy enables faster, more autonomous development workflows.
 `;
 }
 
