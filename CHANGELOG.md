@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **PRP Methodology & Signal System** - Revolutionary context-driven development workflow
+  - **Signal System**: 14 emotional/state indicators (ATTENTION, BLOCKED, TIRED, ENCANTADO, etc.)
+  - **Signal Strength**: Priority system (1-10 scale) for intelligent work prioritization
+  - **Progress Log**: Standardized table format tracking role, datetime, comment, signal
+  - **Agent Personalities**: System Analyst with Portuguese flair, pragmatic Developer, skeptical Tester
+  - **Signal Reaction Patterns**: Detailed action steps for each signal type
+  - **PRP LOOP MODE**: Continuous iteration guided by signals until DoD or checkpoint
+  - **Mandatory PRP Workflow**: Find/create PRP before any work (Policy #0)
+  - **TUI Selection**: Interactive PRP selection when multiple exist
+  - **CLI Flags**: `--file` and `--new` for PRP management
 - **CI/CD Infrastructure** - Complete GitHub Actions setup
   - Parallel CI jobs (lint, typecheck, test, security, build) for faster feedback
   - CHANGELOG.md check workflow (enforces mandatory updates on PRs)
@@ -30,7 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `.editorconfig` for consistent code formatting across editors
   - Updated `lint-staged` configuration in package.json
 - **Documentation**
-  - AGENTS.md with mandatory CHANGELOG policy (comprehensive)
+  - AGENTS.md with comprehensive PRP workflow and signal system
+  - AGENTS.md with mandatory CHANGELOG policy
+  - README.md updated with PRP methodology as main project goal
+  - PRP-007 specification document for signal system
   - CLAUDE.md updated with AGENTS.md reference
 
 ### Changed

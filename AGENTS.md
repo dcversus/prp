@@ -2,9 +2,392 @@
 
 This document provides specific instructions for AI coding assistants (Claude, GPT-4, Copilot, etc.) working on the PRP project. These guidelines supplement the CLAUDE.md development guide with **mandatory policies** that must be followed.
 
+**Created by**: Vasilisa Versus
+**Project Goal**: Bootstrap context-driven development workflow based on Product Requirement Prompts (PRPs) and orchestrate execution with LOOP MODE.
+
+---
+
+## 🔄 PRP WORKFLOW (MANDATORY)
+
+**Every agent session MUST follow this workflow:**
+
+### Step 1: Find Related PRP
+**BEFORE doing ANY work**, agent must:
+1. Check if a PRP exists for the current task
+2. Search `PRPs/` directory for relevant PRPs
+3. Read PRP titles and summaries
+
+**If NO PRP exists**:
+- Ask: **"Do we really need a new PRP?"**
+- Show TUI (Terminal UI) with options:
+  ```
+  Select PRP or create new:
+  [ ] PRP-001: CLI Implementation
+  [ ] PRP-002: Landing Page
+  [ ] PRP-003: Telegram Integration
+  ...
+  [ ] ✨ Create NEW PRP
+  ```
+- This is **FORCED** when running via CLI without `--file` argument
+
+### Step 2: Create New PRP (if needed)
+When user selects "Create NEW PRP" or uses `--new` flag:
+
+**CLI must gather**:
+1. **Description**: What is this PRP about?
+2. **Goal**: What do we want to achieve?
+3. **Final State**: What should be the result?
+4. **Definition of Done (DoD)**: How do we know it's complete?
+5. **Value**: Why is this important?
+6. **Details**: Any additional context?
+
+**Then produce new PRP** with:
+- Standard PRP format (see PRP-CLI.md template)
+- Initial **SIGNAL COMMENT** from creator:
+  ```markdown
+  ## Progress Log
+
+  | Role | Date | Comment | Signal |
+  |------|------|---------|--------|
+  | User (via claude-sonnet-4-5) | 2025-10-28 | User requested new PRP. Initial assessment: This PRP addresses [topic]. Complexity estimate: Medium-High. Value: HIGH - this will enable [benefit]. Concerns: [any concerns]. | 🔴 ATTENTION |
+  ```
+
+### Step 3: Enter PRP LOOP MODE
+Once PRP is identified/created, agent enters **LOOP MODE**:
+
+```
+┌─────────────────────────────────────┐
+│       PRP LOOP MODE ACTIVE          │
+└─────────────────────────────────────┘
+
+1. READ PRP → Extract current status and signals
+2. CHECK git status → Any uncommitted changes?
+3. REACT to strongest signal
+4. EXECUTE work
+5. UPDATE PRP with progress
+6. LEAVE SIGNAL comment
+7. COMMIT if changes made
+8. REPEAT until DoD met or checkpoint reached
+```
+
+### Step 4: Read Signals
+**Before each action**, read all signals in PRP progress log:
+- Identify **strongest signal** (highest priority/intensity)
+- Understand signal meaning (see Signal Reference below)
+- React accordingly
+
+### Step 5: Execute Work
+- Work on task according to PRP requirements
+- Follow Definition of Ready (DoR)
+- Aim for Definition of Done (DoD)
+
+### Step 6: Update PRP and Leave Signal
+**After each work session** or when reaching checkpoint:
+1. Add entry to Progress Log table
+2. Describe what was done
+3. Add emotional/status signal
+4. Commit changes if files modified
+
+**Example Progress Entry**:
+```markdown
+| Developer (claude-sonnet-4-5) | 2025-10-28 14:32 | Implemented authentication module. Added JWT middleware, created login/register endpoints, wrote 15 tests (all passing). Deployment tested on staging. Ready for review. | ✅ CONFIDENT |
+```
+
+### Step 7: Commit and Continue
+If files changed:
+```bash
+git add .
+git commit -m "feat(auth): implement JWT authentication module
+
+- Add JWT middleware
+- Create login/register endpoints
+- Write 15 tests (all passing)
+- Update PRP-003 progress log
+
+Signal: CONFIDENT"
+```
+
+Then either:
+- Continue LOOP if more work needed
+- Create PR if DoD reached
+- Exit LOOP if checkpoint/context limit reached
+
+---
+
+## 📡 SIGNAL SYSTEM
+
+**Signals** are emotional/status indicators that help agents understand work state and prioritize actions.
+
+### What is a Signal?
+- **Self-extractable** from tone of voice in comments
+- **Dominant emotion or status** of the work
+- **Actionable** - tells next agent how to react
+- **Personality-aware** - agents can have unique voices
+
+### Signal Format
+Signals appear in Progress Log table:
+
+```markdown
+| Role | Date | Comment | Signal |
+|------|------|---------|--------|
+| system-analyst | 2025-10-28 | Comment text | 🎉 ENCANTADO!!! |
+```
+
+### Signal Reference Table
+
+| Signal | Emoji | Strength | Meaning | Action Required |
+|--------|-------|----------|---------|-----------------|
+| **ATTENTION** | 🔴 | 10 | New PRP created, needs review | Review PRP, assess complexity, begin planning |
+| **BLOCKED** | 🚫 | 9 | Cannot proceed, external dependency | Identify blocker, escalate, work on different task |
+| **URGENT** | 🚨 | 9 | Time-sensitive, needs immediate action | Prioritize above all other work |
+| **TIRED** | 😫 | 6 | Work incomplete, needs inventory | Review what's done, create task list, checkpoint |
+| **CONFUSED** | 🤔 | 7 | Unclear requirements, need clarification | Ask questions, update PRP with ambiguities |
+| **EXCITED** | 🎉 | 8 | Breakthrough, new possibilities discovered | Document discoveries, create new PRPs if needed |
+| **ENCANTADO** | ✨ | 8 | Amazing discovery, spawned new PRPs | Read all spawned PRPs, execute strongest signal |
+| **CONFIDENT** | ✅ | 3 | Work complete, tests passing, ready | Review code, create PR, move to next task |
+| **VALIDATED** | 🎯 | 2 | Work reviewed and approved | Merge PR, close PRP, celebrate |
+| **FRUSTRATED** | 😤 | 7 | Technical difficulties, need help | Document issue, seek help, consider alternatives |
+| **OPTIMISTIC** | 🌟 | 5 | Good progress, on track | Continue work, maintain momentum |
+| **CAUTIOUS** | ⚠️ | 6 | Concerns about approach, needs discussion | Document concerns, discuss with team |
+| **RESEARCHING** | 🔍 | 5 | Deep dive in progress | Continue research, document findings |
+| **COMPLETED** | 🏁 | 1 | DoD met, PRP done | Final review, close PRP, archive |
+
+### Signal Strength Priority
+When multiple signals present, react to:
+1. **Highest strength** (9-10) first
+2. **Most recent** if equal strength
+3. **Blocking** signals before non-blocking
+
+### Agent Personalities (Optional)
+Agents can have unique personalities reflected in signals:
+
+**System Analyst** (Portuguese flair):
+- Occasionally uses Portuguese words
+- Example: "encantado" (delighted), "incrível" (incredible), "perfeito" (perfect)
+- Emotional, enthusiastic about discoveries
+
+**Developer** (Pragmatic):
+- Direct, honest about challenges
+- Example: "shit work, exhausted", "finally working", "tests green"
+- Focus on completion and quality
+
+**Tester** (Skeptical):
+- Critical, thorough
+- Example: "found 10 bugs", "edge case missed", "coverage too low"
+- Focus on quality and completeness
+
+### Signal Reaction Patterns
+
+**When encountering signals, agent must react appropriately:**
+
+#### ATTENTION (🔴, Strength 10)
+```
+Action:
+1. Read entire PRP thoroughly
+2. Assess complexity and value
+3. Check DoR (Definition of Ready)
+4. Begin planning or research phase
+5. Update progress log with initial assessment
+```
+
+#### BLOCKED (🚫, Strength 9)
+```
+Action:
+1. Identify exact blocker
+2. Document blocker in PRP
+3. Escalate to user if external dependency
+4. Find alternative approach if possible
+5. Switch to different PRP if cannot proceed
+6. Leave BLOCKED signal with details
+```
+
+#### TIRED (😫, Strength 6)
+```
+Action:
+1. Stop current work
+2. Review what was accomplished
+3. Create inventory/checklist of remaining work
+4. Update PRP with detailed status
+5. Checkpoint: commit all work in progress
+6. Leave CHECKPOINT signal
+```
+
+#### ENCANTADO (✨, Strength 8)
+```
+Action:
+1. Read comment to find spawned PRPs
+2. Navigate to each new PRP
+3. Read each PRP's signals
+4. Identify strongest signal across all PRPs
+5. Execute work on PRP with strongest signal
+6. Return to original PRP when done
+```
+
+#### CONFIDENT (✅, Strength 3)
+```
+Action:
+1. Review completed work
+2. Run all tests and validation
+3. Update CHANGELOG.md
+4. Create PR with descriptive title/body
+5. Request review
+6. Mark PRP section as complete
+```
+
+### Signal Examples in Practice
+
+**Example 1: System Analyst discovers new PRPs**
+
+```markdown
+| system-analyst (claude-sonnet-4-5) | 2025-10-28 15:45 | Que incrível! During research, I discovered we need 3 separate PRPs: PRP-008 (API Architecture), PRP-009 (Database Schema), PRP-010 (Caching Strategy). Each one is complex enough to warrant full PRP. Created all three with initial analysis. Please review! | ✨ ENCANTADO!!! |
+```
+
+**Next agent reaction**:
+1. Find PRP-008, PRP-009, PRP-010
+2. Read each one
+3. Check signals in each
+4. PRP-008 has ATTENTION (10), PRP-009 has ATTENTION (10), PRP-010 has ATTENTION (10)
+5. All equal, so pick PRP-008 (first one)
+6. Begin work on PRP-008
+
+**Example 2: Developer exhausted**
+
+```markdown
+| developer (claude-sonnet-4-5) | 2025-10-28 18:30 | Implemented 60% of authentication system. JWT middleware done, register endpoint done, login endpoint half-done. Ran into complex edge cases with refresh tokens. Tests: 8 passing, 3 failing. Need to inventory what's left and take a break. Shit work, honestly exhausted. | 😫 TIRED |
+```
+
+**Next agent reaction**:
+1. Read PRP to understand context
+2. Run `git status` - see uncommitted changes
+3. Create inventory in PRP:
+   ```markdown
+   ### Remaining Work (from TIRED checkpoint)
+   - [ ] Complete login endpoint (refresh token edge cases)
+   - [ ] Fix 3 failing tests
+   - [ ] Add token expiration logic
+   - [ ] Write integration tests
+   - [ ] Update documentation
+   ```
+4. Commit work-in-progress: `git commit -m "WIP: auth system 60% complete"`
+5. Leave CHECKPOINT signal
+6. Can continue work or switch tasks
+
+**Example 3: Work Complete**
+
+```markdown
+| developer (claude-sonnet-4-5) | 2025-10-28 20:15 | Authentication system DONE! All endpoints implemented, 25 tests passing (100% coverage), documentation updated, CHANGELOG.md updated. Deployed to staging and tested manually. Everything works perfectly. Ready for PR! | ✅ CONFIDENT |
+```
+
+**Next agent reaction**:
+1. Verify tests: `npm test` ✅
+2. Verify build: `npm run build` ✅
+3. Verify CHANGELOG.md updated ✅
+4. Create PR:
+   ```bash
+   git checkout -b feat/authentication
+   git push origin feat/authentication
+   gh pr create --title "feat: implement JWT authentication system" \
+     --body "$(cat PRPs/PRP-003.md | grep -A 50 'Definition of Done')"
+   ```
+5. Update PRP with PR link
+6. Leave VALIDATED signal (after review)
+
+---
+
+## 🔄 LOOP MODE Detailed Flow
+
+### Loop Initialization
+
+```bash
+$ prp loop
+
+🔍 Searching for PRPs in PRPs/...
+Found 6 PRPs:
+  1. PRP-001: CLI Implementation [COMPLETED]
+  2. PRP-002: Landing Page [ATTENTION]
+  3. PRP-003: Telegram Integration [CONFIDENT]
+  4. PRP-004: Remote Orchestrator [RESEARCHING]
+  5. PRP-005: Templates [BLOCKED]
+  6. PRP-006: Orchestrator [ATTENTION]
+
+Select PRP to work on (or 'n' for new):
+> 2
+
+📋 Loading PRP-002: Landing Page...
+
+🔴 Strongest Signal: ATTENTION (Strength: 10)
+📝 Last Comment: "User requested landing page. High value, medium complexity."
+
+Entering LOOP MODE for PRP-002...
+```
+
+### Loop Iteration
+
+```
+┌─────────── LOOP ITERATION 1 ──────────┐
+│ PRP: PRP-002 Landing Page              │
+│ Status: DoR Met ✅                     │
+│ Strongest Signal: ATTENTION            │
+└────────────────────────────────────────┘
+
+🤖 Agent Action:
+1. ✅ Read PRP-002 - Understood requirements
+2. ✅ Check git status - Clean working tree
+3. ✅ React to ATTENTION - Begin planning
+4. 🔨 Execute: Create technical design
+   - Next.js 14 + Tailwind
+   - Component structure
+   - API routes
+5. ✅ Update PRP-002 progress log
+6. ✅ Leave signal: OPTIMISTIC
+7. ✅ Commit changes
+
+📝 New Progress Entry:
+| developer (claude-sonnet-4-5) | 2025-10-28 21:00 | Created technical design for landing page. Chose Next.js 14 with App Router, Tailwind CSS, and shadcn/ui. Designed component structure (Hero, Features, Demo, FAQ). Planning looks solid, ready to start implementation. | 🌟 OPTIMISTIC |
+
+Continue LOOP? [Y/n]:
+```
+
+### Loop Checkpoint
+
+After significant work or context limit:
+
+```
+┌─────────── LOOP CHECKPOINT ──────────┐
+│ PRP: PRP-002 Landing Page             │
+│ Progress: 40% complete                │
+│ Context: 150K tokens used             │
+└───────────────────────────────────────┘
+
+⚠️  Reaching context limit. Creating checkpoint...
+
+✅ Committed changes
+✅ Updated PRP progress log
+✅ Pushed to remote
+
+📝 Checkpoint Entry:
+| developer (claude-sonnet-4-5) | 2025-10-28 22:30 | Checkpoint: 40% complete. Hero section done, Features section in progress. Components are clean and responsive. Tests: 12 passing. Will continue with Demo section next session. | 🏁 CHECKPOINT |
+
+LOOP MODE paused. Resume with: prp loop --resume PRP-002
+```
+
 ---
 
 ## 🚨 MANDATORY POLICIES (NON-NEGOTIABLE)
+
+### 0. PRP Workflow Policy (NEW)
+
+**⚠️ CRITICAL: ALWAYS follow PRP workflow before starting work.**
+
+This is **MANDATORY** for all agents:
+- ✅ Find or create PRP BEFORE doing work
+- ✅ Read signals in PRP progress log
+- ✅ React to strongest signal
+- ✅ Update PRP after each work session
+- ✅ Leave signal describing status
+- ✅ Use LOOP MODE for sustained work
+
+**Violation**: Starting work without PRP is NOT ALLOWED.
 
 ### 1. CHANGELOG.md Update Policy
 

@@ -1,12 +1,38 @@
-# PRP - Project Bootstrap CLI
+# PRP - Product Requirement Prompts
 
-> Interactive Project Bootstrap CLI - Modern scaffolding tool with AI integration
+> **Bootstrap context-driven development workflow based on Product Requirement Prompts (PRPs) and orchestrate execution with LOOP MODE**
+>
+> By Vasilisa Versus
+
+## What is PRP?
+
+**PRP** is both a methodology and a CLI tool that revolutionizes how you approach software development:
+
+- **📋 PRP Methodology** - Context-driven development using Product Requirement Prompts as living documents
+- **🔄 LOOP MODE** - Continuous agent iteration guided by signals and progress tracking
+- **🤖 Agent Orchestration** - AI agents collaborate through standardized PRPs with emotional signals
+- **⚡ Signal System** - Track progress and emotional state with 14+ signals (ATTENTION, BLOCKED, ENCANTADO, etc.)
+- **🚀 Project Scaffolding** - Bootstrap new projects with best practices and complete infrastructure
+
+### The PRP Workflow
+
+Every development task follows this cycle:
+
+1. **📖 Read PRP** - Load context and understand the requirement
+2. **🔍 Check Signals** - Read progress log and identify emotional state
+3. **⚡ React to Strongest Signal** - Prioritize based on signal strength (1-10)
+4. **🔨 Execute Work** - Implement changes, write code, solve problems
+5. **💬 Update Progress** - Leave detailed comment in progress log
+6. **🎯 Leave Signal** - Express current state (TIRED, CONFIDENT, BLOCKED, etc.)
+7. **🔄 Loop** - Continue until Done or checkpoint reached
+
+**For detailed workflow instructions, see [AGENTS.md](AGENTS.md)**
 
 [![npm version](https://img.shields.io/npm/v/@dcversus/prp)](https://www.npmjs.com/package/@dcversus/prp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
 
-## Features
+## Project Scaffolding Features
 
 - 🚀 **Interactive CLI** with beautiful TUI powered by Ink (React for terminal)
 - 🎨 **Multiple Templates** - FastAPI, NestJS, React, TypeScript libraries, and more
