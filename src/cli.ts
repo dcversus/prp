@@ -17,7 +17,7 @@ program
   .option('-e, --email <email>', 'author email')
   .option(
     '-t, --template <template>',
-    'project template (fastapi, nestjs, react, typescript-lib, none)'
+    'project template (fastapi, nestjs, react, typescript-lib, wikijs, none)'
   )
   .option('--no-interactive', 'run in non-interactive mode')
   .option('--yes', 'use default values for all options')

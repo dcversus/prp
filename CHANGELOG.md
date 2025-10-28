@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Wiki.js Template** - Complete documentation project generator
+  - 20 pre-written articles covering PRP methodology, CLI usage, and Wiki.js administration
+  - Docker Compose setup with PostgreSQL and Redis
+  - Authentik SSO configuration template
+  - Comprehensive getting-started guides for non-developers
+  - Article writing guidelines with fact-checking standards
+  - GitHub registration guide
+  - Authentik login tutorial
+  - Contributing guidelines
+  - Wiki.js administration basics
+- **Article Writing Standards** - Added to AGENTS.md
+  - Mandatory citation requirements for all factual claims
+  - Source authority hierarchy (Tier 1-3)
+  - Fact-check section template
+  - Self-check criteria checklist
+  - Code example testing requirements
+  - Version-specific documentation standards
+  - Screenshot guidelines
+  - Article update policy (6-month verification cycle)
+
 ### Fixed
 - **CLI version**: Updated hardcoded version from 0.1.0 to 0.2.0 in src/cli.ts:13
 - **Non-interactive mode**: Implemented missing non-interactive mode functionality for CLI

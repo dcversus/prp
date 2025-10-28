@@ -1486,3 +1486,366 @@ npm publish
 **Last Updated**: 2025-10-28
 **Version**: 1.0.0
 **Status**: 📋 Active Policy
+
+---
+
+## 📝 WIKI ARTICLE WRITING GUIDELINES
+
+**When generating Wiki.js content or documentation articles**, follow these mandatory quality standards:
+
+### Article Structure Requirements
+
+Every wiki article MUST include:
+
+1. **Frontmatter** (YAML metadata)
+2. **Title and Description**
+3. **Source Citations** for all factual claims
+4. **Fact Check Section** at the end
+5. **Last Updated Date**
+6. **Navigation Links** (Previous/Next articles)
+
+### Frontmatter Template
+
+```markdown
+---
+title: Article Title
+description: Brief description (1-2 sentences)
+published: true
+date: YYYY-MM-DDTHH:MM:SS.SSSZ
+tags: [tag1, tag2, tag3]
+editor: markdown
+---
+```
+
+### Citation Standards
+
+**MANDATORY: Every factual claim needs a source link**
+
+#### Format for Web Resources
+
+```markdown
+**Source:** [Site Name - Article Title](https://exact-url.com)
+**Verified:** YYYY-MM-DD
+```
+
+#### Format for Official Documentation
+
+```markdown
+**Source:** [Official Docs - Section](https://docs.example.com/section)
+**Version:** X.Y.Z
+**Verified:** YYYY-MM-DD
+```
+
+#### Format for Research Papers
+
+```markdown
+**Source:** Author et al. (Year). "Title". *Journal*. [DOI](https://doi.org/...)
+**Verified:** YYYY-MM-DD
+```
+
+#### Format for Code/Configuration
+
+When referencing code or configuration from repositories:
+
+```markdown
+**Source:** [filename:line](https://github.com/user/repo/blob/main/file.ext#L42)
+**Version/Commit:** abc123def
+**Verified:** YYYY-MM-DD
+```
+
+**Example:**
+```markdown
+The CLI supports wikijs template:
+**Source:** [src/types.ts#L39](https://github.com/dcversus/prp/blob/main/src/types.ts#L39)
+**Version:** 0.2.0
+**Verified:** 2025-10-28
+```
+
+### Self-Check Criteria
+
+Before marking article complete, verify:
+
+- [ ] **Every factual claim** has an authoritative source
+- [ ] **All URLs** are valid and accessible
+- [ ] **Verification dates** are current (< 6 months for technical content)
+- [ ] **Screenshots** (if any) are clear and annotated
+- [ ] **Code examples** are tested and work
+- [ ] **Grammar and spelling** checked
+- [ ] **Links** work and go to correct destinations
+- [ ] **Fact Check section** is complete and accurate
+- [ ] **Navigation links** connect to related articles
+
+### Fact Check Section Template
+
+**MANDATORY at the end of every article:**
+
+```markdown
+---
+
+**Fact Check:**
+- ✅ Claim 1: [Source Name](URL) - Verified YYYY-MM-DD
+- ✅ Claim 2: [Source Name](URL) - Verified YYYY-MM-DD
+- ⚠️ Claim 3: Based on community consensus, not peer-reviewed
+- ✅ Code example: Tested in version X.Y.Z on YYYY-MM-DD
+
+**Last Updated:** YYYY-MM-DD
+**Author:** Name or @github-handle
+```
+
+### Common Mistakes to Avoid
+
+❌ **BAD - No source:**
+> "Studies show that context-driven development improves productivity."
+
+✅ **GOOD - With source:**
+> "A 2024 MIT study found context-driven development improved team productivity by 30% compared to traditional task-based approaches."
+> **Source:** [MIT CSAIL - Context Study](https://example.com/study) | **Verified:** 2025-10-28
+
+❌ **BAD - Vague claim:**
+> "Everyone knows that PRP is better."
+
+✅ **GOOD - Specific claim:**
+> "According to the PRP methodology documentation, the signal system enables priority-based work ordering with a 1-10 scale."
+> **Source:** [AGENTS.md - Signal System](https://github.com/dcversus/prp/blob/main/AGENTS.md#signal-system) | **Verified:** 2025-10-28
+
+❌ **BAD - Outdated info:**
+> "The CLI supports React templates." (no version specified)
+
+✅ **GOOD - Version-specific:**
+> "As of version 0.2.0, the CLI supports five templates: React, TypeScript, FastAPI, NestJS, and Wiki.js."
+> **Source:** [src/types.ts#L30-39](https://github.com/dcversus/prp/blob/main/src/types.ts#L30-39) | **Version:** 0.2.0 | **Verified:** 2025-10-28
+
+### Handling Unverifiable Claims
+
+When you cannot verify a claim:
+
+1. **Mark it clearly:**
+   ```markdown
+   ⚠️ **Unverified:** This claim requires validation. [Help verify](link-to-issue)
+   ```
+
+2. **Provide context:**
+   ```markdown
+   Based on community discussion in [Thread #123](URL), but not officially documented.
+   ```
+
+3. **Don't publish without disclaimer**
+
+### Source Authority Hierarchy
+
+**Tier 1 - Most Reliable:**
+- Official documentation
+- Peer-reviewed papers
+- Primary sources (code repositories, official specs)
+- Government/academic institutions
+
+**Tier 2 - Reliable with Verification:**
+- Reputable technical publications
+- Industry-standard books
+- Conference proceedings
+- Expert blog posts (with author credentials)
+
+**Tier 3 - Use Sparingly:**
+- Community forums (for consensus only)
+- Blog posts (require corroboration)
+- Social media (expert accounts only, with verification)
+
+**Avoid Entirely:**
+- Anonymous sources
+- Unverified claims
+- Outdated information without re-verification (>2 years old)
+- Sources with conflicts of interest
+
+### Version-Specific Documentation
+
+When documenting software features:
+
+1. **Always specify version**
+2. **Link to specific commit/tag when possible**
+3. **Note when features were added/changed**
+4. **Update when versions change**
+
+**Example:**
+```markdown
+## Installation (v0.2.0+)
+
+The non-interactive mode was added in version 0.2.0:
+
+\`\`\`bash
+prp --name myproject --template wikijs --no-interactive
+\`\`\`
+
+**Source:** [CHANGELOG.md - v0.2.0](https://github.com/dcversus/prp/blob/main/CHANGELOG.md#020)
+**Feature Added:** [src/nonInteractive.ts](https://github.com/dcversus/prp/blob/main/src/nonInteractive.ts)
+**Verified:** 2025-10-28
+```
+
+### Code Example Standards
+
+When including code examples:
+
+1. **Test all code before publishing**
+2. **Specify language for syntax highlighting**
+3. **Include expected output**
+4. **Note any prerequisites**
+5. **Specify working directory if relevant**
+
+**Example:**
+```markdown
+## Generate Wiki.js Project
+
+\`\`\`bash
+# Prerequisites: Node.js 20+, npm 10+
+# Working directory: Any empty directory
+
+prp --name my-wiki \
+    --template wikijs \
+    --author "Your Name" \
+    --email "you@example.com" \
+    --no-interactive
+\`\`\`
+
+**Expected Output:**
+\`\`\`
+🚀 Generating wikijs project: my-wiki
+✔ Project files generated
+✅ Project "my-wiki" created successfully!
+\`\`\`
+
+**Source:** Tested with @dcversus/prp v0.2.0 on 2025-10-28
+```
+
+### Screenshot Guidelines
+
+When adding screenshots:
+
+1. **Annotate important areas** (arrows, highlights, labels)
+2. **Use consistent theme** (light mode preferred for readability)
+3. **Crop to relevant content** (no unnecessary chrome)
+4. **Include alt text** for accessibility
+5. **Specify what the screenshot shows**
+
+**Example:**
+```markdown
+![Wiki.js login page showing Authentik SSO button](images/wikijs-auth.png)
+*Figure 1: Wiki.js login screen with Authentik SSO option highlighted*
+
+**Screenshot taken:** 2025-10-28
+**Software version:** Wiki.js 2.5.x with Authentik 2024.8.x
+```
+
+### Article Update Policy
+
+**When to update articles:**
+
+1. **Major version releases** of referenced software
+2. **Security advisories** affecting documented procedures
+3. **Broken links** reported by users or automated checks
+4. **Deprecated features** in documented software
+5. **User-reported inaccuracies**
+6. **Every 6 months** (minimum) for technical content
+7. **Every 12 months** (minimum) for conceptual content
+
+**Update Process:**
+
+1. Review all sources and re-verify claims
+2. Update verification dates
+3. Add update note if significant changes:
+   ```markdown
+   > **Update (2025-10-28):** This process changed in version X.Y.Z. See [New Guide](URL).
+   ```
+4. Update "Last Updated" date in frontmatter AND fact check section
+5. Create commit: `docs: update article-name with verified info`
+
+### Quality Checklist for AI Agents
+
+**Before completing an article, ensure:**
+
+- [ ] Frontmatter is complete and correctly formatted
+- [ ] Title accurately describes content
+- [ ] Description is concise (1-2 sentences)
+- [ ] Tags are relevant and consistent with site taxonomy
+- [ ] Every factual claim has inline citation
+- [ ] All URLs tested and accessible
+- [ ] Verification dates are current
+- [ ] Code examples tested and work as documented
+- [ ] Screenshots are clear and annotated (if applicable)
+- [ ] Grammar/spelling checked (use tools if needed)
+- [ ] Fact Check section is complete
+- [ ] Last Updated date matches today
+- [ ] Author credited
+- [ ] Navigation links to related articles included
+- [ ] No broken internal links
+- [ ] Markdown renders correctly (test in Wiki.js preview)
+
+### PRP CLI Documentation Standards
+
+When documenting PRP CLI features:
+
+1. **Reference actual code** - Link to source files
+2. **Test all commands** - Don't document untested features
+3. **Specify versions** - When features were added
+4. **Include examples** - Real working examples
+5. **Document edge cases** - What happens when things go wrong
+6. **Link to tests** - Show test coverage for features
+
+**Example Template:**
+```markdown
+## Feature: Wiki.js Template Generation
+
+The PRP CLI supports generating Wiki.js documentation projects with comprehensive starter content.
+
+**Added in:** Version 0.2.0
+**Source:** [src/generators/wikijs.ts](https://github.com/dcversus/prp/blob/main/src/generators/wikijs.ts)
+**Tests:** [tests/e2e/wikijs-generation.test.ts](https://github.com/dcversus/prp/blob/main/tests/e2e/wikijs-generation.test.ts)
+
+### Usage
+
+\`\`\`bash
+prp --name PROJECT_NAME \
+    --template wikijs \
+    --author "YOUR_NAME" \
+    --email "your@email.com" \
+    --no-interactive
+\`\`\`
+
+### Generated Files
+
+The wikijs template creates:
+- 20 documentation articles (00-52 series)
+- Docker Compose configuration
+- Wiki.js config.yml
+- PostgreSQL and Redis setup
+- Example .env file
+
+**File Manifest:** [src/generators/wikijs.ts#L38-161](https://github.com/dcversus/prp/blob/main/src/generators/wikijs.ts#L38-161)
+
+---
+
+**Fact Check:**
+- ✅ Feature exists: [wikijs.ts](https://github.com/dcversus/prp/blob/main/src/generators/wikijs.ts)
+- ✅ Version 0.2.0: [CHANGELOG.md](https://github.com/dcversus/prp/blob/main/CHANGELOG.md)
+- ✅ Commands tested: 2025-10-28
+
+**Last Updated:** 2025-10-28
+**Author:** dcversus
+```
+
+---
+
+## 📊 Article Quality Metrics
+
+**Target Standards:**
+
+- **Fact-Check Coverage:** 100% of factual claims cited
+- **Link Validity:** 100% of links working
+- **Verification Currency:** <6 months for technical content
+- **Code Testing:** 100% of code examples tested
+- **Grammar Quality:** 0 spelling/grammar errors
+- **Accessibility:** All images have alt text
+
+**Use these metrics when generating wikijs template content!**
+
+---
+
+**END OF WIKI ARTICLE WRITING GUIDELINES**

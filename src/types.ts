@@ -35,7 +35,8 @@ export type Template =
   | 'typescript-lib'
   | 'vue'
   | 'svelte'
-  | 'express';
+  | 'express'
+  | 'wikijs';
 
 export type LicenseType = 'MIT' | 'Apache-2.0' | 'GPL-3.0' | 'BSD-3-Clause' | 'ISC' | 'Unlicense';
 

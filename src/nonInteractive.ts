@@ -43,7 +43,14 @@ export async function runNonInteractive(cliOptions: CLIOptions): Promise<void> {
   }
 
   // Validate template
-  const validTemplates: Template[] = ['fastapi', 'nestjs', 'react', 'typescript-lib', 'none'];
+  const validTemplates: Template[] = [
+    'fastapi',
+    'nestjs',
+    'react',
+    'typescript-lib',
+    'wikijs',
+    'none',
+  ];
   if (!validTemplates.includes(cliOptions.template as Template)) {
     console.error(
       chalk.red(
