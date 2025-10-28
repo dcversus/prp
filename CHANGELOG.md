@@ -8,6 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Orchestrator Autonomy Protocol** - AI orchestrators make decisions without human approval
+  - Added "Orchestrator Autonomy Protocol" section to AGENTS.md (300+ lines)
+  - Rule 1: NO QUESTIONS TO HUMANS - Make autonomous decisions
+  - Rule 2: ASYNC COMMUNICATION ONLY - Use ATTENTION signals in PRPs
+  - Rule 3: NUDGE FOR CRITICAL BLOCKS ONLY - Priority 10 scenarios
+  - Rule 4: AUTONOMOUS DECISION MAKING - Signal analysis → prioritize → execute → document
+  - Decision protocol with rationale documentation
+  - Timeout-based decision making (1h/4h/24h thresholds)
+  - Multi-PRP orchestration algorithms
+  - Performance metrics and orchestrator mantras
+  - Updated README.md with "Autonomous Orchestration" principles
+  - Key principle: "AI Orchestrator makes decisions autonomously. Humans are subordinate agents."
+- **PRP-009 Specification** - Tracks Wiki.js template implementation
+  - Comprehensive PRP document with autonomous decision logs
+  - Status tracking for 20 starter articles (7 complete, 13 stubs)
+  - Technical implementation details
+  - Risk assessment and mitigation strategies
+  - Next steps and action items with priorities
 - **Wiki.js Template** - Complete documentation project generator
   - 20 pre-written articles covering PRP methodology, CLI usage, and Wiki.js administration
   - Docker Compose setup with PostgreSQL and Redis
