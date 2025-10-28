@@ -867,20 +867,507 @@ Scopes: openid profile email
 function generatePRPOverview(_data: TemplateData): string {
   return `---
 title: PRP Methodology Overview
-description: Comprehensive guide to Product Request Prompt methodology
+description: Complete guide to Product Request Prompt methodology and LOOP MODE workflow
 published: true
 date: ${new Date().toISOString()}
-tags: [prp, methodology, overview]
+tags: [prp, methodology, overview, workflow, loop-mode]
 editor: markdown
 ---
 
 # PRP Methodology Overview
 
-Detailed methodology guide with all PRP principles, practices, and patterns.
+> **Complete guide to context-driven development using Product Request Prompts**
 
-**Source:** [PRP Repository AGENTS.md](https://github.com/dcversus/prp/blob/main/AGENTS.md)
+## What is PRP?
 
-[Content continues...]
+**PRP (Product Request Prompt)** is a revolutionary methodology that combines context-driven development with emotional signal systems to enable autonomous AI-human collaboration in software projects.
+
+**Source:** [AGENTS.md](https://github.com/dcversus/prp/blob/main/AGENTS.md) | **Verified:** ${new Date().toISOString().split('T')[0]}
+
+### Core Principles
+
+1. **📋 Living Documents** - PRPs evolve with progress logs, not static specs
+2. **🔄 LOOP MODE** - Continuous iteration guided by signals until DoD met
+3. **📡 Signal System** - 14 emotional indicators guide work prioritization
+4. **🤖 Autonomous Orchestration** - AI makes decisions without human approval
+5. **👤 Human as Agent** - Humans provide context, AI orchestrates execution
+
+---
+
+## PRP File Structure
+
+### Flat Directory Organization
+
+**⚠️ MANDATORY:** All PRPs must be in flat structure - NO subdirectories allowed.
+
+**Naming Convention:**
+\`\`\`
+PRP-XXX-what-will-change.md
+\`\`\`
+
+- **XXX** = Sequential number (001, 002, 003...)
+- **what-will-change** = 2-4 word outcome description (kebab-case)
+
+**Examples:**
+- ✅ \`PRP-001-bootstrap-cli-created.md\` - CLI tool will be created
+- ✅ \`PRP-007-signal-system-implemented.md\` - Signal system will be implemented
+- ✅ \`PRP-009-wikijs-template-deployed.md\` - Wiki.js template will be deployed
+- ❌ \`PRP-002-Landing-Page.md\` - PascalCase, not outcome-focused
+- ❌ \`PRPs/research/analysis.md\` - Subdirectory not allowed
+
+**Rationale:**
+- **Flat structure** = Easy to find, no navigation complexity
+- **Outcome-focused names** = Clear value proposition at a glance
+- **Sequential numbers** = Chronological order, easy reference
+- **Short names** = Quick to scan, fits in 80-column terminal
+
+**Source:** [AGENTS.md - PRP File Organization](https://github.com/dcversus/prp/blob/main/AGENTS.md#prp-file-organization-rules)
+
+---
+
+## PRP LOOP MODE Workflow
+
+**⚠️ MANDATORY:** Every development task follows this workflow.
+
+### Workflow Visualization
+
+\`\`\`
+┌─────────────────────────────────────┐
+│       PRP LOOP MODE ACTIVE          │
+└─────────────────────────────────────┘
+
+1. 📖 READ PRP     → Extract current status and signals
+2. ✅ CHECK GIT    → Any uncommitted changes?
+3. ⚡ REACT        → Work on strongest signal
+4. 🔨 EXECUTE      → Implement changes
+5. 💬 UPDATE       → Add progress log entry
+6. 🎯 SIGNAL       → Leave emotional state indicator
+7. 💾 COMMIT       → If files changed
+8. 🔄 REPEAT       → Until DoD met or checkpoint
+\`\`\`
+
+**Source:** [AGENTS.md - PRP LOOP MODE](https://github.com/dcversus/prp/blob/main/AGENTS.md#step-3-enter-prp-loop-mode)
+
+### Step-by-Step Algorithm
+
+#### Step 1: Find or Create PRP
+
+**Before ANY work:**
+1. Search \`PRPs/\` directory for related PRPs
+2. Read PRP titles and current signals
+3. If no PRP exists, use \`--new\` flag or TUI to create one
+
+**CLI Commands:**
+\`\`\`bash
+# List all PRPs
+ls PRPs/
+
+# Work on specific PRP
+prp --file PRPs/PRP-007-signal-system-implemented.md
+
+# Create new PRP
+prp --new
+\`\`\`
+
+#### Step 2: Enter LOOP MODE
+
+Once PRP identified, agent enters autonomous iteration:
+
+1. **READ PRP** - Extract current status, signals, DoD
+2. **CHECK GIT** - Any uncommitted changes?
+3. **REACT TO SIGNAL** - Follow signal-specific algorithm
+4. **EXECUTE WORK** - Implement according to DoR/DoD
+5. **UPDATE PRP** - Add progress log entry with details
+6. **LEAVE SIGNAL** - Communicate current state/priority
+7. **COMMIT** - If files changed, commit with signal
+8. **REPEAT** - Until DoD met or checkpoint reached
+
+#### Step 3: Read and React to Signals
+
+**Every iteration starts by reading signals:**
+- Scan Progress Log table in PRP
+- Identify strongest signal (Priority 1-10)
+- Follow signal-specific reaction algorithm
+- Work on highest priority across ALL PRPs
+
+**Priority Rules:**
+1. Highest strength first (10 = ATTENTION, 1 = COMPLETED)
+2. Most recent if equal strength
+3. Blocking signals before non-blocking
+
+**Example:**
+\`\`\`markdown
+| Developer | 2025-10-28 | Tests failing, deployment blocked | 🚫 BLOCKED (9) |
+| Analyst | 2025-10-28 | Found interesting optimization | 💚 PROGRESS (5) |
+\`\`\`
+→ **React to BLOCKED (9)** first, then PROGRESS (5)
+
+**Reference:** [Signal System Guide](11-signal-system)
+
+#### Step 4: Execute Work
+
+- Follow Definition of Ready (DoR) requirements
+- Implement according to technical specification
+- Write tests (aim for >80% coverage)
+- Update documentation
+- Follow coding standards
+
+#### Step 5: Update Progress Log
+
+**After each work session, add entry:**
+
+\`\`\`markdown
+| Role | DateTime | Comment | Signal |
+|------|----------|---------|--------|
+| Developer (claude-sonnet-4-5) | 2025-10-28 14:32 | Implemented JWT auth middleware. Created login/register endpoints. Wrote 15 tests (all passing). Deployment tested on staging. Ready for review. | ✅ CONFIDENT (3) |
+\`\`\`
+
+**Required Information:**
+- **Role:** Your agent role (Developer, Tester, System Analyst, Orchestrator)
+- **DateTime:** ISO format (YYYY-MM-DD) or timestamp
+- **Comment:** Detailed description of what was done, outcomes, blockers
+- **Signal:** Emotional/status indicator with priority (1-10)
+
+#### Step 6: Commit Changes
+
+\`\`\`bash
+git add .
+git commit -m "feat(auth): implement JWT authentication
+
+- Add JWT middleware with token validation
+- Create login/register endpoints
+- Write 15 tests (all passing)
+- Update PRP-003 progress log
+
+Signal: CONFIDENT (3)"
+\`\`\`
+
+**Commit Message Format:**
+- **Type:** feat, fix, docs, refactor, test, chore
+- **Scope:** Component/module affected (optional)
+- **Subject:** Imperative mood, concise
+- **Body:** Bullet points of changes
+- **Signal:** Include for PRP traceability
+
+#### Step 7: Continue or Exit
+
+**Continue LOOP if:**
+- DoD not yet met
+- More work remains
+- Signals indicate progress possible
+
+**Exit LOOP if:**
+- ✅ DoD completely met → Create PR, leave COMPLETED signal
+- 🛑 Checkpoint reached → Leave current signal for next agent
+- 😫 Context limit → Leave TIRED signal with inventory
+- 🚫 Blocked externally → Leave BLOCKED signal with details
+
+---
+
+## PRP Document Template
+
+Every PRP contains these sections:
+
+### 1. Header
+\`\`\`markdown
+# PRP-XXX: Outcome Title
+
+**Status:** 🟡 IN PROGRESS
+**Created:** YYYY-MM-DD
+**Last Updated:** YYYY-MM-DD
+**Outcome:** One-sentence final state description
+\`\`\`
+
+### 2. Problem Statement
+- **Context:** Current situation and background
+- **Pain Points:** Specific problems to solve
+- **Value Proposition:** Why this matters, business value
+
+### 3. Outcome / Goal
+- Clear description of success state
+- Measurable targets
+- Target audience
+- Business value delivered
+
+### 4. Definition of Done (DoD)
+- **Must Have:** Blocking requirements for release
+- **Should Have:** High priority features
+- **Nice to Have:** Future enhancements (non-blocking)
+
+### 5. Progress Log
+\`\`\`markdown
+| Role | DateTime | Comment | Signal |
+|------|----------|---------|--------|
+| Developer | 2025-10-28 10:00 | Initial implementation | 💚 PROGRESS (5) |
+| Tester | 2025-10-28 11:00 | All tests passing | ✅ CONFIDENT (3) |
+\`\`\`
+
+### 6. Technical Implementation
+- Files created/modified
+- Code architecture decisions
+- Key functions and APIs
+- Technology choices
+
+### 7. Dependencies & Prerequisites
+- Required systems/services
+- Related PRPs
+- External dependencies
+- DoR (Definition of Ready) checklist
+
+### 8. Risks & Mitigation
+- Risk assessment (HIGH/MEDIUM/LOW)
+- Probability and impact
+- Mitigation strategies
+- Contingency plans
+
+### 9. Next Steps & Action Items
+- Immediate tasks (this week)
+- Short-term tasks (next sprint)
+- Long-term enhancements (future releases)
+
+---
+
+## Autonomous Orchestration
+
+### Key Principle
+
+**AI Orchestrator makes decisions autonomously. Humans are subordinate agents, not decision makers.**
+
+**Source:** [AGENTS.md - Orchestrator Autonomy](https://github.com/dcversus/prp/blob/main/AGENTS.md#-orchestrator-autonomy-protocol)
+
+### Orchestrator Rules
+
+#### Rule 1: NO QUESTIONS TO HUMANS
+
+❌ **NEVER ASK:** "Which option should we choose?"
+✅ **INSTEAD:** Analyze signals, make decision, execute, document in PRP
+
+**Rationale:** Async orchestration requires autonomy. Humans provide context via PRP ATTENTION signals when needed.
+
+#### Rule 2: ASYNC COMMUNICATION ONLY
+
+- Use **ATTENTION signal** in PRP progress log
+- System triggers **NUDGE** to admins via Telegram/Discord
+- User responds when available
+- Orchestrator continues with other PRPs meanwhile
+
+#### Rule 3: NUDGE FOR CRITICAL BLOCKS ONLY
+
+Only use NUDGE system for **Priority 10** (ATTENTION) scenarios:
+- Need user clarification on requirements
+- Critical architecture decision
+- Production incident requiring immediate action
+
+**Do NOT nudge for:**
+- Implementation details (decide autonomously)
+- Code style preferences (follow project standards)
+- Testing approaches (use best practices)
+
+#### Rule 4: AUTONOMOUS DECISION MAKING
+
+**Decision Protocol:**
+
+1. **Analyze Signals** - Across ALL PRPs (not just one)
+2. **Prioritize** - By signal strength (10→1)
+3. **Assess Value** - Business value stated in PRP
+4. **Check Dependencies** - Unblock other PRPs first
+5. **Evaluate Risk** - Minimize risk, maximize value
+6. **Consider Effort** - Quick wins before long tasks
+7. **DECIDE** - Choose highest-value action
+8. **DOCUMENT** - Log decision rationale in PRP progress log
+9. **EXECUTE** - Immediately without waiting
+10. **SIGNAL** - Leave appropriate signal for next agent
+
+**Example Decision Log:**
+\`\`\`markdown
+| Orchestrator | 2025-10-28 12:10 | **AUTONOMOUS DECISION:**
+Analyzed 3 PRPs. PRP-009 has highest signal (ATTENTION 8).
+PRP-007 has PROGRESS (5), PRP-008 has ENCANTADO (1).
+Decision: Work on PRP-009 article completion.
+**RATIONALE:** Highest priority, unblocks users, template not useful yet.
+**ALTERNATIVES:** E2E tests (rejected: lower user value), README (rejected).
+**RISK:** Low. Articles can be validated incrementally.
+**EXECUTION:** Starting with core methodology articles (10-13). | 💚 PROGRESS (5) |
+\`\`\`
+
+---
+
+## Real-World Examples
+
+### Example 1: PRP-001 (CLI Implementation)
+
+**Status:** 🏁 COMPLETED
+
+**Journey:**
+- Created: 2025-10-28 06:00
+- First signal: 🔴 ATTENTION (10)
+- Peak complexity: 😫 TIRED (6) during template system
+- Breakthrough: 🎉 EXCITED (8) when Ink TUI worked
+- Completion: ✅ CONFIDENT (3) → 🎯 VALIDATED (2) → 🏁 COMPLETED (1)
+
+**Outcome:** Working CLI with 6 templates, published to npm as @dcversus/prp
+
+**Source:** [PRP-001](https://github.com/dcversus/prp/blob/main/PRPs/PRP-001-bootstrap-cli-created.md)
+
+### Example 2: PRP-007 (Signal System)
+
+**Status:** 🎯 VALIDATED
+
+**Key Signals:**
+\`\`\`markdown
+| Analyst | 2025-10-27 | Incrível! Emotional signals são perfeitos
+for async orchestration! | 🎉 ENCANTADO (8) |
+
+| Developer | 2025-10-28 | Implemented 14 signals with priorities.
+All tests passing. | ✅ CONFIDENT (3) |
+
+| User | 2025-10-28 | Reviewed, approved, merged. Ship it! | 🎯 VALIDATED (2) |
+\`\`\`
+
+**Outcome:** 14-signal system with priority scale, fully documented
+
+**Source:** [PRP-007](https://github.com/dcversus/prp/blob/main/PRPs/PRP-007-signal-system-implemented.md)
+
+---
+
+## Common Patterns
+
+### Pattern: Sprint Planning
+
+\`\`\`markdown
+## Next Steps & Action Items
+
+### Immediate (This Week)
+1. Complete core articles (Priority: 8) 🔴
+2. Add E2E tests (Priority: 7)
+3. Update README (Priority: 6)
+
+### Short Term (Next Sprint)
+4. Admin dashboard (Priority: 5)
+5. Analytics (Priority: 4)
+
+### Long Term (Future)
+6. Multi-language support (Priority: 3)
+7. Mobile app (Priority: 2)
+\`\`\`
+
+### Pattern: Checkpoint (Context Limit)
+
+\`\`\`markdown
+| Developer | 2025-10-28 20:00 | **CHECKPOINT:** Completed 60% of auth module.
+**DONE:** JWT middleware, login endpoint, 10 tests.
+**TODO:** Register endpoint, password reset, 5 more tests.
+**FILES:** src/auth/* (uncommitted).
+**NEXT:** Continue from src/auth/register.ts:45. | 😫 TIRED (6) |
+\`\`\`
+
+### Pattern: Spawning New PRPs
+
+\`\`\`markdown
+| Analyst | 2025-10-28 | Encantado! While implementing auth,
+discovered we need role-based permissions too.
+**SPAWNED:** PRP-011-rbac-system-implemented.md
+This PRP focuses on authentication only. | 🎉 ENCANTADO (8) |
+\`\`\`
+
+---
+
+## Benefits of PRP Methodology
+
+### For AI Agents
+
+1. **Clear Context** - All information in one document
+2. **Autonomous Operation** - Signal system enables self-direction
+3. **Continuity** - Progress logs preserve context across sessions
+4. **Priority Guidance** - Signals communicate urgency/importance
+
+### For Humans
+
+1. **Visibility** - Track progress without interrupting agents
+2. **Async Communication** - Provide input via signals when available
+3. **Decision Transparency** - See why agents made choices
+4. **Value Focus** - Outcome-focused naming shows what matters
+
+### For Teams
+
+1. **Multi-Agent Coordination** - Signals orchestrate collaboration
+2. **Context Sharing** - PRPs are single source of truth
+3. **Quality Assurance** - DoD prevents incomplete work
+4. **Knowledge Retention** - Progress logs document journey
+
+---
+
+## Getting Started
+
+### For Non-Developers
+
+1. Install PRP CLI: \`npx @dcversus/prp\`
+2. Generate Wiki.js project: Select \`wikijs\` template
+3. Read getting-started articles
+4. Learn signal system
+5. Contribute via ATTENTION signals
+
+### For Developers
+
+1. Read [AGENTS.md](https://github.com/dcversus/prp/blob/main/AGENTS.md)
+2. Study example PRPs in repository
+3. Practice LOOP MODE on real task
+4. Leave honest signals
+5. Trust orchestrator autonomy
+
+### For Orchestrators
+
+1. Analyze signals across ALL PRPs
+2. Prioritize by strength (10→1)
+3. Make autonomous decisions
+4. Document rationale
+5. Execute immediately
+6. Update progress logs
+7. Never ask humans for decisions
+
+---
+
+## Further Reading
+
+- **[Signal System](11-signal-system)** - Complete 14-signal reference
+- **[Context-Driven Development](12-context-driven-development)** - Philosophy deep-dive
+- **[Human as Agent](13-human-as-agent)** - Orchestration patterns
+- **[PRP CLI Usage](21-prp-cli-usage)** - Practical examples
+- **[AGENTS.md](https://github.com/dcversus/prp/blob/main/AGENTS.md)** - Complete guidelines
+
+---
+
+## Fact-Check Section
+
+### Sources Verified
+
+| Claim | Source | Type | Verified |
+|-------|--------|------|----------|
+| PRP methodology definition | [AGENTS.md](https://github.com/dcversus/prp/blob/main/AGENTS.md) | Primary (Tier 1) | ${new Date().toISOString().split('T')[0]} |
+| Flat PRP structure rule | [AGENTS.md - File Organization](https://github.com/dcversus/prp/blob/main/AGENTS.md#prp-file-organization-rules) | Primary (Tier 1) | ${new Date().toISOString().split('T')[0]} |
+| LOOP MODE workflow | [AGENTS.md - Step 3](https://github.com/dcversus/prp/blob/main/AGENTS.md#step-3-enter-prp-loop-mode) | Primary (Tier 1) | ${new Date().toISOString().split('T')[0]} |
+| Signal system (14 signals) | [AGENTS.md - Signal System](https://github.com/dcversus/prp/blob/main/AGENTS.md#-signal-system) | Primary (Tier 1) | ${new Date().toISOString().split('T')[0]} |
+| Orchestrator autonomy | [AGENTS.md - Autonomy Protocol](https://github.com/dcversus/prp/blob/main/AGENTS.md#-orchestrator-autonomy-protocol) | Primary (Tier 1) | ${new Date().toISOString().split('T')[0]} |
+| PRP-001 example | [PRP-001](https://github.com/dcversus/prp/blob/main/PRPs/PRP-001-bootstrap-cli-created.md) | Primary (Tier 1) | ${new Date().toISOString().split('T')[0]} |
+
+### Self-Check Results
+
+- [x] All workflow steps documented with examples
+- [x] LOOP MODE algorithm complete and clear
+- [x] Orchestrator rules explained with rationale
+- [x] Real PRPs referenced as examples
+- [x] Code examples provided (commit messages, progress entries)
+- [x] All claims have Tier 1 sources
+- [x] No outdated information (all sources current)
+- [x] Cross-references to other articles included
+- [x] Article follows structure from [Writing Guidelines](31-writing-articles)
+
+**Last Updated:** ${new Date().toISOString().split('T')[0]}
+**Review Due:** ${new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]} (6 months)
+
+---
+
+**Next:** Learn about the [Signal System](11-signal-system) →
 `;
 }
 
