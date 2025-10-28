@@ -30,7 +30,7 @@ const App: React.FC<AppProps> = ({ options }) => {
   const [description, setDescription] = useState(options.description || '');
   const [author, setAuthor] = useState(options.author || '');
   const [email, setEmail] = useState(options.email || '');
-  const [template, setTemplate] = useState<Template>(options.template as Template || 'none');
+  const [template, setTemplate] = useState<Template>((options.template as Template) || 'none');
   const [license, setLicense] = useState<LicenseType>('MIT');
   const [error, setError] = useState<string>('');
 
@@ -157,11 +157,7 @@ const App: React.FC<AppProps> = ({ options }) => {
           <Text>Author name:</Text>
           <Box marginTop={1}>
             <Text color="green">&gt; </Text>
-            <TextInput
-              value={author}
-              onChange={setAuthor}
-              onSubmit={() => setStep('email')}
-            />
+            <TextInput value={author} onChange={setAuthor} onSubmit={() => setStep('email')} />
           </Box>
         </Box>
       )}
@@ -171,11 +167,7 @@ const App: React.FC<AppProps> = ({ options }) => {
           <Text>Author email:</Text>
           <Box marginTop={1}>
             <Text color="green">&gt; </Text>
-            <TextInput
-              value={email}
-              onChange={setEmail}
-              onSubmit={() => setStep('template')}
-            />
+            <TextInput value={email} onChange={setEmail} onSubmit={() => setStep('template')} />
           </Box>
         </Box>
       )}
@@ -226,14 +218,12 @@ const App: React.FC<AppProps> = ({ options }) => {
           <Text color="green">✓ Project created successfully!</Text>
           <Box marginTop={1} flexDirection="column">
             <Text dimColor>Next steps:</Text>
-            <Text dimColor>  cd {projectName}</Text>
-            {template !== 'none' && options.install === false && (
-              <Text dimColor>  npm install</Text>
-            )}
-            {template === 'react' && <Text dimColor>  npm run dev</Text>}
-            {template === 'typescript-lib' && <Text dimColor>  npm run build</Text>}
-            {template === 'fastapi' && <Text dimColor>  uvicorn main:app --reload</Text>}
-            {template === 'nestjs' && <Text dimColor>  npm run start:dev</Text>}
+            <Text dimColor> cd {projectName}</Text>
+            {template !== 'none' && options.install === false && <Text dimColor> npm install</Text>}
+            {template === 'react' && <Text dimColor> npm run dev</Text>}
+            {template === 'typescript-lib' && <Text dimColor> npm run build</Text>}
+            {template === 'fastapi' && <Text dimColor> uvicorn main:app --reload</Text>}
+            {template === 'nestjs' && <Text dimColor> npm run start:dev</Text>}
           </Box>
           <Box marginTop={1}>
             <Text dimColor>Happy coding! 🎉</Text>

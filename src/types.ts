@@ -37,18 +37,9 @@ export type Template =
   | 'svelte'
   | 'express';
 
-export type LicenseType =
-  | 'MIT'
-  | 'Apache-2.0'
-  | 'GPL-3.0'
-  | 'BSD-3-Clause'
-  | 'ISC'
-  | 'Unlicense';
+export type LicenseType = 'MIT' | 'Apache-2.0' | 'GPL-3.0' | 'BSD-3-Clause' | 'ISC' | 'Unlicense';
 
-export type AIProvider =
-  | 'openai'
-  | 'anthropic'
-  | 'google';
+export type AIProvider = 'openai' | 'anthropic' | 'google';
 
 export interface CLIOptions {
   name?: string;
