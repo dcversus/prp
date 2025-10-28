@@ -74,3 +74,36 @@ export interface FileToGenerate {
   content: string;
   executable?: boolean;
 }
+
+export interface TemplateData {
+  projectName: string;
+  description: string;
+  author: string;
+  email: string;
+  telegram?: string;
+  license: LicenseType;
+  year: number;
+  template: Template;
+  hasCodeOfConduct: boolean;
+  hasContributing: boolean;
+  hasCLA: boolean;
+  hasSecurityPolicy: boolean;
+  hasIssueTemplates: boolean;
+  hasPRTemplate: boolean;
+  hasGitHubActions: boolean;
+  hasEditorConfig: boolean;
+  hasESLint: boolean;
+  hasPrettier: boolean;
+  hasDocker: boolean;
+}
+
+export interface GeneratorOptions {
+  templatePath: string;
+  targetPath: string;
+  data: TemplateData;
+}
+
+export interface TemplateEngine {
+  render(template: string, data: TemplateData): string;
+  renderFile(filePath: string, data: TemplateData): Promise<string>;
+}

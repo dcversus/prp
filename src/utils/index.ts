@@ -1,5 +1,5 @@
 /**
- * Utility functions
+ * Utility functions and exports
  */
 
 import { exec } from 'child_process';
@@ -9,6 +9,7 @@ import path from 'path';
 
 const execAsync = promisify(exec);
 
+// Legacy utility functions (kept for compatibility)
 export async function initGitRepo(targetPath: string): Promise<void> {
   await execAsync('git init', { cwd: targetPath });
   await execAsync('git add .', { cwd: targetPath });
@@ -29,3 +30,9 @@ export function validateProjectName(name: string): boolean {
   const nameRegex = /^(?:@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
   return nameRegex.test(name);
 }
+
+// New modular utilities
+export * from './fileGenerator.js';
+export * from './gitUtils.js';
+export * from './packageManager.js';
+export * from './validation.js';

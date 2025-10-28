@@ -1,20 +1,116 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Box, Text } from 'ink';
-import { CLIOptions } from '../types.js';
+import TextInput from 'ink-text-input';
+import SelectInput from 'ink-select-input';
+import Spinner from 'ink-spinner';
+import { CLIOptions, Template, LicenseType, ProjectOptions } from '../types.js';
+import { generateProject } from '../generators/index.js';
+import { gitUtils, packageManagerUtils } from '../utils/index.js';
+import path from 'path';
 
 interface AppProps {
   options: CLIOptions;
 }
 
-const App: React.FC<AppProps> = ({ options: _options }) => {
-  const [step, setStep] = useState<'welcome' | 'gathering' | 'generating' | 'complete'>('welcome');
+type Step =
+  | 'project-name'
+  | 'description'
+  | 'author'
+  | 'email'
+  | 'template'
+  | 'license'
+  | 'features'
+  | 'generating'
+  | 'complete'
+  | 'error';
 
-  useEffect(() => {
-    // Initialize the app
-    setTimeout(() => {
-      setStep('gathering');
-    }, 2000);
-  }, []);
+const App: React.FC<AppProps> = ({ options }) => {
+  const [step, setStep] = useState<Step>('project-name');
+  const [projectName, setProjectName] = useState(options.name || '');
+  const [description, setDescription] = useState(options.description || '');
+  const [author, setAuthor] = useState(options.author || '');
+  const [email, setEmail] = useState(options.email || '');
+  const [template, setTemplate] = useState<Template>(options.template as Template || 'none');
+  const [license, setLicense] = useState<LicenseType>('MIT');
+  const [error, setError] = useState<string>('');
+
+  const templates = [
+    { label: 'TypeScript Library', value: 'typescript-lib' },
+    { label: 'React App (Vite + TypeScript)', value: 'react' },
+    { label: 'FastAPI (Python)', value: 'fastapi' },
+    { label: 'NestJS (Node.js)', value: 'nestjs' },
+    { label: 'None (just common files)', value: 'none' },
+  ];
+
+  const licenses = [
+    { label: 'MIT (Permissive)', value: 'MIT' },
+    { label: 'Apache-2.0', value: 'Apache-2.0' },
+    { label: 'GPL-3.0 (Copyleft)', value: 'GPL-3.0' },
+    { label: 'BSD-3-Clause', value: 'BSD-3-Clause' },
+    { label: 'ISC', value: 'ISC' },
+    { label: 'Unlicense (Public Domain)', value: 'Unlicense' },
+  ];
+
+  const handleGenerate = async () => {
+    try {
+      setStep('generating');
+
+      const targetPath = path.join(process.cwd(), projectName);
+
+      const projectOptions: ProjectOptions = {
+        name: projectName,
+        description,
+        author,
+        email,
+        template,
+        license,
+        includeCodeOfConduct: true,
+        includeContributing: true,
+        includeCLA: false,
+        includeSecurityPolicy: true,
+        includeIssueTemplates: true,
+        includePRTemplate: true,
+        includeGitHubActions: true,
+        includeEditorConfig: true,
+        includeESLint: template !== 'fastapi',
+        includePrettier: template !== 'fastapi',
+        includeDocker: false,
+        initGit: options.git !== false,
+        installDependencies: options.install !== false,
+        useAI: false,
+      };
+
+      await generateProject({
+        options: projectOptions,
+        targetPath,
+        templatePath: '', // Will be determined by template type
+      });
+
+      // Initialize git if requested
+      if (projectOptions.initGit) {
+        const isGitAvailable = await gitUtils.isGitAvailable();
+        if (isGitAvailable) {
+          await gitUtils.init(targetPath);
+          await gitUtils.addAll(targetPath);
+          await gitUtils.commit(targetPath, 'Initial commit from PRP');
+        }
+      }
+
+      // Install dependencies if requested and applicable
+      if (projectOptions.installDependencies && template !== 'none') {
+        const packageManager = await packageManagerUtils.detect();
+        const isAvailable = await packageManagerUtils.isAvailable(packageManager);
+        if (isAvailable) {
+          await packageManagerUtils.install(targetPath, packageManager);
+        }
+      }
+
+      setStep('complete');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      setStep('error');
+    }
+  };
 
   return (
     <Box flexDirection="column" padding={1}>
@@ -24,29 +120,131 @@ const App: React.FC<AppProps> = ({ options: _options }) => {
         </Text>
       </Box>
 
-      {step === 'welcome' && (
+      {step === 'project-name' && (
         <Box flexDirection="column">
-          <Text>Welcome to PRP! Let's bootstrap your project.</Text>
-          <Text dimColor>Starting interactive mode...</Text>
+          <Text>What is your project name?</Text>
+          <Box marginTop={1}>
+            <Text color="green">&gt; </Text>
+            <TextInput
+              value={projectName}
+              onChange={setProjectName}
+              onSubmit={() => {
+                if (projectName.trim()) {
+                  setStep('description');
+                }
+              }}
+            />
+          </Box>
         </Box>
       )}
 
-      {step === 'gathering' && (
+      {step === 'description' && (
         <Box flexDirection="column">
-          <Text color="yellow">Gathering project information...</Text>
-          <Text dimColor>This feature is under development.</Text>
+          <Text>Project description:</Text>
+          <Box marginTop={1}>
+            <Text color="green">&gt; </Text>
+            <TextInput
+              value={description}
+              onChange={setDescription}
+              onSubmit={() => setStep('author')}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {step === 'author' && (
+        <Box flexDirection="column">
+          <Text>Author name:</Text>
+          <Box marginTop={1}>
+            <Text color="green">&gt; </Text>
+            <TextInput
+              value={author}
+              onChange={setAuthor}
+              onSubmit={() => setStep('email')}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {step === 'email' && (
+        <Box flexDirection="column">
+          <Text>Author email:</Text>
+          <Box marginTop={1}>
+            <Text color="green">&gt; </Text>
+            <TextInput
+              value={email}
+              onChange={setEmail}
+              onSubmit={() => setStep('template')}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {step === 'template' && (
+        <Box flexDirection="column">
+          <Text>Select project template:</Text>
+          <Box marginTop={1}>
+            <SelectInput
+              items={templates}
+              onSelect={(item) => {
+                setTemplate(item.value as Template);
+                setStep('license');
+              }}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {step === 'license' && (
+        <Box flexDirection="column">
+          <Text>Select license:</Text>
+          <Box marginTop={1}>
+            <SelectInput
+              items={licenses}
+              onSelect={(item) => {
+                setLicense(item.value as LicenseType);
+                handleGenerate();
+              }}
+            />
+          </Box>
         </Box>
       )}
 
       {step === 'generating' && (
         <Box flexDirection="column">
-          <Text color="green">Generating project files...</Text>
+          <Box>
+            <Text color="yellow">
+              <Spinner type="dots" />
+            </Text>
+            <Text color="yellow"> Generating project files...</Text>
+          </Box>
         </Box>
       )}
 
       {step === 'complete' && (
         <Box flexDirection="column">
           <Text color="green">✓ Project created successfully!</Text>
+          <Box marginTop={1} flexDirection="column">
+            <Text dimColor>Next steps:</Text>
+            <Text dimColor>  cd {projectName}</Text>
+            {template !== 'none' && options.install === false && (
+              <Text dimColor>  npm install</Text>
+            )}
+            {template === 'react' && <Text dimColor>  npm run dev</Text>}
+            {template === 'typescript-lib' && <Text dimColor>  npm run build</Text>}
+            {template === 'fastapi' && <Text dimColor>  uvicorn main:app --reload</Text>}
+            {template === 'nestjs' && <Text dimColor>  npm run start:dev</Text>}
+          </Box>
+          <Box marginTop={1}>
+            <Text dimColor>Happy coding! 🎉</Text>
+          </Box>
+        </Box>
+      )}
+
+      {step === 'error' && (
+        <Box flexDirection="column">
+          <Text color="red">✗ Error generating project:</Text>
+          <Text color="red">{error}</Text>
         </Box>
       )}
     </Box>
