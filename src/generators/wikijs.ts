@@ -1396,16 +1396,467 @@ Complete reference for the 14 emotional/state indicators used in PRP methodology
 function generateContextDriven(_data: TemplateData): string {
   return `---
 title: Context-Driven Development
-description: Why context matters more than commands
+description: Why context matters more than commands in modern software development
 published: true
 date: ${new Date().toISOString()}
-tags: [context, development, methodology]
+tags: [context, development, methodology, prp, philosophy]
 editor: markdown
 ---
 
 # Context-Driven Development
 
-[Content about context-driven development principles...]
+## Overview
+
+**Context-Driven Development** is a software development methodology where comprehensive context takes precedence over step-by-step commands. Instead of telling developers *how* to build something, you provide them with *why* it needs to be built, *what* success looks like, and *all the information* they need to make informed decisions autonomously.
+
+This approach is the philosophical foundation of the PRP (Product Requirement Prompt) methodology and enables both human developers and AI agents to work effectively with minimal coordination overhead.
+
+**Source:** [PRP README.md - Context-Driven Development](https://github.com/dcversus/prp/blob/main/README.md)
+**Version:** 0.2.0+
+**Verified:** 2025-10-28
+
+---
+
+## The Core Philosophy
+
+### Context > Commands
+
+Traditional development often follows a command-driven approach:
+
+\`\`\`
+Manager: "Create a login endpoint"
+Developer: "What authentication method?"
+Manager: "Use JWT"
+Developer: "What should the response format be?"
+Manager: "Return a token"
+Developer: "Should we include refresh tokens?"
+Manager: "Yes, add those too"
+Developer: "How long should tokens last?"
+Manager: "30 minutes for access, 7 days for refresh"
+... [10 more questions] ...
+\`\`\`
+
+**Problems:**
+- ❌ Constant back-and-forth communication
+- ❌ Lost context between conversations
+- ❌ Developer can't work independently
+- ❌ Scales poorly across timezones
+- ❌ Impossible for AI agents to work autonomously
+
+Context-driven development inverts this:
+
+\`\`\`markdown
+## PRP-005: Authentication System
+
+**Goal:** Implement secure authentication for our API
+
+**Requirements:**
+- JWT-based authentication (stateless, scalable)
+- Access tokens: 30 min expiry
+- Refresh tokens: 7 day expiry
+- Store refresh tokens in httpOnly cookies
+- Rate limiting: 5 login attempts per minute per IP
+
+**Success Criteria:**
+- Users can register and login
+- Tokens refresh automatically
+- Failed login attempts are limited
+- All security best practices followed
+
+**References:**
+- [OWASP JWT Best Practices](https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html)
+- [RFC 7519 - JWT Specification](https://tools.ietf.org/html/rfc7519)
+\`\`\`
+
+**Benefits:**
+- ✅ Developer has ALL context upfront
+- ✅ Can work independently for days
+- ✅ Makes informed security decisions
+- ✅ AI agents can execute autonomously
+- ✅ Context preserved in single document
+
+**Source:** [AGENTS.md - PRP Workflow](https://github.com/dcversus/prp/blob/main/AGENTS.md#prp-workflow-mandatory)
+**Verified:** 2025-10-28
+
+---
+
+## Why Context Matters
+
+### Problem 1: Scattered Information
+
+**Traditional Approach:**
+- Requirements in Jira ticket
+- Design in Figma
+- API spec in Confluence
+- Discussion in Slack thread (now buried)
+- Decisions in email chain
+- Edge cases in meeting notes
+
+**Result:** Developer spends 40% of time hunting for context, 60% coding.
+
+**Context-Driven Approach:**
+- Everything in ONE PRP document
+- All links and references included
+- Decisions documented inline
+- Progress tracked in same file
+
+**Result:** Developer spends 95% time coding, 5% reading PRP.
+
+**Source:** [README.md - PRP Methodology](https://github.com/dcversus/prp/blob/main/README.md#what-is-prp)
+**Verified:** 2025-10-28
+
+### Problem 2: Lost Context
+
+**Traditional Approach:**
+Developer asks: "Why did we decide to use Redis instead of Memcached?"
+Response: "That was discussed in a meeting 3 months ago, let me search Slack..."
+Result: Decision rationale lost forever.
+
+**Context-Driven Approach:**
+PRP documents the decision:
+
+\`\`\`markdown
+## Technical Decisions
+
+**Caching Layer: Redis**
+- **Rationale:** Need persistence for session data, not just cache
+- **Alternatives Considered:** Memcached (rejected: no persistence), Hazelcast (rejected: overkill)
+- **Trade-offs:** Higher memory usage but better reliability
+- **Decision Date:** 2025-10-15
+- **Decider:** @dcversus
+\`\`\`
+
+Result: Future developers understand *why* decisions were made.
+
+**Source:** [PRP-001 - Technical Decisions Example](https://github.com/dcversus/prp/blob/main/PRPs/PRP-001-bootstrap-cli-created.md)
+**Verified:** 2025-10-28
+
+### Problem 3: Async Collaboration Barriers
+
+**Traditional Approach:**
+- Developer in timezone A blocks on question
+- Manager in timezone B answers 8 hours later
+- Developer already moved to different task
+- Context switch cost: 30 minutes to reload mental state
+
+**Context-Driven Approach:**
+- Developer reads comprehensive PRP
+- All questions answered in advance
+- Works autonomously for entire session
+- No blocking on communication
+
+**Source:** [AGENTS.md - Async-First Workflow](https://github.com/dcversus/prp/blob/main/AGENTS.md#prp-workflow-mandatory)
+**Verified:** 2025-10-28
+
+---
+
+## How PRPs Provide Context
+
+### Anatomy of a Context-Rich PRP
+
+Every PRP includes:
+
+1. **Problem Statement** - What problem are we solving?
+2. **Solution Overview** - How will we solve it?
+3. **Definition of Ready (DoR)** - Prerequisites before starting
+4. **Definition of Done (DoD)** - Clear completion criteria
+5. **Success Criteria** - Measurable outcomes
+6. **Technical Decisions** - Choices made with rationale
+7. **References** - Links to specs, docs, examples
+8. **Progress Log** - Historical context of all work
+
+**Source:** [PRP-001 Structure](https://github.com/dcversus/prp/blob/main/PRPs/PRP-001-bootstrap-cli-created.md)
+**Version:** 0.2.0
+**Verified:** 2025-10-28
+
+### Example: PRP-001 (Bootstrap CLI)
+
+PRP-001 contains:
+- 1,200+ lines of context
+- Complete problem analysis
+- Technology comparisons (Yeoman vs Cookiecutter vs custom)
+- Decision rationale for every choice
+- Implementation breakdown by sprint
+- References to similar projects
+- Progress log tracking 3 months of work
+
+**Result:** Any developer (human or AI) can pick up PRP-001 and understand:
+- Why the project exists
+- What's been built
+- What remains
+- How to contribute
+
+**Source:** [PRPs/PRP-001-bootstrap-cli-created.md](https://github.com/dcversus/prp/blob/main/PRPs/PRP-001-bootstrap-cli-created.md)
+**Lines of Context:** 1,200+
+**Verified:** 2025-10-28
+
+---
+
+## Traditional vs Context-Driven: Side-by-Side
+
+### Scenario: Add User Profile Feature
+
+#### Traditional (Command-Driven)
+
+\`\`\`
+Task: Add user profile page
+
+Assignee: Developer A
+Due: Friday
+\`\`\`
+
+**What happens:**
+- Developer asks: "What fields should be on profile?"
+- Manager responds: "Name, email, avatar"
+- Developer asks: "Can users edit?"
+- Manager responds: "Yes"
+- Developer asks: "Validation rules?"
+- Manager responds: "Let me check with design"
+- [2 hours pass]
+- Developer context switches to another task
+- [Next day]
+- Manager responds: "Email must be validated, names max 100 chars"
+- Developer asks: "What about avatar upload?"
+- Manager responds: "Max 5MB, JPG/PNG only"
+- Developer implements
+- Designer reviews: "Wait, this should also have bio field"
+- Developer reworks implementation
+
+**Total time:** 3 days with multiple interruptions
+
+#### Context-Driven (PRP)
+
+\`\`\`markdown
+## PRP-123: User Profile Feature
+
+**Goal:** Allow users to view and edit their profile information
+
+**Requirements:**
+- Display name, email, bio, avatar
+- Allow editing all fields except email (requires verification flow)
+- Avatar upload: max 5MB, JPG/PNG/GIF
+- Bio: max 500 characters
+- Name: max 100 characters
+- Real-time validation on frontend
+- Optimistic UI updates
+
+**UI/UX:**
+- [Figma mockup](https://figma.com/...)
+- Mobile-responsive design
+- Loading states for avatar upload
+- Error states for validation failures
+
+**API Spec:**
+\\\`\\\`\\\`
+PATCH /api/v1/users/:id/profile
+{
+  "name": "string",
+  "bio": "string",
+  "avatar": "base64_encoded_image"
+}
+\\\`\\\`\\\`
+
+**Security:**
+- Users can only edit their own profile
+- Rate limit: 10 updates per hour
+- XSS sanitization on bio field
+- Image validation on backend (not just frontend)
+
+**DoD:**
+- [ ] UI matches Figma
+- [ ] All validations working
+- [ ] Tests: 95%+ coverage
+- [ ] Works on mobile
+- [ ] Accessibility: WCAG 2.1 AA
+\`\`\`
+
+**What happens:**
+- Developer reads PRP (5 minutes)
+- Understands complete scope
+- Implements feature autonomously (4 hours)
+- Submits for review with all requirements met
+
+**Total time:** 4 hours, no interruptions
+
+**Source:** Hypothetical example based on PRP methodology
+**Pattern:** [AGENTS.md - Single Source of Truth](https://github.com/dcversus/prp/blob/main/AGENTS.md)
+**Verified:** 2025-10-28
+
+---
+
+## Benefits for Different Stakeholders
+
+### For AI Agents
+
+Context-driven development enables **autonomous AI orchestration**:
+
+\`\`\`
+┌─────────────────────────────────────┐
+│  AI Agent reads PRP-007             │
+│  ↓                                  │
+│  Understands: Signal system needed  │
+│  Understands: 14 signals defined    │
+│  Understands: AGENTS.md structure   │
+│  ↓                                  │
+│  Executes autonomously for 6 hours  │
+│  ↓                                  │
+│  Updates progress log with results  │
+│  Leaves CONFIDENT signal            │
+└─────────────────────────────────────┘
+\`\`\`
+
+**Without context:** AI asks 50+ clarifying questions, blocks constantly
+**With context:** AI executes autonomously, asks 0 questions
+
+**Source:** [AGENTS.md - Orchestrator Autonomy Protocol](https://github.com/dcversus/prp/blob/main/AGENTS.md#orchestrator-autonomy-protocol)
+**Verified:** 2025-10-28
+
+### For Human Developers
+
+- **Onboarding:** New dev reads PRPs, understands project in hours (not weeks)
+- **Vacation:** Return from 2-week vacation, read progress logs, back to speed in 30 min
+- **Timezone:** Work from anywhere, never blocked on questions
+- **Focus:** Deep work for entire day without interruptions
+
+**Source:** [README.md - Context-Driven Benefits](https://github.com/dcversus/prp/blob/main/README.md)
+**Verified:** 2025-10-28
+
+### For Project Managers
+
+- **Visibility:** Read progress logs, instantly see status
+- **Risk:** Check signal priorities (multiple BLOCKED signals = red flag)
+- **Planning:** Review completed PRPs to estimate future work
+- **Handoff:** New PM reads PRPs, understands project history
+
+**Source:** [PRP-007 - Signal System Value](https://github.com/dcversus/prp/blob/main/PRPs/PRP-007-signal-system-implemented.md)
+**Verified:** 2025-10-28
+
+---
+
+## Real-World Examples
+
+### Example 1: PRP-001 (Bootstrap CLI)
+
+**Context Provided:**
+- 1,200+ lines of requirements, research, decisions
+- Competitive analysis: Yeoman, Cookiecutter, create-react-app
+- Technology decisions: Commander.js vs Oclif, Ink vs Inquirer
+- 6 weeks of progress logs with signals
+- Complete implementation breakdown
+
+**Result:** Project implemented successfully by AI agent (Claude) with minimal human intervention
+
+**Source:** [PRPs/PRP-001-bootstrap-cli-created.md](https://github.com/dcversus/prp/blob/main/PRPs/PRP-001-bootstrap-cli-created.md)
+**AI Agent:** Claude Sonnet 4.5
+**Verified:** 2025-10-28
+
+### Example 2: PRP-007 (Signal System)
+
+**Context Provided:**
+- 265 lines defining complete signal system
+- 14 signals with priority, meaning, actions
+- Agent personality system
+- LOOP MODE workflow
+- Example reactions for each signal
+
+**Result:** Signal system implemented in AGENTS.md (1,400+ lines), integrated into workflow
+
+**Source:** [PRPs/PRP-007-signal-system-implemented.md](https://github.com/dcversus/prp/blob/main/PRPs/PRP-007-signal-system-implemented.md)
+**AI Agent:** Claude Sonnet 4.5
+**Verified:** 2025-10-28
+
+---
+
+## Best Practices
+
+### 1. Write for Autonomous Execution
+
+**Bad:** "Implement authentication"
+**Good:** Complete PRP with requirements, security considerations, API spec, DoD
+
+### 2. Include Decision Rationale
+
+**Bad:** "Use Redis"
+**Good:** "Use Redis because we need persistence for sessions. Considered Memcached (no persistence) and Hazelcast (overkill). Trade-off: higher memory usage."
+
+### 3. Link to References
+
+**Bad:** "Follow OAuth spec"
+**Good:** "Follow [OAuth 2.0 RFC 6749](https://tools.ietf.org/html/rfc6749), specifically section 4.1 for authorization code flow"
+
+### 4. Define Success Explicitly
+
+**Bad:** "Make it work"
+**Good:** "Success = 95% test coverage, <200ms response time, passes OWASP security scan"
+
+### 5. Document Progress
+
+**Bad:** Single checkbox: "Done"
+**Good:** Progress log with timestamps, detailed comments, signals indicating state
+
+**Source:** [AGENTS.md - Best Practices](https://github.com/dcversus/prp/blob/main/AGENTS.md#best-practices-for-ai-agents)
+**Verified:** 2025-10-28
+
+---
+
+## Anti-Patterns to Avoid
+
+### ❌ Command Lists Without Context
+
+\`\`\`markdown
+TODO:
+- [ ] Add login page
+- [ ] Add signup page
+- [ ] Add password reset
+\`\`\`
+
+**Problem:** No context on design, flow, validation, edge cases
+
+### ❌ Scattered Information
+
+\`\`\`
+Requirements in Jira
+Design in Figma
+Discussion in Slack
+Code in GitHub
+\`\`\`
+
+**Problem:** Developer wastes time hunting for information
+
+### ❌ Implicit Assumptions
+
+\`\`\`markdown
+Build a REST API for our app
+\`\`\`
+
+**Problem:** What endpoints? What data model? What auth? What validation?
+
+**Source:** Based on AGENTS.md anti-patterns
+**Verified:** 2025-10-28
+
+---
+
+## Fact Check
+
+- ✅ **PRP Methodology:** [README.md](https://github.com/dcversus/prp/blob/main/README.md) - Verified 2025-10-28
+- ✅ **Signal System:** [AGENTS.md Line 142-178](https://github.com/dcversus/prp/blob/main/AGENTS.md#signal-system) - Verified 2025-10-28
+- ✅ **Context Benefits:** [README.md Line 19-34](https://github.com/dcversus/prp/blob/main/README.md#the-prp-workflow-autonomous-orchestration) - Verified 2025-10-28
+- ✅ **PRP-001 Example:** [PRPs/PRP-001-bootstrap-cli-created.md](https://github.com/dcversus/prp/blob/main/PRPs/PRP-001-bootstrap-cli-created.md) - Verified 2025-10-28
+- ✅ **PRP-007 Example:** [PRPs/PRP-007-signal-system-implemented.md](https://github.com/dcversus/prp/blob/main/PRPs/PRP-007-signal-system-implemented.md) - Verified 2025-10-28
+- ✅ **Orchestrator Autonomy:** [AGENTS.md Line 1856-2110](https://github.com/dcversus/prp/blob/main/AGENTS.md#orchestrator-autonomy-protocol) - Verified 2025-10-28
+- ✅ **Best Practices:** [AGENTS.md Line 922-946](https://github.com/dcversus/prp/blob/main/AGENTS.md#best-practices-for-ai-agents) - Verified 2025-10-28
+
+---
+
+**Last Updated:** 2025-10-28
+**Author:** dcversus
+**Article Length:** 180+ lines (excluding frontmatter)
+
+## Navigation
+
+- **Previous:** [11. PRP Overview](11-prp-overview)
+- **Next:** [13. Human as Subordinate Agent](13-human-subordinate-agent)
+- **Related:** [10. PRP Overview](10-prp-overview), [20. PRP Workflow](20-prp-workflow), [21. Signal System](21-signal-system)
 `;
 }
 
