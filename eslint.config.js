@@ -4,6 +4,7 @@ import typescriptParser from '@typescript-eslint/parser';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import prettierConfig from 'eslint-config-prettier';
+import globals from 'globals';
 
 export default [
   js.configs.recommended,
@@ -17,6 +18,10 @@ export default [
         ecmaFeatures: {
           jsx: true,
         },
+      },
+      globals: {
+        ...globals.node,
+        ...globals.es2020,
       },
     },
     plugins: {
