@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-10-28
+
 ### Added
 - **PRP Methodology & Signal System** - Revolutionary context-driven development workflow
   - **Signal System**: 14 emotional/state indicators (ATTENTION, BLOCKED, TIRED, ENCANTADO, etc.)
@@ -47,6 +49,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - CLAUDE.md updated with AGENTS.md reference
 
 ### Changed
+- **PRP Directory Structure** - **BREAKING CHANGE**: Enforced flat structure with outcome-focused naming
+  - All PRPs now in flat structure (no subdirectories allowed)
+  - Naming convention: `PRP-XXX-what-will-change.md` (2-4 words, kebab-case)
+  - Renamed: `PRP-CLI.md` → `PRP-001-bootstrap-cli-created.md`
+  - Renamed: `PRP-002-Landing-Page.md` → `PRP-002-landing-page-deployed.md`
+  - Renamed: `PRP-007-signal-system.md` → `PRP-007-signal-system-implemented.md`
+  - Consolidated PRP-002 supporting files into single document
+  - Moved PRP-003 from research/ subdirectory to flat structure
+  - Removed research/ subdirectory entirely
 - **CI Workflow** - Restructured from matrix to parallel jobs (EdgeCraft pattern)
   - Faster feedback (5 parallel jobs vs sequential matrix)
   - Separate security audit job
@@ -124,6 +135,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - execa for subprocess execution
 - Full ESM module system
 
-[Unreleased]: https://github.com/dcversus/prp/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/dcversus/prp/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/dcversus/prp/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/dcversus/prp/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/dcversus/prp/releases/tag/v0.1.0
