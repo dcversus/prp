@@ -14,17 +14,26 @@
 - **⚡ Signal System** - Track progress and emotional state with 14+ signals (ATTENTION, BLOCKED, ENCANTADO, etc.)
 - **🚀 Project Scaffolding** - Bootstrap new projects with best practices and complete infrastructure
 
-### The PRP Workflow
+### The PRP Workflow (Autonomous Orchestration)
+
+**Key Principle:** AI Orchestrator makes decisions autonomously. Humans are subordinate agents, not decision makers.
 
 Every development task follows this cycle:
 
-1. **📖 Read PRP** - Load context and understand the requirement
-2. **🔍 Check Signals** - Read progress log and identify emotional state
-3. **⚡ React to Strongest Signal** - Prioritize based on signal strength (1-10)
+1. **📖 Read ALL PRPs** - Load context across entire project
+2. **🔍 Analyze ALL Signals** - Identify highest priority signal (10→1)
+3. **⚡ React to Strongest Signal** - Work on highest priority across ALL PRPs
 4. **🔨 Execute Work** - Implement changes, write code, solve problems
 5. **💬 Update Progress** - Leave detailed comment in progress log
 6. **🎯 Leave Signal** - Express current state (TIRED, CONFIDENT, BLOCKED, etc.)
-7. **🔄 Loop** - Continue until Done or checkpoint reached
+7. **🔄 Loop** - Continue until DoD met or checkpoint reached
+
+**Orchestrator Rules:**
+- ❌ **NO QUESTIONS** to humans for decisions
+- ✅ **DECIDE AUTONOMOUSLY** based on signal analysis
+- ✅ **DOCUMENT** decisions in PRP progress log
+- ✅ **EXECUTE** immediately without waiting
+- ⚠️ **NUDGE** only for critical blocks (Priority 10)
 
 **Quick Start with PRPs**:
 ```bash
