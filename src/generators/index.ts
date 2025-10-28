@@ -103,20 +103,20 @@ export async function generateTemplateFiles(context: GeneratorContext): Promise<
   }
 }
 
-// Template-specific generators (to be implemented)
-async function generateTypeScriptLib(_context: GeneratorContext): Promise<FileToGenerate[]> {
-  // TODO: Implement TypeScript library template
-  return [];
+// Template-specific generators
+async function generateTypeScriptLib(context: GeneratorContext): Promise<FileToGenerate[]> {
+  const { generateTypeScriptLib: generate } = await import('./typescript-lib.js');
+  return generate(context);
 }
 
-async function generateReact(_context: GeneratorContext): Promise<FileToGenerate[]> {
-  // TODO: Implement React app template
-  return [];
+async function generateReact(context: GeneratorContext): Promise<FileToGenerate[]> {
+  const { generateReact: generate } = await import('./react.js');
+  return generate(context);
 }
 
-async function generateFastAPI(_context: GeneratorContext): Promise<FileToGenerate[]> {
-  // TODO: Implement FastAPI template
-  return [];
+async function generateFastAPI(context: GeneratorContext): Promise<FileToGenerate[]> {
+  const { generateFastAPI: generate } = await import('./fastapi.js');
+  return generate(context);
 }
 
 async function generateNestJS(_context: GeneratorContext): Promise<FileToGenerate[]> {
