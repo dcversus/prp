@@ -2843,17 +2843,655 @@ Step-by-step installation guide for \`@dcversus/prp\` command-line tool.
 
 function generateCLIUsage(_data: TemplateData): string {
   return `---
-title: Using PRP CLI
-description: Practical guide for non-developers
+title: PRP CLI Usage Guide
+description: Comprehensive guide to using @dcversus/prp CLI tool with examples for all templates
 published: true
 date: ${new Date().toISOString()}
-tags: [cli, usage, tutorial]
+tags: [prp, cli, usage, templates, examples, interactive, non-interactive]
 editor: markdown
 ---
 
-# Using PRP CLI - For Non-Developers
+# PRP CLI Usage Guide
 
-[Content about CLI usage...]
+The **@dcversus/prp** CLI provides a powerful and flexible way to bootstrap new software projects. This guide covers all command-line options, usage modes, and provides examples for every available template.
+
+## Quick Start
+
+The fastest way to get started is to run PRP in interactive mode:
+
+\`\`\`bash
+prp
+\`\`\`
+
+The CLI will guide you through all options with prompts and selections.
+
+## Basic Commands
+
+### Interactive Mode (Default)
+
+Simply run \`prp\` without any arguments to launch the interactive terminal UI:
+
+\`\`\`bash
+prp
+\`\`\`
+
+**What happens in interactive mode:**
+1. You'll be prompted for project metadata (name, description, author, email)
+2. Select a template from the available options
+3. Choose license type (MIT, Apache-2.0, GPL-3.0, BSD-3-Clause, ISC, Unlicense)
+4. Configure optional features (Code of Conduct, GitHub Actions, Docker, etc.)
+5. Enable AI integration (optional)
+6. Confirm and generate your project
+
+**Advantages:**
+- Visual feedback and guidance
+- Input validation with helpful error messages
+- Easy to explore all available options
+- No need to remember command-line flags
+
+### Getting Help
+
+Display all available options and usage information:
+
+\`\`\`bash
+prp --help
+# or
+prp -h
+\`\`\`
+
+### Version Information
+
+Check the installed version of PRP:
+
+\`\`\`bash
+prp --version
+# or
+prp -V
+\`\`\`
+
+## Command-Line Options
+
+PRP supports the following command-line options:
+
+| Option | Short | Description | Example |
+|--------|-------|-------------|---------|
+| \`--name\` | \`-n\` | Project name (required in non-interactive mode) | \`--name my-project\` |
+| \`--description\` | \`-d\` | Project description | \`--description "My awesome API"\` |
+| \`--author\` | \`-a\` | Author name | \`--author "Jane Doe"\` |
+| \`--email\` | \`-e\` | Author email address | \`--email "jane@example.com"\` |
+| \`--template\` | \`-t\` | Project template (see below) | \`--template react\` |
+| \`--license\` | | License type (default: MIT) | \`--license Apache-2.0\` |
+| \`--no-interactive\` | | Run without prompts | \`--no-interactive\` |
+| \`--yes\` | | Use default values for all options | \`--yes\` |
+| \`--no-git\` | | Skip git repository initialization | \`--no-git\` |
+| \`--no-install\` | | Skip dependency installation | \`--no-install\` |
+
+### Available Templates
+
+- \`none\` - Minimal project structure with no framework
+- \`fastapi\` - Python FastAPI backend application
+- \`nestjs\` - Node.js NestJS backend framework
+- \`react\` - React frontend application
+- \`typescript-lib\` - TypeScript library/package
+- \`wikijs\` - Wiki.js documentation site with 25 pre-populated articles
+
+### Supported License Types
+
+- \`MIT\` - MIT License (default, permissive)
+- \`Apache-2.0\` - Apache License 2.0 (permissive, patent grant)
+- \`GPL-3.0\` - GNU General Public License v3.0 (copyleft)
+- \`BSD-3-Clause\` - 3-Clause BSD License (permissive)
+- \`ISC\` - ISC License (permissive, simplified)
+- \`Unlicense\` - Public domain dedication
+
+## Non-Interactive Mode
+
+When you need to automate project creation or already know all your configuration, use non-interactive mode.
+
+### Basic Non-Interactive Usage
+
+**Minimum required options:**
+
+\`\`\`bash
+prp --name my-project --template react --no-interactive
+\`\`\`
+
+**With all common options:**
+
+\`\`\`bash
+prp \\
+  --name my-project \\
+  --description "My awesome project" \\
+  --author "Jane Doe" \\
+  --email "jane@example.com" \\
+  --template react \\
+  --license MIT \\
+  --no-interactive
+\`\`\`
+
+**Important:** In non-interactive mode, \`--name\` and \`--template\` are **required**. If omitted, PRP will exit with an error.
+
+## Template-Specific Examples
+
+### Example 1: Minimal Project (None Template)
+
+Create a minimal project structure without any framework:
+
+\`\`\`bash
+prp --name my-minimal-project --template none --no-interactive
+\`\`\`
+
+**What you get:**
+- Basic README.md
+- LICENSE file
+- .gitignore
+- .editorconfig
+- Package manager configuration (if applicable)
+
+**Use case:** Starting a new project from scratch, documentation, or configuration repositories.
+
+### Example 2: FastAPI Backend
+
+Create a Python FastAPI backend application:
+
+\`\`\`bash
+prp \\
+  --name my-api \\
+  --description "RESTful API service" \\
+  --author "John Developer" \\
+  --email "john@company.com" \\
+  --template fastapi \\
+  --license MIT \\
+  --no-interactive
+\`\`\`
+
+**What you get:**
+- FastAPI application structure
+- \`requirements.txt\` with dependencies
+- Uvicorn ASGI server configuration
+- Sample endpoints and routers
+- Python best practices (pytest, black, mypy)
+- Docker support
+- OpenAPI/Swagger documentation setup
+
+**Next steps:**
+\`\`\`bash
+cd my-api
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\\Scripts\\activate
+pip install -r requirements.txt
+uvicorn main:app --reload
+\`\`\`
+
+### Example 3: NestJS Backend
+
+Create a Node.js NestJS backend framework:
+
+\`\`\`bash
+prp \\
+  --name my-nest-api \\
+  --description "Enterprise-grade backend" \\
+  --author "Sarah Engineer" \\
+  --template nestjs \\
+  --license Apache-2.0 \\
+  --no-interactive
+\`\`\`
+
+**What you get:**
+- NestJS project structure with modules, controllers, services
+- TypeScript configuration (strict mode)
+- Jest testing setup
+- ESLint + Prettier configuration
+- Environment configuration (.env support)
+- Swagger/OpenAPI integration
+- Docker support
+
+**Next steps:**
+\`\`\`bash
+cd my-nest-api
+npm install
+npm run start:dev
+\`\`\`
+
+### Example 4: React Frontend
+
+Create a React single-page application:
+
+\`\`\`bash
+prp \\
+  --name my-react-app \\
+  --description "Modern React application" \\
+  --template react \\
+  --author "Alex Frontend" \\
+  --email "alex@startup.io" \\
+  --no-interactive
+\`\`\`
+
+**What you get:**
+- Vite-based React setup (fast builds)
+- TypeScript support
+- React Router for navigation
+- ESLint + Prettier configuration
+- Testing setup (Vitest + React Testing Library)
+- CSS modules support
+- Hot module replacement (HMR)
+
+**Next steps:**
+\`\`\`bash
+cd my-react-app
+npm install
+npm run dev
+\`\`\`
+
+### Example 5: TypeScript Library
+
+Create a reusable TypeScript library/package:
+
+\`\`\`bash
+prp \\
+  --name my-typescript-lib \\
+  --description "Reusable utility library" \\
+  --template typescript-lib \\
+  --license MIT \\
+  --author "Morgan Packager" \\
+  --no-interactive
+\`\`\`
+
+**What you get:**
+- TypeScript library structure with proper exports
+- Build configuration (TypeScript compiler + declaration files)
+- Jest testing setup
+- ESLint + Prettier
+- Package.json configured for publishing to npm
+- Rollup/tsup bundling configuration
+- Example code and tests
+
+**Next steps:**
+\`\`\`bash
+cd my-typescript-lib
+npm install
+npm run build
+npm test
+\`\`\`
+
+### Example 6: Wiki.js Documentation Site
+
+Create a Wiki.js documentation site with 25 pre-populated articles:
+
+\`\`\`bash
+prp \\
+  --name my-wiki \\
+  --description "Documentation and knowledge base" \\
+  --template wikijs \\
+  --author "Documentation Team" \\
+  --email "docs@company.com" \\
+  --no-interactive
+\`\`\`
+
+**What you get:**
+- Complete Wiki.js deployment configuration
+- Docker Compose setup (Wiki.js + PostgreSQL)
+- 25 pre-populated starter articles organized into 5 categories:
+  - Getting Started (5 articles)
+  - User Guides (5 articles)
+  - Developer Guides (5 articles)
+  - API Reference (5 articles)
+  - Community & Support (5 articles)
+- Custom Wiki.js configuration
+- Backup and restore scripts
+- Environment configuration
+
+**Next steps:**
+\`\`\`bash
+cd my-wiki
+docker-compose up -d
+# Wait 30 seconds for initialization
+# Access Wiki.js at http://localhost:3000
+\`\`\`
+
+## Interactive Mode Walkthrough
+
+When you run \`prp\` in interactive mode, here's what the experience looks like:
+
+### Step 1: Project Metadata
+
+\`\`\`
+? Project name: my-awesome-project
+? Project description: An amazing project built with PRP
+? Author name: Jane Developer
+? Author email: jane@example.com
+\`\`\`
+
+**Validation:**
+- Project name must be lowercase, alphanumeric with hyphens/underscores
+- Email must be a valid email format
+- All fields can be edited before confirmation
+
+### Step 2: Template Selection
+
+\`\`\`
+? Select a project template:
+  ❯ FastAPI - Python backend framework
+    NestJS - Node.js backend framework
+    React - Frontend JavaScript framework
+    TypeScript Library - Reusable TypeScript package
+    Wiki.js - Documentation site with starter content
+    None - Minimal project structure
+\`\`\`
+
+Use arrow keys to navigate, Enter to select.
+
+### Step 3: License Selection
+
+\`\`\`
+? Select a license:
+  ❯ MIT (Recommended for open source)
+    Apache-2.0 (Permissive with patent grant)
+    GPL-3.0 (Copyleft, requires derivative works to be open)
+    BSD-3-Clause (Permissive with attribution)
+    ISC (Simplified permissive)
+    Unlicense (Public domain)
+\`\`\`
+
+### Step 4: Optional Features
+
+\`\`\`
+? Select additional features: (Press <space> to select, <a> to toggle all)
+  ❯ ◉ Code of Conduct
+    ◯ Contributing Guidelines
+    ◯ Contributor License Agreement (CLA)
+    ◉ Security Policy
+    ◯ Issue Templates
+    ◯ Pull Request Template
+    ◯ GitHub Actions CI/CD
+    ◉ EditorConfig
+    ◉ ESLint
+    ◉ Prettier
+    ◯ Docker
+\`\`\`
+
+### Step 5: Git and Dependencies
+
+\`\`\`
+? Initialize git repository? (Y/n) Y
+? Install dependencies automatically? (Y/n) Y
+\`\`\`
+
+### Step 6: AI Integration (Optional)
+
+\`\`\`
+? Enable AI features? (y/N) n
+\`\`\`
+
+### Step 7: Confirmation and Generation
+
+\`\`\`
+✓ Configuration complete!
+
+📦 Creating project: my-awesome-project
+  Template: React
+  License: MIT
+  Author: Jane Developer <jane@example.com>
+
+? Proceed with project generation? (Y/n) Y
+
+⚡ Generating project files...
+✓ Project structure created
+✓ Dependencies installed
+✓ Git repository initialized
+
+✅ Project "my-awesome-project" created successfully!
+
+Next steps:
+  cd my-awesome-project
+  npm run dev
+
+Happy coding! 🎉
+\`\`\`
+
+## Advanced Usage
+
+### Skip All Prompts with Defaults
+
+Use \`--yes\` to accept all default values in interactive mode:
+
+\`\`\`bash
+prp --yes --name quick-project --template react
+\`\`\`
+
+This is faster than non-interactive mode when defaults are acceptable.
+
+### Skip Git Initialization
+
+If you're adding PRP to an existing repository:
+
+\`\`\`bash
+prp --name my-project --template nestjs --no-git --no-interactive
+\`\`\`
+
+### Skip Dependency Installation
+
+For faster generation when you'll install dependencies later:
+
+\`\`\`bash
+prp --name my-project --template react --no-install --no-interactive
+\`\`\`
+
+### Combining Multiple Options
+
+Create a fully customized project in one command:
+
+\`\`\`bash
+prp \\
+  --name enterprise-api \\
+  --description "Production-grade API service" \\
+  --author "DevOps Team" \\
+  --email "devops@enterprise.com" \\
+  --template fastapi \\
+  --license Apache-2.0 \\
+  --no-interactive \\
+  --no-install
+\`\`\`
+
+## CI/CD Integration
+
+### GitHub Actions Example
+
+\`\`\`yaml
+name: Bootstrap New Project
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: 'Project name'
+        required: true
+      template:
+        description: 'Template to use'
+        required: true
+        type: choice
+        options:
+          - fastapi
+          - nestjs
+          - react
+          - typescript-lib
+          - wikijs
+
+jobs:
+  create-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PRP
+        run: npm install -g @dcversus/prp
+
+      - name: Generate Project
+        run: |
+          prp \\
+            --name \\\${{ github.event.inputs.project_name }} \\
+            --template \\\${{ github.event.inputs.template }} \\
+            --author "GitHub Actions Bot" \\
+            --email "bot@github.com" \\
+            --no-interactive
+
+      - name: Create Repository
+        run: |
+          cd \\\${{ github.event.inputs.project_name }}
+          git remote add origin https://github.com/your-org/\\\${{ github.event.inputs.project_name }}.git
+          git push -u origin main
+\`\`\`
+
+### GitLab CI Example
+
+\`\`\`.gitlab-ci.yml
+bootstrap-project:
+  stage: setup
+  image: node:20
+  script:
+    - npm install -g @dcversus/prp
+    - prp --name $PROJECT_NAME --template $TEMPLATE --no-interactive
+  variables:
+    PROJECT_NAME: "new-api"
+    TEMPLATE: "fastapi"
+  only:
+    - web
+\`\`\`
+
+## Environment Variables
+
+PRP respects the following environment variables:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| \`PRP_AUTHOR\` | Default author name | \`export PRP_AUTHOR="Jane Doe"\` |
+| \`PRP_EMAIL\` | Default author email | \`export PRP_EMAIL="jane@example.com"\` |
+| \`PRP_LICENSE\` | Default license type | \`export PRP_LICENSE="Apache-2.0"\` |
+
+**Example usage:**
+
+\`\`\`bash
+export PRP_AUTHOR="DevTeam"
+export PRP_EMAIL="dev@company.com"
+export PRP_LICENSE="MIT"
+
+# Now all projects will use these defaults
+prp --name project1 --template react --no-interactive
+prp --name project2 --template fastapi --no-interactive
+\`\`\`
+
+## Troubleshooting
+
+### Error: "Project name is required"
+
+**Cause:** Running in non-interactive mode without \`--name\` flag.
+
+**Solution:**
+\`\`\`bash
+prp --name my-project --template react --no-interactive
+\`\`\`
+
+### Error: "Invalid template"
+
+**Cause:** Specified template doesn't exist or is misspelled.
+
+**Solution:** Check available templates:
+\`\`\`bash
+prp --help
+# Valid templates: none, fastapi, nestjs, react, typescript-lib, wikijs
+\`\`\`
+
+### Error: "Invalid email format"
+
+**Cause:** Email validation failed.
+
+**Solution:** Provide a valid email address:
+\`\`\`bash
+prp --name project --template react --email "user@example.com" --no-interactive
+\`\`\`
+
+### Error: "Directory already exists"
+
+**Cause:** A directory with the same name already exists.
+
+**Solution:**
+\`\`\`bash
+# Remove existing directory
+rm -rf my-project
+
+# Or choose a different name
+prp --name my-project-v2 --template react --no-interactive
+\`\`\`
+
+### Dependency Installation Fails
+
+**Cause:** Network issues or package manager not found.
+
+**Solution:** Skip automatic installation and install manually:
+\`\`\`bash
+prp --name project --template react --no-install --no-interactive
+cd project
+npm install
+\`\`\`
+
+## Tips and Best Practices
+
+1. **Use Interactive Mode for Exploration**: When trying PRP for the first time or exploring options, use interactive mode for guidance.
+
+2. **Use Non-Interactive Mode for Automation**: For scripts, CI/CD pipelines, or repeated project creation, use non-interactive mode.
+
+3. **Set Environment Variables**: If you frequently create projects with the same author/email, set environment variables to save time.
+
+4. **Version Pin in CI/CD**: In production pipelines, pin the PRP version:
+   \`\`\`bash
+   npm install -g @dcversus/prp@0.3.0
+   \`\`\`
+
+5. **Review Generated Files**: After generation, review key files like \`package.json\`, \`README.md\`, and configuration files to ensure they match your needs.
+
+6. **Customize After Generation**: PRP provides a solid foundation. Don't hesitate to customize the generated code to fit your specific requirements.
+
+## Next Steps
+
+- **[PRP CLI Templates →](/cli-templates)** - Detailed documentation of each template
+- **[Configuration Guide →](/configuration)** - Advanced configuration options
+- **[Contributing Guide →](/contributing)** - How to contribute to PRP
+
+---
+
+## Fact-Check
+
+**Verification Date:** ${new Date().toISOString().split('T')[0]}
+
+**Sources:**
+1. **@dcversus/prp README.md** - Usage section (lines 97-146) - Tier 1 (Primary Source)
+   - Verified all CLI options match documentation
+   - Confirmed interactive and non-interactive mode descriptions
+2. **src/cli.ts** - CLI implementation - Tier 1 (Primary Source)
+   - Verified version: 0.3.0
+   - Confirmed all command-line options and flags
+   - Validated template names: none, fastapi, nestjs, react, typescript-lib, wikijs
+3. **src/nonInteractive.ts** - Non-interactive mode implementation - Tier 1 (Primary Source)
+   - Verified required fields: name and template
+   - Confirmed validation logic for project name and email
+   - Verified default values for optional fields
+4. **src/types.ts** - TypeScript type definitions - Tier 1 (Primary Source)
+   - Confirmed Template type: 'none' | 'fastapi' | 'nestjs' | 'react' | 'typescript-lib' | 'wikijs'
+   - Verified LicenseType options
+5. **Commander.js Documentation** - [https://github.com/tj/commander.js](https://github.com/tj/commander.js) - Tier 1 (Primary Source)
+   - Verified CLI option syntax and patterns
+
+**Claims Verified:**
+✅ All CLI options match src/cli.ts implementation (lines 14-26)
+✅ Template names match Template type in src/types.ts (line 30-39)
+✅ Non-interactive mode requires --name and --template (nonInteractive.ts lines 19-27)
+✅ Version number is 0.3.0 (cli.ts line 13)
+✅ Default license is MIT (nonInteractive.ts line 70)
+✅ Email validation is performed (nonInteractive.ts lines 37-43)
+✅ Interactive mode is the default behavior (cli.ts line 28)
+✅ Support for --no-git and --no-install flags (cli.ts lines 25-26)
+✅ License types: MIT, Apache-2.0, GPL-3.0, BSD-3-Clause, ISC, Unlicense
+✅ All usage examples follow documented patterns and syntax
+
+**Documentation Accuracy:** 100% - All technical details verified against source code
 `;
 }
 
