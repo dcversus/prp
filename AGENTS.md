@@ -137,7 +137,7 @@ signal | comment | time | role-name (model name)
 - **WHEN**: Analysis shows PRP goals cannot be achieved with current constraints/technology
 - **WHAT**: Document impossibility analysis, propose alternative approaches or modified goals, update PRP
 
-#### [da] Done Assessment
+#### [dA] Done Assessment
 - **WHO**: Any Robo-Agent
 - **WHEN**: Task or milestone completed, ready for Definition of Done validation
 - **WHAT**: Provide completion evidence in PRP, reference DoD criteria, request validation before proceeding to next phase
@@ -297,7 +297,7 @@ signal | comment | time | role-name (model name)
 - **WHEN**: Need coordination of parallel work, resource allocation, or workflow orchestration
 - **WHAT**: Request orchestrator intervention for task distribution, agent coordination, or workflow optimization
 
-#### [aa] Admin Attention
+#### [AA] Admin Attention
 - **WHO**: Any Robo-Agent/PRP
 - **WHEN**: Report generation required, system status needed, or administrative oversight requested
 - **WHAT**: Specify report requirements, timeline, and format needed for administrative review
@@ -336,7 +336,7 @@ signal | comment | time | role-name (model name)
 - **WHEN**: Design assets and specifications are ready for development
 - **WHAT**: Provide complete design package, assets, and implementation guidelines
 
-#### [da] Design Assets Delivered
+#### [dd] Design Assets Delivered
 - **WHO**: Robo-UX/UI-Designer
 - **WHEN**: Final design assets are exported and available
 - **WHAT**: Document asset delivery, formats, and optimization status
@@ -445,7 +445,7 @@ signal | comment | time | role-name (model name)
 - **WHEN**: Recovery time objectives are measured or tested
 - **WHAT**: Document RTO metrics, recovery procedures, and performance against targets
 
-#### [ao] Alert Optimized
+#### [Ao] Alert Optimized
 - **WHO**: Robo-DevOps/SRE
 - **WHEN**: Alert rules, thresholds, or notification systems are improved
 - **WHAT**: Document alert changes, noise reduction, and response time improvements
@@ -484,7 +484,7 @@ signal | comment | time | role-name (model name)
 - **WHEN**: UI components need coordinated design and development
 - **WHAT**: Sync component specifications, coordinate implementation timelines
 
-#### [as] Asset Sync Required
+#### [sr] Asset Sync Required
 - **WHO**: Robo-UX/UI-Designer & Robo-DevOps/SRE
 - **WHEN**: Design assets need deployment or CDN updates
 - **WHAT**: Coordinate asset delivery, optimization, and deployment pipeline
@@ -535,7 +535,7 @@ signal | comment | time | role-name (model name)
 - **Frustration Escalation**: Use proper escalation paths when technically blocked
 
 ### **Gate-Based Validation Using Actual Signals**
-- **DoD Verification**: Use `[da]` signal when ready for Definition of Done validation
+- **DoD Verification**: Use `[dA]` signal when ready for Definition of Done validation
 - **Quality Gates**: Signal when each quality gate is passed or failed
 - **Pre-Release**: Signal when pre-release checklist completed
 - **Release Approval**: Signal when release is approved for deployment
@@ -553,7 +553,7 @@ signal | comment | time | role-name (model name)
 - **Change Notification**: Agents must signal changes to shared files using appropriate coordination signals
 
 ### **Design-DevOps Coordination**
-- **Asset Pipeline**: Robo-UX/UI-Designer creates assets → `[da]` signal → Robo-DevOps/SRE optimizes deployment → `[as]` signal
+- **Asset Pipeline**: Robo-UX/UI-Designer creates assets → `[dd]` signal → Robo-DevOps/SRE optimizes deployment → `[sr]` signal
 - **Performance Impact**: Design changes requiring performance validation trigger `[pt]` signal
 - **Design System Updates**: Design system changes require `[ds]` signal and coordination with development team
 

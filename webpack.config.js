@@ -5,6 +5,113 @@ import CopyWebpackPlugin from 'copy-webpack-plugin';
 import fs from 'fs-extra';
 import { glob } from 'glob';
 
+// Analytics and Performance Monitoring Plugin
+class AnalyticsPlugin {
+  apply(compiler) {
+    compiler.hooks.compilation.tap('AnalyticsPlugin', (compilation) => {
+      compilation.hooks.processAssets.tap(
+        {
+          name: 'AnalyticsPlugin',
+          stage: compilation.PROCESS_ASSETS_STAGE_OPTIMIZE_INLINE
+        },
+        () => {
+          const analyticsCode = `
+<!-- Analytics & Monitoring -->
+<script>
+  // Performance monitoring
+  if ('performance' in window && 'measure' in window.performance) {
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        const perfData = performance.getEntriesByType('navigation')[0];
+        const loadTime = perfData.loadEventEnd - perfData.loadEventStart;
+        console.log('Page load time:', loadTime + 'ms');
+      }, 0);
+    });
+  }
+
+  // Error tracking
+  window.addEventListener('error', function(e) {
+    const errorData = {
+      message: e.message,
+      filename: e.filename,
+      lineno: e.lineno,
+      colno: e.colno,
+      url: window.location.href,
+      timestamp: new Date().toISOString()
+    };
+    console.error('JavaScript Error:', errorData);
+  });
+
+  // Custom event tracking
+  window.trackEvent = function(eventName, properties = {}) {
+    console.log('Event tracked:', eventName, properties);
+  };
+
+  // Track external link clicks
+  document.addEventListener('click', function(e) {
+    const target = e.target.closest('a[href^="http"]:not([href*="prp.theedgestory.org"])');
+    if (target) {
+      trackEvent('external_link', {
+        url: target.href,
+        text: target.textContent?.trim()
+      });
+    }
+  });
+
+  console.log('📊 Analytics and monitoring initialized');
+</script>
+
+<!-- Plausible Analytics -->
+<script defer data-domain="prp.theedgestory.org"
+        src="https://plausible.io/js/script.js"
+        data-outbound-links="true"
+        data-tag-events="true">
+</script>
+
+<!-- Performance Observer API -->
+<script>
+if ('PerformanceObserver' in window) {
+  // Track Core Web Vitals
+  const observer = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      switch (entry.entryType) {
+        case 'largest-contentful-paint':
+          trackEvent('lcp', { value: Math.round(entry.startTime) });
+          break;
+        case 'first-input':
+          trackEvent('fid', { value: Math.round(entry.processingStart - entry.startTime) });
+          break;
+        case 'layout-shift':
+          if (!entry.hadRecentInput) {
+            trackEvent('cls', { value: Math.round(entry.value * 1000) / 1000 });
+          }
+          break;
+      }
+    }
+  });
+
+  observer.observe({ entryTypes: ['largest-contentful-paint', 'first-input', 'layout-shift'] });
+}
+</script>
+          `;
+
+          // Add analytics code to HTML files
+          Object.keys(compilation.assets).forEach(filename => {
+            if (filename.endsWith('.html')) {
+              const source = compilation.assets[filename].source();
+              const modifiedSource = source.replace('</head>', analyticsCode + '</head>');
+              compilation.assets[filename] = {
+                source: () => modifiedSource,
+                size: () => modifiedSource.length
+              };
+            }
+          });
+        }
+      );
+    });
+  }
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -69,6 +176,8 @@ export default (env, argv) => {
       ]
     },
     plugins: [
+      // Analytics and monitoring
+      new AnalyticsPlugin(),
       // Generate HTML files for each documentation page
       ...generateHTMLPlugins(),
       // Copy static assets

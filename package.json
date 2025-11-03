@@ -30,7 +30,7 @@
     "debug:demo": "tsx examples/debug-screen-demo.ts",
     "debug:test": "tsx src/tui/debug-screen.test.ts",
     "validate": "npm run typecheck && npm run lint && npm run test",
-    "build:docs": "webpack --mode production",
+    "build:docs": "webpack --mode production && node scripts/add-analytics.js",
     "dev:docs": "webpack serve --mode development",
     "prepublishOnly": "npm run validate && npm run build",
     "prepare": "husky"

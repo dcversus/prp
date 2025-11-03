@@ -1,9 +1,19 @@
 # TUI task
 
-## robo roles & signal guidelines reminder:
+## status
+planing - robo-system-analyst
+
+## progress
+signal | comment | time | role-name (model name)
+
+## implementation details
+> FOLLOW '### TUI design *' as DoD
+> then dont have UI design, then follow design rules and implement use same structure
+
+### robo roles & signal guidelines reminder:
 we have
 robo-aqa - purple
-robo-quality-control - red 
+robo-quality-control - red
 robo-system-analyst - brown (but best visible one on black/white bg!)
 robo-developer - blue
 robo-devops-sre - green
@@ -12,22 +22,23 @@ robo-legal-complience - light-violet
 orchestrator - orange - accent
 EACH signal [XX] is always TWO letters in braces, and most of them colored to related them robo-role, if [pr] stands for pull request, so it will be blue color for all including braces, i wanna have light, pastel-like colors for them, [  ] empty braces mean what this is placeholder, so braces should be gray/blend, then something happening, like progress in prp signal list (or history) we should show animation with melody inside described latter or we should always color active signals as main pastel variation of role related color or use gray variation then signal is resolved and old like all braces.
 
-> reg: lets upgrade our TUI for orchestrator input state, i expect it should be fully fixed to bottom, then system laucnhes we clear console, then render layout and then show animated video-to-text scene, something related to our maskot and project name. then i need you to clear scene, then loading and base scaning done, and put first message from system (accent orange brand color) what system started with N prp and ready to spawn first agent. Navigate with Tab to see progress, at PRP list select prp to see history and press S to start new agent working on prp or X to stop working on prp. D switch for debug screen. After this welcome message we should start recieving new messages from scanner about detecting signals, then from inspector about his findings as json (important fields first, we show only 10 lines, then PRESS D TO SEE ALL), THEN orchestrator spawn agent and we should see special snippet it's repeatable structure contain data about agent with first line to be: current status with icon (see prp/PRPs/mascot-logo-symbol.md), then prp-name#robo-role-name - current task short description - time left - progress dod percent, where #robo-role-name should be colored by role corresponding to claude agent, eg prp/.claude/agents/robo-aqa.md for green  but not text, text should be same as background with dark/light theme support, but around bg color of letters should be colored to pastel colors of agent related, then next few white lines of his last console output, what dynamicaly updates, then service gray line with total agent tokens cost and total agent working time. and ofc one line of space right after all agents list with two lines space, we should see special orchestrator CoT snippet, it should contain our animated text logo, then current prp-name and signals working on [As][sA] colored by most role responsible for resolving that and next lines should be a CoT with streaming and below with spacer current tool call with some response details with gray color. 
+> reg: lets upgrade our TUI for orchestrator input state, i expect it should be fully fixed to bottom, then system laucnhes we clear console, then render layout and then show animated video-to-text scene, something related to our maskot and project name. then i need you to clear scene, then loading and base scaning done, and put first message from system (accent orange brand color) what system started with N prp and ready to spawn first agent. Navigate with Tab to see progress, at PRP list select prp to see history and press S to start new agent working on prp or X to stop working on prp. D switch for debug screen. After this welcome message we should start recieving new messages from scanner about detecting signals, then from inspector about his findings as json (important fields first, we show only 10 lines, then PRESS D TO SEE ALL), THEN orchestrator spawn agent and we should see special snippet it's repeatable structure contain data about agent with first line to be: current status with icon (see prp/PRPs/mascot-logo-symbol.md), then prp-name#robo-role-name - current task short description - time left - progress dod percent, where #robo-role-name should be colored by role corresponding to claude agent, eg prp/.claude/agents/robo-aqa.md for green  but not text, text should be same as background with dark/light theme support, but around bg color of letters should be colored to pastel colors of agent related, then next few white lines of his last console output, what dynamicaly updates, then service gray line with total agent tokens cost and total agent working time. and ofc one line of space right after all agents list with two lines space, we should see special orchestrator CoT snippet, it should contain our animated text logo, then current prp-name and signals working on [As][sA] colored by most role responsible for resolving that and next lines should be a CoT with streaming and below with spacer current tool call with some response details with gray color.
 Always as logo we using all music-related symnols what slowly when fast transoforms into ♫ (final form) OR double melody utf sumbol where inside one terminal we run two sub agents with #robo-role1#robo-role2 instead #robo-role. then ♫ should while loading or starting on preparing go start with ♪ and then with all different symbols what mean music work as loading progress, then progress comes to 100% ready of task then we set ♫ symbol as 100% progress done. then we iddle need to blink with ♫ to some melodies we have for each guideline config. guideline should contain some sort of classical melody transformed into rythm-bit encode, we need create /scripts/ tool what create such bits and then choose best suitable for each signal by logic or popularity and context of song from classics, then extract and update each guideline to work with. i need always in iddle blink melody according to last signal happen. next we need when agent turned off, OR no work at prp now, then need show our logo gray colored ♫
 That is always are order for messages - all system / inspector / scanner messages are always above but they internal their group sorted with showing must recent update to below. and agents/orchestrator widgets dont require message time or so, only real timers, but system / inspector / scanner should have at first line with their name also a timestamp, so their actual content will go right below with wellformated and compacted json print, in debug you can always see full, using ctrl/cmd+d tip;
 All "history" items including snippets should be a style monospace popular in developers font
-Right panel reserved for signals and prp list, there is each prp should align to right and contain: prp-name (gray in-active - no agent opened, main color  then progressed, bold then idle AND accent orange color than has something critical with 9+ priorioty), space and ICON (ALWAYS need implement according to prp/PRPs/mascot-logo-symbol.md this specification we need make an actual). this line should use second, accent header font what can be normal and rich, need something complementary to our main monospace font. and expose cofiguration for all colors and fonts to our .prprc, with tmux and our hootkeys to make possible user change them and interface should respond to it. next line should be again monospace, signals line should have uniquie coding, firstly it should appear with 1 letter shift animation, then new signal appear. [  ][aA][pr][PR][FF][  ]. here [  ] from left is empty slots for future signals in focus, then each signal color should be - braces should be accent orange pastel color, then letters should have unique color code matching to their most lovable role (WHO should react TO). then agent working on something we can animate [FF] with [F ] -> [  ] -> [ F] -> [FF], or something like that!. then agent stops, nothing happens, then signal is going to be resolved then we need make it's color to second pastel its variation, so then signal is active it colored with brighter version of color, to focus on that, then it resolved - less bright. after we need make properly color with normal color or gray variation shared signals/common/orchestrator one. no difference here. it's all, should update in real time and WHILE scaning of prp goin on we need show small animation to replace color of each on the way [] with some pastel accent color once per few ms, so it should look like slide wave. THEN IF inspector done update we need blink with with pastel on braces all at same time twice. then orchestrator send's request to agent, then we need see how new [  ] appears with [] [ ] [  ] [ ♫] [♫♫] [♫ ] [ ] sequence, it's all also with all icon music and other interations from prp/PRPs/mascot-logo-symbol.md. 
+Right panel reserved for signals and prp list, there is each prp should align to right and contain: prp-name (gray in-active - no agent opened, main color  then progressed, bold then idle AND accent orange color than has something critical with 9+ priorioty), space and ICON (ALWAYS need implement according to prp/PRPs/mascot-logo-symbol.md this specification we need make an actual). this line should use second, accent header font what can be normal and rich, need something complementary to our main monospace font. and expose cofiguration for all colors and fonts to our .prprc, with tmux and our hootkeys to make possible user change them and interface should respond to it. next line should be again monospace, signals line should have uniquie coding, firstly it should appear with 1 letter shift animation, then new signal appear. [  ][aA][pr][PR][FF][  ]. here [  ] from left is empty slots for future signals in focus, then each signal color should be - braces should be accent orange pastel color, then letters should have unique color code matching to their most lovable role (WHO should react TO). then agent working on something we can animate [FF] with [F ] -> [  ] -> [ F] -> [FF], or something like that!. then agent stops, nothing happens, then signal is going to be resolved then we need make it's color to second pastel its variation, so then signal is active it colored with brighter version of color, to focus on that, then it resolved - less bright. after we need make properly color with normal color or gray variation shared signals/common/orchestrator one. no difference here. it's all, should update in real time and WHILE scaning of prp goin on we need show small animation to replace color of each on the way [] with some pastel accent color once per few ms, so it should look like slide wave. THEN IF inspector done update we need blink with with pastel on braces all at same time twice. then orchestrator send's request to agent, then we need see how new [  ] appears with [] [ ] [  ] [ ♫] [♫♫] [♫ ] [ ] sequence, it's all also with all icon music and other interations from prp/PRPs/mascot-logo-symbol.md.
 Below we have ─ delimiter, and next is > with input. INPUT should be able to support pasting text WITH preserving message limit cup, IF user put more that that user should see  -- pasted XX tokens | hash | cut_limit -- OR if all okay then --  pasted XX tokens | hash -- and user can free edit this as a text and we need just pattern seek for --*-- and replace same hash with user data inlined into it's input. WARNING! message cap dynamicaly calculates, then user paste we need calc size and then message cap - current tokens - user pasted text to be < than message cap AND if its more then we need cut to left space - 5% reserve;
 below should be status line with active orchestrator signal and its' latest CoT or status (idle, waiting, error, etc) all codes should be well documented and all problems fatal or not should be always displayd in status with warning yelow triangle IF no problems, then it should be just white text, right side for active agents/prp count
 
-## progress
+### progress
 [dp] Development progress: TUI implementation completed with core functionality - basic screens, intro sequence, input system, and agent monitoring implemented. Ready for testing and refinement. | 2025-11-03 15:30:00 | robo-developer (Sonnet 4.5)
+[dp] Development progress: TUI specification finalized with comprehensive design including 3-screen layout system, agent monitoring, signal visualization, music-based status indicators, and responsive breakpoints. Implementation plan ready with 903 detailed tasks covering all aspects from core infrastructure to deployment. Ready to begin implementation once signal system integration complete. | 2025-11-03 23:30:00 | robo-developer (claude-opus-4-1-20250805)
 
 Loading your workspace...
 
 
-## references
-WE making maximum references and love to use ⎿ and ═ and 
+### references
+WE making maximum references and love to use ⎿ and ═ and
 
 ```
 ▗ ▗   ▖ ▖  Claude Code v2.0.30
@@ -65,13 +76,13 @@ WE making maximum references and love to use ⎿ and ═ and
   ⏺ Now let me launch three sub-agents in parallel for comprehensive architecture research:
 
 ⏺ developer(Research file system optimization)
-  ⎿  Done (21 tool uses · 61.6k tokens · 5m 41s)                                                                          
+  ⎿  Done (21 tool uses · 61.6k tokens · 5m 41s)
 
 ⏺ developer(Research context limits and data flow)
-  ⎿  Done (16 tool uses · 87.9k tokens · 9m 21s)                                                                          
+  ⎿  Done (16 tool uses · 87.9k tokens · 9m 21s)
 
 ⏺ system-analyst(Analyze methodology terminology)
-  ⎿  Done (17 tool uses · 70.4k tokens · 6m 6s)                                                                           
+  ⎿  Done (17 tool uses · 70.4k tokens · 6m 6s)
 
 ⏺ Perfect! All three research sub-agents have completed their work. Now let me update the todo list and integrate all
   findings into the PRPs:
@@ -85,17 +96,17 @@ WE making maximum references and love to use ⎿ and ═ and
   AGENTS.md and the robo-philosophy that AI agents are powered by advanced LLMs, work perfectly and calmly, and collaborate
    with humans as equals.
 
-> thx, can you please now run sub-agents in parallel with working on: prp/PRPs/nudge-integrated.md 
-https://github.com/dcversus/dcmaidbot/blob/f6c02c52d40ccaa35783f01b67e66c5fd4136f41/handlers/nudge.py implemented and 
-released, need with kubectl take NUDGE_SECRET and store it in our .env, then we need implement that infra/ wrapper to 
+> thx, can you please now run sub-agents in parallel with working on: prp/PRPs/nudge-integrated.md
+https://github.com/dcversus/dcmaidbot/blob/f6c02c52d40ccaa35783f01b67e66c5fd4136f41/handlers/nudge.py implemented and
+released, need with kubectl take NUDGE_SECRET and store it in our .env, then we need implement that infra/ wrapper to
 handle sending two types of nudge and prepare it for future connecion; analyse prp/PRPs/v0.5-architecture-redesign.md seems
- it's the old file we somehow lost, maybe it contain something interesting to new prp/PRPs/agents-v05.md if have some then 
-merge it's data into prp/PRPs/agents-v05.md; as robo-ux-ui prp/PRPs/mascot-logo-symbol.md research and analyse; as 
+ it's the old file we somehow lost, maybe it contain something interesting to new prp/PRPs/agents-v05.md if have some then
+merge it's data into prp/PRPs/agents-v05.md; as robo-ux-ui prp/PRPs/mascot-logo-symbol.md research and analyse; as
 legal-complience prp/PRPs/mascot-logo-symbol.md make research; as robo-system-analyst analyse and document what prp/cdd is,
- what can our application actualy do... we need describe what we a scaffolding tool from single sentence into ready to go 
-solution and more. need find competitors and analyse their landings, then need prepare plan for draft of our landing; as 
+ what can our application actualy do... we need describe what we a scaffolding tool from single sentence into ready to go
+solution and more. need find competitors and analyse their landings, then need prepare plan for draft of our landing; as
 developer analyse all documents possible for prp/PRPs/claude-code-integration-research.md; I NEED YOU RUN ALL sub-agents in
- parallel, then they all done their work, report for each into their prp, we need keep comment and signal and author 
+ parallel, then they all done their work, report for each into their prp, we need keep comment and signal and author
 
 ⏺ I'll launch all the requested sub-agents in parallel to work on their respective PRPs. Let me spawn them all at once:
 
@@ -112,7 +123,7 @@ developer analyse all documents possible for prp/PRPs/claude-code-integration-re
 ⏺ ui-ux(Research mascot logo symbols)
   ⎿  Read 271 lines
      Read 1138 lines
-     +1 more tool use (ctrl+o to expand)
+     +1 more tool uses (ctrl+o to expand)
 
 ⏺ legal-compliance(Legal research for mascot logo)
   ⎿  Web Search("Unicode Consortium license terms character usage commercial branding")
@@ -121,7 +132,7 @@ developer analyse all documents possible for prp/PRPs/claude-code-integration-re
 
 ⏺ system-analyst(Analyze PRP/CDD methodology and landing page research)
   ⎿  Read 414 lines
-     Error: File content (27626 tokens) exceeds maximum allowed tokens (25000). Please use offset and limit parameters to read 
+     Error: File content (27626 tokens) exceeds maximum allowed tokens (25000). Please use offset and limit parameters to read
      +6 more tool uses (ctrl+o to expand)
 
 ⏺ developer(Research Claude Code integration)
@@ -134,7 +145,7 @@ developer analyse all documents possible for prp/PRPs/claude-code-integration-re
 ```
 
 
-## TUI design main orchestrator screen, FINAL!
+### TUI design main orchestrator screen, FINAL!
 I expecting TUI to be maximum look like this:
 
 ```
@@ -171,20 +182,20 @@ inspector · 2025-11-02 13:22:08
     ⇢ diff.read → { changed: 6, hot: [PRPs/agents-v05.md,…] }
 
 // TODO: lines below should be not below by default but an actual like sidebar aligned to right-bottom, need make it happen, and all should be here in stylish monospace developer loved font! we need align all to be perfect with all sizes, and fall back to view like this if window small with scroll, and always · should be spaced araund to avaiable width of sidebar (width preserved) or full screen
-RUNNING  ·  prp-agents-v05#robo-aqa                  
+RUNNING  ·  prp-agents-v05#robo-aqa
 [aA] [pr] [PR] [FF] [ob] [AA] [< ]
 
-SPAWNING · prp-landing#robo-develop                    
+SPAWNING · prp-landing#robo-develop
 [  ] [  ] [FF] [XX] [XX] [XX] [XX]
 
-IDLE · prp-nudge#robo-legal-complie                 
+IDLE · prp-nudge#robo-legal-complie
 [  ] [  ] [  ] [  ] [  ] [  ] [pr]
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 > Can you create something like this?   -- pasted 3 842 tokens | 6f27e9b1 --
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-prp-agents-v05 [aA]  “preparing stop instructions to agent”
+prp-agents-v05 [aA]  "preparing stop instructions to agent"
 agents 2+ · prp 3 · ▲1                                              Tab - o|i|a|1|2|3|    S - start    X - stop    D - debug
 
 // i see our footer as universal for all screens and always visible! with one space empty line before bottom, last line should be gray, delimiter should be also blended with bg color
@@ -192,7 +203,7 @@ agents 2+ · prp 3 · ▲1                                              Tab - o|
 // IF we go with bigger screens, we need somehow wrap each section as widgets and add new behavier to see more details as screen allow, until ultra screens, where we should be able to place and all screens together and open all agent logs to all space, need structured layouts and strategies to be described here too
 ```
 
-## TUI design debug mode, FINAL!
+### TUI design debug mode, FINAL!
 THIS SCREEN SHOULD NOT CLEAN PREVIUS LOGS AND ALWAYS PRINT ALL JSON VALUES HAPPEN INSIDE! EVERYTING! SHOULD BE WITH SYNTAX HIGHTLIGHT! WE SHOULD BE ABLE TO SEE NEW EVENTS FROM ALL INTERNAL SYSTEMS WHAT MOSTLY HIDDEN INSIDE! BUT TO PREVENT SPAM I NEED YOU MAKE EVENT LOG HAPPEN ONCE FOR ACTION WITH DIFFERENT BRIGHT FOR PRIORITIES BETWEEN INSPECTOR AND ORCHESTRATOR AND SCANNER OR GUIDELINES OR SYSTEM (ALWAYS BRAND ORANGE! [HF] - System as example)
 ```md
      Read(file_path: "/Users/dcversus/Documents/GitHub/prp/src/guidelines/registry.ts", limit: 40)
@@ -200,7 +211,7 @@ THIS SCREEN SHOULD NOT CLEAN PREVIUS LOGS AND ALWAYS PRINT ALL JSON VALUES HAPPE
      Update(/Users/dcversus/Documents/GitHub/prp/src/guidelines/registry.ts)
        30      ConfigUtils,s';ocuments/GitHub/prp/src/guidelines/registry.ts with 1 addition and 2 removals
      Search(pattern: "eventBus\.|Validator\.", path: "/Users/dcversus/Documents/GitHub/prp/src/guidelines/registry.ts",
-       ⎿  796:    eventBus.subscribeToChannel('signals', (event) => {
+      ⎿  796:    eventBus.subscribeToChannel('signals', (event) => {
      Read(file_path: "/Users/dcversus/Documents/GitHub/prp/src/guidelines/registry.ts", offset: 790, limit: 10)
      Read 10 lines
      Read(file_path: "/Users/dcversus/Documents/GitHub/prp/src/shared/index.ts", limit: 50)
@@ -230,7 +241,7 @@ THIS SCREEN SHOULD NOT CLEAN PREVIUS LOGS AND ALWAYS PRINT ALL JSON VALUES HAPPE
      Waiting… run build 2>&1 | head -20)
      > @dcversus/prp@0.4.9 build
      Search(pattern: "getNudgeSecret", path: "/Users/dcversus/Documents/GitHub/prp/src/kubectl/secret-manager.ts", output_mode:
-       ⎿  43:  async getNudgeSecret(options: { forceRefresh?: boolean } = {}): Promise<SecretRetrievalResult> {
+      ⎿  43:  async getNudgeSecret(options: { forceRefresh?: boolean } = {}): Promise<SecretRetrievalResult> {
      Read(file_path: "/Users/dcversus/Documents/GitHub/prp/src/commands/secret.ts", offset: 25, limit: 25)
      Read 25 lines
      Update(/Users/dcversus/Documents/GitHub/prp/src/commands/secret.ts)
@@ -241,9 +252,11 @@ THIS SCREEN SHOULD NOT CLEAN PREVIUS LOGS AND ALWAYS PRINT ALL JSON VALUES HAPPE
      Read 5 lines
      Update(/Users/dcversus/Documents/GitHub/prp/src/guidelines/executor.ts)
        373 +      (execution.context.additionalContext as ExtendedAdditionalContext)['fetchedData'] = prData;
+     Waiting… tsc --noEmit --skipLibCheck 2>&1)
+     Error: Exit code 2
      Waiting… run build 2>&1 | head -10)
      > @dcversus/prp@0.4.9 build
-     Read(file_path: "/Users/dcversus/Documents/GitHub/prp/tsconfig.json")
+     Read(file_path: "/Users/dcversus/Documents/GitHub/prp/tsconfig.json)
      Read 65 lines
      Update(/Users/dcversus/Documents/GitHub/prp/tsconfig.json)
        43 +      "noPropertyAccessFromIndexSignature": false,on with 1 addition and 1 removal
@@ -257,12 +270,13 @@ THIS SCREEN SHOULD NOT CLEAN PREVIUS LOGS AND ALWAYS PRINT ALL JSON VALUES HAPPE
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 > type or paste anything to
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-prp-agents-v05 [aA]  “preparing stop instructions to agent”
+prp-agents-v05 [aA]  "preparing stop instructions to agent"
 agents 2+ · prp 3 · ▲1     ·      ⚠️ debug ⚠️     ·      Tab - o|i|a|1|2|3|D   Ctrl+S - start    Ctrl+X - stop    Ctrl+D - debug
 
 ```
 
-## resarch result
+### resarch result
+```
 ♫ @dcversus/prp — Final TUI Specification (Ink/React for CLIs)
 
 Project
@@ -279,13 +293,14 @@ Project
 	•	Three screens: Orchestrator (main), PRP/Context/Split (info), Agent Fullscreen.
 	•	Fixed bottom input; status+hotkeys line under input.
 	•	Responsive layouts: from ~80 cols to 8K; auto reflow; multi-screen on ultrawide.
-	•	Intro 10s retro “chip demo” video-to-text overlay; radial fade; brand logo evolution ♪→♫.
+	•	Intro 10s retro "chip demo" video-to-text overlay; radial fade; brand logo evolution ♪→♫.
 
 ⸻
 
+
 Color Scheme (pastels + grays; dark/light aware)
 
-Use as foreground unless “bg” specified. Define in .prprc and resolve to nearest 256-color or truecolor.
+Use as foreground unless "bg" specified. Define in .prprc and resolve to nearest 256-color or truecolor.
 
 	•	Accent / Orchestrator: accent_orange = #FF9A38 (active), dim #C77A2C, bg #3A2B1F
 	•	Roles:
@@ -303,23 +318,26 @@ Light theme flips contrast (bg light, text darker variants). Keep contrast ≥ 4
 
 ⸻
 
+
 Fonts
-	•	Terminal monospace only. Recommend Menlo / SF Mono / JetBrains Mono. No second font is possible in terminal; emulate “accent header font” with bg pills, all-caps, spacing, and higher contrast.
+	•	Terminal monospace only. Recommend Menlo / SF Mono / JetBrains Mono. No second font is possible in terminal; emulate "accent header font" with bg pills, all-caps, spacing, and higher contrast.
 
 ⸻
+
 
 Animation Requirements (global)
 	•	State icons: use Unicode music symbols only:
 	•	start/prepare: ♪
 	•	running/progress: ♩, ♪, ♬ (pair), ♫ (final/steady)
 	•	double-agent state: draw pair glyphs (e.g., ♬) or two symbols separated by thin space.
-	•	Idle melody blink: last signal’s associated melody drives periodic blink of ♫ (on/off at beat).
+	•	Idle melody blink: last signal's associated melody drives periodic blink of ♫ (on/off at beat).
 	•	Signal wave: while scanning, slide a pastel wave across signal placeholders [ ] from left→right (color pulse).
 	•	Inspector done: blink both braces of all visible signals twice (pastel → base → pastel).
 	•	Orchestrator→Agent dispatch: show [  ] → [ ♫] → [♫♫] → [♫ ] → [  ] loop during request in that PRP slot.
 	•	Progress cell [FF] animation: frames [F ] → [  ] → [ F] → [FF] repeat at ~8fps when active.
 
 ⸻
+
 
 Logo Sequence (10s intro; video-to-text overlay)
 
@@ -336,9 +354,10 @@ ASCII overlay rule
 	•	Only render to empty bg (no UI text). Apply radial alpha a(r) to per-char luminance. Character ramp: '  .,:;ox%#@' from light→dark. Keep overlay behind UI; never obscure input/status.
 
 Chip melody (idle + intro beat)
-	•	Use public-domain compositions rendered as NES style. Examples: Beethoven “Ode to Joy”, Bach “Invention No.1”, Mozart “Eine Kleine Nachtmusik”. [I cannot verify this.] Encode beats as /scripts/melody.json → {bpm, steps:[0/1 for blink]} to drive ♫ blink and wave timing.
+	•	Use public-domain compositions rendered as NES style. Examples: Beethoven "Ode to Joy", Bach "Invention No.1", Mozart "Eine Kleine Nachtmusik". [I cannot verify this.] Encode beats as /scripts/melody.json → {bpm, steps:[0/1 for blink]} to drive ♫ blink and wave timing.
 
 ⸻
+
 
 Screens — Final Renders
 
@@ -385,7 +404,7 @@ Orchestrator · RUNNING  [accent_orange bg pill] prp-agents-v05 [end]   [ [brace
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 > paste or type here …   -- pasted 3 842 tokens | 6f27e9b1 --
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-Tab  S  X  D                                                   [signal: PR*]  “allocating agent”  agents 2  ·  prp 7  ·  ▲0
+Tab  S  X  D                                                   [signal: PR*]  "allocating agent"  agents 2  ·  prp 7  ·  ▲0
 
 Notes:
 	•	[PR*] = latest signal highlighted (bold/brighter).
@@ -393,6 +412,7 @@ Notes:
 	•	No vertical delimiter; right panel visually separated by right alignment and background pills.
 
 ⸻
+
 
 Screen 2 — PRP / Context / Split Claude Code
 
@@ -429,11 +449,11 @@ SYS  last ▸ role map…           svc ▸ 2.7k tok · 00:00:09 · q 0
 
 paste or type here …
 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-Tab  ↑  ↓  Enter  S  X  D                                 [signal: PR]  “merging”  agents 3  ·  prp 7  ·  ▲0
+Tab  ↑  ↓  Enter  S  X  D                                 [signal: PR]  "merging"  agents 3  ·  prp 7  ·  ▲0
 
 ---
 
-### Screen 3 — Agent Fullscreen (Claude-Code-style)  
+### Screen 3 — Agent Fullscreen (Claude-Code-style)
 
 Claude Code — prp-agents-v05 · streaming
 
@@ -447,7 +467,7 @@ svc  ▸ tokens=41.7k · active=00:04:12 · retries=0 · net=ok
 ▏diff: +12 −3
 ▏todo: validate anchors
 ▏stdout:
-▏  ✔ cross-link “AQA→DEV” added
+▏  ✔ cross-link "AQA→DEV" added
 ▏  ✔ headings normalized
 
 ⋯ scroll ⋯
@@ -487,7 +507,7 @@ Tab  S  X  D                                                       idle  ·  age
 - **Props:**
   - `role: "robo-aqa"|"robo-quality-control"|"robo-system-analyst"|"robo-developer"|"robo-devops-sre"|"robo-ux-ui"|"robo-legal-compliance"|"orchestrator"`
   - `state: "idle"|"active"|"resolved"`
-- **Behavior:** bg pill in role color; text same as bg (visual “cutout” effect) when `active`; dim gray variant when `idle` or `resolved`.
+- **Behavior:** bg pill in role color; text same as bg (visual "cutout" effect) when `active`; dim gray variant when `idle` or `resolved`.
 - **Render (examples):**
 
 [role:robo-aqa bg pill]   [role:robo-developer bg pill]   [role:orchestrator bg pill]
@@ -534,7 +554,7 @@ svc  ▸ tokens=4.3k · active=00:00:28
 
 Orchestrator · RUNNING  [accent_orange bg pill] prp-agents-v05 [end]   [ [aA][pr][PR*][FF] ]
 • ◇ Δ from scanner → pick role → budget
-• ⇢ diff.read → { “changed”: 6, “hot”: [“PRPs/agents-v05.md”,”…”] }
+• ⇢ diff.read → { "changed": 6, "hot": ["PRPs/agents-v05.md","…" ] }
 • ✦ next: AQA first, then DEV
 
 ### `HistoryItem`
@@ -543,7 +563,7 @@ Orchestrator · RUNNING  [accent_orange bg pill] prp-agents-v05 [end]   [ [aA][p
 - **Render:**
 
 inspector · 2025-11-02 13:22:08
-{ “impact”:“high”,“risk”:8,“files”:[“PRPs/agents-v05.md”,“PRPs/…”],“why”:“cross-links missing” }
+{ "impact":"high","risk":8,"files":["PRPs/agents-v05.md","PRPs/…"],"why":"cross-links missing" }
 
 ### `PRPList` (right column)
 - **Props:** `{ items: Array<{name, status, role, priority?, signals:SignalTag[]}> }`
@@ -562,10 +582,10 @@ paste or type here …   – pasted 3 842 tokens | 6f27e9b1 –
 
 ### `Footer`
 - **Props:** `{ tabs:string, status:string, agents:number, prp:number, delta:string }`
-- **Rule:** no “Shortcuts:” label; just keys; highlight active tab with accent.
+- **Rule:** no "Shortcuts:" label; just keys; highlight active tab with accent.
 - **Render:**
 
-Tab  S  X  D                                                   [signal: PR*]  “allocating agent”  agents 2  ·  prp 7  ·  ▲0
+Tab  S  X  D                                                   [signal: PR*]  "allocating agent"  agents 2  ·  prp 7  ·  ▲0
 
 ---
 
@@ -582,7 +602,7 @@ Tab  S  X  D                                                   [signal: PR*]  �
 ## Video-to-Text Overlay (impl details)
 - **Budget:** 10s · 12 fps → 120 frames; ASCII grid matches current terminal rows/cols.
 - **Generation (offline example):**
-  - Extract frames:  
+  - Extract frames:
     `ffmpeg -i intro.mp4 -vf "fps=12,scale=COLS:-1:flags=neighbor" frames/%04d.png`
   - Convert to ASCII (custom script): map luminance to ramp `' .:-=+*#%@'`; apply radial alpha `a(r)` to reduce contrast at edges; only draw on **unused bg regions**.
 - **Playback:** preload N frames per size bucket; render behind UI in a dedicated layer; stop and clear before layout paint. Idle melody blink remains active.
@@ -627,17 +647,17 @@ Tab  S  X  D                                                   [signal: PR*]  �
 ---
 
 ## References & Color/Font Usage Notes
-- **Where bg color is used:**  
-  - Role pills (PRP header line, Orchestrator first line).  
-  - Optional faint bg stripes behind right PRP list header.  
-- **Where fg color is used:**  
-  - All text, signals letters, history JSON (muted/bright).  
-- **Transitions:**  
-  - Color transitions in terminal are simulated via frame swaps (no real CSS transitions). Keep ≤10 fps for terminals.  
-- **Accessibility:**  
-  - Ensure active text contrast against bg; reserve **accent orange** only for selection/highlights and orchestrator first line.  
-- **Fonts:**  
-  - Terminal enforces monospace; emulate “accent header font” with bg pills, spacing, and uppercase.
+- **Where bg color is used:**
+  - Role pills (PRP header line, Orchestrator first line).
+  - Optional faint bg stripes behind right PRP list header.
+- **Where fg color is used:**
+  - All text, signals letters, history JSON (muted/bright).
+- **Transitions:**
+  - Color transitions in terminal are simulated via frame swaps (no real CSS transitions). Keep ≤10 fps for terminals.
+- **Accessibility:**
+  - Ensure active text contrast against bg; reserve **accent orange** only for selection/highlights and orchestrator first line.
+- **Fonts:**
+  - Terminal enforces monospace; emulate "accent header font" with bg pills, spacing, and uppercase.
 
 ---
 
@@ -690,12 +710,54 @@ interface FooterProps { tabs:string; statusText:string; agents:number; prp:numbe
 
 ⸻
 
+
 Final Notes
 	•	One blank line between history messages.
 	•	One blank line between PRPs in the right list.
 	•	No vertical delimiter in UI (render uses alignment and bg pills).
 	•	Emoji are not used; only music symbols for state as specified (♪ ♩ ♬ ♫).
 	•	All renders above are authoritative for MVP.
+```
+
+## dod
+- [ ] '### TUI design *' look exact same -> symbol to symbol for ui elements in real run logs
+- [ ] TUI core infrastructure with Ink/React framework setup
+- [ ] Responsive layout system with breakpoints (100, 160, 240+ cols)
+- [ ] Video-to-text intro sequence with music symbol animations
+- [ ] Real-time agent monitoring with status indicators
+- [ ] Signal visualization with animated progress states
+- [ ] Three-screen layout system (Orchestrator, PRP/Context, Agent)
+- [ ] Input system with paste support and token counting
+- [ ] Configuration system for .prprc integration
+- [ ] Performance optimization and memory management
+- [ ] Cross-platform compatibility testing
+
+## dor
+- [ ] TUI framework selected (Ink/React for CLI)
+- [ ] Design specifications documented
+- [ ] Color scheme and font system defined
+- [ ] Component architecture planned
+- [ ] Animation requirements specified
+- [ ] Layout and responsiveness requirements defined
+- [ ] Integration points with signal system identified
+- [ ] Development environment setup ready
+
+## pre-release checklist
+- [ ] All screens render correctly across terminal sizes
+- [ ] Animations perform smoothly without lag
+- [ ] Real-time data updates work correctly
+- [ ] Input handling reliable for all scenarios
+- [ ] Color contrast meets accessibility standards
+- [ ] Configuration changes apply in real-time
+- [ ] Memory usage stays within acceptable limits
+- [ ] No UI glitches or rendering artifacts
+
+## post-release checklist
+- [ ] User feedback collected on TUI experience
+- [ ] Performance metrics monitored in production
+- [ ] Terminal compatibility verified across platforms
+- [ ] Documentation updated based on user questions
+- [ ] Feature requests tracked for future releases
 
 ## plan
 
