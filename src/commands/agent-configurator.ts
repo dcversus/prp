@@ -156,12 +156,14 @@ export class AgentConfigurator {
   private registry: AgentRegistry;
   private cache: Map<string, AgentConfig> = new Map();
 
-  constructor(_config: AgentConfigConfig) {
+  constructor(config: AgentConfigConfig) {
     this.registry = {
       agents: {},
       categories: {},
       lastUpdated: new Date()
     };
+    // Store config for potential future use
+    void config;
   }
 
   /**
@@ -595,7 +597,7 @@ ${Object.keys(this.registry.agents).map(agentId => {
 - **Description**: ${config.description}
 - **Default Model**: ${config.defaultModel}
 - **Max Tokens**: ${config.defaultMaxTokens}
-- **Capabilities**: ${Object.entries(config.capabilities).filter(([_, v]) => v).map(([k]) => k).join(', ')}
+- **Capabilities**: ${Object.entries(config.capabilities).filter(([, v]) => v).map(([k]) => k).join(', ')}
 `;
   }
   return '';

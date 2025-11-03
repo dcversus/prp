@@ -42,7 +42,7 @@ async function handleStatusCommand(options: StatusOptions): Promise<void> {
     await cli.initialize();
 
     // Execute status command
-    const result = await cli.run(['status'], options);
+    const result = await cli.run(['status'], options as Record<string, unknown>);
 
     if (result.success) {
       logger.info(result.stdout || 'Status retrieved successfully');

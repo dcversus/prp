@@ -5,12 +5,12 @@
  * and brand display as specified in the PRP
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Text, useApp } from 'ink';
+import React, { useState, useEffect } from 'react';
+import { Text } from 'ink';
 import { TUIConfig } from '../types/TUIConfig.js';
 import { createLayerLogger } from '../../shared/logger.js';
 
-const logger = createLayerLogger('intro-sequence');
+const logger = createLayerLogger('tui');
 
 interface IntroSequenceProps {
   config: TUIConfig;
@@ -23,8 +23,7 @@ interface Frame {
 }
 
 export function IntroSequence({ config, onComplete }: IntroSequenceProps) {
-  const { exit } = useApp();
-  const [frame, setFrame] = useState(0);
+    const [frame, setFrame] = useState(0);
   const [frames, setFrames] = useState<Frame[]>([]);
 
   // Generate intro frames
@@ -114,8 +113,6 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
     if (progress < 0.1) {
       const alpha = progress / 0.1;
       const symbol = '♪';
-      const x = centerX;
-      const y = centerY;
 
       // Add radial vignette
       for (let y = 0; y < rows; y++) {

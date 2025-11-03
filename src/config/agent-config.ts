@@ -34,6 +34,14 @@ export interface AgentConfig {
   defaultModel?: string;
   defaultMaxTokens?: number;
   configuration?: Record<string, unknown>;
+
+  // Additional properties accessed by agent-manager
+  roles?: AgentRole[];
+  bestRole?: AgentRole;
+  runCommands?: string[];
+  baseUrl?: string;
+  model?: string;
+  maxTokens?: number;
 }
 
 export type AgentType =
@@ -57,7 +65,8 @@ export type AgentRole =
   | 'robo-documenter'
   | 'orchestrator-agent'
   | 'task-agent'
-  | 'specialist-agent';
+  | 'specialist-agent'
+  | 'conductor';
 
 export type ProviderType =
   | 'anthropic'
@@ -80,6 +89,8 @@ export interface AgentCapabilities {
   canAccessInternet: boolean;
   canAccessFileSystem: boolean;
   canExecuteCommands: boolean;
+  availableTools?: string[];
+  specializations?: string[];
 }
 
 export interface AgentLimits {
@@ -764,7 +775,8 @@ export class AgentConfigManager extends EventEmitter {
       'robo-documenter',
       'orchestrator-agent',
       'task-agent',
-      'specialist-agent'
+      'specialist-agent',
+      'conductor'
     ];
     return validRoles.includes(role as AgentRole);
   }

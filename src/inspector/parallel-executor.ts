@@ -6,19 +6,41 @@
 
 import { EventEmitter } from 'events';
 import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
-import { Signal } from '../shared/types';
+import { Signal, AgentRole } from '../shared/types';
 import {
   SignalProcessor,
   DetailedInspectorResult,
   InspectorError,
-  InspectorMetrics
+  InspectorMetrics,
+  SignalClassification,
+  PreparedContext,
+  InspectorPayload
 } from './types';
 import { LLMExecutionEngine } from './llm-execution-engine';
-import { ContextManager } from './context-manager';
-import { GuidelineAdapter } from './guideline-adapter';
 import { createLayerLogger, HashUtils } from '../shared';
 
 const logger = createLayerLogger('inspector');
+
+/**
+ * Task data interface
+ */
+export interface TaskData {
+  signal: Signal;
+  processor: SignalProcessor;
+  priority: number;
+  timestamp: Date;
+}
+
+/**
+ * Worker task message interface
+ */
+export interface WorkerTaskMessage {
+  type: 'task:execute';
+  taskId: string;
+  data: TaskData;
+  workerId?: number;
+  timestamp: Date;
+}
 
 /**
  * Worker configuration
@@ -62,6 +84,7 @@ export interface WorkerPoolStatus {
   completedTasks: number;
   averageResponseTime: number;
   throughput: number;
+  [key: string]: unknown;
 }
 
 /**
@@ -84,6 +107,7 @@ export interface ParallelExecutionConfig {
  */
 export type WorkerMessageType =
   | 'task:start'
+  | 'task:execute'
   | 'task:progress'
   | 'task:complete'
   | 'task:error'
@@ -99,7 +123,7 @@ export interface WorkerMessage {
   type: WorkerMessageType;
   taskId?: string;
   workerId?: number;
-  data?: any;
+  data?: TaskData | unknown;
   error?: {
     code: string;
     message: string;
@@ -378,7 +402,7 @@ export class ParallelExecutor extends EventEmitter {
    * Get executor status
    */
   getStatus(): WorkerPoolStatus {
-    const activeWorkers = Array.from(this.workers.values()).filter(w => w.status === 'active').length;
+    const activeWorkers = Array.from(this.workers.values()).filter(w => w.status === 'busy').length;
     const busyWorkers = Array.from(this.workers.values()).filter(w => w.status === 'busy').length;
     const idleWorkers = Array.from(this.workers.values()).filter(w => w.status === 'idle').length;
     const failedWorkers = Array.from(this.workers.values()).filter(w => w.status === 'failed').length;
@@ -560,7 +584,7 @@ export class ParallelExecutor extends EventEmitter {
 
       case 'task:complete':
         if (message.taskId && message.data) {
-          this.handleTaskComplete(workerId, message.taskId, message.data);
+          this.handleTaskComplete(workerId, message.taskId, message.data as DetailedInspectorResult);
         }
         break;
 
@@ -628,7 +652,7 @@ export class ParallelExecutor extends EventEmitter {
   /**
    * Handle task error
    */
-  private handleTaskError(workerId: number, taskId: string, error: any): void {
+  private handleTaskError(workerId: number, taskId: string, error: Error | Record<string, unknown>): void {
     const worker = this.workers.get(workerId);
     const task = this.processingTasks.get(taskId);
 
@@ -642,9 +666,9 @@ export class ParallelExecutor extends EventEmitter {
         id: taskId,
         signal: task.signal,
         error: {
-          code: error.code || 'WORKER_ERROR',
-          message: error.message || 'Unknown worker error',
-          stack: error.stack
+          code: (error as Record<string, unknown>).code as string || 'WORKER_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown worker error',
+          stack: error instanceof Error ? error.stack : undefined
         },
         processingTime: Date.now() - task.scheduledAt.getTime(),
         timestamp: new Date(),
@@ -669,14 +693,17 @@ export class ParallelExecutor extends EventEmitter {
         this.processingTasks.delete(taskId);
         this.failedTasks.set(taskId, inspectorError);
         this.updateMetrics({
-          signalId: task.signal.id,
-          classification: {} as any,
-          context: {} as any,
+          id: task.signal.id,
+          signal: task.signal,
+          classification: {} as SignalClassification,
+          context: {} as PreparedContext,
+          payload: {} as InspectorPayload,
           recommendations: [],
           tokenUsage: { input: 0, output: 0, total: 0, cost: 0 },
           confidence: 0,
           processingTime: inspectorError.processingTime,
-          model: ''
+          model: '',
+          timestamp: new Date()
         }, false);
       }
 
@@ -767,7 +794,12 @@ export class ParallelExecutor extends EventEmitter {
       });
 
     } catch (error) {
-      logger.warn('ParallelExecutor', `Error terminating worker ${worker.id}`, error instanceof Error ? error : new Error(String(error)));
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.warn('ParallelExecutor', `Error terminating worker ${worker.id}`, {
+        message: errorObj.message,
+        stack: errorObj.stack,
+        name: errorObj.name
+      });
     }
   }
 
@@ -885,12 +917,7 @@ interface WorkerInfo {
 
 // Worker thread code
 if (!isMainThread) {
-  const { workerId, config } = workerData as { workerId: number; config: ParallelExecutionConfig };
-
-  // Import worker dependencies
-  let llmEngine: LLMExecutionEngine;
-  let contextManager: ContextManager;
-  let guidelineAdapter: GuidelineAdapter;
+  const { workerId } = workerData as { workerId: number; config: ParallelExecutionConfig };
 
   // Initialize worker components
   const initializeWorker = async () => {
@@ -948,8 +975,12 @@ if (!isMainThread) {
   });
 
   // Handle task execution
-  const handleTaskExecution = async (message: any) => {
+  const handleTaskExecution = async (message: WorkerMessage) => {
+    if (message.type !== 'task:execute' || !message.data) {
+      throw new Error('Invalid task message');
+    }
     const { taskId, data } = message;
+    const taskData = data as TaskData;
 
     try {
       // Send task start message
@@ -961,7 +992,7 @@ if (!isMainThread) {
       });
 
       // Execute task (placeholder implementation)
-      const result = await executeTask(data);
+      const result = await executeTask(taskData);
 
       // Send task completion message
       parentPort?.postMessage({
@@ -989,10 +1020,10 @@ if (!isMainThread) {
   };
 
   // Execute task (placeholder implementation)
-  const executeTask = async (data: any): Promise<DetailedInspectorResult> => {
+  const executeTask = async (data: TaskData): Promise<DetailedInspectorResult> => {
     // In a real implementation, this would use the LLM engine and other components
     // For now, return a mock result that matches the DetailedInspectorResult interface
-    const mockPreparedContext: any = {
+    const mockPreparedContext = {
       id: `ctx-${data.signal.id}`,
       signalId: data.signal.id,
       content: { signalContent: '' },
@@ -1001,14 +1032,14 @@ if (!isMainThread) {
       tokenCount: 250
     };
 
-    const mockPayload: any = {
+    const mockPayload = {
       id: `payload-${data.signal.id}`,
       signalId: data.signal.id,
       classification: {
         category: 'test',
         subcategory: 'test',
         priority: 5,
-        agentRole: 'developer' as any,
+        agentRole: 'developer' as AgentRole,
         escalationLevel: 1,
         deadline: new Date(),
         dependencies: [],

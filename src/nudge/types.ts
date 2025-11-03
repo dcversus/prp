@@ -14,6 +14,7 @@ export interface NudgeContext {
   recommendation?: string;
   prp_link?: string;
   timestamp?: string;
+  [key: string]: unknown;
 }
 
 export interface NudgeMetadata {
@@ -60,7 +61,7 @@ export interface NudgeResponse {
 export interface NudgeErrorDetails {
   code: string;
   message: string;
-  details?: any;
+  details?: unknown;
   timestamp: string;
 }
 
@@ -85,7 +86,7 @@ export interface AgentNudgeMessage {
   signal: string;
   prpId: string;
   message: string;
-  context: Record<string, any>;
+  context: Record<string, unknown>;
   urgency: 'high' | 'medium' | 'low';
   expectedResponseType?: 'decision' | 'approval' | 'information';
 }
@@ -117,9 +118,9 @@ export interface NudgeMessageTemplate {
 export class NudgeError extends Error {
   public readonly code: string;
   public readonly timestamp: string;
-  public readonly details?: any;
+  public readonly details?: unknown;
 
-  constructor(code: string, message: string, details?: any) {
+  constructor(code: string, message: string, details?: unknown) {
     super(message);
     this.name = 'NudgeError';
     this.code = code;

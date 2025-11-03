@@ -12,6 +12,7 @@
 ## 🎯 Main Goal
 
 **Automated CI/CD pipeline for existing landing page with documentation sub-pages generation**
+> actual landing should contain docs and all new pages should be rendered with right navigation and unified from index.html desigh; use github ci action do deploy, need update main and run via gh deploy after (or make them auto for prp/.github/workflows/static.yml ensure that task make actual build, rename README.html -> index.html, copy index.html); redesign /docs/Readme, to be start page for documentation, should be well designed promo-like help page in our brand style
 
 Use the existing `/index.html` file as the source for **gh-pages deployment** at **prp.theedgestory.org** and create automated CI/CD pipeline that:
 1. Deploys the landing page automatically to GitHub Pages

@@ -142,9 +142,7 @@ export class EnhancedInspector extends EventEmitter {
     if (config.features.enableParallelProcessing) {
       this.parallelExecutor = new ParallelExecutor(
         config.parallel,
-        this.llmEngine,
-        this.contextManager,
-        this.guidelineAdapter
+        this.llmEngine
       );
     }
 
@@ -436,8 +434,8 @@ export class EnhancedInspector extends EventEmitter {
     metrics: InspectorMetrics;
     queueSize: number;
     cacheSize: number;
-    parallelStatus?: any;
-    contextStats?: any;
+    parallelStatus?: Record<string, unknown>;
+    contextStats?: Record<string, unknown>;
   } {
     return {
       isRunning: this.isRunning,

@@ -828,7 +828,7 @@ export const storageManager = new StorageManager();
 /**
  * Initialize storage system
  */
-export async function initializeStorage(_config?: Partial<StorageConfig>): Promise<StorageManager> {
+export async function initializeStorage(): Promise<StorageManager> {
   await storageManager.initialize();
   return storageManager;
 }

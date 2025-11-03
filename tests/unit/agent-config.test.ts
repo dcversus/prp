@@ -2,8 +2,8 @@
  * Unit Tests: Agent Configuration System
  */
 
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import { AgentConfigManager, AgentConfig, AgentType, AgentRole } from '../../src/config/agent-config';
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { AgentConfigManager, AgentConfig } from '../../src/config/agent-config';
 import { FileUtils } from '../../src/shared';
 import { resolve } from 'path';
 import * as fs from 'fs-extra';
@@ -524,7 +524,7 @@ describe('AgentConfigManager', () => {
       await manager.loadConfig(testConfigPath);
 
       // If no agents exist, create a test one first
-      let agents = manager.getAllAgentConfigs();
+      const agents = manager.getAllAgentConfigs();
       if (agents.length === 0) {
         const testAgent: AgentConfig = {
           id: 'test-toggle',
@@ -629,7 +629,7 @@ describe('AgentConfigManager', () => {
       await manager.loadConfig(testConfigPath);
 
       // If no agents exist, create a test one first
-      let agents = manager.getAllAgentConfigs();
+      const agents = manager.getAllAgentConfigs();
       if (agents.length === 0) {
         const testAgent: AgentConfig = {
           id: 'test-remove',
@@ -938,7 +938,7 @@ describe('AgentConfigManager', () => {
         metadata: {}
       };
 
-      await expect(manager.setAgentConfig(invalidAgent as any)).rejects.toThrow();
+      await expect(manager.setAgentConfig(invalidAgent as unknown)).rejects.toThrow();
     });
   });
 });

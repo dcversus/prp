@@ -12,13 +12,13 @@ import { dirname } from 'path';
 
 // SettingsConfig for backwards compatibility
 export interface SettingsConfig {
-  debug?: any;
-  quality?: any;
-  build?: any;
-  test?: any;
-  ci?: any;
-  development?: any;
-  packageManager?: any;
+  debug?: Record<string, unknown>;
+  quality?: Record<string, unknown>;
+  build?: Record<string, unknown>;
+  test?: Record<string, unknown>;
+  ci?: Record<string, unknown>;
+  development?: Record<string, unknown>;
+  packageManager?: Record<string, unknown>;
 }
 
 export interface PRPConfig extends Record<string, unknown> {
@@ -34,10 +34,10 @@ export interface PRPConfig extends Record<string, unknown> {
   storage: StorageConfig;
   agents: AgentConfig[];
   guidelines: GuidelineConfig[];
-  signals: any;
-  orchestrator: any;
-  scanner: any;
-  inspector: any;
+  signals: Record<string, unknown>;
+  orchestrator: Record<string, unknown>;
+  scanner: Record<string, unknown>;
+  inspector: Record<string, unknown>;
 
   // TUI configuration
   tui: TUIState;

@@ -22,7 +22,8 @@ export function Footer({
     const labels: Record<string, string> = {
       orchestrator: 'o',
       'prp-context': 'i',
-      agent: 'a'
+      agent: 'a',
+      'token-metrics': '4'
     };
 
     const label = labels[screen] || screen;
@@ -96,6 +97,10 @@ export function Footer({
           {' | '}
         </Text>
         {getScreenTab('agent', currentScreen === 'agent')}
+        <Text color={config.colors.muted}>
+          {' | '}
+        </Text>
+        {getScreenTab('token-metrics', currentScreen === 'token-metrics')}
         <Text color={config.colors.muted}>
           {'    '}
         </Text>

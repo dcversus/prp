@@ -7,7 +7,6 @@
 
 import { createAgentNudgeIntegration } from '../nudge/agent-integration';
 import { createLayerLogger } from '../shared';
-import type { NodeJS } from 'node';
 
 const logger = createLayerLogger('orchestrator-scheduler');
 
@@ -73,7 +72,7 @@ export interface TaskResult {
   success: boolean;
   duration: number;
   message?: string;
-  data?: any;
+  data?: unknown;
   error?: Error;
   nextRun?: Date;
 }
@@ -91,7 +90,7 @@ export interface AgentPing {
   tokenUsage?: number;
   currentTasks: string[];
   capabilities: string[];
-  metadata?: any;
+  metadata?: unknown;
 }
 
 /**
@@ -137,7 +136,7 @@ export class SharedScheduler {
   private runningTasks: Map<string, Promise<TaskResult>> = new Map();
   private config: SchedulerConfig;
   private agentNudge: ReturnType<typeof createAgentNudgeIntegration>;
-  private intervals: Map<string, NodeJS.Timeout> = new Map();
+  private intervals: Map<string, ReturnType<typeof setInterval>> = new Map();
   private metrics: {
     tasksExecuted: number;
     tasksSucceeded: number;
@@ -498,9 +497,8 @@ export class SharedScheduler {
 
     } catch (error) {
       group.status = 'failed';
-      logger.error('SharedScheduler', 'Coordination group failed', {
-        groupId: group.id,
-        error: error instanceof Error ? error.message : 'Unknown error'
+      logger.error('SharedScheduler', 'Coordination group failed', error instanceof Error ? error : new Error(error instanceof Error ? error.message : 'Unknown error'), {
+        groupId: group.id
       });
     }
   }
@@ -542,9 +540,8 @@ export class SharedScheduler {
       } else {
         task.metadata.failureCount++;
         this.metrics.tasksFailed++;
-        logger.error('SharedScheduler', 'Task failed', {
+        logger.error('SharedScheduler', 'Task failed', result.error || new Error('Task execution failed'), {
           taskId: task.id,
-          error: result.error?.message,
           runCount: task.metadata.runCount
         });
       }
@@ -560,9 +557,9 @@ export class SharedScheduler {
       this.metrics.tasksFailed++;
       task.metadata.lastError = error instanceof Error ? error.message : 'Unknown error';
 
-      logger.error('SharedScheduler', 'Task execution failed', {
+      logger.error('SharedScheduler', 'Task execution failed', error instanceof Error ? error : new Error('Unknown error'), {
         taskId: task.id,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        errorMessage: error instanceof Error ? error.message : 'Unknown error'
       });
 
       // Schedule retry if applicable
@@ -787,6 +784,7 @@ export class SharedScheduler {
       for (const [groupId, group] of this.coordinationGroups.entries()) {
         if (group.status === 'completed' && group.lastRun &&
             (Date.now() - group.lastRun.getTime()) > 3600000) {
+          logger.debug('SharedScheduler', `Resetting completed coordination group ${groupId} to idle`);
           group.status = 'idle';
           cleanedGroups++;
         }
@@ -866,7 +864,13 @@ export class SharedScheduler {
    */
   getSchedulerStatus(): {
     uptime: number;
-    metrics: typeof this.metrics;
+    metrics: {
+      tasksExecuted: number;
+      tasksSucceeded: number;
+      tasksFailed: number;
+      averageExecutionTime: number;
+      uptime: Date;
+    };
     tasks: {
       total: number;
       enabled: number;

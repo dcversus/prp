@@ -10,8 +10,7 @@ import { Text } from 'ink';
 import { MusicIconProps } from '../types/TUIConfig.js';
 
 export function MusicIcon({ status, animate = true, size = 'normal' }: MusicIconProps) {
-  const [frame, setFrame] = useState(0);
-  const [currentSymbol, setCurrentSymbol] = useState(getInitialSymbol(status));
+    const [currentSymbol, setCurrentSymbol] = useState(getInitialSymbol(status));
 
   // Animation frames for different states
   const getAnimationFrames = (agentStatus: string): string[] => {
@@ -55,12 +54,10 @@ export function MusicIcon({ status, animate = true, size = 'normal' }: MusicIcon
     const fps = status === 'SPAWNING' ? 2 : (status === 'RUNNING' ? 4 : 1);
     const interval = 1000 / fps;
 
+    let frameIndex = 0;
     const timer = setInterval(() => {
-      setFrame((prev) => {
-        const nextFrame = (prev + 1) % frames.length;
-        setCurrentSymbol(frames[nextFrame]);
-        return nextFrame;
-      });
+      frameIndex = (frameIndex + 1) % frames.length;
+      setCurrentSymbol(frames[frameIndex]);
     }, interval);
 
     return () => clearInterval(timer);

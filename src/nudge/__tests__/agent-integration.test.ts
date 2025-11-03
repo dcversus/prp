@@ -9,7 +9,6 @@ import { jest } from '@jest/globals';
 import { AgentNudgeIntegration, createAgentNudgeIntegration } from '../agent-integration.js';
 import { NudgeWrapper } from '../wrapper.js';
 import {
-  AgentNudgeMessage,
   NudgeResponse,
   NudgeMessageTemplate
 } from '../types.js';
@@ -30,7 +29,7 @@ describe('AgentNudgeIntegration', () => {
       sendAgentNudge: jest.fn(),
       getStatus: jest.fn(),
       testSystem: jest.fn()
-    } as any;
+    } as jest.Mocked<NudgeWrapper>;
 
     MockedNudgeWrapper.mockImplementation(() => mockWrapper);
     integration = new AgentNudgeIntegration();
@@ -492,7 +491,7 @@ describe('createAgentNudgeIntegration', () => {
       config: { timeout: 15000 }
     };
 
-    const integration = createAgentNudgeIntegration(options);
+    createAgentNudgeIntegration(options);
     expect(MockedNudgeWrapper).toHaveBeenCalledWith(options, true);
   });
 });

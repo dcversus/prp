@@ -46,7 +46,7 @@ async function handleQualityCommand(options: QualityOptions): Promise<void> {
     await cli.initialize();
 
     // Execute quality command
-    const result = await cli.run(['quality'], options);
+    const result = await cli.run(['quality'], options as Record<string, unknown>);
 
     if (result.success) {
       logger.success('✅ All quality gates passed');

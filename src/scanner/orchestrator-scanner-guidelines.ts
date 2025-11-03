@@ -8,9 +8,22 @@
 import { createAgentNudgeIntegration } from '../nudge/agent-integration';
 import { Signal } from '../shared/types';
 import { createLayerLogger } from '../shared';
-import type { NodeJS } from 'node';
+// import type { NodeJS } from 'node'; // Not needed
 
-const logger = createLayerLogger('orchestrator-scanner');
+// Base interface for signal patterns
+interface SignalPattern {
+  code: string;
+  description?: string;
+  id?: string; // Adding id property to match usage
+  name?: string; // Adding name property to match usage
+  pattern?: RegExp; // Adding pattern property to match usage
+  category?: string; // Adding category property to match usage
+  priority?: number; // Adding priority property to match usage
+  enabled?: boolean; // Adding enabled property to match usage
+  custom?: boolean; // Adding custom property to match usage
+}
+
+const logger = createLayerLogger('scanner');
 
 /**
  * Special signal patterns for orchestrator coordination
@@ -48,6 +61,7 @@ export class OrchestratorScannerGuidelines {
 
     // Pattern for admin communication pending [*A]
     const adminPendingPattern: OrchestratorSignalPattern = {
+      code: '[*A]',
       id: 'admin-pending',
       name: 'Admin Communication Pending',
       pattern: /\[\*A\]/gi,
@@ -63,6 +77,7 @@ export class OrchestratorScannerGuidelines {
 
     // Pattern for admin message read [A*]
     const adminReadPattern: OrchestratorSignalPattern = {
+      code: '[A*]',
       id: 'admin-read',
       name: 'Admin Message Read',
       pattern: /\[A\*\]/gi,
@@ -113,7 +128,7 @@ export class OrchestratorScannerGuidelines {
     for (const signal of signals) {
       try {
         if (this.isOrchestratorSignal(signal)) {
-          const result = await this.handleOrchestratorSignal(signal, source);
+          const result = await this.handleOrchestratorSignal(signal);
 
           if (result.nudgeSent) {
             nudgesSent++;
@@ -163,13 +178,13 @@ export class OrchestratorScannerGuidelines {
   /**
    * Handle orchestrator signal with appropriate action
    */
-  private async handleOrchestratorSignal(signal: Signal, source?: string): Promise<{
+  private async handleOrchestratorSignal(signal: Signal): Promise<{
     nudgeSent: boolean;
     readStatusUpdated: boolean;
     error?: string;
   }> {
     const signalType = signal.type.toLowerCase();
-    const context = signal.data as any;
+    const context = signal.data as Record<string, unknown>;
 
     if (signalType === '*a') {
       // Admin communication pending - immediate nudge
@@ -189,7 +204,7 @@ export class OrchestratorScannerGuidelines {
   /**
    * Handle [*A] Admin Communication Pending signal
    */
-  private async handleAdminPendingSignal(signal: Signal, context: any): Promise<{
+  private async handleAdminPendingSignal(signal: Signal, context: Record<string, unknown>): Promise<{
     nudgeSent: boolean;
     readStatusUpdated: boolean;
     error?: string;
@@ -201,10 +216,9 @@ export class OrchestratorScannerGuidelines {
       });
 
       // Extract PRP and agent information from context
-      const prpId = context.prpId || 'unknown';
-      const agentType = context.agentType || 'unknown-agent';
-      const message = context.message || 'Admin attention required - orchestrator coordination needed';
-      const urgency = 'immediate';
+      const prpId = typeof context.prpId === 'string' ? context.prpId : 'unknown';
+      const agentType = typeof context.agentType === 'string' ? context.agentType : 'unknown-agent';
+      const message = typeof context.message === 'string' ? context.message : 'Admin attention required - orchestrator coordination needed';
 
       // Send immediate nudge to admin
       const nudgeResponse = await this.agentNudge.sendAdminAttention({
@@ -218,7 +232,7 @@ export class OrchestratorScannerGuidelines {
       });
 
       // Track nudge delivery
-      this.trackNudgeDelivery(signal.id, nudgeResponse);
+      this.trackNudgeDelivery(signal.id, nudgeResponse as unknown as Record<string, unknown>);
 
       logger.info('OrchestratorScanner', 'Admin pending nudge sent successfully', {
         signalId: signal.id,
@@ -231,8 +245,10 @@ export class OrchestratorScannerGuidelines {
       };
 
     } catch (error) {
-      const errorMsg = `Failed to send admin pending nudge: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      logger.error('OrchestratorScanner', errorMsg, { signalId: signal.id });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMsg = `Failed to send admin pending nudge: ${errorMessage}`;
+      const errorObj = error instanceof Error ? error : new Error(errorMessage);
+      logger.error('OrchestratorScanner', errorMsg, errorObj);
 
       return {
         nudgeSent: false,
@@ -245,7 +261,7 @@ export class OrchestratorScannerGuidelines {
   /**
    * Handle [A*] Admin Message Read signal
    */
-  private async handleAdminReadSignal(signal: Signal, context: any): Promise<{
+  private async handleAdminReadSignal(signal: Signal, context: Record<string, unknown>): Promise<{
     nudgeSent: boolean;
     readStatusUpdated: boolean;
     error?: string;
@@ -257,8 +273,8 @@ export class OrchestratorScannerGuidelines {
       });
 
       // Update read status tracking
-      const adminId = context.adminId || 'admin';
-      const messageId = context.messageId || signal.id;
+      const adminId = typeof context.adminId === 'string' ? context.adminId : 'admin';
+      const messageId = typeof context.messageId === 'string' ? context.messageId : signal.id;
       const readTimestamp = new Date();
 
       this.messageReadStatus.set(messageId, {
@@ -287,8 +303,10 @@ export class OrchestratorScannerGuidelines {
       };
 
     } catch (error) {
-      const errorMsg = `Failed to update admin read status: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      logger.error('OrchestratorScanner', errorMsg, { signalId: signal.id });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMsg = `Failed to update admin read status: ${errorMessage}`;
+      const errorObj = error instanceof Error ? error : new Error(errorMessage);
+      logger.error('OrchestratorScanner', errorMsg, errorObj);
 
       return {
         nudgeSent: false,
@@ -301,7 +319,7 @@ export class OrchestratorScannerGuidelines {
   /**
    * Track nudge delivery for follow-up
    */
-  private trackNudgeDelivery(signalId: string, nudgeResponse: any): void {
+  private trackNudgeDelivery(signalId: string, nudgeResponse: Record<string, unknown>): void {
     // Store nudge delivery information for follow-up tracking
     this.pendingNudges.set(signalId, [{
       id: signalId,
@@ -359,7 +377,7 @@ export class OrchestratorScannerGuidelines {
     const signalsByPrp = new Map<string, Signal[]>();
 
     allPendingSignals.forEach(signal => {
-      const prpId = signal.data?.prpId || 'unknown';
+      const prpId = typeof signal.data?.prpId === 'string' ? signal.data.prpId : 'unknown';
       if (!signalsByPrp.has(prpId)) {
         signalsByPrp.set(prpId, []);
       }
@@ -415,10 +433,12 @@ Aggregated orchestrator coordination items requiring attention.`;
       });
 
     } catch (error) {
-      logger.error('OrchestratorScanner', 'Failed to send bulk nudge summary', {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorObj = error instanceof Error ? error : new Error(errorMessage);
+      logger.error('OrchestratorScanner', 'Failed to send bulk nudge summary', errorObj, {
         prpId,
         signalCount: signals.length,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: errorMessage
       });
     }
   }
@@ -450,10 +470,10 @@ Aggregated orchestrator coordination items requiring attention.`;
     const byPrp: Record<string, number> = {};
     let oldestPending: Date | undefined;
 
-    this.pendingNudges.forEach((signals, signalId) => {
+    this.pendingNudges.forEach((signals) => {
       signals.forEach(signal => {
         const prpId = signal.data?.prpId || 'unknown';
-        byPrp[prpId] = (byPrp[prpId] || 0) + 1;
+        byPrp[prpId as string] = (byPrp[prpId as string] || 0) + 1;
 
         if (!oldestPending || signal.timestamp < oldestPending) {
           oldestPending = signal.timestamp;
@@ -480,7 +500,9 @@ Aggregated orchestrator coordination items requiring attention.`;
     // Process any remaining pending nudges before shutdown
     if (this.pendingNudges.size > 0) {
       this.processBulkDelivery().catch(error => {
-        logger.error('OrchestratorScanner', 'Failed to process final bulk delivery', { error });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorObj = error instanceof Error ? error : new Error(errorMessage);
+        logger.error('OrchestratorScanner', 'Failed to process final bulk delivery', errorObj, {});
       });
     }
 

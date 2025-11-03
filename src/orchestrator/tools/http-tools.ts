@@ -6,8 +6,8 @@
 
 import { Tool, ToolResult } from '../types';
 import { createLayerLogger } from '../../shared';
-import { https } from 'https';
-import { http } from 'http';
+import * as https from 'https';
+import * as http from 'http';
 import { URL } from 'url';
 
 const logger = createLayerLogger('orchestrator');
@@ -91,7 +91,7 @@ export interface UrlValidationResult {
 }
 
 // Node.js HTTP interfaces
-export interface IncomingMessage {
+export interface HTTPResponse {
   statusCode: number;
   statusMessage: string;
   headers: Record<string, string>;
@@ -164,7 +164,7 @@ export const httpRequestTool: Tool = {
         };
 
         // Set up the request
-        const req = client.request(options, (res: IncomingMessage) => {
+        const req = client.request(options, (res: http.IncomingMessage) => {
           let data = '';
 
           res.on('data', (chunk: unknown) => {
@@ -173,9 +173,9 @@ export const httpRequestTool: Tool = {
 
           res.on('end', () => {
             const result: ToolResult = {
-              success: res.statusCode >= 200 && res.statusCode < 300,
+              success: (res.statusCode ?? 0) >= 200 && (res.statusCode ?? 0) < 300,
               data: {
-                statusCode: res.statusCode,
+                statusCode: res.statusCode ?? 0,
                 statusMessage: res.statusMessage,
                 headers: res.headers,
                 data: data,
@@ -193,7 +193,7 @@ export const httpRequestTool: Tool = {
               if (contentType.includes('application/json')) {
                 (result.data as HttpResponse).jsonData = JSON.parse(data);
               }
-            } catch (error) {
+            } catch {
               // Keep as raw data if JSON parsing fails
             }
 

@@ -13,7 +13,6 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { spawn, ChildProcess } from 'child_process';
 import { promises as fs } from 'fs';
 import { join, resolve } from 'path';
-import { createHash } from 'crypto';
 
 interface CLIExecutionResult {
   exitCode: number;
@@ -30,7 +29,7 @@ describe('🔍 AQA - CLI System Validation', () => {
   let testDir: string;
   let originalCwd: string;
   const cliPath = resolve(__dirname, '../../dist/cli.js');
-  const artifacts: Map<string, any> = new Map();
+  const artifacts: Map<string, Record<string, unknown>> = new Map();
 
   beforeEach(async () => {
     originalCwd = process.cwd();
@@ -134,7 +133,7 @@ describe('🔍 AQA - CLI System Validation', () => {
   async function ensureCLIBuilt(): Promise<void> {
     try {
       await fs.access(cliPath);
-    } catch (error) {
+    } catch {
       // CLI not built, try to build it
       console.log('🔨 Building CLI for AQA validation...');
       await new Promise<void>((resolve, reject) => {
@@ -176,7 +175,7 @@ describe('🔍 AQA - CLI System Validation', () => {
   /**
    * Validate JSON file structure
    */
-  async function validateJSONFile(filePath: string, requiredFields: string[]): Promise<any> {
+  async function validateJSONFile(filePath: string, requiredFields: string[]): Promise<Record<string, unknown>> {
     const content = await validateFile(filePath);
     const json = JSON.parse(content);
 

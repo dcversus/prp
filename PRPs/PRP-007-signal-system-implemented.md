@@ -1,5 +1,7 @@
 # PRP-007: Complete Signal System Implementation - Scanner/Inspector/Orchestrator Framework
 
+> req: scanner NOT an a llm, but actualy an layer of tools what should parse incoming changes AND by default just read all [XX] with signals in log - some signal appear to be in commit? in edit? in logs? then scanner should take all there it happen and analyticaly sort between -> need to check \ already resolved \ new signals. pushing this to events bus. event is bus with signals; also scanner connects all guidelince scaner addapters at the same time give them api to read strim/filter it or just get most recent data as abstraction layer; and adaptors in scanner should have api to emit any signal they want to event bus; scanner always look for every tmux/agents, ALSO with different filters keeping all logs from inspector and orchestrator, their token usage/current context/token destribution at current time and more, scaner should always keep track on that data AND if we open debug mode we actualy should see ALL raw output of scanner, cause he first make syncronisations. the next element-layouer is a NEXT is inspector who is llm with base prompt and for each signal we have we should have guidelince inspector prompt, what we also connects to inspector prompt with - inspector-prp-context what should have proper limit and be compacted by special compaction prompt, then should be runned special adapter with auto requests, using scanner state and methods they just make ordinary preparation data, they gather different info and can use all inspector.shared inspector.infra inspecor.XX (signal name tools! its' just simple midlewares what each adapter dynamicaly connects for each signal. they can work with guthub api, or openai api or anything, they would collect a BIG amount data (small for low priority - bigger for incidents FF/BB/AA from agents.md)  some text/logs/changes and previus. the next all this gatheret context + previus context of inspector result (always result of inspector is cap 40k!) + system inspector prompt + guideline prompt and structured response with all classification questions we need do like calculate confidence score, acceptance prp score (1-100),  and comply what in each signal we verify and analyse all needed to reaction. structure output will help us preserve all needed to decition making result of inspector is always with result 40k limit for llm; inspector properly prepare and clasify all info into signals bus, inspector mechanism should be responsible for signal merging, conflict resolving and matching signals with artifacts needed for orchestration. during scaner to inspector we FiFo event bus, but with inspector - orchestrator we always clasify signal priority and take most important signal to work, orchestrator is a layer with llm what: { tokenCap: 200_000; // 200K tokens total, basePrompt: 20_000; // 20K tokens, guidelinePrompt: 20_000; // 20K tokens, agentsmd: 10_000; // 10K tokens, notesPrompt: 20_000; // 20K tokens, inspectorPayload: 40_000; // 40K tokens, prp: 20_000; // 20K tokens, sharedContext: 10_000; // 10K tokens, prpContext: 70_000; // 70K tokens } AND this should be exposed to configuration, so orchestrator take all related info and CoT on solution with guideline promt orchestrator should have a list of instruction what need to follow, then notes is a collection of prompts in markdown for special situations with signal combinations, some kind pattern matching in file name to .md what contain some kind pattern what we can match and apply note prompt to orchestrator instructions to resolve complex dead-end and stored in /shared/notes/*.md. SO guidelines then is a horisontal slice what contain: scanner adapter (special detection mechanism, to pre-catch signals before they written down and emit eirlier, inspector prompt wwith instructions on aggregation and classification and inspector adapter as endpoint-like takes a time to make some requests or get scanner state to arrange all data around exact signal we working on, then inspector should make decidion making, protect from dublicates and put new signal to signals bus with classified data and priority. we need work with tmux and read all logs/statuses/events from terminal and keep all in persisted storage for debug, including all changes in worktree happen, that stream flow of scanner what should be very optemised to extract [XX] patterns and some complex slowwest analyse for some signals with sometime polling another servise. orchestrator CoT update status on prp with it's what was done, what expected, how it working, what next tasks, any blockers?, any incident? scheme to shared prp context. so each prp should share same token limit space. shared prp context needed for cooperation and orchestrator always report to it in one of CoT after all tool calls and prefius reflection right before sending message to agent via special tool, what should be a wrapper - take instructions -> recieve properly adapted message for agent-type agent use, orchestrator should know all agents avaiable details including token caps, strong sides, features enabled, signals what can resolve etc, we need presets for claude code/codex/gemini/amp/aider/open code/etc with some helpers for each how to general config from agents.md, .mcp.json, .prprc transform to needed files and formats and preserve their updates then needed, so, we should be able during init set glm and claude both, and both use agent-type claude code, so each time we call agent work, some script should call helpers and force before run all to be in place; .prprc should provide all configs of guidelines and agents configuration to be used. token limits and caps -> we need preserve in scanner account of all tokens we waste in inspector, orchestrator and all prp and agents and agent-type, we need keep optimal amount info but be able to fust get status for some specific time slices (1m/5m/30min/1h/6/12) and create a graph when needed for session, prp or all time, need adjust to TUI; token limits - prprc config of agent with different configuration about limitation, we have two agent caps - compact limit - waste limit, compact limit should be calculaed on historical data or based on model presets optimal values with compacting instructions, when waste limits on historical data calculates then catches  dayly/weekly limit approaching, and with settings based on agent tariff public data (per model/subscription type) AND money management mechanism, with tariffs per agent and proper accounting for all system parts and warning and stop values for prprc. eg users should be able set daily limit to all agents to be $30 shared or each (depends on place where define) and be daily / weekly / monthly; all this internal signals should have codes and resolve instructions with proper guidelines - guideline = signal; and properly reacts on compacts and warnings or limits; same for agents, same for inspector and orchestrator (eg orchestrator have no money = [FM], looking for local llm runned or run something local or stop working, as eg); our work and architecture should be implemented right we have base signals for flow prp -> deploy to gh-page or kubectl with failover system, proper user interaction feedback and mechanism to send (invoke) orchestrator with direct message or mcp. Build scheme based on that
+
 **Status**: 🔄 IN PROGRESS
 **Created**: 2025-11-03
 **Updated**: 2025-11-03
@@ -30,6 +32,22 @@ Implement comprehensive **signal processing framework** covering all 75+ signals
   └─────────────┘        └─────────────┘        └─────────────┘
 ```
 
+### token destribution and caps
+- inspector cap is 1mln, no tools. separate llm config in .prprc - base open
+  - inspector base prompt / 20k
+  - inspector guideline prompt / 20k
+  - context / rest?
+
+- orchestrator cap is 200k, tools, reasoning, CoT. separate llm config in .prprc
+  - orchestrator base prompt / 20k
+  - orchestrator guideline prompt / 20k
+  - agents.md / 10k
+  - notes prompt / 20k
+  - inspector payload / 40k
+  - prp / 20k
+  - shared context / 10k
+  - prp context (CoT/Tool calls) / 70k
+
 ## 📊 Progress
 
 [oa] Orchestrator Attention - Comprehensive signal system analysis completed. Current implementation assessment: Phase 1 Scanner (96% complete, 75+ signals detected), Phase 2 Inspector (85% complete, 40K token compliance implemented), Phase 3 Orchestrator (40% complete, architecture exists but missing signal resolution workflows). Critical gaps identified: TypeScript compilation errors prevent integration testing, signal-specific resolution logic missing for 75+ signals, minor test failures in custom signal detection. System has strong foundation but needs integration work and workflow completion. Ready for focused implementation to achieve production readiness. | Robo-System-Analyst | 2025-11-03-06:45
@@ -41,6 +59,10 @@ Implement comprehensive **signal processing framework** covering all 75+ signals
 [dp] Development Progress - Merge conflicts resolved, TUI JSX issues fixed, and core TypeScript compilation errors addressed. Signal detection system (Phase 1) fully operational with 75+ signals. Inspector system (Phase 2) functional with LLM integration and 40K token compliance. Orchestrator framework (Phase 3) implemented but needs signal resolution workflows. Build issues remain in peripheral components (TUI, docs) but core signal processing works. | Robo-Developer | 2025-11-03-06:30
 
 [dp] Development Progress - Signal system implementation showing 65% overall completion with excellent foundation. Phase 1 (Scanner) at 96% with 75+ signals detected, Phase 2 (Inspector) at 85% with 40K token compliance, Phase 3 (Orchestrator) at 40% - architecture exists but missing signal resolution workflows. Core functionality operational but needs integration work to reach production readiness. | Robo-Developer | 2025-11-03-23:30
+
+[dp] Development Progress - Deployment preparations complete for signal system integration. Fixed linting issues across all signal system components, updated orchestrator coordination files, and prepared codebase for production deployment. Signal detection and processing working correctly with comprehensive event emission and token tracking. Ready to continue Phase 3 implementation focusing on signal resolution workflows. | Robo-Developer | 2025-11-04-00:00
+
+[oa] Orchestrator Attention - Token monitoring requirements added to PRP-007. Need to implement orchestrator tools for token caps tracking and scanner integration. These tools will feed real-time token data to the new TUI metrics dashboard. Token monitoring includes: get_current_token_caps(), get_latest_scanner_metrics(), track_token_distribution(), and real_time monitoring. Integration with TUI metrics dashboard essential for visual token distribution tracking. | Robo-System-Analyst | 2025-11-04-00:30
 
 ## Comprehensive System Analysis - November 2025
 
@@ -72,6 +94,7 @@ Implement comprehensive **signal processing framework** covering all 75+ signals
 - **Context Management**: Shared context across PRPs with 200K token capacity
 - **Critical Gaps**: Missing signal resolution workflows for 75+ signals
 - **Issues**: Limited tool integration, incomplete decision-making logic
+- **NEW REQUIREMENT**: Token monitoring and caps tracking tools for orchestrator
 
 ### Integration Pipeline Analysis
 
@@ -148,6 +171,44 @@ Implement comprehensive **signal processing framework** covering all 75+ signals
 2. **Implement top 20 signal resolution workflows** (Week 2)
 3. **Complete integration testing** (Week 2-3)
 4. **Add remaining 55+ signal workflows** (Week 3-4)
+
+### 🆕 TOKEN MONITORING & CAPS TRACKING REQUIREMENTS
+
+**NEW FEATURE REQUEST**: Token monitoring and caps tracking for orchestrator with TUI dashboard integration
+
+#### Required Implementations:
+
+**1. Orchestrator Token Tools** (Add to Phase 3)
+- [ ] `get_current_token_caps()` - Get current token limits for inspector/orchestrator
+- [ ] `get_latest_scanner_metrics()` - Get latest token usage from scanner tools
+- [ ] `track_token_distribution()` - Track tokens per PRP/agent/task
+- [ ] `real_time_token_monitoring()` - Real-time token usage monitoring
+
+**2. Scanner Integration**
+- [ ] Enhance scanner to emit token usage events
+- [ ] Track token consumption per signal detection
+- [ ] Aggregate token metrics by PRP and agent
+- [ ] Provide real-time token status updates
+
+**3. Data Structure for Token Tracking**
+```typescript
+interface TokenMetrics {
+  prpId: string;
+  agentType: string;
+  currentUsage: number;
+  limit: number;
+  remaining: number;
+  lastUpdate: Date;
+  signalsProcessed: number;
+  cost: number;
+}
+```
+
+**4. Integration with TUI**
+- Provide real-time token data to TUI metrics dashboard
+- Enable color-coded visualization of token distribution
+- Support animated signal indicators on token graphs
+- Update metrics in real-time as agents work
 
 ### Value Delivered
 

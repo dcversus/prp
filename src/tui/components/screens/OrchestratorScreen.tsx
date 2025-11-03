@@ -48,11 +48,10 @@ export function OrchestratorScreen({ state, config, terminalLayout }: Orchestrat
   });
 
   // Calculate layout dimensions
-  const { columns, rows, layoutMode } = terminalLayout;
+  const { columns, layoutMode } = terminalLayout;
   const rightPanelWidth = layoutMode === 'compact' ? 0 : 35;
   const mainContentWidth = columns - rightPanelWidth;
-  const _availableHeight = rows - 4; // Account for header/footer and input
-
+  
   // Header with logo and status
   const renderHeader = () => (
     <Box flexDirection="column" marginBottom={1}>

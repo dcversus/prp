@@ -8,7 +8,6 @@
 import { Signal } from '../shared/types';
 import { createAgentNudgeIntegration } from '../nudge/agent-integration';
 import { createLayerLogger } from '../shared';
-import type { NodeJS } from 'node';
 
 const logger = createLayerLogger('signal-aggregation');
 
@@ -70,7 +69,7 @@ export interface SignalBatch {
     lastAttempt?: Date;
     sentAt?: Date;
     error?: string;
-    response?: any;
+    response?: unknown;
   };
 }
 
@@ -96,8 +95,8 @@ export class SignalAggregationSystem {
   private config: BulkDeliveryConfig;
   private signalBatches: Map<string, SignalBatch> = new Map();
   private aggregationBuffers: Map<string, Signal[]> = new Map();
-  private processingTimer?: NodeJS.Timeout;
-  private deliveryTimer?: NodeJS.Timeout;
+  private processingTimer?: ReturnType<typeof setInterval>;
+  private deliveryTimer?: ReturnType<typeof setInterval>;
 
   constructor(config?: Partial<BulkDeliveryConfig>) {
     this.agentNudge = createAgentNudgeIntegration();
@@ -147,8 +146,7 @@ export class SignalAggregationSystem {
         maxWaitTime: 60000, // 1 minute max
         priority: 80,
         conditions: {
-          minPriority: 6,
-          maxPriority: 7
+          minPriority: 7
         },
         enabled: true
       },
@@ -163,8 +161,7 @@ export class SignalAggregationSystem {
         maxWaitTime: 120000, // 2 minutes max
         priority: 60,
         conditions: {
-          minPriority: 4,
-          maxPriority: 5
+          minPriority: 5
         },
         enabled: true
       },
@@ -179,7 +176,7 @@ export class SignalAggregationSystem {
         maxWaitTime: 300000, // 5 minutes max
         priority: 40,
         conditions: {
-          maxPriority: 3
+          minPriority: 3
         },
         enabled: true
       },
@@ -282,7 +279,7 @@ export class SignalAggregationSystem {
       return false;
     }
 
-    if (conditions.maxPriority && signal.priority > conditions.maxPriority) {
+    if (conditions.minPriority && signal.priority > conditions.minPriority) {
       return false;
     }
 
@@ -294,7 +291,7 @@ export class SignalAggregationSystem {
 
     // Check PRP IDs
     const prpId = signal.data?.prpId;
-    if (conditions.prpIds && prpId && !conditions.prpIds.includes(prpId)) {
+    if (conditions.prpIds && prpId && typeof prpId === 'string' && !conditions.prpIds.includes(prpId)) {
       return false;
     }
 
@@ -315,7 +312,7 @@ export class SignalAggregationSystem {
       strategy: rule.strategy,
       ruleId: rule.id,
       signals: [signal],
-      metadata: this.createBatchMetadata([signal], rule.strategy),
+      metadata: this.createBatchMetadata([signal]),
       delivery: {
         status: 'pending',
         attempts: 0,
@@ -410,9 +407,10 @@ export class SignalAggregationSystem {
         return `priority:${signal.priority}`;
       case AggregationStrategy.BY_TYPE:
         return `type:${signal.type}`;
-      case AggregationStrategy.BY_TIME:
+      case AggregationStrategy.BY_TIME: {
         const timeWindow = Math.floor(Date.now() / rule.timeWindow);
         return `time:${timeWindow}`;
+      }
       default:
         return `default:${rule.id}`;
     }
@@ -442,7 +440,7 @@ export class SignalAggregationSystem {
     const buffersToProcess: string[] = [];
 
     // Find buffers that need processing
-    for (const [bufferKey, buffer] of this.aggregationBuffers.entries()) {
+    for (const [bufferKey, buffer] of Array.from(this.aggregationBuffers.entries())) {
       if (buffer.length === 0) {
         continue;
       }
@@ -483,7 +481,7 @@ export class SignalAggregationSystem {
     }
 
     // Clean up empty buffers
-    for (const [bufferKey, buffer] of this.aggregationBuffers.entries()) {
+    for (const [bufferKey, buffer] of Array.from(this.aggregationBuffers.entries())) {
       if (buffer.length === 0) {
         this.aggregationBuffers.delete(bufferKey);
       }
@@ -510,7 +508,7 @@ export class SignalAggregationSystem {
       strategy: rule.strategy,
       ruleId: rule.id,
       signals: [...buffer], // Copy signals
-      metadata: this.createBatchMetadata(buffer, rule.strategy),
+      metadata: this.createBatchMetadata(buffer),
       delivery: {
         status: 'pending',
         attempts: 0,
@@ -549,7 +547,7 @@ export class SignalAggregationSystem {
   /**
    * Create batch metadata
    */
-  private createBatchMetadata(signals: Signal[], strategy: AggregationStrategy): SignalBatch['metadata'] {
+  private createBatchMetadata(signals: Signal[]): SignalBatch['metadata'] {
     const prpIds = [...new Set(signals.map(s => s.data?.prpId).filter(Boolean))];
     const agentTypes = [...new Set(signals.map(s => s.metadata?.agent).filter(Boolean))];
     const signalTypes = [...new Set(signals.map(s => s.type))];
@@ -565,8 +563,8 @@ export class SignalAggregationSystem {
     );
 
     // Calculate escalation level
-    const maxPriority = Math.max(...priorities);
-    const escalationLevel = maxPriority >= 8 ? 3 : maxPriority >= 6 ? 2 : maxPriority >= 4 ? 1 : 0;
+    const minPriority = Math.max(...priorities);
+    const escalationLevel = minPriority >= 8 ? 3 : minPriority >= 6 ? 2 : minPriority >= 4 ? 1 : 0;
 
     return {
       createdAt: new Date(),
@@ -620,10 +618,9 @@ export class SignalAggregationSystem {
 
       if (batch.delivery.attempts >= batch.delivery.maxAttempts) {
         batch.delivery.status = 'failed';
-        logger.error('SignalAggregation', 'Batch delivery failed permanently', {
+        logger.error('SignalAggregation', 'Batch delivery failed permanently', error instanceof Error ? error : new Error(errorMessage), {
           batchId: batch.id,
-          attempts: batch.delivery.attempts,
-          error: errorMessage
+          attempts: batch.delivery.attempts
         });
       } else {
         batch.delivery.status = 'pending';
@@ -645,7 +642,7 @@ export class SignalAggregationSystem {
   /**
    * Send batch to nudge system
    */
-  private async sendBatchToNudge(batch: SignalBatch): Promise<any> {
+  private async sendBatchToNudge(batch: SignalBatch): Promise<unknown> {
     const message = this.formatBatchMessage(batch);
     const prpId = batch.metadata.prpIds[0] || 'BATCH-SIGNALS';
     const urgency = this.mapEscalationToUrgency(batch.metadata.escalationLevel);
@@ -698,7 +695,7 @@ export class SignalAggregationSystem {
       signalsByType.get(signal.type)!.push(signal);
     });
 
-    for (const [signalType, signals] of signalsByType.entries()) {
+    for (const [signalType, signals] of Array.from(signalsByType.entries())) {
       message += `\n🔸 ${signalType} (${signals.length} signals):\n`;
       signals.forEach((signal, index) => {
         const prpId = signal.data?.prpId || 'unknown';
@@ -732,7 +729,7 @@ export class SignalAggregationSystem {
     const batchesToProcess: SignalBatch[] = [];
 
     // Find batches that need processing
-    for (const batch of this.signalBatches.values()) {
+    for (const batch of Array.from(this.signalBatches.values())) {
       if (batch.delivery.status === 'pending') {
         batchesToProcess.push(batch);
       } else if (batch.delivery.status === 'sent' &&
@@ -759,7 +756,7 @@ export class SignalAggregationSystem {
     const cutoffTime = Date.now() - this.config.expirationTime * 2; // Keep for 2x expiration time
     let cleanedCount = 0;
 
-    for (const [batchId, batch] of this.signalBatches.entries()) {
+    for (const [batchId, batch] of Array.from(this.signalBatches.entries())) {
       const createdAt = batch.metadata.createdAt.getTime();
       if (createdAt < cutoffTime &&
           (batch.delivery.status === 'sent' || batch.delivery.status === 'failed')) {

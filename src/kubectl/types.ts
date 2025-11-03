@@ -119,7 +119,30 @@ export const SECRET_VALIDATION_PATTERNS = {
   // Pattern for API keys (alphanumeric, 20+ chars)
   API_KEY: /^[A-Za-z0-9]{20,}$/,
   // Pattern for generic secrets (at least 16 chars, mix of alphanumeric and special chars)
-  GENERIC: /^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]{16,}$/
+  GENERIC: /^[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]{16,}$/
 } as const;
 
 export type SecretFormat = keyof typeof SECRET_VALIDATION_PATTERNS;
+
+/**
+ * Kubernetes cluster context information
+ */
+export interface KubectlContext {
+  name: string;
+  cluster: string;
+  user: string;
+  namespace?: string;
+  context?: {
+    cluster: string;
+    user: string;
+    namespace?: string;
+  };
+}
+
+/**
+ * Kubernetes cluster information from kubectl config
+ */
+export interface KubectlClusterInfo {
+  contexts: KubectlContext[];
+  'current-context': string;
+}

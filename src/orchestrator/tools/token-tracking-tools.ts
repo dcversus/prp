@@ -238,7 +238,7 @@ export const setTokenLimitsTool: Tool = {
       };
 
       // Store limits in persistent storage
-      await storeTokenLimits(limits);
+      await storeTokenLimits();
 
       logger.info('set_token_limits', `Set token limits for ${typedParams.agentId || typedParams.agentType || 'default'}`);
 
@@ -341,7 +341,7 @@ export const getTokenEfficiencyTool: Tool = {
   execute: async (params: unknown) => {
     const typedParams = params as AnalyzeTokenEfficiencyParams;
     try {
-      const efficiencyData = await analyzeTokenEfficiency(typedParams);
+      const efficiencyData = await analyzeTokenEfficiency();
 
       const typedEfficiencyData = efficiencyData as TokenEfficiencyData;
       logger.info('analyze_token_efficiency', `Analyzed token efficiency for ${typedEfficiencyData.analyzedAgents || 0} agents`);
@@ -420,7 +420,7 @@ export const configureTokenAlertsTool: Tool = {
       };
 
       // Store alert configuration
-      await storeAlertConfiguration(alertConfig);
+      await storeAlertConfiguration();
 
       logger.info('configure_token_alerts', `Configured ${typedParams.alertType} alert for ${typedParams.agentId || 'default'}`);
 
@@ -508,7 +508,7 @@ async function collectTokenUsageData(params: GetTokenUsageParams): Promise<Token
   return mockData;
 }
 
-async function storeTokenLimits(_limits: unknown): Promise<void> {
+async function storeTokenLimits(): Promise<void> {
   // This would store limits in persistent storage (database, file system, etc.)
   // Implementation depends on chosen storage mechanism
 }
@@ -561,7 +561,7 @@ function calculateProjections(historicalData: HistoricalTokenUsage, params: GetT
   };
 }
 
-async function analyzeTokenEfficiency(_params: AnalyzeTokenEfficiencyParams): Promise<TokenEfficiencyData> {
+async function analyzeTokenEfficiency(): Promise<TokenEfficiencyData> {
   // This would analyze actual token efficiency data
   return {
     analyzedAgents: 2,
@@ -600,7 +600,7 @@ async function analyzeTokenEfficiency(_params: AnalyzeTokenEfficiencyParams): Pr
   };
 }
 
-async function storeAlertConfiguration(_alertConfig: unknown): Promise<void> {
+async function storeAlertConfiguration(): Promise<void> {
   // This would store alert configuration in persistent storage
 }
 

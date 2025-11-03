@@ -46,7 +46,7 @@ async function handleConfigCommand(options: ConfigOptions): Promise<void> {
     await cli.initialize();
 
     // Execute config command
-    const result = await cli.run(['config'], options);
+    const result = await cli.run(['config'], options as Record<string, unknown>);
 
     if (result.success) {
       logger.info(result.stdout || 'Configuration operation completed successfully');

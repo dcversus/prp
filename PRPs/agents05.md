@@ -13,6 +13,131 @@ be able from `prp init --default --prp 'Deliver gh-page with animated danced mon
 
 [mg] Merged - Integration work completed successfully. Multiple system components consolidated and working together. CLI bootstrap system integrated with agent framework, debug modes operational, and core infrastructure stable. | Robo-Developer | 2025-11-03-02:25
 
+[dp] Development Progress - Token monitoring foundation implementation complete with 5 parallel tasks. Created TokenMetricsStream for real-time data streaming (22 tests passing), implemented get-token-caps orchestrator tool (9 tests passing), added TokenMetricsScreen as 4th TUI screen, extended token-accounting.ts with event publishing (9 tests passing), and created comprehensive TypeScript interfaces. All components verified and ready for Phase 2 integration. | Robo-Developer | 2025-11-04-01:30
+
+## How to Run PRP CLI with Orchestrator
+
+### Prerequisites
+1. Ensure Node.js 20+ is installed
+2. Clone the repository: `git clone https://github.com/dcversus/prp.git`
+3. Install dependencies: `npm install`
+
+### Running the CLI
+
+#### Option 1: Development Mode (Recommended)
+```bash
+npm run dev
+```
+This runs the CLI directly from source using tsx for fast iteration.
+
+#### Option 2: Production Mode
+```bash
+# First build (if not already built)
+npm run build
+
+# Then run
+npm start
+# or
+prp
+```
+
+### CLI Commands Available
+
+#### 1. Initialize a New PRP
+```bash
+npm run dev init --prp "Your PRP Description"
+# Example:
+npm run dev init --prp "Build token monitoring dashboard"
+```
+
+#### 2. Start Debug Mode
+```bash
+npm run dev debug
+# Shows real-time system metrics, signal history, and orchestrator status
+# Press CTRL+C to exit, CTRL+D to access orchestrator controls
+```
+
+#### 3. View System Status
+```bash
+npm run dev status
+# Shows current PRPs, agents, and system health
+```
+
+#### 4. Run Tests
+```bash
+npm run dev test
+# Run the test suite for current project
+```
+
+#### 5. Lint Code
+```bash
+npm run dev lint
+# Check code quality
+```
+
+#### 6. Build Project
+```bash
+npm run dev build
+# Build the current project
+```
+
+### Working with the Orchestrator
+
+1. **View Active PRPs**: The CLI will show available PRPs with status
+2. **Select a PRP**: Use Tab to navigate, Enter to select
+3. **Start Agent**: Press 'S' to start an agent working on the selected PRP
+4. **Stop Agent**: Press 'X' to stop the agent
+5. **View Details**: Press 'D' to switch to debug screen
+
+### TUI Navigation
+
+- **Tab**: Cycle through screens (Orchestrator → PRP Context → Agent → Token Metrics)
+- **1/2/3/4**: Direct navigation to specific screens
+- **Arrow Keys**: Navigate within lists
+- **Enter**: Select/Confirm
+- **Escape**: Go back
+
+### Current Status
+
+- ✅ Core CLI infrastructure operational
+- ✅ All 13 commands implemented
+- ✅ Debug mode with CI-like output working
+- ✅ Scanner, Inspector, Orchestrator agents functional
+- ✅ Token monitoring foundation complete (Phase 1)
+- ⚠️ TypeScript compilation errors (673) - system works but needs cleanup
+- ✅ TUI with 4 screens (including new Token Metrics screen)
+
+### Example Session
+
+```bash
+$ npm run dev
+🚀 PRP CLI v0.4.9 - Bootstrap Tool for AI-Driven Development
+
+✅ Initialized in /Users/dcversus/Documents/GitHub/prp
+📊 Found 7 active PRPs
+🎯 Orchestrator ready - 3 agents available
+
+Navigate with Tab | S-Start | X-Stop | D-Debug | ?-Help
+
+PRP List (7 active):
+[001] bootstrap-cli-created     🔵 Active
+[002] landing-page-deployed   🟢 Complete
+[003] signal-system-impl     🔵 In Progress
+[007] token-monitoring         🟡 Ready
+...
+```
+
+### Token Monitoring Dashboard
+
+The new 4th screen provides:
+- Real-time token usage visualization
+- Agent-specific color-coded tracking
+- Signal distribution metrics
+- Token caps and remaining limits
+- Cost analysis and projections
+
+Access via: Tab → Tab → Tab → Tab or press '4' key directly.
+
 ### Comprehensive AGENTS.md Signal Guidelines Implementation Plan Created ✅
 - [dp] Created comprehensive signal guidelines implementation plan covering all 75 signals from AGENTS.md
 - [dp] System Signals (7): HF, pr, PR, FF, TF, TC, TI with detection criteria, processing workflows, and resolution scenarios

@@ -4,7 +4,6 @@ import * as path from 'path';
 import { format } from 'util';
 
 import type { LogLevel } from '../types';
-import type { NodeJS } from 'node';
 
 /**
  * Logger utility for consistent logging across the CLI
@@ -66,42 +65,42 @@ export class Logger {
   /**
    * Error level logging
    */
-  error(message: string, ...args: any[]): void {
+  error(message: string, ...args: unknown[]): void {
     this.log('error', message, ...args);
   }
 
   /**
    * Warning level logging
    */
-  warn(message: string, ...args: any[]): void {
+  warn(message: string, ...args: unknown[]): void {
     this.log('warn', message, ...args);
   }
 
   /**
    * Info level logging
    */
-  info(message: string, ...args: any[]): void {
+  info(message: string, ...args: unknown[]): void {
     this.log('info', message, ...args);
   }
 
   /**
    * Debug level logging
    */
-  debug(message: string, ...args: any[]): void {
+  debug(message: string, ...args: unknown[]): void {
     this.log('debug', message, ...args);
   }
 
   /**
    * Verbose level logging
    */
-  verbose(message: string, ...args: any[]): void {
+  verbose(message: string, ...args: unknown[]): void {
     this.log('verbose', message, ...args);
   }
 
   /**
    * Success message (info level with green color)
    */
-  success(message: string, ...args: any[]): void {
+  success(message: string, ...args: unknown[]): void {
     const coloredMessage = this.useColors ? chalk.green(message) : message;
     this.log('info', coloredMessage, ...args);
   }
@@ -109,7 +108,7 @@ export class Logger {
   /**
    * Warning message with yellow color
    */
-  warning(message: string, ...args: any[]): void {
+  warning(message: string, ...args: unknown[]): void {
     const coloredMessage = this.useColors ? chalk.yellow(message) : message;
     this.log('warn', coloredMessage, ...args);
   }
@@ -117,7 +116,7 @@ export class Logger {
   /**
    * Error message with red color
    */
-  failure(message: string, ...args: any[]): void {
+  failure(message: string, ...args: unknown[]): void {
     const coloredMessage = this.useColors ? chalk.red(message) : message;
     this.log('error', coloredMessage, ...args);
   }
@@ -125,7 +124,7 @@ export class Logger {
   /**
    * Info message with blue color
    */
-  highlight(message: string, ...args: any[]): void {
+  highlight(message: string, ...args: unknown[]): void {
     const coloredMessage = this.useColors ? chalk.blue(message) : message;
     this.log('info', coloredMessage, ...args);
   }
@@ -133,7 +132,7 @@ export class Logger {
   /**
    * Dimmed message
    */
-  dim(message: string, ...args: any[]): void {
+  dim(message: string, ...args: unknown[]): void {
     const coloredMessage = this.useColors ? chalk.dim(message) : message;
     this.log('info', coloredMessage, ...args);
   }
@@ -141,7 +140,7 @@ export class Logger {
   /**
    * Bold message
    */
-  bold(message: string, ...args: any[]): void {
+  bold(message: string, ...args: unknown[]): void {
     const coloredMessage = this.useColors ? chalk.bold(message) : message;
     this.log('info', coloredMessage, ...args);
   }
@@ -160,7 +159,7 @@ export class Logger {
   /**
    * Core logging method
    */
-  private log(level: LogLevel, message: string, ...args: any[]): void {
+  private log(level: LogLevel, message: string, ...args: unknown[]): void {
     if (!this.shouldLog(level)) {
       return;
     }
@@ -284,7 +283,7 @@ export class Logger {
 
     // Override log methods to add prefix
     const originalLog = childLogger.log.bind(childLogger);
-    childLogger.log = (level: LogLevel, message: string, ...args: any[]) => {
+    childLogger.log = (level: LogLevel, message: string, ...args: unknown[]) => {
       const prefixedMessage = `[${prefix}] ${message}`;
       originalLog(level, prefixedMessage, ...args);
     };

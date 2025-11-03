@@ -62,7 +62,7 @@ describe('Phase 2 Inspector Integration Tests', () => {
       maxTokens: 40000,
       costPerToken: 0.000002,
       execute: jest.fn()
-    } as any;
+    } as LLMProvider;
 
     // Create mock response
     mockLLMProvider.execute.mockResolvedValue({
@@ -573,13 +573,32 @@ describe('Phase 2 Inspector Integration Tests', () => {
   describe('Feature Flags', () => {
     it('should respect parallel processing flag', async () => {
       const config: EnhancedInspectorConfig = {
-        inspector: {} as any,
+        inspector: {
+          batchSize: 10,
+          maxSignals: 100,
+          timeout: 30000,
+          retryAttempts: 3
+        },
         llm: {
           provider: mockLLMProvider,
-          tokenLimits: {} as any
+          tokenLimits: {
+            maxInputTokens: 1000000,
+            maxOutputTokens: 40000,
+            dailyLimit: 1000000,
+            costPerInputToken: 0.000002,
+            costPerOutputToken: 0.000002
+          }
         },
-        context: {} as any,
-        parallel: {} as any,
+        context: {
+          windowSize: 100,
+          compressionThreshold: 10000,
+          semanticThreshold: 0.8
+        },
+        parallel: {
+          enabled: false,
+          maxWorkers: 1,
+          batchSize: 10
+        },
         features: {
           enableSemanticSummarization: true,
           enableParallelProcessing: false, // Disabled

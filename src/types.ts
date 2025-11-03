@@ -104,7 +104,7 @@ export interface TemplateEngine {
 export interface CommandResult {
   success: boolean;
   message?: string;
-  data?: any;
+  data?: Record<string, unknown>;
   error?: Error;
   exitCode?: number;
   stdout?: string;
@@ -125,7 +125,7 @@ export interface ValidationResult {
 export interface CLIEvent {
   type: string;
   timestamp: Date;
-  data?: any;
+  data?: Record<string, unknown>;
   source?: string;
 }
 
@@ -146,7 +146,7 @@ export interface DebugSettings {
 export interface QualitySettings {
   linting: {
     enabled: boolean;
-    rules: Record<string, any>;
+    rules: Record<string, unknown>;
     fixOnSave: boolean;
   };
   testing: {
@@ -157,7 +157,7 @@ export interface QualitySettings {
   security: {
     enabled: boolean;
     tools: string[];
-    rules: Record<string, any>;
+    rules: Record<string, unknown>;
   };
   performance: {
     enabled: boolean;

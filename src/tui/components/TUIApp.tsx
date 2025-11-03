@@ -12,13 +12,14 @@ import { IntroSequence } from './IntroSequence.js';
 import { OrchestratorScreen } from './screens/OrchestratorScreen.js';
 import { PRPContextScreen } from './screens/PRPContextScreen.js';
 import { AgentScreen } from './screens/AgentScreen.js';
+import { TokenMetricsScreen } from './screens/TokenMetricsScreen.js';
 import { DebugScreen } from './screens/DebugScreen.js';
 import { Footer } from './Footer.js';
 import { InputBar } from './InputBar.js';
 import { getTerminalLayout } from '../config/TUIConfig.js';
 import { createLayerLogger } from '../../shared/logger.js';
 
-const logger = createLayerLogger('tui-app');
+const logger = createLayerLogger('tui');
 
 interface TUIAppProps {
   config: TUIConfig;
@@ -50,15 +51,17 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
 
   // Setup event listeners
   useEffect(() => {
-    const handleTerminalResize = (event: TerminalResizeEvent) => {
+    const handleTerminalResize = (...args: unknown[]) => {
+      const event = args[0] as TerminalResizeEvent;
       setState(prev => ({
         ...prev,
         terminalLayout: getTerminalLayout(config)
       }));
-      logger.debug('resize', 'Terminal resized', event);
+      logger.debug('resize', 'Terminal resized', event as unknown as Record<string, unknown>);
     };
 
-    const handleSignalUpdate = (event: SignalUpdateEvent) => {
+    const handleSignalUpdate = (...args: unknown[]) => {
+      const event = args[0] as SignalUpdateEvent;
       setState(prev => {
         const prp = prev.prps.get(event.prpName);
         if (!prp) return prev;
@@ -80,7 +83,8 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
       });
     };
 
-    const handleAgentUpdate = (event: AgentUpdateEvent) => {
+    const handleAgentUpdate = (...args: unknown[]) => {
+      const event = args[0] as AgentUpdateEvent;
       setState(prev => {
         const existingAgent = prev.agents.get(event.agentId);
         const updatedAgent = { ...existingAgent, ...event.update, lastUpdate: new Date() } as AgentCard;
@@ -91,14 +95,16 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
       });
     };
 
-    const handleHistoryUpdate = (event: HistoryUpdateEvent) => {
+    const handleHistoryUpdate = (...args: unknown[]) => {
+      const event = args[0] as HistoryUpdateEvent;
       setState(prev => ({
         ...prev,
         history: [...prev.history.slice(-50), event.item] // Keep last 50 items
       }));
     };
 
-    const handleIntroComplete = (event: IntroCompleteEvent) => {
+    const handleIntroComplete = (...args: unknown[]) => {
+      const event = args[0] as IntroCompleteEvent;
       setIntroComplete(true);
       setState(prev => ({ ...prev, introPlaying: false }));
       logger.info('intro', 'Intro sequence completed', { success: event.success });
@@ -128,7 +134,7 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
       switch (key) {
         case '\t': // Tab
           setState(prev => {
-            const screens: ScreenType[] = ['orchestrator', 'prp-context', 'agent'];
+            const screens: ScreenType[] = ['orchestrator', 'prp-context', 'agent', 'token-metrics'];
             const currentIndex = screens.indexOf(prev.currentScreen);
             const nextScreen = screens[(currentIndex + 1) % screens.length];
             return { ...prev, currentScreen: nextScreen };
@@ -140,6 +146,10 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
           setState(prev => ({ ...prev, debugMode: !prev.debugMode }));
           break;
 
+        case '4': // 4 key - direct navigation to token metrics
+          setState(prev => ({ ...prev, currentScreen: 'token-metrics' }));
+          break;
+
         case 'q': // Q key
         case 'Q':
         case '\u0003': // Ctrl+C
@@ -149,7 +159,7 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
         case '\u0013': // Ctrl+S
           // Handle submit
           if (state.input.value.trim()) {
-            eventBus.emit('input.submit', { value: state.input.value });
+            eventBus.emit('input.submit', { value: state.input.value } as Record<string, unknown>);
             setState(prev => ({
               ...prev,
               input: { ...prev.input, value: '', isSubmitting: false }
@@ -314,6 +324,12 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
           state={state}
           config={config}
           terminalLayout={terminalLayout}
+        />
+      )}
+      {currentScreen === 'token-metrics' && (
+        <TokenMetricsScreen
+          isActive={true}
+          onNavigate={(screen) => setState(prev => ({ ...prev, currentScreen: screen as ScreenType }))}
         />
       )}
       {currentScreen === 'debug' && (

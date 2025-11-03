@@ -1,4 +1,6 @@
-// @ts-ignore
+/* global document, console */
+
+// @ts-expect-error - React DOM types may not be available in this context
 import { createRoot } from 'react-dom/client';
 import DocumentationLayout from './components/DocumentationLayout.js';
 

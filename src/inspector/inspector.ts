@@ -16,7 +16,8 @@ import {
   ModelResponse,
   InspectorMetrics,
   AgentStatusInfo,
-  SharedNoteInfo
+  SharedNoteInfo,
+  JSONSchema
 } from './types';
 import {
   Signal,
@@ -89,7 +90,7 @@ export class Inspector extends EventEmitter {
       },
       structuredOutput: {
         enabled: true,
-        schema: this.getStructuredOutputSchema() as Record<string, unknown>,
+        schema: this.getStructuredOutputSchema(),
         validation: true,
         fallbackToText: true
       }
@@ -332,12 +333,12 @@ export class Inspector extends EventEmitter {
         classification: inspectorClassification,
         context: inspectorPreparedContext,
         payload: inspectorPayload,
-        recommendations: Array.isArray(recommendations) ? recommendations.map((rec) => ({
+        recommendations: Array.isArray(recommendations) ? recommendations.map((rec: Recommendation) => ({
           type: rec.type || 'unknown',
           priority: rec.priority?.toString() || 'medium',
-          description: rec.reasoning || rec.description || 'No description available',
-          estimatedTime: rec.estimatedTime || 30,
-          prerequisites: rec.prerequisites || []
+          description: rec.reasoning || 'No description available',
+          estimatedTime: 30,
+          prerequisites: []
         })) : [],
         processingTime: Date.now() - startTime,
         tokenUsage: {
@@ -393,7 +394,17 @@ export class Inspector extends EventEmitter {
         error: {
           code: 'PROCESSING_ERROR',
           message: error instanceof Error ? error.message : String(error),
-          details: error,
+          details: error instanceof Error ? {
+            type: 'error',
+            timestamp: new Date(),
+            source: 'inspector',
+            payload: { message: error.message, name: error.name }
+          } : {
+            type: 'error',
+            timestamp: new Date(),
+            source: 'inspector',
+            payload: { message: String(error) }
+          },
           stack: error instanceof Error ? error.stack : undefined
         },
         processingTime: Date.now() - startTime,
@@ -430,7 +441,7 @@ export class Inspector extends EventEmitter {
   private async prepareProcessingContext(signal: Signal): Promise<ProcessingContext> {
     const context: ProcessingContext = {
       signalId: signal.id,
-      relatedSignals: await this.getRelatedSignals(signal),
+      relatedSignals: await this.getRelatedSignals(),
       activePRPs: await this.getActivePRPs(),
       recentActivity: await this.getRecentActivity(),
       tokenStatus: await this.getTokenStatus(),
@@ -438,7 +449,7 @@ export class Inspector extends EventEmitter {
       sharedNotes: await this.getSharedNotes(),
       environment: await this.getEnvironmentInfo(),
       guidelineContext: await this.getGuidelineContext(),
-      historicalData: await this.getHistoricalData(signal)
+      historicalData: await this.getHistoricalData()
     };
 
     return context;
@@ -476,7 +487,7 @@ export class Inspector extends EventEmitter {
         category: 'general',
         urgency: 'medium',
         requiresAction: true,
-        suggestedRole: 'developer',
+        suggestedRole: 'robo-developer',
         confidence: 0.5
       };
     }
@@ -492,7 +503,7 @@ export class Inspector extends EventEmitter {
     return {
       summary: this.generateContextSummary(classification, context),
       activePRPs: context.activePRPs,
-      blockedItems: this.identifyBlockedItems(context),
+      blockedItems: this.identifyBlockedItems(),
       recentActivity: context.recentActivity.slice(0, 10), // Last 10 activities
       tokenStatus: {
           ...context.tokenStatus,
@@ -509,8 +520,17 @@ export class Inspector extends EventEmitter {
           limit: 10000 // Default limit
         },
         capabilities: {
-          ...agent.capabilities,
-          supportedModels: [] // Add missing required property
+          supportsTools: agent.capabilities.supportsTools,
+          supportsImages: agent.capabilities.supportsImages,
+          supportsSubAgents: agent.capabilities.supportsSubAgents,
+          supportsParallel: agent.capabilities.supportsParallel,
+          supportsCodeExecution: false,
+          maxContextLength: agent.capabilities.maxContextLength,
+          supportedModels: [],
+          supportedFileTypes: [],
+          canAccessInternet: false,
+          canAccessFileSystem: false,
+          canExecuteCommands: false
         }
       })),
       sharedNotes: context.sharedNotes.filter(note =>
@@ -537,12 +557,12 @@ export class Inspector extends EventEmitter {
       recommendations: [], // Will be filled in next step
       context: preparedContext,
       estimatedTokens: TokenCounter.estimateTokensFromObject(preparedContext),
-      priority: this.calculatePayloadPriority(classification, fullContext)
+      priority: this.calculatePayloadPriority(classification)
     };
 
     // Ensure payload is within size limits
     if (payload.estimatedTokens > this.config.maxTokens) {
-      payload.context = this.compressContext(payload.context, this.config.maxTokens);
+      payload.context = this.compressContext(payload.context);
       payload.estimatedTokens = TokenCounter.estimateTokensFromObject(payload.context);
     }
 
@@ -589,7 +609,7 @@ export class Inspector extends EventEmitter {
     try {
       // This would integrate with the actual model API
       // For now, simulate a response
-      const response = await this.simulateModelCall(prompt, options);
+      const response = await this.simulateModelCall(prompt);
 
       const modelResponse = response as unknown as InspectorModelResponse;
     return {
@@ -621,7 +641,7 @@ export class Inspector extends EventEmitter {
   /**
    * Simulate model call (placeholder for actual implementation)
    */
-  private async simulateModelCall(prompt: string, _options: Record<string, unknown>): Promise<Record<string, unknown>> {
+  private async simulateModelCall(prompt: string): Promise<Record<string, unknown>> {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 200));
 
@@ -635,7 +655,7 @@ export class Inspector extends EventEmitter {
           category: 'development',
           urgency: 'medium',
           requiresAction: true,
-          suggestedRole: 'developer',
+          suggestedRole: 'robo-developer',
           confidence: 0.85,
           reasoning: 'Signal indicates development task requiring attention'
         }),
@@ -653,7 +673,7 @@ export class Inspector extends EventEmitter {
         content: JSON.stringify([
           {
             type: 'spawn_agent',
-            target: 'developer',
+            target: 'robo-developer',
             payload: { task: 'address the identified issue' },
             reasoning: 'Developer agent needed to resolve the technical issue',
             priority: 7
@@ -683,7 +703,7 @@ export class Inspector extends EventEmitter {
   /**
    * Helper methods for data retrieval
    */
-  private async getRelatedSignals(_signal: Signal): Promise<Signal[]> {
+  private async getRelatedSignals(): Promise<Signal[]> {
     // Implementation would query storage for related signals
     return [];
   }
@@ -787,7 +807,7 @@ export class Inspector extends EventEmitter {
     };
   }
 
-  private async getHistoricalData(_signal: Signal): Promise<import('./types').HistoricalData> {
+  private async getHistoricalData(): Promise<import('./types').HistoricalData> {
     return {
       similarSignals: [],
       agentPerformance: {},
@@ -870,7 +890,7 @@ Focus on accuracy and provide clear reasoning for your classification.`;
         category: 'general',
         urgency: 'medium',
         requiresAction: true,
-        suggestedRole: 'developer',
+        suggestedRole: 'robo-developer',
         confidence: 0.3
       };
     }
@@ -893,17 +913,17 @@ Focus on accuracy and provide clear reasoning for your classification.`;
     return `Signal ${classification.signal.type} (${classification.category}) requires ${classification.urgency} attention. ${context.activePRPs.length} active PRPs, ${context.agentStatus.length} agents available.`;
   }
 
-  private identifyBlockedItems(_context: ProcessingContext): string[] {
+  private identifyBlockedItems(): string[] {
     // Implementation would identify blocked items from context
     return [];
   }
 
-  private calculatePayloadPriority(classification: SignalClassification, _context: ProcessingContext): number {
+  private calculatePayloadPriority(classification: SignalClassification): number {
     const urgencyMap = { low: 1, medium: 5, high: 8, critical: 10 };
     return urgencyMap[classification.urgency as keyof typeof urgencyMap] || 5;
   }
 
-  private compressContext(context: PreparedContext, _maxTokens: number): PreparedContext {
+  private compressContext(context: PreparedContext): PreparedContext {
     // Implementation would compress context to fit within token limits
     return context;
   }
@@ -921,7 +941,7 @@ Focus on accuracy and provide clear reasoning for your classification.`;
            !errorMessage.includes('invalid');
   }
 
-  private getStructuredOutputSchema() : unknown {
+  private getStructuredOutputSchema() : JSONSchema {
     return {
       type: 'object',
       properties: {

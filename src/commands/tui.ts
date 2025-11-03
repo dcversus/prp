@@ -16,6 +16,7 @@ interface TUIOptions {
   noIntro?: boolean;
   noAnimations?: boolean;
   verbose?: boolean;
+  [key: string]: unknown; // Index signature for compatibility with Record<string, unknown>
 }
 
 /**
@@ -62,7 +63,7 @@ export function createTUICommand(): Command {
         };
 
         // Launch TUI
-        await launchTUI(tuiConfig as any);
+        await launchTUI(tuiConfig as Record<string, unknown>);
 
       } catch (error) {
         logger.error('launch', 'Failed to launch TUI', error instanceof Error ? error : new Error(String(error)));

@@ -3,18 +3,8 @@ import * as path from 'path';
 import * as yaml from 'yaml';
 import { logger } from '../utils/logger';
 import { ConfigurationError } from '../utils/error-handler';
-import type {
-  PRPConfig,
-  SettingsConfig,
-  ValidationResult,
-  DebugSettings,
-  QualitySettings,
-  BuildSettings,
-  TestSettings,
-  CISettings,
-  DevelopmentSettings,
-  PackageManagerSettings
-} from '../types';
+import type { PRPConfig, SettingsConfig } from '../shared/config';
+import type { ValidationResult } from '../types';
 
 /**
  * Configuration file paths in order of precedence
@@ -34,7 +24,7 @@ const CONFIG_PATHS = [
 export class ConfigurationManager {
   private configPath?: string;
   private config?: PRPConfig;
-  private schema?: any;
+  private schema?: Record<string, unknown>;
 
   constructor(private cwd: string = process.cwd()) {
     this.loadSchema();
@@ -152,7 +142,7 @@ export class ConfigurationManager {
       throw new ConfigurationError('Configuration not loaded. Call load() first.');
     }
 
-    (this.config.settings as any)[section] = value;
+    (this.config.settings as Record<string, unknown>)[section] = value;
     await this.save(this.config);
   }
 
@@ -164,7 +154,7 @@ export class ConfigurationManager {
       throw new ConfigurationError('Configuration not loaded. Call load() first.');
     }
 
-    return (this.config.settings as any)[section];
+    return (this.config.settings?.[section] as SettingsConfig[K]);
   }
 
   /**
@@ -232,21 +222,34 @@ export class ConfigurationManager {
     const content = await fs.readFile(filePath, 'utf8');
 
     try {
+      let parsed: unknown;
+
       switch (ext) {
         case '.json':
-          return JSON.parse(content);
+          parsed = JSON.parse(content);
+          break;
         case '.yaml':
         case '.yml':
-          return yaml.parse(content);
+          parsed = yaml.parse(content);
+          break;
         case '.js': {
           // Dynamic import for JS config files
           const module = await import(path.resolve(filePath));
-          return module.default || module;
+          parsed = module.default || module;
+          break;
         }
         default:
           // Try JSON as default
-          return JSON.parse(content);
+          parsed = JSON.parse(content);
+          break;
       }
+
+      // Validate that the parsed content is an object
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        throw new ConfigurationError(`Configuration file must contain an object, got ${typeof parsed}`);
+      }
+
+      return parsed as Partial<PRPConfig>;
     } catch (error) {
       throw new ConfigurationError(`Failed to parse ${ext} file: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -315,76 +318,94 @@ export class ConfigurationManager {
         debug: {
           enabled: false,
           level: 'info',
-          output: 'console',
-          components: {
-            cli: true,
-            build: true,
-            test: true,
-            lint: true,
-            deploy: true
-          }
+          console: true,
+          file: false,
+          timestamp: true,
+          colors: true,
+          profiling: false
         },
         quality: {
-          enabled: true,
-          strict: false,
-          gates: {
-            lint: {
-              enabled: true,
-              tools: ['eslint'],
-              failOnWarnings: false,
-              maxWarnings: 0
-            },
-            test: {
-              enabled: true,
-              coverage: {
-                enabled: true,
-                minimum: 80,
-                threshold: 5
-              },
-              failures: {
-                maximum: 0
-              }
-            },
-            security: {
-              enabled: true,
-              tools: ['npm-audit'],
-              failOnHigh: true,
-              failOnMedium: false
-            }
+          linting: {
+            enabled: true,
+            rules: {},
+            fixOnSave: true
           },
-          preCommitHooks: true,
-          prePushHooks: true
+          testing: {
+            enabled: true,
+            coverage: 80,
+            frameworks: ['jest']
+          },
+          security: {
+            enabled: true,
+            tools: ['npm-audit'],
+            rules: {}
+          },
+          performance: {
+            enabled: true,
+            thresholds: {
+              loadTime: 3000,
+              bundleSize: 1000000
+            }
+          }
         },
         build: {
-          mode: 'production',
-          output: 'dist',
-          clean: true,
-          sourcemap: true,
-          minify: true,
-          incremental: true,
-          parallel: true
+          tool: 'tsc',
+          optimization: true,
+          minification: true,
+          sourceMap: true,
+          target: ['es2020'],
+          output: {
+            directory: 'dist',
+            filename: 'index.js',
+            format: ['cjs']
+          }
         },
         test: {
-          type: 'all',
           framework: 'jest',
-          coverage: true,
-          parallel: true,
-          testEnvironment: 'node'
+          coverage: {
+            enabled: true,
+            threshold: 80,
+            reporters: ['text', 'lcov']
+          },
+          environment: 'node',
+          setupFiles: [],
+          testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts']
         },
         ci: {
-          provider: 'github',
-          enabled: false,
-          workflows: {}
+          platform: 'github',
+          workflows: {
+            build: true,
+            test: true,
+            deploy: false,
+            security: true
+          },
+          triggers: {
+            onPush: true,
+            onPR: true,
+            onSchedule: false
+          },
+          environment: {
+            NODE_ENV: 'test'
+          }
         },
         development: {
-          port: 3000,
+          watch: true,
           hotReload: true,
-          open: true
+          port: 3000,
+          host: 'localhost',
+          proxy: {},
+          server: 'webpack-dev-server'
         },
         packageManager: {
-          type: 'npm',
-          cache: true,
-          audit: true
+          manager: 'npm',
+          autoInstall: true,
+          scripts: {
+            dev: 'prp dev',
+            build: 'prp build',
+            test: 'prp test'
+          },
+          dependencies: {},
+          devDependencies: {}
         }
       },
       scripts: {
@@ -408,40 +429,7 @@ export class ConfigurationManager {
       ...config,
       settings: {
         ...defaults.settings,
-        ...config.settings,
-        // Deep merge for nested settings with proper type safety
-        debug: {
-          ...defaults.settings.debug!,
-          ...(config.settings?.debug || {})
-        } as DebugSettings,
-        quality: {
-          ...defaults.settings.quality!,
-          ...(config.settings?.quality || {}),
-          gates: {
-            ...defaults.settings.quality!.gates,
-            ...(config.settings?.quality?.gates || {})
-          }
-        } as QualitySettings,
-        build: {
-          ...defaults.settings.build!,
-          ...(config.settings?.build || {})
-        } as BuildSettings,
-        test: {
-          ...defaults.settings.test!,
-          ...(config.settings?.test || {})
-        } as TestSettings,
-        ci: {
-          ...defaults.settings.ci!,
-          ...(config.settings?.ci || {})
-        } as CISettings,
-        development: {
-          ...defaults.settings.development!,
-          ...(config.settings?.development || {})
-        } as DevelopmentSettings,
-        packageManager: {
-          ...defaults.settings.packageManager!,
-          ...(config.settings?.packageManager || {})
-        } as PackageManagerSettings
+        ...config.settings
       },
       scripts: { ...defaults.scripts, ...config.scripts }
     };
@@ -450,27 +438,27 @@ export class ConfigurationManager {
   /**
    * Resolve environment variables in configuration
    */
-  private resolveEnvironmentVariables(config: any): any {
+  private resolveEnvironmentVariables(config: PRPConfig): PRPConfig {
     if (typeof config !== 'object' || config === null) {
-      return config;
+      return config as PRPConfig;
     }
 
     if (Array.isArray(config)) {
-      return config.map(item => this.resolveEnvironmentVariables(item));
+      return config as unknown as PRPConfig;
     }
 
-    const resolved: any = {};
+    const resolved: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(config)) {
       if (typeof value === 'string' && value.includes('${')) {
         resolved[key] = this.substituteVariables(value);
       } else if (typeof value === 'object') {
-        resolved[key] = this.resolveEnvironmentVariables(value);
+        resolved[key] = this.resolveEnvironmentVariables(value as PRPConfig);
       } else {
         resolved[key] = value;
       }
     }
 
-    return resolved;
+    return resolved as PRPConfig;
   }
 
   /**
@@ -581,7 +569,7 @@ export class ConfigurationManager {
   /**
    * Get configuration summary
    */
-  getSummary(): Record<string, any> {
+  getSummary(): Record<string, unknown> {
     if (!this.config) {
       throw new ConfigurationError('Configuration not loaded');
     }

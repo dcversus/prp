@@ -95,10 +95,10 @@ class AgentManager extends EventEmitter {
       await this.startScanner(projectPath);
 
       // Start Inspector
-      await this.startInspector(projectPath);
+      await this.startInspector();
 
       // Start Orchestrator
-      await this.startOrchestrator(projectPath);
+      await this.startOrchestrator();
 
       this._isRunning = true;
       this.startEventMonitoring();
@@ -141,13 +141,13 @@ class AgentManager extends EventEmitter {
     }
   }
 
-  private async startScanner(_projectPath: string): Promise<void> {
+  private async startScanner(projectPath: string): Promise<void> {
     const spinner = ora('Starting Scanner Agent...').start();
 
     try {
       const scanner = new ScannerCore({
-        worktreesRoot: _projectPath,
-        mainRepoPath: _projectPath,
+        worktreesRoot: projectPath,
+        mainRepoPath: projectPath,
         scanInterval: 2000, // Scan every 2 seconds for demo
         maxConcurrentWorktrees: 10,
         fileHashCacheSize: 1000,
@@ -188,7 +188,7 @@ class AgentManager extends EventEmitter {
     }
   }
 
-  private async startInspector(_projectPath: string): Promise<void> {
+  private async startInspector(): Promise<void> {
     const spinner = ora('Starting Inspector Agent...').start();
 
     try {
@@ -258,7 +258,7 @@ class AgentManager extends EventEmitter {
     }
   }
 
-  private async startOrchestrator(_projectPath: string): Promise<void> {
+  private async startOrchestrator(): Promise<void> {
     const spinner = ora('Starting Orchestrator Agent...').start();
 
     try {

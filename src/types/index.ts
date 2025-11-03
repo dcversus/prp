@@ -88,7 +88,7 @@ export interface LintGate {
   failOnWarnings?: boolean;
   maxWarnings?: number;
   configFile?: string;
-  rules?: Record<string, any>;
+  rules?: Record<string, unknown>;
 }
 
 export interface TestGate {
@@ -416,7 +416,7 @@ export interface CommandResult {
   stdout: string;
   stderr: string;
   duration: number;
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
 export interface ValidationResult {
@@ -429,14 +429,14 @@ export interface ValidationError {
   code: string;
   message: string;
   field?: string;
-  value?: any;
+  value?: unknown;
 }
 
 export interface ValidationWarning {
   code: string;
   message: string;
   field?: string;
-  value?: any;
+  value?: unknown;
 }
 
 export interface StatusResult {
@@ -549,3 +549,6 @@ export type DeepPartial<T> = {
 export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
 export type RequiredFields<T, K extends keyof T> = T & Required<Pick<T, K>>;
+
+// Re-export token metrics types
+export * from './token-metrics';

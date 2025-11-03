@@ -141,7 +141,7 @@ export class AgentManager extends EventEmitter {
 
       // Terminate all agent processes
       const stopPromises = Array.from(this.activeSessions.entries()).map(
-        async ([sessionId, _agentProcess]) => {
+        async ([sessionId,]) => {
           try {
             await this.terminateAgent(sessionId);
           } catch (error) {
@@ -180,7 +180,7 @@ export class AgentManager extends EventEmitter {
         lastActivity: agentProcess.session.lastActivity,
         tokenUsage: {
           used: agentProcess.session.tokenUsage.total,
-          limit: agentProcess.session.agentConfig.tokenLimits?.monthly || 100000
+          limit: agentProcess.session.agentConfig.limits?.maxCostPerDay || 100000
         },
         capabilities: {
           supportsTools: agentProcess.session.capabilities.supportsTools,
@@ -237,13 +237,11 @@ export class AgentManager extends EventEmitter {
 
     for (const config of agentConfigs) {
       this.agents.set(config.id, {
-        id: config.id,
-        name: config.name,
-        type: config.type,
-        roles: config.roles,
-        bestRole: config.bestRole,
-        tokenLimits: config.tokenLimits,
-        runCommands: config.runCommands
+        ...config,
+        // Add default values for required properties if they don't exist
+        roles: config.roles || [config.role],
+        bestRole: config.bestRole || config.role,
+        runCommands: config.runCommands || []
       } as AgentConfig);
     }
 
@@ -260,7 +258,7 @@ export class AgentManager extends EventEmitter {
       let score = 0;
 
       // Check if agent can handle the task type
-      if (agent.roles.includes(task.type as AgentRole)) {
+      if (agent.roles && agent.roles.includes(task.type as AgentRole)) {
         score += 10;
       }
 
@@ -270,7 +268,7 @@ export class AgentManager extends EventEmitter {
       }
 
       // Check token limits
-      if (this.checkTokenLimits(agent, task)) {
+      if (this.checkTokenLimits(agent)) {
         score += 3;
       }
 
@@ -297,9 +295,9 @@ export class AgentManager extends EventEmitter {
   /**
    * Check if agent has sufficient token limits for task
    */
-  private checkTokenLimits(agent: AgentConfig, _task: AgentTask): boolean {
+  private checkTokenLimits(agent: AgentConfig): boolean {
     // Simple check - in production would be more sophisticated
-    return (agent.tokenLimits.monthly || 0) > 1000; // Minimum tokens available
+    return (agent.limits?.maxCostPerDay || 0) > 1000; // Minimum tokens available
   }
 
   /**
@@ -336,7 +334,11 @@ export class AgentManager extends EventEmitter {
 
     try {
       // Spawn agent process
-      const childProcess = spawn(agentConfig.runCommands[0] as string, agentConfig.runCommands.slice(1) as string[]);
+      const runCommands = agentConfig.runCommands || [];
+      if (runCommands.length === 0) {
+        throw new Error(`No run commands configured for agent ${agentConfig.id}`);
+      }
+      const childProcess = spawn(runCommands[0] as string, runCommands.slice(1) as string[]);
 
       const sessionId = HashUtils.generateId();
       const session: AgentSession = {
@@ -359,12 +361,17 @@ export class AgentManager extends EventEmitter {
         capabilities: {
           supportsTools: true,
           supportsImages: agentConfig.type !== 'codex',
-          supportsSubAgents: agentConfig.type === 'claude-code',
+          supportsSubAgents: agentConfig.type.startsWith('claude-code'),
           supportsParallel: false,
+          supportsCodeExecution: true,
           maxContextLength: 200000,
           supportedModels: [this.config.model || 'gpt-4'],
+          supportedFileTypes: ['.ts', '.js', '.md', '.json'],
+          canAccessInternet: false,
+          canAccessFileSystem: true,
+          canExecuteCommands: true,
           availableTools: ['read_file', 'write_file', 'execute_command'],
-          specializations: agentConfig.roles
+          specializations: agentConfig.roles || []
         }
       };
 

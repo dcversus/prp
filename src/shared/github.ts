@@ -28,9 +28,9 @@ interface GitHubUser {
   id: number;
 }
 
-interface GitHubAssignee extends GitHubUser {}
+type GitHubAssignee = GitHubUser;
 
-interface GitHubReviewer extends GitHubUser {}
+type GitHubReviewer = GitHubUser;
 
 interface GitHubPR {
   id: number;

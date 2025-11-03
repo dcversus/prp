@@ -6,7 +6,7 @@
 
 import { createWriteStream, WriteStream } from 'fs';
 import { join } from 'path';
-import { FileUtils, PerformanceMonitor, TokenCounter } from './utils';
+import { FileUtils, PerformanceMonitor, TokenCounter } from './utils.js';
 
 export enum LogLevel {
   DEBUG = 0,
@@ -19,7 +19,7 @@ export enum LogLevel {
 export interface LogEntry {
   timestamp: Date;
   level: LogLevel;
-  layer: 'scanner' | 'inspector' | 'orchestrator' | 'shared' | 'tui' | 'config';
+  layer: 'scanner' | 'inspector' | 'orchestrator' | 'shared' | 'tui' | 'config' | 'signal-aggregation' | 'orchestrator-scheduler';
   component: string;
   message: string;
   metadata?: Record<string, unknown>;
@@ -85,7 +85,7 @@ export class Logger {
 
     await FileUtils.ensureDir(this.config.logDir);
 
-    const layers = ['scanner', 'inspector', 'orchestrator', 'shared', 'tui', 'config'];
+    const layers = ['scanner', 'inspector', 'orchestrator', 'shared', 'tui', 'config', 'signal-aggregation', 'orchestrator-scheduler'];
     const today = new Date().toISOString().split('T')[0];
 
     for (const layer of layers) {

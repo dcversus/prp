@@ -3,6 +3,8 @@
  * Creates an Edge Story wiki directory with comprehensive PRP documentation
  */
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import { GeneratorContext, FileToGenerate, TemplateData } from '../types.js';
 
 export async function generateWikiJS(context: GeneratorContext): Promise<FileToGenerate[]> {

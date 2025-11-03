@@ -397,13 +397,13 @@ Always think step-by-step and explain your reasoning clearly.`),
     const sections: ContextSection[] = [];
 
     // Find PRPs relevant to this signal
-    const relevantPRPs = this.findRelevantPRPs(signal);
+    const relevantPRPs = this.findRelevantPRPs();
 
     for (const prp of relevantPRPs) {
       const prpSections = this.prpContexts.get(prp.name) || await this.createPRPSections(prp);
 
       for (const section of prpSections) {
-        if (this.isSectionRelevantToSignal(section, signal)) {
+        if (this.isSectionRelevantToSignal()) {
           sections.push(section);
         }
       }
@@ -461,7 +461,7 @@ Always think step-by-step and explain your reasoning clearly.`),
     const sections: ContextSection[] = [];
 
     // Find notes relevant to this signal
-    const relevantNotes = this.findRelevantNotes(signal);
+    const relevantNotes = this.findRelevantNotes();
 
     for (const note of relevantNotes) {
       const noteObj = note as { id: string; content: string; lastModified: Date };
@@ -504,7 +504,7 @@ Always think step-by-step and explain your reasoning clearly.`),
     sections: ContextSection[],
     requirements: { total: number; byCategory: Record<string, number> }
   ): Promise<ContextSection[]> {
-    let optimizedSections = [...sections];
+    const optimizedSections = [...sections];
 
     // If within limits, return as-is
     if (requirements.total <= this.contextLimits.total) {
@@ -742,7 +742,7 @@ Always think step-by-step and explain your reasoning clearly.`),
     // This would scan for .md files with signal patterns
   }
 
-  private findRelevantNotes(_signal: Signal): unknown[] {
+  private findRelevantNotes(): unknown[] {
     // Find notes matching signal patterns
     return [];
   }
@@ -825,13 +825,13 @@ Capabilities: ${JSON.stringify(context.capabilities || {}, null, 2)}`;
     return summary;
   }
 
-  private findRelevantPRPs(_signal: Signal): PRPFile[] {
+  private findRelevantPRPs(): PRPFile[] {
     // Logic to find PRPs relevant to this signal
     // For now, return empty array
     return [];
   }
 
-  private isSectionRelevantToSignal(_section: ContextSection, _signal: Signal): boolean {
+  private isSectionRelevantToSignal(): boolean {
     // Logic to determine if a section is relevant to the signal
     // For now, return true for all sections
     return true;

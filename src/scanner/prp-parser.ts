@@ -98,7 +98,7 @@ export class PRPParser {
         content,
         lastModified: stats.mtime,
         size: stats.size,
-        metadata: this.extractMetadata(content, filePath)
+        metadata: this.extractMetadata(content)
       };
     } catch (error) {
       console.error(`❌ Error parsing PRP file ${filePath}:`, error);
@@ -174,7 +174,7 @@ export class PRPParser {
   /**
    * Extract metadata from PRP content
    */
-  private extractMetadata(content: string, _filePath: string): PRPMetadata {
+  private extractMetadata(content: string): PRPMetadata {
     const lines = content.split('\n');
     const metadata: PRPMetadata = {
       title: this.extractTitle(lines),

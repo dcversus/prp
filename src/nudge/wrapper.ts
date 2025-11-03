@@ -33,7 +33,7 @@ export class NudgeWrapper {
     message: string,
     urgency: 'high' | 'medium' | 'low',
     context?: NudgeContext,
-    metadata?: any
+    metadata?: Record<string, unknown>
   ): Promise<NudgeResponse> {
     const request: DirectNudgeRequest = {
       type: 'direct',
@@ -59,7 +59,7 @@ export class NudgeWrapper {
     agentAnalysis?: string,
     recommendations?: string[],
     expectedResponseType?: 'decision' | 'approval' | 'information',
-    metadata?: any
+    metadata?: Record<string, unknown>
   ): Promise<NudgeResponse> {
     const request: LLMModeNudgeRequest = {
       type: 'llm-mode',
@@ -116,8 +116,8 @@ export class NudgeWrapper {
       return this.sendLLMModeNudge(
         message,
         nudgeContext,
-        context.analysis,
-        context.recommendations,
+        context.analysis as string | undefined,
+        context.recommendations as string[] | undefined,
         expectedResponseType,
         {
           agent_type: agentType,
@@ -186,7 +186,7 @@ export class NudgeWrapper {
    */
   async testSystem(): Promise<{
     connectivity: boolean;
-    config: any;
+    config: Record<string, unknown>;
     error?: string;
   }> {
     try {
@@ -212,7 +212,7 @@ export class NudgeWrapper {
   async getStatus(): Promise<{
     status: 'healthy' | 'degraded' | 'unhealthy';
     details: {
-      client_config: any;
+      client_config: Record<string, unknown>;
       fallback_enabled: boolean;
       last_test?: {
         connectivity: boolean;

@@ -17,7 +17,7 @@ export interface SignalEvent {
   timestamp: Date;
   signal: Signal;
   source: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 export interface ScannerEvent {
@@ -86,7 +86,7 @@ export interface SystemEvent {
   metadata: {
     component: string;
     status: string;
-    details?: any;
+    details?: unknown;
   };
 }
 
@@ -142,7 +142,7 @@ export class RealTimeEventEmitter {
   /**
    * Emit a signal detection event
    */
-  emitSignalDetected(signal: Signal, source: string, metadata: Record<string, any> = {}): void {
+  emitSignalDetected(signal: Signal, source: string, metadata: Record<string, unknown> = {}): void {
     const event: SignalEvent = {
       id: HashUtils.generateId(),
       type: 'signal_detected',
@@ -159,7 +159,7 @@ export class RealTimeEventEmitter {
   /**
    * Emit a signal processing event
    */
-  emitSignalProcessed(signal: Signal, source: string, metadata: Record<string, any> = {}): void {
+  emitSignalProcessed(signal: Signal, source: string, metadata: Record<string, unknown> = {}): void {
     const event: SignalEvent = {
       id: HashUtils.generateId(),
       type: 'signal_processed',
@@ -175,7 +175,7 @@ export class RealTimeEventEmitter {
   /**
    * Emit a signal resolution event
    */
-  emitSignalResolved(signal: Signal, source: string, metadata: Record<string, any> = {}): void {
+  emitSignalResolved(signal: Signal, source: string, metadata: Record<string, unknown> = {}): void {
     const event: SignalEvent = {
       id: HashUtils.generateId(),
       type: 'signal_resolved',
@@ -326,7 +326,10 @@ export class RealTimeEventEmitter {
     callback: (event: SignalEvent) => void | Promise<void>,
     filter?: (event: SignalEvent) => boolean
   ): string {
-    return this.subscribe('signal_detected', callback as any, filter as any);
+    return this.subscribe('signal_detected',
+      (event: RealTimeEvent) => callback(event as SignalEvent),
+      filter ? (event: RealTimeEvent) => filter(event as SignalEvent) : undefined
+    );
   }
 
   /**
@@ -336,7 +339,10 @@ export class RealTimeEventEmitter {
     callback: (event: ScannerEvent) => void | Promise<void>,
     filter?: (event: ScannerEvent) => boolean
   ): string {
-    return this.subscribe('scan_completed', callback as any, filter as any);
+    return this.subscribe('scan_completed',
+      (event: RealTimeEvent) => callback(event as ScannerEvent),
+      filter ? (event: RealTimeEvent) => filter(event as ScannerEvent) : undefined
+    );
   }
 
   /**
@@ -346,7 +352,10 @@ export class RealTimeEventEmitter {
     callback: (event: PRPEvent) => void | Promise<void>,
     filter?: (event: PRPEvent) => boolean
   ): string {
-    return this.subscribe('prp_modified', callback as any, filter as any);
+    return this.subscribe('prp_modified',
+      (event: RealTimeEvent) => callback(event as PRPEvent),
+      filter ? (event: RealTimeEvent) => filter(event as PRPEvent) : undefined
+    );
   }
 
   /**
@@ -356,7 +365,10 @@ export class RealTimeEventEmitter {
     callback: (event: GitEvent) => void | Promise<void>,
     filter?: (event: GitEvent) => boolean
   ): string {
-    return this.subscribe('commit_detected', callback as any, filter as any);
+    return this.subscribe('commit_detected',
+      (event: RealTimeEvent) => callback(event as GitEvent),
+      filter ? (event: RealTimeEvent) => filter(event as GitEvent) : undefined
+    );
   }
 
   /**
@@ -366,7 +378,10 @@ export class RealTimeEventEmitter {
     callback: (event: TokenEvent) => void | Promise<void>,
     filter?: (event: TokenEvent) => boolean
   ): string {
-    return this.subscribe('token_usage_recorded', callback as any, filter as any);
+    return this.subscribe('token_usage_recorded',
+      (event: RealTimeEvent) => callback(event as TokenEvent),
+      filter ? (event: RealTimeEvent) => filter(event as TokenEvent) : undefined
+    );
   }
 
   /**
@@ -454,8 +469,10 @@ export class RealTimeEventEmitter {
       }
 
     } catch (error) {
-      logger.error('RealTimeEventEmitter', 'Error processing event batch', error instanceof Error ? error : new Error(String(error)), {
-        error: error instanceof Error ? error.message : String(error)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorObj = error instanceof Error ? error : new Error(errorMessage);
+      logger.error('RealTimeEventEmitter', 'Error processing event batch', errorObj, {
+        error: errorMessage
       });
     } finally {
       this.processing = false;
@@ -490,19 +507,23 @@ export class RealTimeEventEmitter {
           await subscription.callback(event);
 
         } catch (error) {
-          logger.error('RealTimeEventEmitter', 'Error in subscription callback', error instanceof Error ? error : new Error(String(error)), {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorObj = error instanceof Error ? error : new Error(errorMessage);
+          logger.error('RealTimeEventEmitter', 'Error in subscription callback', errorObj, {
             subscriptionId: subscription.id,
             eventType: subscription.eventType,
-            error: error instanceof Error ? error.message : String(error)
+            error: errorMessage
           });
         }
       }));
 
     } catch (error) {
-      logger.error('RealTimeEventEmitter', 'Error processing event', error instanceof Error ? error : new Error(String(error)), {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorObj = error instanceof Error ? error : new Error(errorMessage);
+      logger.error('RealTimeEventEmitter', 'Error processing event', errorObj, {
         eventId: event.id,
         eventType: event.type,
-        error: error instanceof Error ? error.message : String(error)
+        error: errorMessage
       });
     }
   }
@@ -633,7 +654,7 @@ export class RealTimeEventEmitter {
   getDetailedStatistics(): {
     uptime: number;
     metrics: EventMetrics;
-    subscriptionMetrics: any; // ReturnType<typeof this.getSubscriptionMetrics>
+    subscriptionMetrics: ReturnType<RealTimeEventEmitter['getSubscriptionMetrics']>;
     recentEvents: Array<{
       type: string;
       timestamp: Date;

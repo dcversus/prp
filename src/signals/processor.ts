@@ -325,10 +325,8 @@ export class SignalEscalationManager {
   // private _signalRegistry: SignalRegistry;
   private escalationRules: Map<string, { condition: string; escalateTo: string; timeout?: number }> = new Map();
 
-  constructor(_eventBus: EventBus, _logger: Logger) {
+  constructor() {
     // TODO: Implement escalation management functionality
-    // this._eventBus = _eventBus;
-    // this._logger = _logger;
     // this._signalRegistry = SignalRegistry.getInstance();
     // this.setupDefaultEscalationRules();
   }

@@ -61,7 +61,7 @@ async function handleInitCommand(options: InitOptions): Promise<void> {
     await cli.initialize();
 
     // Execute init command
-    const result = await cli.run(['init'], options);
+    const result = await cli.run(['init'], options as Record<string, unknown>);
 
     if (result.success) {
       logger.success('✅ Project initialized successfully');

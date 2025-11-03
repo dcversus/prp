@@ -140,8 +140,10 @@ export class EnhancedGitMonitor {
       return enhancedStatus;
 
     } catch (error) {
-      logger.error('EnhancedGitMonitor', `Failed to get enhanced git status for ${repoPath}`, error instanceof Error ? error : new Error(String(error)));
-      throw new Error(`Failed to get enhanced git status for ${repoPath}: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorObj = error instanceof Error ? error : new Error(errorMessage);
+      logger.error('EnhancedGitMonitor', `Failed to get enhanced git status for ${repoPath}`, errorObj);
+      throw new Error(`Failed to get enhanced git status for ${repoPath}: ${errorMessage}`);
     }
   }
 
@@ -150,7 +152,7 @@ export class EnhancedGitMonitor {
    */
   private async getBasicGitStatus(repoPath: string): Promise<
   Omit<EnhancedGitStatus, 'lastScannedCommit' | 'commitSignals' | 'branchSignals' | 'prSignals' | 'fileChanges'> &
-  { fileChanges: any[] }
+  { fileChanges: EnhancedFileChange[] }
 > {
     try {
       // Get current branch and commit
@@ -189,7 +191,7 @@ export class EnhancedGitMonitor {
       }
 
       // Parse file changes
-      const fileChanges = this.parseStatusOutput(statusOutput, repoPath);
+      const fileChanges = this.parseStatusOutput(statusOutput);
 
       // Determine overall status
       let status: EnhancedGitStatus['status'] = 'clean';
@@ -221,19 +223,20 @@ export class EnhancedGitMonitor {
       };
 
     } catch (error) {
-      throw new Error(`Failed to get basic git status: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to get basic git status: ${errorMessage}`);
     }
   }
 
   /**
    * Parse git status output with enhanced file information
    */
-  private parseStatusOutput(statusOutput: string, _repoPath: string): any[] {
+  private parseStatusOutput(statusOutput: string): EnhancedFileChange[] {
     if (!statusOutput) {
       return [];
     }
 
-    const changes: any[] = [];
+    const changes: EnhancedFileChange[] = [];
     const lines = statusOutput.split('\n');
 
     for (const line of lines) {
@@ -270,7 +273,12 @@ export class EnhancedGitMonitor {
       changes.push({
         path,
         status,
-        staged
+        staged,
+        hash: undefined,
+        signals: [],
+        isPRPFile: FileUtils.isPRPFile(path),
+        size: 0,
+        lastModified: new Date()
       });
     }
 
@@ -280,7 +288,7 @@ export class EnhancedGitMonitor {
   /**
    * Enhance file changes with signal detection and metadata
    */
-  private async enhanceFileChanges(repoPath: string, fileChanges: any[]): Promise<EnhancedFileChange[]> {
+  private async enhanceFileChanges(repoPath: string, fileChanges: EnhancedFileChange[]): Promise<EnhancedFileChange[]> {
     const enhanced: EnhancedFileChange[] = [];
 
     for (const change of fileChanges) {
@@ -383,9 +391,9 @@ export class EnhancedGitMonitor {
           signal.metadata = {
             ...signal.metadata,
             worktree: repoPath,
-            commit: commit as any,
-            author: author as any,
-            date: new Date(dateStr) as any
+            commit,
+            author,
+            date: new Date(dateStr)
           };
         });
 
@@ -417,7 +425,7 @@ export class EnhancedGitMonitor {
         signal.metadata = {
           ...signal.metadata,
           worktree: repoPath,
-          branch: branchName as any
+          branch: branchName
         };
       });
 
@@ -437,7 +445,7 @@ export class EnhancedGitMonitor {
             signal.metadata = {
               ...signal.metadata,
               worktree: repoPath,
-              branch: branchName as any
+              branch: branchName
             };
           });
 
@@ -493,9 +501,9 @@ export class EnhancedGitMonitor {
               signal.metadata = {
                 ...signal.metadata,
                 worktree: repoPath,
-                prNumber: pr.number as any,
-                prAuthor: pr.author?.login || 'unknown' as any,
-                prState: pr.state as any
+                prNumber: pr.number,
+                prAuthor: pr.author?.login || 'unknown',
+                prState: pr.state
               };
             });
 

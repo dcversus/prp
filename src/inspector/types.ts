@@ -20,6 +20,7 @@ export interface JSONSchema {
   minLength?: number;
   maxLength?: number;
   pattern?: string;
+  [key: string]: unknown; // Index signature to allow additional properties
 }
 
 export interface ContextData {
@@ -58,6 +59,7 @@ export interface Recommendation {
   type: string;
   priority: string;
   description: string;
+  reasoning?: string;  // Added reasoning property
   estimatedTime: number;
   prerequisites: string[];
 }

@@ -15,7 +15,9 @@ import {
   KubectlCommandOptions,
   KubectlError,
   DEFAULT_KUBECTL_CONFIG,
-  SECRET_VALIDATION_PATTERNS
+  SECRET_VALIDATION_PATTERNS,
+  KubectlClusterInfo,
+  KubectlContext
 } from './types.js';
 
 export class KubectlSecretManager {
@@ -179,8 +181,8 @@ export class KubectlSecretManager {
         { silent: true }
       );
 
-      const clusterInfo = JSON.parse(clusterInfoResult.stdout);
-      const currentContext = clusterInfo.contexts?.find((ctx: any) =>
+      const clusterInfo = JSON.parse(clusterInfoResult.stdout) as KubectlClusterInfo;
+      const currentContext = clusterInfo.contexts?.find((ctx: KubectlContext) =>
         ctx.name === clusterInfo['current-context']
       );
 
@@ -418,7 +420,7 @@ export class KubectlSecretManager {
 
 // Legacy compatibility - maintain old interface
 export class SecretManager extends KubectlSecretManager {
-  private legacyCache: Map<string, any> = new Map();
+  private legacyCache: Map<string, SecretCache> = new Map();
   private defaultConfig = {
     name: 'dcmaidbot-secrets',
     namespace: 'dcmaidbot',

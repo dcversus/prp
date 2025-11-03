@@ -13,6 +13,7 @@ import { execSync } from 'child_process';
 import { logger } from '../utils/logger';
 import { PRPCli } from '../core/cli';
 import { ConfigurationManager } from '../config/manager';
+import type { PRPConfig } from '../types';
 import { ValidationError } from '../utils/error-handler';
 import type { CommandResult } from '../types';
 
@@ -46,7 +47,7 @@ interface CIJob {
 interface CIStep {
   name: string;
   action: string;
-  with?: Record<string, any>;
+  with?: Record<string, unknown>;
   run?: string;
   uses?: string;
 }
@@ -145,10 +146,10 @@ async function handleCICommand(options: CIOptions): Promise<void> {
  */
 class CIManager {
   private configManager: ConfigurationManager;
-  private config: any;
+  private config: PRPConfig;
   private workflowsPath: string;
 
-  constructor(configManager: ConfigurationManager, config: any) {
+  constructor(configManager: ConfigurationManager, config: PRPConfig) {
     this.configManager = configManager;
     this.config = config;
     this.workflowsPath = path.join(process.cwd(), '.github', 'workflows');
@@ -238,7 +239,7 @@ class CIManager {
       errors: [],
       warnings: [],
       workflows: [],
-      provider: this.config.settings.ci?.provider || 'github'
+      provider: (this.config.settings.ci?.provider as string) || 'github'
     };
 
     try {

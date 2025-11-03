@@ -5,9 +5,9 @@
  */
 
 import { Command } from 'commander';
-import { agentConfigManager, AgentConfig } from '../config/agent-config';
+import { agentConfigManager, AgentConfig, AgentType, AgentRole, ProviderType } from '../config/agent-config';
 import { createLayerLogger, FileUtils } from '../shared';
-import inquirer from 'inquirer';
+import * as inquirer from 'inquirer';
 
 const logger = createLayerLogger('config');
 
@@ -123,8 +123,8 @@ export function createAgentConfigCommands(): Command {
     .command('import <file>')
     .description('Import agent configuration from file')
     .option('-m, --merge', 'Merge with existing configuration')
-    .action(async (file, options) => {
-      await importConfig(file, options);
+    .action(async (file) => {
+      await importConfig(file);
     });
 
   // Export configuration
@@ -303,7 +303,7 @@ async function createAgent(options: AgentConfigOptions): Promise<void> {
 
       console.log(`\n📝 Creating agent from template: ${template.name}`);
 
-      const questions: any[] = template.variables.map(variable => ({
+      const questions = template.variables.map(variable => ({
         type: variable.type === 'secret' ? 'password' :
               variable.type === 'boolean' ? 'confirm' :
               variable.validation?.options ? 'list' : 'input',
@@ -326,7 +326,7 @@ async function createAgent(options: AgentConfigOptions): Promise<void> {
       // Interactive creation
       console.log('\n📝 Interactive Agent Creation');
 
-      const interactiveQuestions: any[] = [
+      const interactiveQuestions = [
         {
           type: 'input',
           name: 'name',
@@ -399,11 +399,11 @@ async function createAgent(options: AgentConfigOptions): Promise<void> {
 
       agent = agentConfigManager.createAgentFromTemplate('claude-code-anthropic', answers);
       if (agent) {
-        agent.name = answers['name'];
-        agent.type = answers['type'];
-        agent.role = answers['role'];
-        agent.provider = answers['provider'];
-        agent.enabled = answers['enabled'];
+        agent.name = answers['name'] as string;
+        agent.type = answers['type'] as AgentType;
+        agent.role = answers['role'] as AgentRole;
+        agent.provider = answers['provider'] as ProviderType;
+        agent.enabled = Boolean(answers['enabled']);
         if (answers['apiKey'] && agent.authentication.credentials) {
           agent.authentication.credentials.apiKey = answers['apiKey'];
         }
@@ -458,7 +458,7 @@ async function editAgent(agentId: string, options: AgentConfigOptions): Promise<
       // Interactive editing
       console.log(`\n✏️ Editing agent: ${agent.name}`);
 
-      const editQuestions: any[] = [
+      const editQuestions = [
         {
           type: 'input',
           name: 'name',
@@ -532,7 +532,7 @@ async function toggleAgent(agentId: string, options: CLIOptions): Promise<void> 
       enabled = false;
     } else {
       // Interactive toggle
-      const toggleQuestions: any[] = [
+      const toggleQuestions = [
         {
           type: 'confirm',
           name: 'enabled',
@@ -567,7 +567,7 @@ async function removeAgent(agentId: string, options: CLIOptions): Promise<void> 
     }
 
     if (!options.force) {
-      const removeQuestions: any[] = [
+      const removeQuestions = [
         {
           type: 'confirm',
           name: 'confirm',
@@ -687,7 +687,7 @@ async function validateConfig(agentId?: string, options?: CLIOptions): Promise<v
 /**
  * Import configuration
  */
-async function importConfig(file: string, _options: CLIOptions): Promise<void> {
+async function importConfig(file: string): Promise<void> {
   try {
     if (!await FileUtils.pathExists(file)) {
       console.error(`❌ File not found: ${file}`);

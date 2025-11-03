@@ -141,9 +141,9 @@ export class TmuxManager {
         },
         metadata: {
           agentType: agentConfig.type || 'claude-code',
-          agentRole: agentConfig.bestRole || 'developer',
+          agentRole: agentConfig.role || 'developer',
           priority: 5,
-          tags: agentConfig.roles || [],
+          tags: agentConfig.role ? [agentConfig.role] : [],
           description: `Agent session for ${agentId}`,
           spawnedBy: 'orchestrator',
           resources: {

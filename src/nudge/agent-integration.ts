@@ -148,7 +148,7 @@ Administrative oversight needed for this request.`,
   async sendAgentNudge(
     signal: string,
     agentMessage: Partial<AgentNudgeMessage>,
-    templateData: Record<string, any> = {}
+    templateData: Record<string, unknown> = {}
   ): Promise<NudgeResponse> {
     const template = this.templates.get(signal);
 
@@ -356,7 +356,7 @@ Administrative oversight needed for this request.`,
    */
   private generateMessageFromTemplate(
     template: NudgeMessageTemplate,
-    data: Record<string, any>
+    data: Record<string, unknown>
   ): string {
     let message = template.template;
 

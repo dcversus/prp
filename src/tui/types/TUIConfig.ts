@@ -16,58 +16,61 @@ export type Role =
 
 export type SignalState = 'placeholder' | 'active' | 'progress' | 'resolved';
 export type AgentStatus = 'SPAWNING' | 'RUNNING' | 'IDLE' | 'ERROR';
-export type ScreenType = 'orchestrator' | 'prp-context' | 'agent';
+export type ScreenType = 'orchestrator' | 'prp-context' | 'agent' | 'token-metrics';
 export type Theme = 'dark' | 'light';
 export type LayoutMode = 'compact' | 'normal' | 'wide' | 'ultrawide';
 
+// Hex color literal types
+export type HexColor = `#${string}`;
+
 export interface ColorScheme {
   // Accent / Orchestrator colors
-  accent_orange: string;
-  accent_orange_dim: string;
-  accent_orange_bg: string;
+  accent_orange: HexColor;
+  accent_orange_dim: HexColor;
+  accent_orange_bg: HexColor;
 
   // Role colors (active versions)
-  robo_aqa: string;
-  robo_quality_control: string;
-  robo_system_analyst: string;
-  robo_developer: string;
-  robo_devops_sre: string;
-  robo_ux_ui: string;
-  robo_legal_compliance: string;
-  orchestrator: string;
+  robo_aqa: HexColor;
+  robo_quality_control: HexColor;
+  robo_system_analyst: HexColor;
+  robo_developer: HexColor;
+  robo_devops_sre: HexColor;
+  robo_ux_ui: HexColor;
+  robo_legal_compliance: HexColor;
+  orchestrator: HexColor;
 
   // Role colors (dim versions)
-  robo_aqa_dim: string;
-  robo_quality_control_dim: string;
-  robo_system_analyst_dim: string;
-  robo_developer_dim: string;
-  robo_devops_sre_dim: string;
-  robo_ux_ui_dim: string;
-  robo_legal_compliance_dim: string;
-  orchestrator_dim: string;
+  robo_aqa_dim: HexColor;
+  robo_quality_control_dim: HexColor;
+  robo_system_analyst_dim: HexColor;
+  robo_developer_dim: HexColor;
+  robo_devops_sre_dim: HexColor;
+  robo_ux_ui_dim: HexColor;
+  robo_legal_compliance_dim: HexColor;
+  orchestrator_dim: HexColor;
 
   // Role background colors
-  robo_aqa_bg: string;
-  robo_quality_control_bg: string;
-  robo_system_analyst_bg: string;
-  robo_developer_bg: string;
-  robo_devops_sre_bg: string;
-  robo_ux_ui_bg: string;
-  robo_legal_compliance_bg: string;
-  orchestrator_bg: string;
+  robo_aqa_bg: HexColor;
+  robo_quality_control_bg: HexColor;
+  robo_system_analyst_bg: HexColor;
+  robo_developer_bg: HexColor;
+  robo_devops_sre_bg: HexColor;
+  robo_ux_ui_bg: HexColor;
+  robo_legal_compliance_bg: HexColor;
+  orchestrator_bg: HexColor;
 
   // Neutral colors
-  base_fg: string;
-  base_bg: string;
-  muted: string;
-  error: string;
-  warn: string;
-  ok: string;
-  gray: string;
+  base_fg: HexColor;
+  base_bg: HexColor;
+  muted: HexColor;
+  error: HexColor;
+  warn: HexColor;
+  ok: HexColor;
+  gray: HexColor;
 
   // Signal colors
-  signal_braces: string;
-  signal_placeholder: string;
+  signal_braces: HexColor;
+  signal_placeholder: HexColor;
 }
 
 export interface AnimationConfig {
@@ -262,6 +265,7 @@ export interface MusicIconProps {
 export interface SignalBarProps {
   signals: SignalTag[];
   animate?: boolean;
+  config?: TUIConfig;
 }
 
 export interface AgentStatusLineProps {
@@ -274,4 +278,25 @@ export interface ProgressIndicatorProps {
   width?: number;
   showPercentage?: boolean;
   animated?: boolean;
+}
+
+export interface TokenMetricsScreenProps {
+  isActive: boolean;
+  onNavigate: (screen: string) => void;
+}
+
+export interface FooterProps {
+  currentScreen: ScreenType;
+  debugMode: boolean;
+  agentCount: number;
+  prpCount: number;
+  config: TUIConfig;
+  terminalLayout: TerminalLayout;
+}
+
+export interface InputBarProps {
+  value: string;
+  onChange: (value: string) => void;
+  config: TUIConfig;
+  terminalLayout: TerminalLayout;
 }

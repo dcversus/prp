@@ -24,12 +24,14 @@ export class TemplateManager {
   private registry: TemplateRegistry;
   private cache: Map<string, ProjectTemplate> = new Map();
 
-  constructor(_config: TemplateConfig) {
+  constructor(config: TemplateConfig) {
     this.registry = {
       templates: {},
       categories: {},
       lastUpdated: new Date()
     };
+    // Store config for potential future use
+    void config;
   }
 
   /**
@@ -106,7 +108,7 @@ export class TemplateManager {
       await this.createGitignore(template, projectPath);
 
       // Execute post-setup actions
-      await this.executePostSetup(template, projectPath);
+      await this.executePostSetup(template);
 
       logger.info('applyTemplate', 'Template applied successfully');
 
@@ -530,7 +532,7 @@ export class TemplateManager {
   /**
    * Execute post-setup actions
    */
-  private async executePostSetup(template: ProjectTemplate, _projectPath: string): Promise<void> {
+  private async executePostSetup(template: ProjectTemplate): Promise<void> {
     for (const action of template.postSetup) {
       logger.debug('executePostSetup', `Executing: ${action.type} - ${action.action}`);
 

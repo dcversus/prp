@@ -48,6 +48,12 @@ export * from './validation.js';
 import { gitUtils } from './gitUtils.js';
 import { packageManagerUtils } from './packageManager.js';
 
+// Export fs-extra functions for compatibility
+export const ensureDir = fs.ensureDir;
+export const FileUtils = {
+  ensureDir
+};
+
 export async function initGit(targetPath: string): Promise<void> {
   await gitUtils.init(targetPath);
   await gitUtils.addAll(targetPath);

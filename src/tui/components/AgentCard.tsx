@@ -9,7 +9,6 @@ import React from 'react';
 import { Box, Text } from 'ink';
 import { AgentCard as AgentCardType, TUIConfig } from '../types/TUIConfig.js';
 import { MusicIcon } from './MusicIcon.js';
-import { RoboRolePill } from './RoboRolePill.js';
 import { getRoleColors } from '../config/TUIConfig.js';
 
 interface AgentCardProps {
@@ -18,7 +17,7 @@ interface AgentCardProps {
   maxWidth: number;
 }
 
-export function AgentCard({ agent, config, maxWidth }: AgentCardProps) {
+export function AgentCard({ agent, config }: AgentCardProps) {
   const roleColors = getRoleColors(agent.role, config.colors);
 
   return (

@@ -19,6 +19,24 @@ import { createLayerLogger, HashUtils } from '../shared';
 const logger = createLayerLogger('inspector');
 
 /**
+ * LLM response data interfaces
+ */
+export interface RecommendationData {
+  type?: string;
+  priority?: string;
+  description?: string;
+  estimatedTime?: number;
+  reasoning?: string;
+  prerequisites?: string[];
+}
+
+export interface ActivityData {
+  action: string;
+  actor: string;
+  details?: string;
+}
+
+/**
  * Token limit configuration for 40K constraint
  */
 export interface TokenLimitConfig {
@@ -242,7 +260,7 @@ export class LLMExecutionEngine extends EventEmitter {
     const contextTokens = availableTokens - baseTokens - guidelineTokens;
 
     // Generate base prompt
-    const basePrompt = await this.generateBasePrompt(signal, context);
+    const basePrompt = await this.generateBasePrompt(signal);
 
     // Prepare guideline within token limit
     const guidelinePrompt = await this.prepareGuidelinePrompt(guideline, guidelineTokens);
@@ -316,7 +334,7 @@ export class LLMExecutionEngine extends EventEmitter {
   /**
    * Generate base prompt for signal analysis
    */
-  private async generateBasePrompt(signal: Signal, _context: ProcessingContext): Promise<string> {
+  private async generateBasePrompt(signal: Signal): Promise<string> {
     return `You are an expert signal analysis system for the PRP (Project Requirements and Progress) workflow system.
 
 Your task is to analyze the provided signal and determine:
@@ -369,7 +387,7 @@ Respond in structured JSON format with all required fields.`;
    */
   private async prepareContextPrompt(context: ProcessingContext, maxTokens: number): Promise<string> {
     // Serialize context
-    let contextText = this.serializeContext(context);
+    const contextText = this.serializeContext(context);
     const contextTokens = this.estimateTokens(contextText);
 
     if (contextTokens <= maxTokens) {
@@ -447,7 +465,7 @@ Respond in structured JSON format with all required fields.`;
       };
 
       // Extract recommendations
-      const recommendations: Recommendation[] = (responseData.recommendations || []).map((rec) => ({
+      const recommendations: Recommendation[] = (responseData.recommendations || []).map((rec: RecommendationData) => ({
         type: rec.type || 'action',
         priority: rec.priority || 'medium',
         description: rec.description || 'No description provided',
@@ -500,7 +518,7 @@ Respond in structured JSON format with all required fields.`;
         category: 'unknown',
         subcategory: 'general',
         priority: signal.priority || 5,
-        agentRole: 'developer',
+        agentRole: 'robo-developer',
         escalationLevel: 1,
         deadline: new Date(Date.now() + 86400000),
         dependencies: [],
@@ -543,14 +561,14 @@ Respond in structured JSON format with all required fields.`;
     logger.warn('LLMExecutionEngine', 'Applying prompt compression to meet token limits');
 
     // Apply hierarchical compression
-    let compressedContext = await this.compressText(components.contextPrompt, {
+    const compressedContext = await this.compressText(components.contextPrompt, {
       strategy: 'semantic',
       level: 'high',
       preserveKeyInfo: true,
       targetSize: Math.floor(this.tokenLimits.contextWindow * 0.7)
     });
 
-    let compressedGuideline = await this.compressText(components.guidelinePrompt, {
+    const compressedGuideline = await this.compressText(components.guidelinePrompt, {
       strategy: 'summary',
       level: 'medium',
       preserveKeyInfo: true,
@@ -625,7 +643,7 @@ Respond in structured JSON format with all required fields.`;
     for (const key of priorityOrder) {
       if (remainingTokens <= 0) break;
 
-      const value = (context as Record<string, unknown>)[key];
+      const value = (context as unknown as Record<string, unknown>)[key];
       if (!value) continue;
 
       const sectionText = this.serializeContextSection(key, value);
@@ -717,13 +735,13 @@ Respond in structured JSON format with all required fields.`;
         return `**Signal ID:** ${value}`;
 
       case 'relatedSignals':
-        return `**Related Signals:** ${value.length} signals`;
+        return `**Related Signals:** ${(value as unknown[]).length} signals`;
 
       case 'activePRPs':
-        return `**Active PRPs:** ${value.join(', ')}`;
+        return `**Active PRPs:** ${(value as string[]).join(', ')}`;
 
       case 'recentActivity':
-        return `**Recent Activity:** ${value.slice(0, 5).map(a => `${a.action} by ${a.actor}`).join(', ')}`;
+        return `**Recent Activity:** ${(value as ActivityData[]).slice(0, 5).map((a: ActivityData) => `${a.action} by ${a.actor}`).join(', ')}`;
 
       default:
         return `**${key}:** ${JSON.stringify(value).substring(0, 200)}...`;

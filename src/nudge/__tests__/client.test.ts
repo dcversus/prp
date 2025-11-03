@@ -9,7 +9,6 @@ import { jest } from '@jest/globals';
 import axios from 'axios';
 import { NudgeClient, createNudgeClient } from '../client.js';
 import {
-  NudgeRequest,
   DirectNudgeRequest,
   LLMModeNudgeRequest,
   NudgeError,
@@ -26,7 +25,7 @@ const originalConsoleError = console.error;
 
 describe('NudgeClient', () => {
   let client: NudgeClient;
-  let mockAxiosInstance: any;
+  let mockAxiosInstance: jest.Mocked<typeof axios>;
 
   beforeEach(() => {
     // Clear all mocks
@@ -193,7 +192,7 @@ describe('NudgeClient', () => {
       const invalidRequest = {
         type: 'invalid',
         message: 'Test'
-      } as any;
+      } as unknown;
 
       await expect(client.sendNudge(invalidRequest)).rejects.toThrow(NudgeError);
       expect(mockAxiosInstance.post).not.toHaveBeenCalled();
@@ -203,7 +202,7 @@ describe('NudgeClient', () => {
       const invalidRequest = {
         type: 'direct',
         urgency: 'medium'
-      } as any;
+      } as unknown;
 
       await expect(client.sendNudge(invalidRequest)).rejects.toThrow(NudgeError);
     });
@@ -213,7 +212,7 @@ describe('NudgeClient', () => {
         type: 'direct',
         message: 'Test'
         // missing urgency
-      } as any;
+      } as unknown;
 
       await expect(client.sendNudge(invalidRequest)).rejects.toThrow(NudgeError);
     });
@@ -428,7 +427,7 @@ describe('NudgeClient', () => {
         type: 'direct',
         message: 'Test'
         // Missing required 'urgency' field
-      } as any;
+      } as unknown;
 
       await expect(client.sendNudge(invalidRequest)).rejects.toThrow(NudgeError);
       // Should not make any HTTP requests due to validation failure

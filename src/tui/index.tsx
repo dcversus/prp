@@ -12,7 +12,7 @@ import { TUIConfig, createTUIConfig } from './config/TUIConfig.js';
 import { EventBus } from '../shared/events.js';
 import { createLayerLogger } from '../shared/logger.js';
 
-const logger = createLayerLogger('tui-main');
+const logger = createLayerLogger('tui');
 
 /**
  * Main TUI application launcher
@@ -85,7 +85,7 @@ export class TUIMain {
       this.eventBus.emit('terminal.resize', {
         columns: process.stdout.columns,
         rows: process.stdout.rows
-      });
+      } as Record<string, unknown>);
     });
 
     // Handle process signals

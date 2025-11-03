@@ -11,7 +11,7 @@ import { InputBarProps } from '../types/TUIConfig.js';
 
 export function InputBar({ value, onChange, config, terminalLayout }: InputBarProps) {
   const [internalValue, setInternalValue] = useState(value);
-  const [pasteInfo, setPasteInfo] = useState<{ tokens: number; hash: string; cut?: number } | null>(null);
+  const [pasteInfo] = useState<{ tokens: number; hash: string; cut?: number } | null>(null);
 
   // Sync with external value
   useEffect(() => {
@@ -63,29 +63,7 @@ export function InputBar({ value, onChange, config, terminalLayout }: InputBarPr
   });
 
   // Simulate paste detection (in real implementation, this would come from clipboard)
-  const handleSimulatedPaste = (text: string) => {
-    // Simple token counting (rough estimate)
-    const tokens = Math.ceil(text.length / 4); // Rough approximation
-    const hash = Math.random().toString(36).substring(2, 8);
-
-    // Check against token limit
-    const maxTokens = config.input.maxTokens;
-    const reserve = maxTokens * config.input.tokenReserve;
-    const availableTokens = maxTokens - reserve;
-
-    let finalText = text;
-    let cut: number | undefined;
-
-    if (tokens > availableTokens) {
-      // Cut text to fit within available tokens
-      const maxChars = Math.floor((availableTokens / tokens) * text.length);
-      finalText = text.substring(0, maxChars);
-      cut = tokens - availableTokens;
-    }
-
-    setPasteInfo({ tokens: Math.ceil(finalText.length / 4), hash, cut });
-    onChange(finalText);
-  };
+  // Paste handling would be implemented here for clipboard integration
 
   // Render delimiter lines
   const renderDelimiter = () => (

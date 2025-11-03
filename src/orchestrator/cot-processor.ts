@@ -68,7 +68,7 @@ interface ChainOfThoughtContext {
 export class CoTProcessor {
   private processingHistory: Map<string, ChainOfThought> = new Map();
 
-  constructor(_model: string) {
+  constructor() {
     // Config will be implemented when needed
   }
 
@@ -113,7 +113,7 @@ export class CoTProcessor {
       };
 
       // Generate reasoning steps
-      const steps = await this.generateReasoningSteps(signal, processingContext, guideline);
+      const steps = await this.generateReasoningSteps(signal, processingContext);
 
       // Generate final decision
       const decision = await this.generateDecision(signal, steps, processingContext);
@@ -204,13 +204,12 @@ export class CoTProcessor {
    */
   private async generateReasoningSteps(
     signal: Signal,
-    context: CoTContext,
-    _guideline: string
+    context: CoTContext
   ): Promise<CoTStep[]> {
     const steps: CoTStep[] = [];
 
     // Step 1: Analyze the signal
-    steps.push(await this.createAnalysisStep(signal, context));
+    steps.push(await this.createAnalysisStep(signal));
 
     // Step 2: Consider context and constraints
     steps.push(await this.createConsiderationStep(signal, context));
@@ -230,7 +229,7 @@ export class CoTProcessor {
   /**
    * Create analysis step
    */
-  private async createAnalysisStep(signal: Signal, _context: CoTContext): Promise<CoTStep> {
+  private async createAnalysisStep(signal: Signal): Promise<CoTStep> {
     const analysis = `Signal Analysis:
 - Type: ${signal.type}
 - Priority: ${signal.priority}
@@ -276,7 +275,7 @@ export class CoTProcessor {
    * Create evaluation step
    */
   private async createEvaluationStep(signal: Signal, context: CoTContext): Promise<CoTStep> {
-    const options = this.generateOptions(signal, context);
+    const options = this.generateOptions(signal);
 
     return {
       id: HashUtils.generateId(),
@@ -311,9 +310,9 @@ export class CoTProcessor {
    */
   private async createVerificationStep(signal: Signal, context: CoTContext): Promise<CoTStep> {
     const verification = `Decision Verification:
-- Risk Assessment: ${this.assessRisk(signal, context)}
-- Resource Requirements: ${this.assessResourceRequirements(signal, context)}
-- Success Criteria: ${this.assessSuccessCriteria(signal, context)}
+- Risk Assessment: ${this.assessRisk(signal)}
+- Resource Requirements: ${this.assessResourceRequirements(signal)}
+- Success Criteria: ${this.assessSuccessCriteria(signal)}
 - Potential Issues: ${this.identifyPotentialIssues(signal, context)}`;
 
     return {
@@ -349,7 +348,7 @@ export class CoTProcessor {
     const completed = this.identifyCompleted(signal, context);
 
     // Plan next steps
-    const next = this.planNextSteps(signal, context);
+    const next = this.planNextSteps(signal);
 
     return {
       blockers,
@@ -429,7 +428,7 @@ export class CoTProcessor {
     return 'NORMAL';
   }
 
-  private generateOptions(signal: Signal, _context: CoTContext): string[] {
+  private generateOptions(signal: Signal): string[] {
     const baseOptions = [
       'Process signal with available tools',
       'Delegate to specialized agent',
@@ -486,7 +485,7 @@ export class CoTProcessor {
     const actions = [];
 
     if (decision.includes('agent')) {
-      actions.push(`Deploy ${this.selectBestAgent(signal, context)} agent to handle signal: ${signal.type}`);
+      actions.push(`Deploy ${this.selectBestAgent(signal)} agent to handle signal: ${signal.type}`);
     }
 
     if (decision.includes('tool')) {
@@ -530,7 +529,7 @@ export class CoTProcessor {
     return completed;
   }
 
-  private planNextSteps(signal: Signal, _context: CoTContext): string[] {
+  private planNextSteps(signal: Signal): string[] {
     const next = [];
 
     // Plan follow-up actions based on signal type
@@ -548,7 +547,7 @@ export class CoTProcessor {
     return next;
   }
 
-  private selectBestAgent(signal: Signal, _context: CoTContext): string {
+  private selectBestAgent(signal: Signal): string {
     // Simple agent selection logic
     const signalAgentMap: Record<string, string> = {
       'pr': 'robo-developer',
@@ -574,20 +573,20 @@ export class CoTProcessor {
     return Math.min(1.0, complexity);
   }
 
-  private assessRisk(signal: Signal, _context: CoTContext): string {
+  private assessRisk(signal: Signal): string {
     if (signal.priority > 9) return 'HIGH';
     if (signal.priority > 7) return 'MEDIUM';
     return 'LOW';
   }
 
-  private assessResourceRequirements(signal: Signal, _context: CoTContext): string {
+  private assessResourceRequirements(signal: Signal): string {
     const complex = this.assessComplexity(signal);
     if (complex === 'HIGH') return 'HIGH - Multiple agents and tools may be required';
     if (complex === 'LOW') return 'LOW - Single agent or tool sufficient';
     return 'MEDIUM - May require coordination';
   }
 
-  private assessSuccessCriteria(signal: Signal, _context: CoTContext): string {
+  private assessSuccessCriteria(signal: Signal): string {
     return `Signal ${signal.type} processed successfully with appropriate action taken`;
   }
 

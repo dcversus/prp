@@ -12,7 +12,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
-import inquirer from 'inquirer';
+import * as inquirer from 'inquirer';
 import figlet from 'figlet';
 import boxen from 'boxen';
 import { createLayerLogger } from '../shared';
@@ -39,6 +39,22 @@ interface WizardState {
   data: Record<string, unknown>;
   errors: string[];
   warnings: string[];
+}
+
+interface AgentConfiguration {
+  name: string;
+  role: string;
+  description?: string;
+  enabledByDefault?: boolean;
+  availableModels?: string[];
+  defaultModel?: string;
+  defaultMaxTokens?: number;
+}
+
+interface ProjectOptions {
+  gitInit?: boolean;
+  npmInstall?: boolean;
+  firstCommit?: boolean;
 }
 
 
@@ -381,9 +397,9 @@ export class CLIWizard extends EventEmitter {
         name: 'agents',
         message: 'Select agents to enable:',
         choices: agentConfigs.map(config => ({
-          name: `${config.name} - ${(config as any).description || config.role}`,
+          name: `${config.name} - ${(config as AgentConfiguration).description || config.role}`,
           value: config.id,
-          checked: (config as any).enabledByDefault || false
+          checked: (config as AgentConfiguration).enabledByDefault || false
         }))
       },
       {
@@ -417,7 +433,7 @@ export class CLIWizard extends EventEmitter {
         [key: string]: boolean | string | number;
       };
 
-      const agentQuestions: any[] = [
+      const agentQuestions = [
         {
           type: 'confirm',
           name: `${agentId}_enabled`,
@@ -428,14 +444,14 @@ export class CLIWizard extends EventEmitter {
           type: 'list',
           name: `${agentId}_model`,
           message: `Select model for ${config.name}:`,
-          choices: (config as any).availableModels || ['claude-3-sonnet'],
-          default: (config as any).defaultModel || 'claude-3-sonnet'
+          choices: (config as AgentConfiguration).availableModels || ['claude-3-sonnet'],
+          default: (config as AgentConfiguration).defaultModel || 'claude-3-sonnet'
         },
         {
           type: 'number',
           name: `${agentId}_maxTokens`,
           message: `Max tokens for ${config.name}:`,
-          default: (config as any).defaultMaxTokens || 100000,
+          default: (config as AgentConfiguration).defaultMaxTokens || 100000,
           validate: (input: number) => input > 0 && input <= 200000
         }
       ];
@@ -443,11 +459,11 @@ export class CLIWizard extends EventEmitter {
       const answers = await inquirer.prompt(agentQuestions) as AgentConfigAnswers;
 
       this.state.data['agentConfigs'] = this.state.data['agentConfigs'] || {};
-      const agentConfigs = this.state.data['agentConfigs'] as Record<string, any>;
+      const agentConfigs = this.state.data['agentConfigs'] as Record<string, { enabled: boolean; model: string; maxTokens: number }>;
       agentConfigs[agentId] = {
-        enabled: answers[`${agentId}_enabled`],
-        model: answers[`${agentId}_model`],
-        maxTokens: answers[`${agentId}_maxTokens`]
+        enabled: Boolean(answers[`${agentId}_enabled`]),
+        model: String(answers[`${agentId}_model`]),
+        maxTokens: Number(answers[`${agentId}_maxTokens`])
       };
     }
   }
@@ -537,15 +553,15 @@ export class CLIWizard extends EventEmitter {
   private generateConfigurationSummary(): string {
     const data = this.state.data;
 
-    let summary = boxen(
+    const summary = boxen(
       `${chalk.bold('Project Configuration:')}\n\n` +
       `${chalk.cyan('Project Name:')} ${data['projectName']}\n` +
       `${chalk.cyan('Template:')} ${data['template']}\n` +
       `${chalk.cyan('PRP:')} ${String(data['prp']).substring(0, 100)}${String(data['prp']).length > 100 ? '...' : ''}\n` +
       `${chalk.cyan('Agents:')} ${(data['agents'] as string[]).join(', ')}\n` +
-      `${chalk.cyan('Git Init:')} ${(data['options'] as any)['gitInit'] ? 'Yes' : 'No'}\n` +
-      `${chalk.cyan('NPM Install:')} ${(data['options'] as any)['npmInstall'] ? 'Yes' : 'No'}\n` +
-      `${chalk.cyan('First Commit:')} ${(data['options'] as any)['firstCommit'] ? 'Yes' : 'No'}\n`,
+      `${chalk.cyan('Git Init:')} ${(data['options'] as ProjectOptions)['gitInit'] ? 'Yes' : 'No'}\n` +
+      `${chalk.cyan('NPM Install:')} ${(data['options'] as ProjectOptions)['npmInstall'] ? 'Yes' : 'No'}\n` +
+      `${chalk.cyan('First Commit:')} ${(data['options'] as ProjectOptions)['firstCommit'] ? 'Yes' : 'No'}\n`,
       {
         padding: 1,
         margin: 1,
@@ -580,17 +596,17 @@ export class CLIWizard extends EventEmitter {
       await this.configureAgentsFromData();
 
       // Initialize git if requested
-      if ((this.state.data['options'] as any)['gitInit']) {
+      if ((this.state.data['options'] as ProjectOptions)['gitInit']) {
         await this.initializeGit();
       }
 
       // Install dependencies if requested
-      if ((this.state.data['options'] as any)['npmInstall']) {
+      if ((this.state.data['options'] as ProjectOptions)['npmInstall']) {
         await this.installDependencies();
       }
 
       // Create initial commit if requested
-      if ((this.state.data['options'] as any)['firstCommit']) {
+      if ((this.state.data['options'] as ProjectOptions)['firstCommit']) {
         await this.makeInitialCommit();
       }
 

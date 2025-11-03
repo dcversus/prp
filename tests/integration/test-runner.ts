@@ -183,7 +183,7 @@ export class IntegrationTestRunner extends EventEmitter {
   /**
    * Run a single test suite
    */
-  private async runTestSuite(suite: TestSuite, options: any): Promise<TestResult> {
+  private async runTestSuite(suite: TestSuite, options: Record<string, unknown>): Promise<TestResult> {
     const startTime = Date.now();
     const result: TestResult = {
       suite: suite.name,
@@ -227,13 +227,14 @@ export class IntegrationTestRunner extends EventEmitter {
         result.coverage = await this.parseCoverageOutput(stdout);
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       result.status = 'failed';
-      result.error = error.message;
-      result.output = error.stdout || error.stderr || '';
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      result.error = errorMessage;
+      result.output = '';
 
       // Check for timeout
-      if (error.signal === 'SIGTERM' || error.message.includes('timeout')) {
+      if (errorMessage.includes('timeout')) {
         result.error = `Test timed out after ${options.timeout || (suite.estimatedTime * 2000)}ms`;
       }
     }
@@ -245,7 +246,7 @@ export class IntegrationTestRunner extends EventEmitter {
   /**
    * Build test command for a suite
    */
-  private buildTestCommand(suite: TestSuite, options: any): string {
+  private buildTestCommand(suite: TestSuite, options: Record<string, unknown>): string {
     let command = 'npx jest';
 
     // Add test file
@@ -424,7 +425,7 @@ export class IntegrationTestRunner extends EventEmitter {
 /**
  * Main test runner execution
  */
-export async function runIntegrationTests(options: any = {}): Promise<void> {
+export async function runIntegrationTests(options: Record<string, unknown> = {}): Promise<void> {
   const runner = new IntegrationTestRunner();
 
   // Set up event listeners

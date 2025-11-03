@@ -5,7 +5,10 @@
  * with color schemes, fonts, layouts, and animation settings
  */
 
-import type { TUIConfig } from '../types/TUIConfig.js';
+import type { TUIConfig, ColorScheme } from '../types/TUIConfig.js';
+
+// Re-export TUIConfig type for backward compatibility
+export type { TUIConfig };
 
 /**
  * Color scheme definitions for different roles and themes
@@ -193,7 +196,7 @@ export function createTUIConfig(overrides: Partial<TUIConfig> = {}): TUIConfig {
 /**
  * Get role color configuration
  */
-export function getRoleColors(role: string, colors: typeof COLOR_SCHEMES.dark) {
+export function getRoleColors(role: string, colors: ColorScheme) {
   const roleKey = role.replace(/-/g, '_') as keyof typeof colors;
   return {
     active: colors[`${roleKey}` as keyof typeof colors] || colors.orchestrator,
@@ -208,7 +211,7 @@ export function getRoleColors(role: string, colors: typeof COLOR_SCHEMES.dark) {
 export function getSignalColor(
   code: string,
   state: 'placeholder' | 'active' | 'progress' | 'resolved',
-  colors: typeof COLOR_SCHEMES.dark
+  colors: ColorScheme
 ): string {
   if (state === 'placeholder') {
     return colors.signal_placeholder;

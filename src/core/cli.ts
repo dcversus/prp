@@ -50,7 +50,7 @@ export class PRPCli extends EventEmitter {
   /**
    * Initialize CLI
    */
-  async initialize(cliOptions?: any): Promise<void> {
+  async initialize(cliOptions?: { config?: string }): Promise<void> {
     if (this.initialized) {
       logger.debug('CLI already initialized');
       return;
@@ -88,7 +88,7 @@ export class PRPCli extends EventEmitter {
   /**
    * Run a command
    */
-  async run(args: string[], options?: any): Promise<CommandResult> {
+  async run(args: string[], options?: Record<string, unknown>): Promise<CommandResult> {
     if (!this.initialized) {
       await this.initialize();
     }
@@ -130,29 +130,35 @@ export class PRPCli extends EventEmitter {
   private async executeCommand(
     command: string,
     args: string[],
-    options?: any
+    options?: Record<string, unknown>
   ): Promise<CommandResult> {
+    // Log command details for debugging
+    logger.debug(`Executing command: ${command}`, {
+      argsCount: args.length,
+      hasOptions: !!options && Object.keys(options).length > 0
+    });
+
     switch (command) {
       case 'init':
-        return await this.executeInit(args, options);
+        return await this.executeInit();
       case 'build':
-        return await this.executeBuild(args, options);
+        return await this.executeBuild();
       case 'test':
-        return await this.executeTest(args, options);
+        return await this.executeTest();
       case 'lint':
-        return await this.executeLint(args, options);
+        return await this.executeLint();
       case 'quality':
-        return await this.executeQuality(args, options);
+        return await this.executeQuality();
       case 'status':
-        return await this.executeStatus(args, options);
+        return await this.executeStatus();
       case 'config':
-        return await this.executeConfig(args, options);
+        return await this.executeConfig();
       case 'debug':
-        return await this.executeDebug(args, options);
+        return await this.executeDebug();
       case 'ci':
-        return await this.executeCI(args, options);
+        return await this.executeCI();
       case 'deploy':
-        return await this.executeDeploy(args, options);
+        return await this.executeDeploy();
       default:
         throw new Error(`Unknown command: ${command}`);
     }
@@ -294,7 +300,7 @@ export class PRPCli extends EventEmitter {
   }
 
   // Command implementations (stubs for now)
-  private async executeInit(_args: string[], _options?: any): Promise<CommandResult> {
+  private async executeInit(): Promise<CommandResult> {
     logger.info('Initializing project...');
     // Implementation will be added in init command
     return {
@@ -306,7 +312,7 @@ export class PRPCli extends EventEmitter {
     };
   }
 
-  private async executeBuild(_args: string[], _options?: any): Promise<CommandResult> {
+  private async executeBuild(): Promise<CommandResult> {
     logger.info('Building project...');
     // Implementation will be added in build command
     return {
@@ -318,7 +324,7 @@ export class PRPCli extends EventEmitter {
     };
   }
 
-  private async executeTest(_args: string[], _options?: any): Promise<CommandResult> {
+  private async executeTest(): Promise<CommandResult> {
     logger.info('Running tests...');
     // Implementation will be added in test command
     return {
@@ -330,7 +336,7 @@ export class PRPCli extends EventEmitter {
     };
   }
 
-  private async executeLint(_args: string[], _options?: any): Promise<CommandResult> {
+  private async executeLint(): Promise<CommandResult> {
     logger.info('Running linting...');
     // Implementation will be added in lint command
     return {
@@ -342,7 +348,7 @@ export class PRPCli extends EventEmitter {
     };
   }
 
-  private async executeQuality(_args: string[], _options?: any): Promise<CommandResult> {
+  private async executeQuality(): Promise<CommandResult> {
     logger.info('Running quality gates...');
     // Implementation will be added in quality command
     return {
@@ -354,7 +360,7 @@ export class PRPCli extends EventEmitter {
     };
   }
 
-  private async executeStatus(_args: string[], _options?: any): Promise<CommandResult> {
+  private async executeStatus(): Promise<CommandResult> {
     logger.info('Checking status...');
     // Implementation will be added in status command
     return {
@@ -366,7 +372,7 @@ export class PRPCli extends EventEmitter {
     };
   }
 
-  private async executeConfig(_args: string[], _options?: any): Promise<CommandResult> {
+  private async executeConfig(): Promise<CommandResult> {
     logger.info('Managing configuration...');
     // Implementation will be added in config command
     return {
@@ -378,7 +384,7 @@ export class PRPCli extends EventEmitter {
     };
   }
 
-  private async executeDebug(args: string[], options?: any): Promise<CommandResult> {
+  private async executeDebug(): Promise<CommandResult> {
     logger.info('Starting debug mode...');
     // Implementation will be added in debug command
     return {
@@ -390,7 +396,7 @@ export class PRPCli extends EventEmitter {
     };
   }
 
-  private async executeCI(args: string[], options?: any): Promise<CommandResult> {
+  private async executeCI(): Promise<CommandResult> {
     logger.info('Managing CI/CD...');
     // Implementation will be added in CI command
     return {
@@ -402,7 +408,7 @@ export class PRPCli extends EventEmitter {
     };
   }
 
-  private async executeDeploy(_args: string[], _options?: any): Promise<CommandResult> {
+  private async executeDeploy(): Promise<CommandResult> {
     logger.info('Deploying application...');
     // Implementation will be added in deploy command
     return {

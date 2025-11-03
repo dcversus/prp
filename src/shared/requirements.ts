@@ -112,7 +112,7 @@ export function createCommandCheckRequirement(
       try {
         execSync(checkCommand, { stdio: 'pipe' });
         return true;
-      } catch (error) {
+      } catch {
         return false;
       }
     },
@@ -180,7 +180,7 @@ export const COMMON_REQUIREMENTS = {
         await fs.unlink(join(tmpDir, 'test'));
         await fs.rmdir(tmpDir);
         return true;
-      } catch (error) {
+      } catch {
         return false;
       }
     }
@@ -207,7 +207,7 @@ export const COMMON_REQUIREMENTS = {
           });
           req.end();
         });
-      } catch (error) {
+      } catch {
         return false;
       }
     }
@@ -230,7 +230,7 @@ export const COMMON_REQUIREMENTS = {
         } catch {
           return false;
         }
-      } catch (error) {
+      } catch {
         return false;
       }
     }

@@ -99,9 +99,22 @@ export class EventChannelImpl<T = Record<string, unknown>> implements EventChann
 }
 
 /**
+ * ♫ Event Bus Interface
+ */
+export interface IEventBus {
+  on(event: string, listener: (...args: unknown[]) => void): void;
+  off(event: string, listener: (...args: unknown[]) => void): void;
+  emit(event: string, ...args: unknown[]): void;
+  createChannel<T>(name: string, maxEvents?: number): EventChannel<T>;
+  getChannel<T>(name: string): EventChannel<T> | undefined;
+  publishToChannel<T>(channelName: string, event: ChannelEvent<T>): void;
+  subscribeToChannel<T>(channelName: string, callback: (event: ChannelEvent<T>) => void): () => void;
+}
+
+/**
  * ♫ Event Bus - Central coordinator for all event channels
  */
-export class EventBus {
+export class EventBus implements IEventBus {
   private channels: Map<string, EventChannel<Record<string, unknown>>> = new Map();
   private globalEmitter = new EventEmitter();
 
@@ -184,6 +197,19 @@ export class EventBus {
       data: signal,
       metadata: signal.metadata
     });
+  }
+
+  // Standard EventEmitter interface methods
+  on(event: string, listener: (...args: unknown[]) => void): void {
+    this.globalEmitter.on(event, listener);
+  }
+
+  off(event: string, listener: (...args: unknown[]) => void): void {
+    this.globalEmitter.off(event, listener);
+  }
+
+  emit(event: string, ...args: unknown[]): void {
+    this.globalEmitter.emit(event, ...args);
   }
 
   // Cross-channel event listening

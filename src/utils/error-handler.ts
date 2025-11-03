@@ -348,7 +348,7 @@ export class ErrorHandler {
       return {
         success: false,
         message: 'No errors to handle',
-        data: null,
+        data: undefined,
         exitCode: 1
       };
     }
@@ -397,7 +397,7 @@ export class ErrorHandler {
   /**
    * Create error from various sources
    */
-  static from(source: any, _context?: string): PRPError {
+  static from(source: Error | string | Record<string, unknown>): PRPError {
     if (source instanceof PRPError) {
       return source;
     }
@@ -435,7 +435,7 @@ export class ErrorHandler {
     }
 
     if (typeof source === 'object' && source.message) {
-      return new PRPError(source.message, source.code || 'UNKNOWN_ERROR');
+      return new PRPError(String(source.message), String((source as Record<string, unknown>).code || 'UNKNOWN_ERROR'));
     }
 
     return new PRPError('Unknown error occurred', 'UNKNOWN_ERROR');

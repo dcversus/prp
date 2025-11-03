@@ -46,7 +46,7 @@ async function handleLintCommand(options: LintOptions): Promise<void> {
     await cli.initialize();
 
     // Execute lint command
-    const result = await cli.run(['lint'], options);
+    const result = await cli.run(['lint'], options as Record<string, unknown>);
 
     if (result.success) {
       logger.success('✅ Linting completed successfully');

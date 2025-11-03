@@ -52,7 +52,7 @@ async function handleBuildCommand(options: BuildOptions): Promise<void> {
     await cli.initialize();
 
     // Execute build command
-    const result = await cli.run(['build'], options);
+    const result = await cli.run(['build'], options as Record<string, unknown>);
 
     if (result.success) {
       logger.success('✅ Build completed successfully');

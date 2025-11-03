@@ -13,7 +13,6 @@ import {
   TabInfo,
   AgentTerminalSession,
   TmuxActivityDetectedEvent,
-  TmuxIdleDetectedEvent,
   TmuxResourceAlertEvent,
   TmuxAgentMessageEvent
 } from './types';
@@ -62,7 +61,7 @@ export interface TUIConfig {
 }
 
 export interface ScreenContent {
-  type: 'main' | 'orchestrator' | 'agent' | 'info' | 'logs';
+  type: 'main' | 'orchestrator' | 'agent' | 'info' | 'logs' | 'debug';
   title: string;
   content: string[];
   metadata?: Record<string, unknown>;
@@ -252,7 +251,7 @@ export class TabbedTUI extends EventEmitter {
     tab.lastUpdate = new Date();
 
     // Update badge if there are errors/warnings
-    this.updateTabBadge(tabId, content, metadata);
+    this.updateTabBadge(tabId, content);
 
     this.emit('tab.content.updated', { tabId, content, metadata });
   }
@@ -353,8 +352,8 @@ export class TabbedTUI extends EventEmitter {
       this.handleActivityDetected(event.data as TmuxActivityDetectedEvent);
     });
 
-    this.eventBus.onChannelEvent('tmux', 'idle.detected', (event: { data: unknown }) => {
-      this.handleIdleDetected(event.data as TmuxIdleDetectedEvent);
+    this.eventBus.onChannelEvent('tmux', 'idle.detected', () => {
+      this.handleIdleDetected();
     });
 
     this.eventBus.onChannelEvent('tmux', 'resource.alert', (event: { data: unknown }) => {
@@ -528,7 +527,7 @@ export class TabbedTUI extends EventEmitter {
     return this.config.colors.inactive;
   }
 
-  private updateTabBadge(tabId: string, content: string[], _metadata?: Record<string, unknown>): void {
+  private updateTabBadge(tabId: string, content: string[]): void {
     const tab = this.tabs.get(tabId);
     if (!tab) {
       return;
@@ -733,7 +732,7 @@ export class TabbedTUI extends EventEmitter {
     }
   }
 
-  private handleIdleDetected(_event: TmuxIdleDetectedEvent): void {
+  private handleIdleDetected(): void {
     // Update info screen with idle detection
     this.updateInfoScreen();
   }

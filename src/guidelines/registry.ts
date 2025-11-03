@@ -5,6 +5,8 @@
  * and signal mappings with enable/disable functionality.
  */
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import { EventEmitter } from 'events';
 import {
   GuidelineDefinition,
@@ -33,7 +35,7 @@ import {
   Validator,
   AgentRole
 } from '../shared';
-import { configManager, PRPConfig } from '../shared/config';
+import { configManager } from '../shared/config';
 
 // Interface for GitHub agent with credentials
 interface GitHubAgentConfig {

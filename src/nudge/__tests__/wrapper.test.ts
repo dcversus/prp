@@ -9,9 +9,6 @@ import { jest } from '@jest/globals';
 import { NudgeWrapper, createNudgeWrapper } from '../wrapper.js';
 import { NudgeClient } from '../client.js';
 import {
-  NudgeRequest,
-  DirectNudgeRequest,
-  LLMModeNudgeRequest,
   AgentNudgeMessage,
   NudgeResponse,
   NudgeError
@@ -41,7 +38,7 @@ describe('NudgeWrapper', () => {
       sendNudge: jest.fn(),
       testConnectivity: jest.fn(),
       getConfigStatus: jest.fn()
-    } as any;
+    } as jest.Mocked<NudgeClient>;
 
     MockedNudgeClient.mockImplementation(() => mockClient);
     wrapper = new NudgeWrapper({}, true);

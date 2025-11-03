@@ -19,6 +19,7 @@ interface DebugOptions {
   follow?: boolean;
   json?: boolean;
   nocolor?: boolean;
+  signalHistory?: string;
 }
 
 /**
@@ -75,7 +76,7 @@ class DebugModeSession {
   private cli: PRPCli;
   private options: DebugOptions;
   private isRunning = false;
-  private signalHistory: any[] = [];
+  private signalHistory: Array<{ timestamp: Date; signal: string; data: unknown }> = [];
   private maxSignalHistory = 50;
 
   constructor(cli: PRPCli, options: DebugOptions) {
@@ -112,12 +113,13 @@ class DebugModeSession {
     process.stdin.setEncoding('utf8');
 
     process.stdin.on('data', (key) => {
+      const keyStr = key.toString();
       // CTRL+D (EOF character) - placeholder for future orchestrator integration
-      if (key === '\x04') {
+      if (keyStr === '\x04') {
         this.logSignal('[SYSTEM]', 'CTRL+D pressed - orchestrator interface not yet available', 'warn');
       }
       // CTRL+C
-      else if (key === '\x03') {
+      else if (keyStr === '\x03') {
         this.shutdown();
       }
     });
@@ -184,7 +186,7 @@ class DebugModeSession {
         logger.info('🔔 Recent Signals:');
         const recent = this.signalHistory.slice(-5);
         recent.forEach(signal => {
-          logger.info(`  ${signal.timestamp} [${signal.level}] ${signal.source}: ${signal.message}`);
+          logger.info(`  ${signal.timestamp} [${signal.signal}]`);
         });
       }
 
@@ -197,10 +199,9 @@ class DebugModeSession {
    */
   private logSignal(source: string, message: string, level: string = 'info'): void {
     const signal = {
-      timestamp: new Date().toISOString(),
-      source,
-      message,
-      level
+      timestamp: new Date(),
+      signal: level,
+      data: { source, message }
     };
 
     // Add to history

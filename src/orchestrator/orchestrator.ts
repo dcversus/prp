@@ -131,7 +131,7 @@ export class Orchestrator extends EventEmitter {
     //   createDefaultTmuxConfig(),
     //   createLayerLogger('shared')
     // );
-    // this.tmuxManager = null as any; // Temporarily disabled
+    // this.tmuxManager = null; // Temporarily disabled
 
     this.initializeTools();
     this.setupEventHandlers();
@@ -901,9 +901,13 @@ export class Orchestrator extends EventEmitter {
   /**
    * Simulate model call (placeholder for actual implementation)
    */
-  private async simulateModelCall(prompt: string, _options: unknown): Promise<unknown> {
+  private async simulateModelCall(prompt: string, options: unknown): Promise<unknown> {
+    // Extract options for simulation
+    const optionsObj = options as Record<string, unknown>;
+    const delay = (optionsObj?.delay as number) || (200 + Math.random() * 300);
+
     // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
+    await new Promise(resolve => setTimeout(resolve, delay));
 
     // Generate mock response based on prompt content
     if (prompt.includes('chain of thought')) {
@@ -1076,7 +1080,7 @@ export class Orchestrator extends EventEmitter {
   /**
    * Create execution step from action
    */
-  private async createExecutionStep(action: DecisionAction, _decision: OrchestratorDecision): Promise<ExecutionStep> {
+  private async createExecutionStep(action: DecisionAction, decision: OrchestratorDecision): Promise<ExecutionStep> {
     return {
       id: HashUtils.generateId(),
       name: action.description || action.type,
@@ -1084,7 +1088,22 @@ export class Orchestrator extends EventEmitter {
       type: this.getActionType(action.type),
       status: 'pending',
       assignedTo: this.getStepAssignee(action),
-      payload: action.payload,
+      payload: action.payload && typeof action.payload === 'object'
+        ? {
+            ...action.payload,
+            decisionContext: {
+              decisionId: decision.id,
+              decisionType: decision.type,
+              confidence: decision.confidence
+            }
+          }
+        : {
+            decisionContext: {
+              decisionId: decision.id,
+              decisionType: decision.type,
+              confidence: decision.confidence
+            }
+          },
       result: undefined,
       error: undefined,
       startTime: undefined,
@@ -1179,7 +1198,7 @@ export class Orchestrator extends EventEmitter {
   /**
    * Execute a single step
    */
-  private async executeStep(step: ExecutionStep, _decisionId: string): Promise<ActionResult> {
+  private async executeStep(step: ExecutionStep, decisionId: string): Promise<ActionResult> {
     const startTime = Date.now();
     const result: ActionResult = {
       id: HashUtils.generateId(),
@@ -1188,6 +1207,8 @@ export class Orchestrator extends EventEmitter {
       startTime: new Date(),
       duration: 0
     };
+
+    logger.debug('orchestrator', `Executing step ${step.id} for decision ${decisionId}`);
 
     try {
       step.status = 'in_progress';
@@ -1471,16 +1492,19 @@ export class Orchestrator extends EventEmitter {
    * Get current constraints
    */
   private async getCurrentConstraints(): Promise<Constraint[]> {
-    const constraints = [];
+    const constraints: Constraint[] = [];
 
     // Token budget constraint
     const tokenState = storageManager.getTokenState();
     if (tokenState.limits.globalLimits?.daily && tokenState.accounting.totalUsed > tokenState.limits.globalLimits.daily * 0.9) {
       constraints.push({
+        id: 'token-budget-warning',
         type: 'resource',
         description: 'Approaching token usage limit',
-        severity: 'warning',
-        status: 'active'
+        severity: 'high' as const,
+        status: 'active' as const,
+        affectedComponents: ['orchestrator'],
+        resolution: 'Monitor token usage and optimize operations'
       });
     }
 
@@ -1528,7 +1552,7 @@ export class Orchestrator extends EventEmitter {
       category: def.category,
       description: def.description,
       enabled: def.enabled,
-      priority: def.priority || 5,
+      priority: typeof def.priority === 'string' ? parseInt(def.priority, 10) : (def.priority || 5),
       conditions: [],
       applicable: def.enabled
     }));
@@ -1883,9 +1907,14 @@ Format your response as JSON:
         supportsImages: agentConfig.capabilities.supportsImages,
         supportsSubAgents: agentConfig.capabilities.supportsSubAgents,
         supportsParallel: agentConfig.capabilities.supportsParallel,
+        supportsCodeExecution: agentConfig.capabilities.supportsCodeExecution || false,
         maxContextLength: agentConfig.capabilities.maxContextLength,
         supportedModels: agentConfig.capabilities.supportedModels,
-        availableTools: [], // placeholder - agentConfig.capabilities may not have availableTools
+        supportedFileTypes: agentConfig.capabilities.supportedFileTypes || [],
+        canAccessInternet: agentConfig.capabilities.canAccessInternet || false,
+        canAccessFileSystem: agentConfig.capabilities.canAccessFileSystem || true,
+        canExecuteCommands: agentConfig.capabilities.canExecuteCommands || false,
+        availableTools: agentConfig.capabilities.availableTools || [],
         specializations: agentConfig.roles || []
       }
     };
@@ -1995,10 +2024,15 @@ Format your response as JSON:
     logger.info('shutdown', 'Shutting down orchestrator');
 
     // Cancel active decisions
-    Array.from(this.activeDecisions.entries()).forEach(([id, _promise]) => {
+    Array.from(this.activeDecisions.entries()).forEach(([id, promise]) => {
       try {
-        // Cancel the promise
+        // Cancel the promise - note: actual promise cancellation would require AbortController
         logger.info('shutdown', 'Cancelling active decision', { decisionId: id });
+        // In a real implementation, we would use AbortController or similar to cancel the promise
+        if (promise && typeof promise === 'object') {
+          // Attempt to cancel if the promise supports cancellation
+          logger.debug('shutdown', `Attempting to cancel promise for decision ${id}`);
+        }
       } catch (error) {
         logger.warn('shutdown', 'Failed to cancel decision', { decisionId: id, error: error instanceof Error ? error.message : String(error) });
       }
@@ -2095,10 +2129,17 @@ export const orchestrator = new Orchestrator();
 /**
  * Initialize orchestrator system
  */
-export async function initializeOrchestrator(_config?: Partial<OrchestratorConfig>): Promise<Orchestrator> {
+export async function initializeOrchestrator(config?: Partial<OrchestratorConfig>): Promise<Orchestrator> {
   // Initialize storage and guidelines if needed
   await storageManager.initialize();
   await guidelinesRegistry.load();
+
+  // If custom config provided, create new orchestrator instance
+  if (config) {
+    const customOrchestrator = new Orchestrator(config);
+    await customOrchestrator.initialize();
+    return customOrchestrator;
+  }
 
   // Initialize global orchestrator (includes tmux system)
   await orchestrator.initialize();

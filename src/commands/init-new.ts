@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import inquirer from 'inquirer';
+import * as inquirer from 'inquirer';
 // import chalk from 'chalk'; // Temporarily commented for linting
 import fs from 'fs-extra';
 import path from 'path';
@@ -9,6 +9,46 @@ import { PRPCli } from '../core/cli';
 import { ConfigurationManager } from '../config/manager';
 import { ValidationError, FileSystemError } from '../utils/error-handler';
 import type { CommandResult, PRPConfig } from '../types';
+
+/**
+ * Interfaces for command options and project information
+ */
+interface InitCommandOptions {
+  template?: string;
+  name?: string;
+  description?: string;
+  author?: string;
+  license?: string;
+  existing?: boolean;
+  interactive?: boolean;
+  skipGit?: boolean;
+  install?: boolean;
+  packageManager?: string;
+}
+
+interface ProjectInfo {
+  name: string;
+  description: string;
+  author: string;
+  license: string;
+  template: string;
+  language: string;
+  framework: string;
+  packageManager: string;
+  version: string;
+  repository?: string;
+  homepage?: string;
+  keywords?: string[];
+  bugs?: string;
+  contributing?: string;
+}
+
+interface PackageManagerInfo {
+  name: string;
+  version?: string;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+}
 
 /**
  * Available project templates
@@ -117,7 +157,7 @@ export class InitCommand {
   /**
    * Execute init command
    */
-  async execute(options: any): Promise<CommandResult> {
+  async execute(options: InitCommandOptions): Promise<CommandResult> {
     const startTime = Date.now();
 
     try {
@@ -142,7 +182,7 @@ export class InitCommand {
   /**
    * Initialize new project
    */
-  private async initializeNewProject(options: any): Promise<CommandResult> {
+  private async initializeNewProject(options: InitCommandOptions): Promise<CommandResult> {
     logger.info('Creating new project...');
 
     // Collect project information
@@ -197,7 +237,7 @@ export class InitCommand {
   /**
    * Initialize existing project
    */
-  private async initializeExistingProject(options: any): Promise<CommandResult> {
+  private async initializeExistingProject(options: InitCommandOptions): Promise<CommandResult> {
     logger.info('Upgrading existing project...');
 
     // Detect project type and configuration
@@ -216,7 +256,7 @@ export class InitCommand {
     await this.updatePackageScripts(config);
 
     // Setup quality gates
-    await this.setupQualityGates(config);
+    await this.setupQualityGates();
 
     logger.success('✅ Existing project upgraded successfully!');
     logger.info('\nNew commands available:');
@@ -238,8 +278,8 @@ export class InitCommand {
   /**
    * Collect project information from user
    */
-  private async collectProjectInfo(options: any): Promise<any> {
-    if (options.noInteractive) {
+  private async collectProjectInfo(options: InitCommandOptions): Promise<ProjectInfo> {
+    if (options.interactive === false) {
       // Non-interactive mode - use provided options or defaults
       return {
         name: options.name || 'my-prp-project',
@@ -247,12 +287,15 @@ export class InitCommand {
         author: options.author || process.env.USER || 'Developer',
         license: options.license || 'MIT',
         template: options.template || 'node-typescript',
-        packageManager: options.packageManager || 'npm'
+        language: 'TypeScript',
+        framework: 'Node.js',
+        packageManager: options.packageManager || 'npm',
+        version: '0.1.0'
       };
     }
 
     // Interactive mode
-    const questions: any[] = [
+    const questions = [
       {
         type: 'input',
         name: 'name',
@@ -303,7 +346,18 @@ export class InitCommand {
       }
     ];
 
-    return await inquirer.prompt(questions);
+    const answers = await inquirer.prompt(questions);
+    return {
+      name: answers.name || 'my-prp-project',
+      description: answers.description || 'A PRP project',
+      author: answers.author || process.env.USER || 'Developer',
+      license: answers.license || 'MIT',
+      template: answers.template || 'node-typescript',
+      language: 'TypeScript',
+      framework: 'Node.js',
+      packageManager: answers.packageManager || 'npm',
+      version: '0.1.0'
+    };
   }
 
   /**
@@ -331,13 +385,17 @@ export class InitCommand {
   /**
    * Analyze existing project
    */
-  private async analyzeExistingProject(): Promise<any> {
-    const projectInfo: any = {
+  private async analyzeExistingProject(): Promise<ProjectInfo> {
+    const projectInfo: ProjectInfo = {
       name: path.basename(process.cwd()),
       description: '',
       author: '',
+      license: 'MIT',
       template: 'node-typescript',
-      packageManager: 'npm'
+      language: 'TypeScript',
+      framework: 'Node.js',
+      packageManager: 'npm',
+      version: '0.1.0'
     };
 
     // Try to read package.json
@@ -360,8 +418,8 @@ export class InitCommand {
   /**
    * Detect package manager from package.json
    */
-  private detectPackageManager(packageJson: any): string {
-    if (packageJson.packageManager) {
+  private detectPackageManager(packageJson: Record<string, unknown>): string {
+    if (typeof packageJson.packageManager === 'string') {
       const manager = packageJson.packageManager.split('@')[0];
       if (['npm', 'yarn', 'pnpm'].includes(manager)) {
         return manager;
@@ -379,7 +437,7 @@ export class InitCommand {
   /**
    * Detect project template from package.json
    */
-  private detectTemplate(packageJson: any): string {
+  private detectTemplate(packageJson: PackageManagerInfo): string {
     const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
 
     if (deps.react && deps.next) return 'nextjs';
@@ -395,7 +453,7 @@ export class InitCommand {
   /**
    * Create project configuration
    */
-  private async createConfiguration(projectInfo: any): Promise<PRPConfig> {
+  private async createConfiguration(projectInfo: ProjectInfo): Promise<PRPConfig> {
     const config: PRPConfig = {
       name: projectInfo.name,
       version: '1.0.0',
@@ -565,7 +623,7 @@ export class InitCommand {
   private async initializeProjectStructure(
     projectPath: string,
     config: PRPConfig,
-    projectInfo: any
+    projectInfo: ProjectInfo
   ): Promise<void> {
     // Create basic directory structure
     const directories = [
@@ -589,7 +647,7 @@ export class InitCommand {
   private async createBasicFiles(
     projectPath: string,
     config: PRPConfig,
-    projectInfo: any
+    projectInfo: ProjectInfo
   ): Promise<void> {
     // Create .prprc
     await this.configManager.save(config, path.join(projectPath, '.prprc'));
@@ -605,7 +663,7 @@ export class InitCommand {
     await this.createReadme(projectPath, config);
 
     // Create .gitignore
-    await this.createGitignore(projectPath, projectInfo.template);
+    await this.createGitignore(projectPath);
 
     // Create basic source files
     await this.createSourceFiles(projectPath, projectInfo.template);
@@ -617,7 +675,7 @@ export class InitCommand {
   private async createPackageJson(
     projectPath: string,
     config: PRPConfig,
-    projectInfo: any
+    projectInfo: ProjectInfo
   ): Promise<void> {
     const packageJson = {
       name: config.name,
@@ -654,7 +712,7 @@ ${config.description || 'A PRP project'}
 
 \`\`\`bash
 # Install dependencies
-${this.getInstallCommand(config.settings.packageManager?.type || 'npm')}
+${this.getInstallCommand(config.settings.packageManager?.type as string || 'npm')}
 
 # Start development
 prp dev
@@ -699,7 +757,7 @@ ${config.license}
   /**
    * Create .gitignore
    */
-  private async createGitignore(projectPath: string, _template: string): Promise<void> {
+  private async createGitignore(projectPath: string): Promise<void> {
     const gitignore = `# Dependencies
 node_modules/
 .pnp
@@ -991,7 +1049,7 @@ describe('hello function', () => {
     }
   }
 
-  private async setupQualityGates(_config: PRPConfig): Promise<void> {
+  private async setupQualityGates(): Promise<void> {
     // This would setup linting config files, test configs, etc.
     logger.debug('Setting up quality gates');
     // Implementation details would depend on the specific tools

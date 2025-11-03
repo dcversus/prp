@@ -476,7 +476,12 @@ export class TokenAccountant {
   private loadData(): void {
     try {
       if (existsSync(this.storagePath)) {
-        const data = JSON.parse(readFileSync(this.storagePath, 'utf8'));
+        const fileContent = readFileSync(this.storagePath, 'utf8');
+        if (!fileContent || fileContent.trim() === '') {
+          // File is empty, initialize with empty data
+          return;
+        }
+        const data = JSON.parse(fileContent);
 
         // Load usage data
         if (data.usage) {

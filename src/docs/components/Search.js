@@ -1,3 +1,5 @@
+/* global window, document, fetch, console, setTimeout, clearTimeout */
+
 import { useState, useEffect, useRef } from 'react';
 
 // @ts-check

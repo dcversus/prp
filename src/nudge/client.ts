@@ -204,11 +204,11 @@ export class NudgeClient {
   /**
    * Handle API errors and convert to NudgeError
    */
-  private handleError(error: any, attempt: number): NudgeError {
+  private handleError(error: Error | AxiosError | unknown, attempt: number): NudgeError {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError;
       const status = axiosError.response?.status;
-      const data = axiosError.response?.data as any;
+      const data = axiosError.response?.data as unknown;
 
       switch (status) {
         case 401:
@@ -257,7 +257,7 @@ export class NudgeClient {
 
     return new NudgeError(
       'UNKNOWN_ERROR',
-      `Unexpected error: ${error.message}`,
+      `Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`,
       { originalError: error, attempt }
     );
   }
@@ -265,7 +265,7 @@ export class NudgeClient {
   /**
    * Determine if request should be retried
    */
-  private shouldRetry(error: any, attempt: number): boolean {
+  private shouldRetry(error: Error | AxiosError | unknown, attempt: number): boolean {
     // Don't retry if we've exceeded max attempts
     if (attempt >= this.config.retry_attempts!) {
       return false;

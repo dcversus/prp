@@ -384,7 +384,7 @@ export class EnhancedPRPParser {
   /**
    * Check if cache entry is valid
    */
-  private isCacheValid(cached: PRPCacheEntry, stats: any, fileHash: string): boolean {
+  private isCacheValid(cached: PRPCacheEntry, stats: { mtime: Date; size: number }, fileHash: string): boolean {
     return (
       cached.lastModified.getTime() === stats.mtime.getTime() &&
       cached.hash === fileHash &&
@@ -551,7 +551,7 @@ export class EnhancedPRPParser {
           prpFiles.push(fullPath);
         }
       }
-    } catch (error) {
+    } catch {
       // Skip directories we can't read
     }
   }

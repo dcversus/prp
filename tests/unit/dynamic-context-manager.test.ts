@@ -15,7 +15,7 @@ describe('DynamicContextManager', () => {
   describe('Initialization', () => {
     test('should initialize with correct model limits', () => {
       // Access private property through type assertion
-      const modelLimits = (contextManager as any).modelTokenLimits;
+      const modelLimits = (contextManager as DynamicContextManager & { modelTokenLimits: Map<string, number> }).modelTokenLimits;
 
       expect(modelLimits.get('claude-3-5-sonnet-20241022')).toBe(200000);
       expect(modelLimits.get('gpt-4')).toBe(128000);
@@ -24,7 +24,7 @@ describe('DynamicContextManager', () => {
     });
 
     test('should initialize compression strategies', () => {
-      const strategies = (contextManager as any).compressionStrategies;
+      const strategies = (contextManager as DynamicContextManager & { compressionStrategies: Array<{ name: string; compressionRatio: number }> }).compressionStrategies;
 
       expect(strategies).toHaveLength(4);
       expect(strategies[0].name).toBe('summarize_long_conversations');
@@ -33,7 +33,7 @@ describe('DynamicContextManager', () => {
       expect(strategies[3].name).toBe('compress_code_snippets');
 
       // Verify compression ratios are valid
-      strategies.forEach((strategy: any) => {
+      strategies.forEach((strategy: { name: string; compressionRatio: number }) => {
         expect(strategy.compressionRatio).toBeGreaterThan(0);
         expect(strategy.compressionRatio).toBeLessThan(1);
       });

@@ -45,8 +45,8 @@ export * from './config';
 export * from './github';
 
 // Agent Config
+export type { AgentRegistry } from './agent-config';
 export {
-  AgentRegistry,
   defaultAgentConfig,
   createAgentConfig,
   validateAgentConfig

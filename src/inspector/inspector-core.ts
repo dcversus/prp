@@ -219,7 +219,8 @@ export class InspectorCore extends EventEmitter {
         },
         model: 'error',
         timestamp: new Date(),
-        confidence: 0
+        confidence: 0,
+        success: false
       };
     }
   }
@@ -318,7 +319,7 @@ export class InspectorCore extends EventEmitter {
     const workerData = { workerId, config: this.config };
 
     return new Promise((resolve, reject) => {
-      const worker = new Worker(join(__dirname, 'inspector-worker.js'), {
+      const worker = new Worker(join(__dirname, 'inspector-worker.cjs'), {
         workerData
       });
 
@@ -393,7 +394,7 @@ export class InspectorCore extends EventEmitter {
     this.emit('inspector:result', typedResult);
 
     // Return worker to pool
-    this.returnWorkerToPool(workerId);
+    this.returnWorkerToPool();
   }
 
   /**
@@ -402,13 +403,13 @@ export class InspectorCore extends EventEmitter {
   private handleWorkerError(workerId: number, error: Error): void {
     this.metrics.errors++;
     this.emit('inspector:error', { workerId, error });
-    this.returnWorkerToPool(workerId);
+    this.returnWorkerToPool();
   }
 
   /**
    * Return worker to available pool
    */
-  private returnWorkerToPool(_workerId: number): void {
+  private returnWorkerToPool(): void {
     // In a real implementation, we would track which workers are busy
     // For now, we assume all workers are always available
   }

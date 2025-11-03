@@ -11,7 +11,7 @@ export type AgentConfig = import('../config/agent-config.js').AgentConfig;
 // Guideline protocol
 export interface GuidelineProtocol {
   steps: ProtocolStep[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 

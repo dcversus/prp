@@ -7,9 +7,8 @@
 
 import { createAgentNudgeIntegration } from '../nudge/agent-integration';
 import { createLayerLogger } from '../shared';
-import type { NodeJS } from 'node';
 
-const logger = createLayerLogger('orchestrator-message-handler');
+const logger = createLayerLogger('orchestrator');
 
 /**
  * Message priority levels
@@ -84,9 +83,11 @@ export interface MessageQueueConfig {
   maxRetries: number;
   expirationTime: number; // milliseconds
   escalationThresholds: {
+    low: number;    // minutes
     medium: number; // minutes
     high: number;   // minutes
     critical: number; // minutes
+    info: number;   // minutes
   };
 }
 
@@ -117,9 +118,11 @@ export class OrchestratorMessageHandlingGuidelines {
       maxRetries: 3,
       expirationTime: 86400000, // 24 hours
       escalationThresholds: {
+        low: 240,    // 4 hours
         medium: 60,  // 1 hour
         high: 30,    // 30 minutes
-        critical: 10 // 10 minutes
+        critical: 10, // 10 minutes
+        info: 480    // 8 hours
       },
       ...config
     };
@@ -277,8 +280,6 @@ export class OrchestratorMessageHandlingGuidelines {
    * Send message via nudge integration
    */
   private async sendMessageViaNudge(message: AdminMessage): Promise<void> {
-    const nudgeContent = this.formatMessageForNudge(message);
-
     switch (message.type) {
       case 'orchestrator-coordination':
         await this.agentNudge.sendOrchestratorCoordination({
@@ -370,20 +371,19 @@ export class OrchestratorMessageHandlingGuidelines {
   /**
    * Handle message delivery failure
    */
-  private async handleMessageFailure(message: AdminMessage, error: any): Promise<void> {
+  private async handleMessageFailure(message: AdminMessage, error: unknown): Promise<void> {
     message.metadata.retryCount++;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-    logger.error('OrchestratorMessageHandler', 'Message delivery failed', {
+    logger.error('OrchestratorMessageHandler', 'Message delivery failed', error instanceof Error ? error : new Error(errorMessage), {
       messageId: message.id,
       retryCount: message.metadata.retryCount,
-      maxRetries: message.metadata.maxRetries,
-      error: errorMessage
+      maxRetries: message.metadata.maxRetries
     });
 
     if (message.metadata.retryCount >= message.metadata.maxRetries) {
       message.status = MessageStatus.FAILED;
-      logger.error('OrchestratorMessageHandler', 'Message failed after max retries', {
+      logger.error('OrchestratorMessageHandler', 'Message failed after max retries', error instanceof Error ? error : new Error(errorMessage), {
         messageId: message.id,
         retryCount: message.metadata.retryCount
       });
@@ -550,9 +550,8 @@ Please review and take the required action: ${message.actionRequired || 'Please 
       });
 
     } catch (error) {
-      logger.error('OrchestratorMessageHandler', 'Failed to send follow-up', {
-        messageId: message.id,
-        error: error instanceof Error ? error.message : 'Unknown error'
+      logger.error('OrchestratorMessageHandler', 'Failed to send follow-up', error instanceof Error ? error : new Error(error instanceof Error ? error.message : 'Unknown error'), {
+        messageId: message.id
       });
     }
   }

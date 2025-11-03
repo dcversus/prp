@@ -6,11 +6,15 @@
  */
 
 import { EventEmitter } from 'events';
+import * as fs from 'fs';
+import * as path from 'path';
+import { spawn, execSync } from 'child_process';
 import { Tool, ToolResult, ParameterDefinition } from './types';
 import { createLayerLogger } from '../shared';
 import { httpTools } from './tools/http-tools';
 import { agentTools } from './tools/agent-tools';
 import { tokenTrackingTools } from './tools/token-tracking-tools';
+import { getTokenCapsTool } from './tools/get-token-caps';
 
 const logger = createLayerLogger('orchestrator');
 
@@ -289,9 +293,9 @@ export class ToolRegistry extends EventEmitter {
         }
       },
       execute: async (params: unknown) => {
-        const { readFileSync } = require('fs');
         const typedParams = params as ToolParameters;
-        const content = readFileSync(typedParams.filepath as string, typedParams.encoding as string || 'utf8');
+        const encoding = typedParams.encoding as BufferEncoding || 'utf8';
+        const content = fs.readFileSync(typedParams.filepath as string, encoding);
         return {
           success: true,
           data: { content, size: content.length },
@@ -324,10 +328,10 @@ export class ToolRegistry extends EventEmitter {
         }
       },
       execute: async (params: unknown) => {
-        const { writeFileSync } = require('fs');
         const typedParams = params as ToolParameters;
         const content = typedParams.content as string;
-        writeFileSync(typedParams.filepath as string, content, typedParams.encoding as string || 'utf8');
+        const encoding = typedParams.encoding as BufferEncoding || 'utf8';
+        fs.writeFileSync(typedParams.filepath as string, content, { encoding });
         return {
           success: true,
           data: { bytesWritten: content.length },
@@ -355,17 +359,15 @@ export class ToolRegistry extends EventEmitter {
         }
       },
       execute: async (params: unknown) => {
-        const { readdirSync, statSync } = require('fs');
-        const { join } = require('path');
         const typedParams = params as ToolParameters;
 
         const listDirectory = (dir: string, recursive: boolean = false): unknown[] => {
-          const items = readdirSync(dir);
+          const items = fs.readdirSync(dir);
           const result = [];
 
           for (const item of items) {
-            const fullPath = join(dir, item);
-            const stats = statSync(fullPath);
+            const fullPath = path.join(dir, item);
+            const stats = fs.statSync(fullPath);
 
             const entry = {
               name: item,
@@ -418,7 +420,6 @@ export class ToolRegistry extends EventEmitter {
         }
       },
       execute: async (params: unknown) => {
-        const { spawn } = require('child_process');
         const typedParams = params as ToolParameters;
 
         return new Promise((resolve, reject) => {
@@ -481,7 +482,6 @@ export class ToolRegistry extends EventEmitter {
         }
       },
       execute: async (params: unknown) => {
-        const { execSync } = require('child_process');
         const typedParams = params as ToolParameters;
         const status = execSync('git status --porcelain', {
           cwd: typedParams.path as string || '.',
@@ -548,7 +548,13 @@ export class ToolRegistry extends EventEmitter {
           data: {
             status: response.status,
             statusText: response.statusText,
-            headers: Object.fromEntries(response.headers.entries()),
+            headers: (() => {
+              const headers: Record<string, string> = {};
+              response.headers.forEach((value, key) => {
+                headers[key] = value;
+              });
+              return headers;
+            })(),
             body: text,
             success: response.ok
           },
@@ -577,6 +583,11 @@ export class ToolRegistry extends EventEmitter {
         this.registerTool(tool);
       }
     });
+
+    // Register token caps tool
+    if (!this.tools.has(getTokenCapsTool.name)) {
+      this.registerTool(getTokenCapsTool);
+    }
 
     logger.info('ToolRegistry', `Registered ${this.tools.size} tools total`);
   }
@@ -687,9 +698,32 @@ export class ToolRegistry extends EventEmitter {
   /**
    * Check rate limiting for a tool
    */
-  private async checkRateLimit(_tool: Tool): Promise<void> {
-    // This would implement actual rate limiting
-    // For now, allowing all calls
+  private async checkRateLimit(tool: Tool): Promise<void> {
+    // Basic rate limiting implementation
+    const now = Date.now();
+    const rateLimit = this.rateLimits.get(tool.name);
+
+    if (!rateLimit) {
+      // Initialize rate limit for tool
+      this.rateLimits.set(tool.name, {
+        calls: [now],
+        lastReset: now
+      });
+      return;
+    }
+
+    // Reset calls if older than 1 minute
+    const oneMinuteAgo = now - 60000;
+    rateLimit.calls = rateLimit.calls.filter(callTime => callTime > oneMinuteAgo);
+
+    // Check if tool has exceeded rate limit (100 calls per minute)
+    const maxCallsPerMinute = 100;
+    if (rateLimit.calls.length >= maxCallsPerMinute) {
+      throw new Error(`Tool '${tool.name}' has exceeded rate limit of ${maxCallsPerMinute} calls per minute`);
+    }
+
+    // Add current call
+    rateLimit.calls.push(now);
   }
 
   /**

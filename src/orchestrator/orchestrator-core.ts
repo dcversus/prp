@@ -105,7 +105,7 @@ export class OrchestratorCore extends EventEmitter {
 
     this.toolRegistry = new ToolRegistry();
     this.contextManager = new ContextManager({ total: 100000 });
-    this.cotProcessor = new CoTProcessor(_config.model || 'gpt-4');
+    this.cotProcessor = new CoTProcessor();
     this.agentManager = new AgentManager(_config);
   }
 
@@ -243,7 +243,7 @@ export class OrchestratorCore extends EventEmitter {
 
       // 2. Determine appropriate guideline and tools
       await this.determineGuideline(signal);
-      const requiredTools = await this.determineRequiredTools(signal, 'general-guideline');
+      const requiredTools = await this.determineRequiredTools(signal);
 
       // 3. Generate Chain of Thought
       const processingContext: ProcessingContext = {
@@ -269,10 +269,10 @@ export class OrchestratorCore extends EventEmitter {
       const toolResults = await this.executeToolCalls(cot, requiredTools);
 
       // 5. Update shared context based on results
-      await this.updateSharedContext(signal, cot, toolResults);
+      await this.updateSharedContext(signal, cot);
 
       // 6. Determine next actions
-      const nextActions = await this.determineNextActions(signal, cot, toolResults);
+      const nextActions = await this.determineNextActions(signal, cot);
 
       // 7. Execute agent tasks if needed
       if (nextActions.agentTasks.length > 0) {
@@ -327,7 +327,7 @@ export class OrchestratorCore extends EventEmitter {
   /**
    * Determine required tools for signal processing
    */
-  private async determineRequiredTools(_signal: Signal, _guideline: string): Promise<Tool[]> {
+  private async determineRequiredTools(_signal: Signal): Promise<Tool[]> {
     const baseTools = ['read_file', 'write_file', 'list_directory'];
 
     const signalSpecificTools: Record<string, string[]> = {
@@ -396,8 +396,7 @@ export class OrchestratorCore extends EventEmitter {
    */
   private async updateSharedContext(
     _signal: Signal,
-    cot: ChainOfThought,
-    _toolResults: unknown
+    cot: ChainOfThought
   ): Promise<void> {
     // Update warzone context if available
     if (this.state.sharedContext?.warzone) {
@@ -429,8 +428,7 @@ export class OrchestratorCore extends EventEmitter {
    */
   private async determineNextActions(
     _signal: Signal,
-    cot: ChainOfThought,
-    _toolResults: unknown
+    cot: ChainOfThought
   ): Promise<{
     agentTasks: Array<{
       agentType: string;
@@ -520,7 +518,7 @@ export class OrchestratorCore extends EventEmitter {
           task: task.task
         });
 
-      } catch (error) {
+      } catch {
         logger.error('executeAgentTasks', 'Agent task failed');
       }
     }

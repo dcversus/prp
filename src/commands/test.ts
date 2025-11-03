@@ -50,7 +50,7 @@ async function handleTestCommand(options: TestOptions): Promise<void> {
     await cli.initialize();
 
     // Execute test command
-    const result = await cli.run(['test'], options);
+    const result = await cli.run(['test'], options as Record<string, unknown>);
 
     if (result.success) {
       logger.success('✅ All tests passed');

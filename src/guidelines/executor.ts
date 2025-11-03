@@ -4,6 +4,8 @@
  * Parallel execution system for signal guidelines with 40K token limits
  */
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import { EventEmitter } from 'events';
 import {
   GuidelineDefinition,
@@ -17,8 +19,7 @@ import {
   ClassificationResult,
   Issue,
   StepDefinition,
-  Action,
-  PullRequestReview
+  Action
 } from './types';
 import { guidelinesRegistry } from './registry';
 import {

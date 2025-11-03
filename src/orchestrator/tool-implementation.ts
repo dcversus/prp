@@ -9,7 +9,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import fetch from 'node-fetch';
+// Using native fetch (Node.js 18+)
 import { ToolUsage } from './types';
 
 interface ToolDefinition {
@@ -194,12 +194,18 @@ export class ToolImplementation {
     body: string;
   }> {
     try {
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), options.timeout || 30000);
+
       const response = await fetch(url, {
         method: options.method || 'GET',
         headers: options.headers,
         body: options.body,
-        timeout: options.timeout || 30000
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       const headers: Record<string, string> = {};
       response.headers.forEach((value: string, key: string) => {

@@ -94,7 +94,7 @@ export async function generateTemplateFiles(context: GeneratorContext): Promise<
     case 'fastapi':
       return generateFastAPI(context);
     case 'nestjs':
-      return generateNestJS(context);
+      return generateNestJS();
     case 'wikijs':
       return generateWikiJS(context);
     case 'none':
@@ -121,7 +121,7 @@ async function generateFastAPI(context: GeneratorContext): Promise<FileToGenerat
   return generate(context);
 }
 
-async function generateNestJS(_context: GeneratorContext): Promise<FileToGenerate[]> {
+async function generateNestJS(): Promise<FileToGenerate[]> {
   // TODO: Implement NestJS template
   return [];
 }

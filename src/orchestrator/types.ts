@@ -157,16 +157,8 @@ export interface AgentTask {
   };
 }
 
-export interface AgentCapabilities {
-  supportsTools: boolean;
-  supportsImages: boolean;
-  supportsSubAgents: boolean;
-  supportsParallel: boolean;
-  maxContextLength: number;
-  supportedModels: string[];
-  availableTools: string[];
-  specializations: string[];
-}
+// AgentCapabilities is imported from config/agent-config.ts to avoid duplication
+export type AgentCapabilities = import('../config/agent-config.js').AgentCapabilities;
 
 export interface DecisionRecord {
   id: string;

@@ -23,8 +23,20 @@ import {
   ConfigUtils
 } from '../shared';
 import { configManager } from '../shared/config';
+import { EventEmitter } from 'events';
 
 const logger = createLayerLogger('scanner');
+
+export interface TokenUsageEvent {
+  agentId: string;
+  tokensUsed: number;
+  limit: number | undefined;
+  remaining: number;
+  timestamp: Date;
+  operation: string;
+  model: string;
+  cost: number;
+}
 
 export interface TokenLimitStatus {
   agentId: string;
@@ -56,6 +68,7 @@ export class TokenAccountingManager {
   private entries: Map<string, TokenAccountingEntry> = new Map();
   private alerts: Map<string, TokenAlert> = new Map();
   private persistPath: string;
+  private eventEmitter: EventEmitter = new EventEmitter();
 
   constructor(_config: ScannerConfig, persistPath: string = '.prp/token-accounting.json') {
     this.persistPath = persistPath;
@@ -107,17 +120,22 @@ export class TokenAccountingManager {
     });
 
     // Check for alerts
-    this.checkTokenLimits(agentId, entry);
+    this.checkTokenLimits(agentId);
 
-    // Event publishing would be handled by the event system
-    // eventBus.publishToChannel('scanner', {
-    //   id: entry.id,
-    //   type: 'token_usage_recorded',
-    //   timestamp: entry.timestamp,
-    //   source: 'scanner',
-    //   data: entry,
-    //   metadata: entry.metadata
-    // });
+    // Emit token usage event
+    const limit = this.getAgentDailyLimit(agentId);
+    const currentUsage = this.getCurrentUsage(agentId);
+
+    this.eventEmitter.emit('tokenUsage', {
+      agentId,
+      tokensUsed: totalTokens,
+      limit,
+      remaining: limit - currentUsage,
+      timestamp: new Date(),
+      operation,
+      model,
+      cost
+    } as TokenUsageEvent);
 
     // Persist data periodically
     if (this.entries.size % 10 === 0) {
@@ -198,12 +216,29 @@ export class TokenAccountingManager {
       operations: dailyUsage.operations
     };
 
-    const tokenLimits = (agentConfig as any).tokenLimits || {};
+    // Extract token limits from AgentConfig.limits and create a proper Record<string, unknown>
+    const agentLimitsRecord: Record<string, unknown> = {
+      maxTokensPerRequest: agentConfig.limits?.maxTokensPerRequest || 0,
+      maxRequestsPerHour: agentConfig.limits?.maxRequestsPerHour || 0,
+      maxRequestsPerDay: agentConfig.limits?.maxRequestsPerDay || 0,
+      maxCostPerDay: agentConfig.limits?.maxCostPerDay || 0,
+      maxExecutionTime: agentConfig.limits?.maxExecutionTime || 0,
+      maxMemoryUsage: agentConfig.limits?.maxMemoryUsage || 0,
+      maxConcurrentTasks: agentConfig.limits?.maxConcurrentTasks || 0,
+      cooldownPeriod: agentConfig.limits?.cooldownPeriod || 0
+    };
+
+    // Extract additional properties if they exist in configuration
+    if (agentConfig.configuration && typeof agentConfig.configuration === 'object') {
+      Object.assign(agentLimitsRecord, agentConfig.configuration);
+    }
+
+    const tokenLimits = agentLimitsRecord as Record<string, number>;
     const limits = {
-      daily: tokenLimits.daily || 0,
+      daily: tokenLimits.daily || tokenLimits.maxRequestsPerDay || 0,
       weekly: tokenLimits.weekly || 0,
       monthly: tokenLimits.monthly || 0,
-      maxPrice: tokenLimits.maxPrice || 0
+      maxPrice: tokenLimits.maxPrice || tokenLimits.maxCostPerDay || 0
     };
 
     const percentages = {
@@ -396,7 +431,7 @@ export class TokenAccountingManager {
   /**
    * Check token limits and create alerts if needed
    */
-  private checkTokenLimits(agentId: string, _entry: TokenAccountingEntry): void {
+  private checkTokenLimits(agentId: string): void {
     const status = this.getLimitStatus(agentId);
     if (!status) return;
 
@@ -713,5 +748,59 @@ export class TokenAccountingManager {
       oldestEntry: entries.length > 0 ? new Date(Math.min(...entries.map(e => e.timestamp.getTime()))) : null,
       newestEntry: entries.length > 0 ? new Date(Math.max(...entries.map(e => e.timestamp.getTime()))) : null,
     };
+  }
+
+  /**
+   * Get agent's daily token limit
+   */
+  private getAgentDailyLimit(agentId: string): number {
+    const config = configManager.get();
+    const agentConfig = config.agents.find(a => a.id === agentId);
+
+    if (!agentConfig) {
+      return 0;
+    }
+
+    // Extract token limits from AgentConfig.limits and create a proper Record<string, unknown>
+    const agentLimitsRecord: Record<string, unknown> = {
+      maxTokensPerRequest: agentConfig.limits?.maxTokensPerRequest || 0,
+      maxRequestsPerHour: agentConfig.limits?.maxRequestsPerHour || 0,
+      maxRequestsPerDay: agentConfig.limits?.maxRequestsPerDay || 0,
+      maxCostPerDay: agentConfig.limits?.maxCostPerDay || 0,
+      maxExecutionTime: agentConfig.limits?.maxExecutionTime || 0,
+      maxMemoryUsage: agentConfig.limits?.maxMemoryUsage || 0,
+      maxConcurrentTasks: agentConfig.limits?.maxConcurrentTasks || 0,
+      cooldownPeriod: agentConfig.limits?.cooldownPeriod || 0
+    };
+
+    // Extract additional properties if they exist in configuration
+    if (agentConfig.configuration && typeof agentConfig.configuration === 'object') {
+      Object.assign(agentLimitsRecord, agentConfig.configuration);
+    }
+
+    const tokenLimits = agentLimitsRecord as Record<string, number>;
+    return tokenLimits.daily || tokenLimits.maxRequestsPerDay || 0;
+  }
+
+  /**
+   * Get current token usage for an agent (today)
+   */
+  private getCurrentUsage(agentId: string): number {
+    const dailyUsage = this.getUsage(agentId, 'day');
+    return dailyUsage.tokens;
+  }
+
+  /**
+   * Subscribe to token usage events
+   */
+  public onTokenUsage(callback: (data: TokenUsageEvent) => void): void {
+    this.eventEmitter.on('tokenUsage', callback);
+  }
+
+  /**
+   * Unsubscribe from token usage events
+   */
+  public offTokenUsage(callback: (data: TokenUsageEvent) => void): void {
+    this.eventEmitter.off('tokenUsage', callback);
   }
 }

@@ -46,7 +46,7 @@ async function handleDeployCommand(options: DeployOptions): Promise<void> {
     await cli.initialize();
 
     // Execute deploy command
-    const result = await cli.run(['deploy'], options);
+    const result = await cli.run(['deploy'], options as Record<string, unknown>);
 
     if (result.success) {
       logger.success('✅ Deployment completed successfully');

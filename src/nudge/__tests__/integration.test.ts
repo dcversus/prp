@@ -31,7 +31,7 @@ describe('Nudge System Integration Tests', () => {
       sendNudge: jest.fn(),
       testConnectivity: jest.fn(),
       getConfigStatus: jest.fn()
-    } as any;
+    } as jest.Mocked<NudgeClient>;
 
     MockedNudgeClient.mockImplementation(() => mockClient);
 
@@ -40,7 +40,7 @@ describe('Nudge System Integration Tests', () => {
       sendAgentNudge: jest.fn(),
       getStatus: jest.fn(),
       testSystem: jest.fn()
-    } as any;
+    } as jest.Mocked<NudgeWrapper>;
 
     MockedNudgeWrapper.mockImplementation(() => mockWrapper);
 
@@ -58,26 +58,9 @@ describe('Nudge System Integration Tests', () => {
 
     it('should complete goal clarification flow from agent to endpoint', async () => {
       // Mock wrapper to return processed agent message
-      const processedAgentMessage = {
-        agentType: 'robo-system-analyst',
-        signal: '[gg] Goal Clarification',
-        prpId: 'test-prp',
-        message: '🎯 Goal Clarification Needed\n\nPRP: test-prp\nAgent: robo-system-analyst\n\n**Issue:** Requirements unclear\n\n**Current Understanding:** Basic understanding\n\n**Questions:**\n1. Should we use X?\n\n**Options:**\n1. Option X\n\n**Recommendation:** Use X\n\nPlease provide clarification to proceed with implementation.',
-        context: {
-          urgency: 'medium',
-          signal: '[gg] Goal Clarification',
-          issue: 'Requirements unclear',
-          current_understanding: 'Basic understanding',
-          questions: '1. Should we use X?',
-          options: '1. Option X',
-          recommendation: 'Use X'
-        },
-        urgency: 'medium',
-        expectedResponseType: 'information'
-      };
 
       mockWrapper.sendAgentNudge.mockResolvedValue(mockSuccessResponse);
-      mockWrapper.sendAgentNudge.mockImplementation(async (msg) => {
+      mockWrapper.sendAgentNudge.mockImplementation(async () => {
         // Simulate the wrapper processing the agent message
         mockClient.sendNudge.mockResolvedValue(mockSuccessResponse);
         return mockSuccessResponse;
@@ -113,7 +96,7 @@ describe('Nudge System Integration Tests', () => {
       };
 
       // Simulate LLM-mode failure and direct fallback success
-      mockWrapper.sendAgentNudge.mockImplementation(async (msg) => {
+      mockWrapper.sendAgentNudge.mockImplementation(async () => {
         // First attempt (LLM-mode) fails
         const llmError = new Error('LLM processing failed');
 
