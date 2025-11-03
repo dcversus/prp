@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import DocumentationLayout from './components/DocumentationLayout';
+import DocumentationLayout from './components/DocumentationLayout.js';
 
 // Global styles for documentation
 import './styles/docs.css';

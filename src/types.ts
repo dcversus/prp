@@ -107,19 +107,91 @@ export interface CommandResult {
   data?: any;
   error?: Error;
   exitCode?: number;
+  stdout?: string;
+  stderr?: string;
+  duration?: number;
 }
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'verbose';
 
+// Settings configuration interface
+export interface SettingsConfig {
+  [key: string]: any;
+}
+
+// Validation result interface
+export interface ValidationResult {
+  isValid: boolean;
+  errors?: string[];
+  warnings?: string[];
+}
+
+// CLI event interface
+export interface CLIEvent {
+  type: string;
+  timestamp: Date;
+  data?: any;
+  source?: string;
+}
+
 // Configuration interface
 export interface PRPConfig {
   version: string;
-  storage: any;
-  agents: any;
-  guidelines: any;
+  name?: string;
+  description?: string;
+  author?: string;
+  license?: string;
+  settings: SettingsConfig;
+  storage: {
+    dataDir: string;
+    cacheDir: string;
+    worktreesDir: string;
+    notesDir: string;
+    logsDir: string;
+    keychainFile: string;
+    persistFile: string;
+    maxCacheSize: number;
+    retentionPeriod: number;
+  };
+  agents: any[];
+  guidelines: any[];
   signals: any;
   orchestrator: any;
   scanner: any;
   inspector: any;
+  tui: {
+    mode: 'cli' | 'tui';
+    activeScreen: string;
+    followEvents: boolean;
+    autoRefresh: boolean;
+    refreshInterval: number;
+  };
+  features: {
+    scanner: boolean;
+    inspector: boolean;
+    orchestrator: boolean;
+    tui: boolean;
+    mcp: boolean;
+    worktrees: boolean;
+  };
+  limits: {
+    maxConcurrentAgents: number;
+    maxWorktrees: number;
+    maxPRPsPerWorktree: number;
+    tokenAlertThreshold: number;
+    tokenCriticalThreshold: number;
+  };
+  logging: {
+    level: 'debug' | 'info' | 'warn' | 'error';
+    enableFileLogging: boolean;
+    enableTokenTracking: boolean;
+    enablePerformanceTracking: boolean;
+    logRetentionDays: number;
+  };
+  security: {
+    enablePinProtection: boolean;
+    encryptSecrets: boolean;
+    sessionTimeout: number;
+  };
   scripts?: Record<string, string>;
 }

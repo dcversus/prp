@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import MDXContent from '../MDXContent';
+import MDXContent from '../MDXContent.js';
 
 const DocumentationLayout = () => {
   const [searchQuery, setSearchQuery] = useState('');

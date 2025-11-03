@@ -607,7 +607,7 @@ export class Scanner extends EventEmitter {
     const parser = this.prpParsers.get(worktree);
     if (!parser) return [];
 
-    const updates: unknown[] = [];
+    const updates: PRPScanResult[] = [];
 
     try {
       // Find all PRP files
@@ -616,7 +616,7 @@ export class Scanner extends EventEmitter {
       for (const prpFile of prpFiles) {
         const update = await this.parsePRPFile(worktree, prpFile, parser);
         if (update) {
-          updates.push(update);
+          updates.push(update as PRPScanResult);
         }
       }
 

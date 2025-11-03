@@ -102,7 +102,7 @@ export class EventChannelImpl<T = Record<string, unknown>> implements EventChann
  * ♫ Event Bus - Central coordinator for all event channels
  */
 export class EventBus {
-  private channels: Map<string, EventChannel> = new Map();
+  private channels: Map<string, EventChannel<Record<string, unknown>>> = new Map();
   private globalEmitter = new EventEmitter();
 
   constructor() {
@@ -277,6 +277,6 @@ export const eventFilters = {
       event.data !== null &&
       'priority' in event.data &&
       typeof (event.data as Record<string, unknown>).priority === 'number' &&
-      (event.data as Record<string, unknown>).priority >= minPriority
+      ((event.data as Record<string, unknown>).priority as number) >= minPriority
     ),
 };

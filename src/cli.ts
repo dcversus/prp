@@ -4,13 +4,14 @@ import { Command } from 'commander';
 import { render } from 'ink';
 import React from 'react';
 import App from './ui/App.js';
+import { createNudgeCommand } from './commands/nudge.js';
 
 const program = new Command();
 
 program
   .name('prp')
   .description('Interactive Project Bootstrap CLI - Modern scaffolding tool with AI integration')
-  .version('0.4.1')
+  .version('0.4.9')
   .option('-n, --name <name>', 'project name')
   .option('-d, --description <description>', 'project description')
   .option('-a, --author <author>', 'author name')
@@ -34,5 +35,8 @@ program
       await runNonInteractive(options);
     }
   });
+
+// Add nudge subcommand
+program.addCommand(createNudgeCommand());
 
 program.parse();

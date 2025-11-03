@@ -366,7 +366,7 @@ export class EnhancedPRPParser {
       logger.info('EnhancedPRPParser', `Sync completed for ${worktreePath}`, result);
 
     } catch (error) {
-      logger.error('EnhancedPRPParser', `Error syncing PRP files in ${worktreePath}`, {
+      logger.error('EnhancedPRPParser', `Error syncing PRP files in ${worktreePath}`, error instanceof Error ? error : new Error(String(error)), {
         error: error instanceof Error ? error.message : String(error)
       });
     }
@@ -601,8 +601,8 @@ export class EnhancedPRPParser {
       id: signal.id,
       code: signal.type,
       priority: this.mapSignalPriority(signal.priority),
-      category: signal.data?.category || 'general',
-      content: signal.data?.rawSignal || '',
+      category: (signal.data?.category as string) || 'general',
+      content: (signal.data?.rawSignal as string) || '',
       line: 0, // Would need line number from parsing
       column: 0,
       context: '',

@@ -9,7 +9,7 @@ import { EventEmitter } from 'events';
 import { Signal } from '../shared/types';
 import { createLayerLogger, HashUtils, TimeUtils } from '../shared';
 
-const logger = createLayerLogger('realtime-event-emitter');
+const logger = createLayerLogger('scanner');
 
 export interface SignalEvent {
   id: string;
@@ -28,6 +28,7 @@ export interface ScannerEvent {
   scanId?: string;
   metadata: {
     scanType: 'full' | 'incremental';
+    scanId?: string;
     duration?: number;
     changesFound?: number;
     signalsDetected?: number;
@@ -251,7 +252,7 @@ export class RealTimeEventEmitter {
   /**
    * Emit a system event
    */
-  emitSystemEvent(type: SystemEvent['type'], component: string, metadata: SystemEvent['metadata'] = {}): void {
+  emitSystemEvent(type: SystemEvent['type'], component: string, metadata: Partial<SystemEvent['metadata']> = {}): void {
     const event: SystemEvent = {
       id: HashUtils.generateId(),
       type,
@@ -453,7 +454,7 @@ export class RealTimeEventEmitter {
       }
 
     } catch (error) {
-      logger.error('RealTimeEventEmitter', 'Error processing event batch', {
+      logger.error('RealTimeEventEmitter', 'Error processing event batch', error instanceof Error ? error : new Error(String(error)), {
         error: error instanceof Error ? error.message : String(error)
       });
     } finally {
@@ -489,7 +490,7 @@ export class RealTimeEventEmitter {
           await subscription.callback(event);
 
         } catch (error) {
-          logger.error('RealTimeEventEmitter', 'Error in subscription callback', {
+          logger.error('RealTimeEventEmitter', 'Error in subscription callback', error instanceof Error ? error : new Error(String(error)), {
             subscriptionId: subscription.id,
             eventType: subscription.eventType,
             error: error instanceof Error ? error.message : String(error)
@@ -498,7 +499,7 @@ export class RealTimeEventEmitter {
       }));
 
     } catch (error) {
-      logger.error('RealTimeEventEmitter', 'Error processing event', {
+      logger.error('RealTimeEventEmitter', 'Error processing event', error instanceof Error ? error : new Error(String(error)), {
         eventId: event.id,
         eventType: event.type,
         error: error instanceof Error ? error.message : String(error)
@@ -563,7 +564,7 @@ export class RealTimeEventEmitter {
     // Emit system health event
     this.emitSystemEvent('system_health_check', 'event-emitter', {
       status: 'healthy',
-      metrics
+      details: { metrics }
     });
   }
 

@@ -61,8 +61,8 @@ export class PRPCli extends EventEmitter {
 
       // Validate configuration
       const validation = this.configManager.validate();
-      if (!validation.valid) {
-        const errors = validation.errors.map(e => e.message).join(', ');
+      if (!validation.isValid) {
+        const errors = validation.errors?.join(', ') || 'Unknown validation error';
         throw new ConfigurationError(`Configuration validation failed: ${errors}`);
       }
 

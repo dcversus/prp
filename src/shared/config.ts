@@ -119,7 +119,7 @@ export class ConfigManager {
       if (exists) {
         const userConfig = await ConfigUtils.loadConfigFile<Partial<PRPConfig>>(this.configPath);
         if (userConfig) {
-          this.config = ConfigUtils.mergeDeep(DEFAULT_CONFIG, userConfig);
+          this.config = ConfigUtils.mergeDeep(DEFAULT_CONFIG, userConfig as Record<string, unknown>) as unknown as PRPConfig;
           this.validate();
           logger.info('shared', 'ConfigManager', 'Configuration loaded successfully', { configPath: this.configPath });
         }
@@ -322,7 +322,7 @@ export class ConfigManager {
     try {
       const importData = await ConfigUtils.loadConfigFile<unknown>(importPath);
       if (this.isValidConfigExportData(importData)) {
-        this.config = ConfigUtils.mergeDeep(DEFAULT_CONFIG, importData.config);
+        this.config = ConfigUtils.mergeDeep(DEFAULT_CONFIG, importData.config as Record<string, unknown>) as unknown as PRPConfig;
         this.validate();
         logger.info('shared', 'ConfigManager', `Configuration imported from ${importPath}`, { importPath });
       } else {
@@ -366,7 +366,7 @@ export function validateConfig(config: PRPConfig): { valid: boolean; errors: str
       constructor() {
         super('/dev/null'); // dummy path
         // Set the config directly for validation
-        (this as { config: PRPConfig }).config = config;
+        (this as unknown as { config: PRPConfig }).config = config;
       }
     }();
 

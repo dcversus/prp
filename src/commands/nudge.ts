@@ -74,7 +74,7 @@ export function createNudgeCommand(): Command {
         });
 
         if (response.ok) {
-          const data = await response.json();
+          const data: any = await response.json();
           spinner.succeed('Nudge sent successfully!');
 
           console.log(chalk.green('\n📊 Response Details:'));

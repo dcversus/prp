@@ -1,10 +1,14 @@
-const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
-const fs = require('fs-extra');
-const glob = require('glob');
+import path from 'path';
+import { fileURLToPath } from 'url';
+import HtmlWebpackPlugin from 'html-webpack-plugin';
+import CopyWebpackPlugin from 'copy-webpack-plugin';
+import fs from 'fs-extra';
+import { glob } from 'glob';
 
-module.exports = (env, argv) => {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export default (env, argv) => {
   const isProduction = argv.mode === 'production';
 
   return {
@@ -70,7 +74,7 @@ module.exports = (env, argv) => {
       // Copy static assets
       new CopyWebpackPlugin({
         patterns: [
-          { from: 'CNAME', to: 'CNAME', noErrorOnMissing: true },
+          { from: 'CNAME', to: '[name][ext]', noErrorOnMissing: true },
           { from: 'images', to: 'images', noErrorOnMissing: true },
           { from: 'docs/images', to: 'images/docs', noErrorOnMissing: true },
           { from: '*.png', to: '[name][ext]', noErrorOnMissing: true },

@@ -336,7 +336,7 @@ async function createAgent(options: AgentConfigOptions): Promise<void> {
 
       console.log(`\n📝 Creating agent from template: ${template.name}`);
 
-      const questions = template.variables.map(variable => ({
+      const questions: any[] = template.variables.map(variable => ({
         type: variable.type === 'secret' ? 'password' :
               variable.type === 'boolean' ? 'confirm' :
               variable.validation?.options ? 'list' : 'input',
@@ -359,7 +359,7 @@ async function createAgent(options: AgentConfigOptions): Promise<void> {
       // Interactive creation
       console.log('\n📝 Interactive Agent Creation');
 
-      const interactiveQuestions = [
+      const interactiveQuestions: any[] = [
         {
           type: 'input',
           name: 'name',
@@ -491,7 +491,7 @@ async function editAgent(agentId: string, options: AgentConfigOptions): Promise<
       // Interactive editing
       console.log(`\n✏️ Editing agent: ${agent.name}`);
 
-      const editQuestions = [
+      const editQuestions: any[] = [
         {
           type: 'input',
           name: 'name',
@@ -565,7 +565,7 @@ async function toggleAgent(agentId: string, options: CLIOptions): Promise<void> 
       enabled = false;
     } else {
       // Interactive toggle
-      const toggleQuestions = [
+      const toggleQuestions: any[] = [
         {
           type: 'confirm',
           name: 'enabled',
@@ -600,7 +600,7 @@ async function removeAgent(agentId: string, options: CLIOptions): Promise<void> 
     }
 
     if (!options.force) {
-      const removeQuestions = [
+      const removeQuestions: any[] = [
         {
           type: 'confirm',
           name: 'confirm',

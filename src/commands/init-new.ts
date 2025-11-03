@@ -251,7 +251,7 @@ export class InitCommand {
     }
 
     // Interactive mode
-    const questions = [
+    const questions: any[] = [
       {
         type: 'input',
         name: 'name',

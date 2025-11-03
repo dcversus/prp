@@ -12,6 +12,7 @@ export interface TokenAccountingMetadata {
   requestId?: string;
   sessionId?: string;
   worktree?: string;
+  scanId?: string;
   modelVersion?: string;
   temperature?: number;
   maxTokens?: number;
@@ -203,9 +204,9 @@ export interface FileWatcherChangeEvent {
 export interface PRPScanResult {
   path: string;
   changeType: 'created' | 'modified' | 'deleted';
-  previousVersion?: unknown;
-  newVersion?: unknown;
-  detectedSignals: unknown[];
+  previousVersion?: PRPFile;
+  newVersion?: PRPFile;
+  detectedSignals: Signal[];
   lastModified: Date;
 }
 

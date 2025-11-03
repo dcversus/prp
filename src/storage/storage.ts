@@ -639,7 +639,7 @@ export class StorageManager {
     try {
       await this.calculateDirectoryStats(this.config.dataDir, stats);
     } catch (error) {
-      logger.warn('StorageManager', 'Failed to calculate storage stats', error instanceof Error ? error : new Error(String(error)));
+      logger.warn('StorageManager', 'Failed to calculate storage stats', { error: error instanceof Error ? error.message : String(error) });
     }
 
     return stats;

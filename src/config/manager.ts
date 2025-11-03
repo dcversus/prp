@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import yaml from 'yaml';
-import { validate } from 'jsonschema';
+import { Validator } from 'jsonschema';
 import { logger } from '../utils/logger';
 import { ConfigurationError, ValidationError } from '../utils/error-handler';
 import type { PRPConfig, SettingsConfig, ValidationResult } from '../types';
@@ -50,8 +50,8 @@ export class ConfigurationManager {
 
       // Validate configuration
       const validation = this.validate(this.config);
-      if (!validation.valid) {
-        const errors = validation.errors.map(e => e.message).join(', ');
+      if (!validation.isValid) {
+        const errors = validation.errors?.join(', ') || 'Unknown validation error';
         throw new ConfigurationError(`Configuration validation failed: ${errors}`);
       }
 
@@ -77,8 +77,8 @@ export class ConfigurationManager {
 
     // Validate configuration before saving
     const validation = this.validate(config);
-    if (!validation.valid) {
-      const errors = validation.errors.map(e => e.message).join(', ');
+    if (!validation.isValid) {
+      const errors = validation.errors?.join(', ') || 'Unknown validation error';
       throw new ConfigurationError(`Cannot save invalid configuration: ${errors}`);
     }
 
@@ -165,8 +165,8 @@ export class ConfigurationManager {
 
     if (!targetConfig) {
       return {
-        valid: false,
-        errors: [{ code: 'NO_CONFIG', message: 'No configuration to validate' }],
+        isValid: false,
+        errors: ['No configuration to validate'],
         warnings: []
       };
     }

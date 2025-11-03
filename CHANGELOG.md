@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.9] - 2025-11-03
+
+### Fixed
+- **Version synchronization**: Updated package.json and src/cli.ts version from 0.4.1 to 0.4.9
+- **Build preparation**: Ensured version consistency across all references for publishing
+
 ## [0.4.1] - 2025-10-28
 
 ### Changed
@@ -213,7 +219,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - execa for subprocess execution
 - Full ESM module system
 
-[Unreleased]: https://github.com/dcversus/prp/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/dcversus/prp/compare/v0.4.9...HEAD
+[0.4.9]: https://github.com/dcversus/prp/compare/v0.4.1...v0.4.9
+[0.4.1]: https://github.com/dcversus/prp/compare/v0.3.0...v0.4.1
 [0.3.0]: https://github.com/dcversus/prp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/dcversus/prp/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/dcversus/prp/compare/v0.1.0...v0.1.1
