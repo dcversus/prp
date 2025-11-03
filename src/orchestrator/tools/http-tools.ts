@@ -137,14 +137,15 @@ export const httpRequestTool: Tool = {
       required: false
     }
   },
-  execute: async (params: HttpRequestParams) => {
+  execute: async (params: unknown) => {
+    const typedParams = params as HttpRequestParams;
     const https = require('https');
     const http = require('http');
     const { URL } = require('url');
 
     return new Promise((resolve, reject) => {
       try {
-        const url = new URL(params.url);
+        const url = new URL(typedParams.url);
         const isHttps = url.protocol === 'https:';
         const client = isHttps ? https : http;
 
@@ -152,34 +153,34 @@ export const httpRequestTool: Tool = {
           hostname: url.hostname,
           port: url.port || (isHttps ? 443 : 80),
           path: url.pathname + url.search,
-          method: params.method || 'GET',
+          method: typedParams.method || 'GET',
           headers: {
             'User-Agent': '@dcversus/prp-orchestrator/0.5.0',
             'Accept': 'application/json, text/plain, */*',
-            ...params.headers
+            ...typedParams.headers
           },
-          timeout: params.timeout || 30000
+          timeout: typedParams.timeout || 30000
         };
 
         // Set up the request
         const req = client.request(options, (res: IncomingMessage) => {
           let data = '';
 
-          res.on('data', (chunk: Buffer) => {
-            data += chunk;
+          res.on('data', (chunk: unknown) => {
+            data += (chunk as Buffer).toString();
           });
 
           res.on('end', () => {
             const result: ToolResult = {
               success: res.statusCode >= 200 && res.statusCode < 300,
               data: {
-                status: res.statusCode,
-                statusText: res.statusMessage,
+                statusCode: res.statusCode,
+                statusMessage: res.statusMessage,
                 headers: res.headers,
                 data: data,
                 dataSize: data.length,
-                url: params.url,
-                method: params.method || 'GET',
+                url: typedParams.url,
+                method: typedParams.method || 'GET',
                 responseTime: Date.now()
               },
               executionTime: 0
@@ -195,7 +196,7 @@ export const httpRequestTool: Tool = {
               // Keep as raw data if JSON parsing fails
             }
 
-            logger.info('http_request', `HTTP ${params.method || 'GET'} ${params.url} → ${res.statusCode}`);
+            logger.info('http_request', `HTTP ${typedParams.method || 'GET'} ${typedParams.url} → ${res.statusCode}`);
             resolve(result);
           });
         });
@@ -207,12 +208,12 @@ export const httpRequestTool: Tool = {
 
         req.on('timeout', () => {
           req.destroy();
-          reject(new Error(`HTTP request timeout: ${params.timeout}ms`));
+          reject(new Error(`HTTP request timeout: ${typedParams.timeout}ms`));
         });
 
         // Send request body if provided
-        if (params.body && (params.method === 'POST' || params.method === 'PUT' || params.method === 'PATCH')) {
-          req.write(params.body);
+        if (typedParams.body && (typedParams.method === 'POST' || typedParams.method === 'PUT' || typedParams.method === 'PATCH')) {
+          req.write(typedParams.body);
         }
 
         req.end();
@@ -255,9 +256,10 @@ export const webSearchTool: Tool = {
       required: false
     }
   },
-  execute: async (params: WebSearchParams) => {
+  execute: async (params: unknown) => {
+    const typedParams = params as WebSearchParams;
     // Use DuckDuckGo instant answer API for web search
-    const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(params.query)}`;
+    const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(typedParams.query)}`;
 
     try {
       const response = await httpRequestTool.execute({
@@ -273,7 +275,7 @@ export const webSearchTool: Tool = {
       });
 
       if (!response.success) {
-        throw new Error(`Search failed with status ${(response.data as HttpResponse).status}`);
+        throw new Error(`Search failed with status ${(response.data as HttpResponse).statusCode}`);
       }
 
       // Parse HTML results (simplified parsing)
@@ -285,7 +287,7 @@ export const webSearchTool: Tool = {
       let match;
 
       let count = 0;
-      while ((match = resultRegex.exec(html)) && count < (params.limit || 10)) {
+      while ((match = resultRegex.exec(html)) && count < (typedParams.limit || 10)) {
         const url = match[1];
         const title = match[2]?.replace(/<[^>]*>/g, '').trim() || '';
 
@@ -294,19 +296,19 @@ export const webSearchTool: Tool = {
             title,
             url,
             snippet: 'Search result from DuckDuckGo',
-            engine: params.engine || 'duckduckgo'
+            engine: typedParams.engine || 'duckduckgo'
           });
           count++;
         }
       }
 
-      logger.info('web_search', `Web search for "${params.query}" → ${results.length} results`);
+      logger.info('web_search', `Web search for "${typedParams.query}" → ${results.length} results`);
 
       return {
         success: true,
         data: {
-          query: params.query,
-          engine: params.engine || 'duckduckgo',
+          query: typedParams.query,
+          engine: typedParams.engine || 'duckduckgo',
           results,
           totalResults: results.length,
           responseTime: Date.now()
@@ -363,21 +365,22 @@ export const githubApiTool: Tool = {
       required: false
     }
   },
-  execute: async (params: GitHubApiParams) => {
+  execute: async (params: unknown) => {
+    const typedParams = params as GitHubApiParams;
     const baseUrl = 'https://api.github.com';
-    let url = baseUrl + params.endpoint;
+    let url = baseUrl + typedParams.endpoint;
 
     // Replace placeholders in endpoint
-    if (params.owner) {
-      url = url.replace('{owner}', params.owner);
+    if (typedParams.owner) {
+      url = url.replace('{owner}', typedParams.owner);
     }
-    if (params.repo) {
-      url = url.replace('{repo}', params.repo);
+    if (typedParams.repo) {
+      url = url.replace('{repo}', typedParams.repo);
     }
 
-    const token = params.token || process.env['GITHUB_TOKEN'];
+    const token = typedParams.token || process.env['GITHUB_TOKEN'];
 
-    if (!token && params.method !== 'GET') {
+    if (!token && typedParams.method !== 'GET') {
       throw new Error('GitHub token required for non-GET requests');
     }
 
@@ -394,22 +397,22 @@ export const githubApiTool: Tool = {
     try {
       const response = await httpRequestTool.execute({
         url,
-        method: params.method || 'GET',
+        method: typedParams.method || 'GET',
         headers,
-        body: params.body,
+        body: typedParams.body,
         timeout: 30000
       });
 
       const responseData = response.data as HttpResponse;
-      logger.info('github_api', `GitHub API ${params.method || 'GET'} ${params.endpoint} → ${responseData.status}`);
+      logger.info('github_api', `GitHub API ${typedParams.method || 'GET'} ${typedParams.endpoint} → ${responseData.statusCode}`);
 
       return {
         success: response.success,
         data: {
-          endpoint: params.endpoint,
-          method: params.method || 'GET',
+          endpoint: typedParams.endpoint,
+          method: typedParams.method || 'GET',
           data: responseData.jsonData || responseData.data,
-          status: responseData.status,
+          status: responseData.statusCode,
           rateLimit: {
             remaining: responseData.headers['x-ratelimit-remaining'],
             limit: responseData.headers['x-ratelimit-limit'],
@@ -455,32 +458,33 @@ export const urlValidationTool: Tool = {
       required: false
     }
   },
-  execute: async (params: UrlValidationParams) => {
+  execute: async (params: unknown) => {
+    const typedParams = params as UrlValidationParams;
     const { URL } = require('url');
 
     try {
-      new URL(params.url); // Validate URL format
+      new URL(typedParams.url); // Validate URL format
 
       const response = await httpRequestTool.execute({
-        url: params.url,
-        method: params.method || 'HEAD',
-        timeout: params.timeout || 10000
+        url: typedParams.url,
+        method: typedParams.method || 'HEAD',
+        timeout: typedParams.timeout || 10000
       });
 
       const responseData = response.data as HttpResponse;
       const validation: UrlValidationResult = {
-        url: params.url,
+        url: typedParams.url,
         valid: true,
         accessible: response.success,
-        statusCode: responseData.status,
-        statusText: responseData.statusText,
+        statusCode: responseData.statusCode,
+        statusText: responseData.statusMessage,
         contentType: responseData.headers['content-type'],
         contentLength: responseData.headers['content-length'],
         responseTime: Date.now(),
-        finalUrl: responseData.headers['location'] || params.url // Handle redirects
+        finalUrl: responseData.headers['location'] || typedParams.url // Handle redirects
       };
 
-      logger.info('validate_url', `URL validation: ${params.url} → ${responseData.status}`);
+      logger.info('validate_url', `URL validation: ${typedParams.url} → ${responseData.statusCode}`);
 
       return {
         success: true,
@@ -494,7 +498,7 @@ export const urlValidationTool: Tool = {
       return {
         success: false,
         data: {
-          url: params.url,
+          url: typedParams.url,
           valid: false,
           accessible: false,
           error: error instanceof Error ? error.message : String(error),

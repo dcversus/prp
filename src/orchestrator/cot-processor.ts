@@ -5,7 +5,7 @@
  * and structured output processing.
  */
 
-import { Signal, InspectorPayload, AgentConfig } from '../shared/types';
+import { Signal, InspectorPayload } from '../shared/types';
 import { ChainOfThought, CoTStep, CoTContext, DecisionRecord } from './types';
 import { logger, HashUtils } from '../shared';
 

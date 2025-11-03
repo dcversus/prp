@@ -288,9 +288,10 @@ export class ToolRegistry extends EventEmitter {
           required: false
         }
       },
-      execute: async (params: ToolParameters) => {
+      execute: async (params: unknown) => {
         const { readFileSync } = require('fs');
-        const content = readFileSync(params.filepath, params.encoding || 'utf8');
+        const typedParams = params as ToolParameters;
+        const content = readFileSync(typedParams.filepath as string, typedParams.encoding as string || 'utf8');
         return {
           success: true,
           data: { content, size: content.length },
@@ -322,12 +323,14 @@ export class ToolRegistry extends EventEmitter {
           required: false
         }
       },
-      execute: async (params: ToolParameters) => {
+      execute: async (params: unknown) => {
         const { writeFileSync } = require('fs');
-        writeFileSync(params.filepath, params.content, params.encoding || 'utf8');
+        const typedParams = params as ToolParameters;
+        const content = typedParams.content as string;
+        writeFileSync(typedParams.filepath as string, content, typedParams.encoding as string || 'utf8');
         return {
           success: true,
-          data: { bytesWritten: params.content.length },
+          data: { bytesWritten: content.length },
           executionTime: 0
         };
       }
@@ -351,9 +354,10 @@ export class ToolRegistry extends EventEmitter {
           required: false
         }
       },
-      execute: async (params: ToolParameters) => {
+      execute: async (params: unknown) => {
         const { readdirSync, statSync } = require('fs');
         const { join } = require('path');
+        const typedParams = params as ToolParameters;
 
         const listDirectory = (dir: string, recursive: boolean = false): unknown[] => {
           const items = readdirSync(dir);
@@ -383,7 +387,7 @@ export class ToolRegistry extends EventEmitter {
 
         return {
           success: true,
-          data: { items: listDirectory(params.path, params.recursive) },
+          data: { items: listDirectory(typedParams.path as string, typedParams.recursive as boolean) },
           executionTime: 0
         };
       }
@@ -413,13 +417,14 @@ export class ToolRegistry extends EventEmitter {
           required: false
         }
       },
-      execute: async (params: ToolParameters) => {
+      execute: async (params: unknown) => {
         const { spawn } = require('child_process');
+        const typedParams = params as ToolParameters;
 
         return new Promise((resolve, reject) => {
-          const child = spawn(params.command, {
+          const child = spawn(typedParams.command as string, {
             shell: true,
-            cwd: params.cwd || process.cwd(),
+            cwd: typedParams.cwd as string || process.cwd(),
             stdio: 'pipe'
           });
 
@@ -437,7 +442,7 @@ export class ToolRegistry extends EventEmitter {
           const timer = setTimeout(() => {
             child.kill();
             reject(new Error('Command execution timeout'));
-          }, params.timeout || 30000);
+          }, typedParams.timeout as number || 30000);
 
           child.on('close', (code: number | null) => {
             clearTimeout(timer);
@@ -475,10 +480,11 @@ export class ToolRegistry extends EventEmitter {
           required: false
         }
       },
-      execute: async (params: ToolParameters) => {
+      execute: async (params: unknown) => {
         const { execSync } = require('child_process');
+        const typedParams = params as ToolParameters;
         const status = execSync('git status --porcelain', {
-          cwd: params.path || '.',
+          cwd: typedParams.path as string || '.',
           encoding: 'utf8'
         });
         return {
@@ -524,14 +530,15 @@ export class ToolRegistry extends EventEmitter {
           required: false
         }
       },
-      execute: async (params: ToolParameters) => {
+      execute: async (params: unknown) => {
         // Simple HTTP request implementation
         // In production, would use a proper HTTP client
-        const response = await fetch(params.url, {
-          method: params.method || 'GET',
-          headers: params.headers || {},
-          body: params.body,
-          signal: AbortSignal.timeout(params.timeout || 30000)
+        const typedParams = params as ToolParameters;
+        const response = await fetch(typedParams.url as string, {
+          method: typedParams.method as string || 'GET',
+          headers: typedParams.headers as Record<string, string> || {},
+          body: typedParams.body as string,
+          signal: AbortSignal.timeout(typedParams.timeout as number || 30000)
         });
 
         const text = await response.text();

@@ -182,7 +182,21 @@ export class AgentManager extends EventEmitter {
           used: agentProcess.session.tokenUsage.total,
           limit: agentProcess.session.agentConfig.tokenLimits?.monthly || 100000
         },
-        capabilities: agentProcess.session.capabilities
+        capabilities: {
+          supportsTools: agentProcess.session.capabilities.supportsTools,
+          supportsImages: agentProcess.session.capabilities.supportsImages,
+          supportsSubAgents: agentProcess.session.capabilities.supportsSubAgents,
+          supportsParallel: agentProcess.session.capabilities.supportsParallel,
+          maxContextLength: agentProcess.session.capabilities.maxContextLength,
+          supportedModels: agentProcess.session.capabilities.supportedModels,
+          availableTools: agentProcess.session.capabilities.availableTools,
+          specializations: agentProcess.session.capabilities.specializations,
+          supportsCodeExecution: agentProcess.session.capabilities.supportsCodeExecution || false,
+          supportedFileTypes: agentProcess.session.capabilities.supportedFileTypes || [],
+          canAccessInternet: agentProcess.session.capabilities.canAccessInternet || false,
+          canAccessFileSystem: agentProcess.session.capabilities.canAccessFileSystem || true,
+          canExecuteCommands: agentProcess.session.capabilities.canExecuteCommands || true
+        }
       });
     }
 

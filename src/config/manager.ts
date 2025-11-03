@@ -1,10 +1,11 @@
-import fs from 'fs-extra';
-import path from 'path';
-import yaml from 'yaml';
+import * as fs from 'fs-extra';
+import * as path from 'path';
+import * as yaml from 'yaml';
 import { Validator } from 'jsonschema';
 import { logger } from '../utils/logger';
-import { ConfigurationError, ValidationError } from '../utils/error-handler';
-import type { PRPConfig, SettingsConfig, ValidationResult } from '../types';
+import { ConfigurationError } from '../utils/error-handler';
+import type { ValidationResult } from '../types';
+import type { PRPConfig, SettingsConfig } from '../shared/config';
 
 /**
  * Configuration file paths in order of precedence
@@ -59,13 +60,13 @@ export class ConfigurationManager {
       this.config = this.resolveEnvironmentVariables(this.config);
 
       logger.info(`Configuration loaded successfully from: ${targetPath}`);
-      return this.config;
+      return this.config!;
 
     } catch (error) {
       if (error instanceof ConfigurationError) {
         throw error;
       }
-      throw new ConfigurationError(`Failed to load configuration: ${error.message}`);
+      throw new ConfigurationError(`Failed to load configuration: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -110,7 +111,7 @@ export class ConfigurationManager {
       logger.info(`Configuration saved to: ${targetPath}`);
 
     } catch (error) {
-      throw new ConfigurationError(`Failed to save configuration: ${error.message}`);
+      throw new ConfigurationError(`Failed to save configuration: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -134,9 +135,9 @@ export class ConfigurationManager {
   /**
    * Update configuration section
    */
-  async updateSection<T extends keyof SettingsConfig>(
-    section: T,
-    value: SettingsConfig[T]
+  async updateSection(
+    section: keyof SettingsConfig,
+    value: any
   ): Promise<void> {
     if (!this.config) {
       throw new ConfigurationError('Configuration not loaded. Call load() first.');
@@ -149,7 +150,7 @@ export class ConfigurationManager {
   /**
    * Get configuration section
    */
-  getSection<T extends keyof SettingsConfig>(section: T): SettingsConfig[T] {
+  getSection(section: keyof SettingsConfig): any {
     if (!this.config) {
       throw new ConfigurationError('Configuration not loaded. Call load() first.');
     }
@@ -173,22 +174,20 @@ export class ConfigurationManager {
 
     if (!this.schema) {
       return {
-        valid: true,
+        isValid: true,
         errors: [],
-        warnings: [{ code: 'NO_SCHEMA', message: 'No validation schema available' }]
+        warnings: []
       };
     }
 
-    const result = validate(targetConfig, this.schema);
-    const errors = result.errors.map((error: any) => ({
-      code: 'VALIDATION_ERROR',
-      message: `${error.property}: ${error.message}`,
-      field: error.property,
-      value: error.instance
-    }));
+    const validator = new Validator();
+    const result = validator.validate(targetConfig, this.schema);
+    const errors = result.errors.map((error: any) =>
+      `${error.property}: ${error.message}`
+    );
 
     return {
-      valid: errors.length === 0,
+      isValid: errors.length === 0,
       errors,
       warnings: []
     };
@@ -230,7 +229,7 @@ export class ConfigurationManager {
           return JSON.parse(content);
       }
     } catch (error) {
-      throw new ConfigurationError(`Failed to parse ${ext} file: ${error.message}`);
+      throw new ConfigurationError(`Failed to parse ${ext} file: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -239,9 +238,60 @@ export class ConfigurationManager {
    */
   private getDefaultConfig(): PRPConfig {
     return {
-      name: 'prp-project',
       version: '1.0.0',
-      type: 'auto',
+      name: 'prp-project',
+      description: 'PRP Project',
+      storage: {
+        dataDir: '.prp',
+        cacheDir: '/tmp/prp-cache',
+        worktreesDir: '/tmp/prp-worktrees',
+        notesDir: '.prp/notes',
+        logsDir: '/tmp/prp-logs',
+        keychainFile: '.prp/keychain.json',
+        persistFile: '.prp/state.json',
+        maxCacheSize: 100 * 1024 * 1024,
+        retentionPeriod: 30 * 24 * 60 * 60 * 1000,
+      },
+      agents: [],
+      guidelines: [],
+      signals: {},
+      orchestrator: {},
+      scanner: {},
+      inspector: {},
+      tui: {
+        mode: 'cli',
+        activeScreen: 'main',
+        followEvents: true,
+        autoRefresh: true,
+        refreshInterval: 5000,
+      },
+      features: {
+        scanner: true,
+        inspector: true,
+        orchestrator: true,
+        tui: true,
+        mcp: true,
+        worktrees: true,
+      },
+      limits: {
+        maxConcurrentAgents: 5,
+        maxWorktrees: 50,
+        maxPRPsPerWorktree: 20,
+        tokenAlertThreshold: 0.8,
+        tokenCriticalThreshold: 0.95,
+      },
+      logging: {
+        level: 'info',
+        enableFileLogging: true,
+        enableTokenTracking: true,
+        enablePerformanceTracking: true,
+        logRetentionDays: 7,
+      },
+      security: {
+        enablePinProtection: false,
+        encryptSecrets: true,
+        sessionTimeout: 60,
+      },
       settings: {
         debug: {
           enabled: false,
@@ -502,7 +552,6 @@ export class ConfigurationManager {
     return {
       name: this.config.name,
       version: this.config.version,
-      type: this.config.type,
       configFile: this.configPath,
       features: {
         debug: this.config.settings.debug?.enabled || false,

@@ -192,12 +192,14 @@ Administrative oversight needed for this request.`,
     urgency?: 'high' | 'medium' | 'low';
   }): Promise<NudgeResponse> {
     const templateData = {
+      agentType: data.agentType,
+      prpId: data.prpId,
       issue: data.issue,
       current_understanding: data.currentUnderstanding,
       questions: data.questions.map((q, i) => `${i + 1}. ${q}`).join('\n'),
       options: data.options?.map((o, i) => `${i + 1}. ${o}`).join('\n') || 'No specific options defined',
       recommendation: data.recommendation || 'No specific recommendation',
-      ...data
+      urgency: data.urgency
     };
 
     return this.sendAgentNudge('[gg] Goal Clarification', {
@@ -220,11 +222,13 @@ Administrative oversight needed for this request.`,
     urgency?: 'high' | 'medium' | 'low';
   }): Promise<NudgeResponse> {
     const templateData = {
+      agentType: data.agentType,
+      prpId: data.prpId,
       topic: data.topic,
       proposal: data.proposal,
       alternatives: data.alternatives?.join('\n') || 'No alternatives considered',
       questions: data.questions?.map((q, i) => `${i + 1}. ${q}`).join('\n') || 'No specific questions',
-      ...data
+      urgency: data.urgency
     };
 
     return this.sendAgentNudge('[af] Feedback Request', {
@@ -247,12 +251,13 @@ Administrative oversight needed for this request.`,
     urgency?: 'high' | 'medium' | 'low';
   }): Promise<NudgeResponse> {
     const templateData = {
+      agentType: data.agentType,
+      prpId: data.prpId,
       blocker_description: data.blockerDescription,
       impact: data.impact,
       attempted_solutions: data.attemptedSolutions?.join('\n') || 'No solutions attempted yet',
       needed_action: data.neededAction,
-      urgency: data.urgency || 'high',
-      ...data
+      urgency: data.urgency || 'high'
     };
 
     return this.sendAgentNudge('[bb] Blocker Detected', {
@@ -276,12 +281,14 @@ Administrative oversight needed for this request.`,
     urgency?: 'high' | 'medium' | 'low';
   }): Promise<NudgeResponse> {
     const templateData = {
+      agentType: data.agentType,
+      prpId: data.prpId,
       issue: data.issue,
       involved_agents: data.involvedAgents.join(', '),
       conflict_description: data.conflictDescription || 'No specific conflict',
       proposed_resolution: data.proposedResolution || 'No resolution proposed',
       timeline_impact: data.timelineImpact || 'Unknown impact',
-      ...data
+      urgency: data.urgency
     };
 
     return this.sendAgentNudge('[oa] Orchestrator Attention', {
@@ -304,12 +311,13 @@ Administrative oversight needed for this request.`,
     priority?: 'high' | 'medium' | 'low';
   }): Promise<NudgeResponse> {
     const templateData = {
+      agentType: data.agentType,
+      prpId: data.prpId,
       topic: data.topic,
       summary: data.summary,
       details: data.details,
       action_required: data.actionRequired,
-      priority: data.priority || 'medium',
-      ...data
+      priority: data.priority || 'medium'
     };
 
     return this.sendAgentNudge('[aa] Admin Attention', {

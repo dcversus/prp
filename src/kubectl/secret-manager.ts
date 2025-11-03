@@ -5,8 +5,7 @@
  * error handling, validation, caching, and status monitoring.
  */
 
-import { execSync, spawn } from 'child_process';
-import { promisify } from 'util';
+import { spawn } from 'child_process';
 import {
   KubectlSecretConfig,
   SecretRetrievalResult,
@@ -16,16 +15,13 @@ import {
   KubectlCommandOptions,
   KubectlError,
   DEFAULT_KUBECTL_CONFIG,
-  SECRET_VALIDATION_PATTERNS,
-  SecretFormat
+  SECRET_VALIDATION_PATTERNS
 } from './types.js';
 
-const sleep = promisify(setTimeout);
-
 export class KubectlSecretManager {
-  private config: Required<KubectlSecretConfig>;
-  private cache: SecretCache | null = null;
-  private lastValidation: SecretValidationResult | null = null;
+  protected config: Required<KubectlSecretConfig>;
+  protected cache: SecretCache | null = null;
+  protected lastValidation: SecretValidationResult | null = null;
 
   constructor(config: Partial<KubectlSecretConfig> = {}) {
     this.config = {
@@ -429,14 +425,165 @@ export class SecretManager extends KubectlSecretManager {
     field: 'NUDGE_SECRET'
   };
 
-  async getNudgeSecret(options: any = {}): Promise<string> {
+  /**
+   * Legacy method that returns just the secret value (string)
+   * for backward compatibility
+   */
+  async getNudgeSecretValue(options: { forceRefresh?: boolean } = {}): Promise<string> {
     const result = await super.getNudgeSecret(options);
     return result.value;
   }
 
-  async validateSecret(secret: string, options: any = {}): Promise<boolean> {
+  /**
+   * Legacy method that returns just the validation result (boolean)
+   * for backward compatibility
+   */
+  async validateSecretSimple(secret: string): Promise<boolean> {
     const result = await super.validateSecret(secret);
     return result.isValid;
+  }
+
+  /**
+   * Override testSecretAccess to provide legacy interface
+   */
+  override async testSecretAccess(): Promise<{
+    accessible: boolean;
+    error?: string;
+    namespace?: string;
+    secretName?: string;
+    kubectl_available?: boolean;
+    cluster_connected?: boolean;
+    secret_retrieved?: boolean;
+    secret_validated?: boolean;
+  }> {
+    try {
+      const status = await this.getKubectlStatus();
+      const baseResult = await super.testSecretAccess();
+
+      // Add legacy properties
+      return {
+        ...baseResult,
+        kubectl_available: status.available,
+        cluster_connected: status.connected,
+        secret_retrieved: baseResult.accessible,
+        secret_validated: baseResult.accessible // Assume valid if accessible
+      };
+    } catch (error) {
+      return {
+        accessible: false,
+        error: error instanceof Error ? error.message : String(error),
+        namespace: this.defaultConfig.namespace,
+        secretName: this.defaultConfig.name,
+        kubectl_available: false,
+        cluster_connected: false,
+        secret_retrieved: false,
+        secret_validated: false
+      };
+    }
+  }
+
+  /**
+   * Get comprehensive status information
+   */
+  async getStatus(): Promise<{
+    kubectl_available: boolean;
+    cluster_connected: boolean;
+    secret_accessible: boolean;
+    cache_enabled: boolean;
+    last_retrieval?: Date;
+    last_validation?: Date;
+    validation_result?: boolean;
+  }> {
+    const kubectlStatus = await this.getKubectlStatus();
+    const testAccess = await this.testSecretAccess();
+
+    return {
+      kubectl_available: kubectlStatus.available,
+      cluster_connected: kubectlStatus.connected,
+      secret_accessible: testAccess.accessible,
+      cache_enabled: this.cache !== null,
+      last_retrieval: this.cache ? new Date(this.cache.retrievedAt) : undefined,
+      last_validation: this.lastValidation ? new Date() : undefined,
+      validation_result: this.lastValidation?.isValid
+    };
+  }
+
+  /**
+   * Get cache information
+   */
+  getCacheInfo(): Array<{
+    key: string;
+    timestamp: Date;
+    expires: Date;
+    ttl: number;
+    expired: boolean;
+  }> {
+    if (!this.cache) {
+      return [];
+    }
+
+    const now = Date.now();
+    return [{
+      key: `${this.defaultConfig.namespace}/${this.defaultConfig.name}/${this.defaultConfig.field}`,
+      timestamp: new Date(this.cache.retrievedAt),
+      expires: new Date(this.cache.expiresAt),
+      ttl: this.cache.expiresAt - now,
+      expired: this.cache.expiresAt <= now
+    }];
+  }
+
+  /**
+   * Clear cache entries with filtering options
+   */
+  clearCacheFiltered(options?: { namespace?: string; name?: string; field?: string }): void {
+    // If no options provided, clear all cache
+    if (!options || (!options.namespace && !options.name && !options.field)) {
+      this.cache = null;
+      this.legacyCache.clear();
+      return;
+    }
+
+    // If options match current cache, clear it
+    if (this.cache) {
+      if ((options.namespace && options.namespace !== this.defaultConfig.namespace) ||
+          (options.name && options.name !== this.defaultConfig.name) ||
+          (options.field && options.field !== this.defaultConfig.field)) {
+        return; // Don't clear if options don't match
+      }
+      this.cache = null;
+    }
+
+    // Clear legacy cache entries that match
+    for (const [key] of this.legacyCache) {
+      if (options.namespace && !key.includes(options.namespace)) continue;
+      if (options.name && !key.includes(options.name)) continue;
+      if (options.field && !key.includes(options.field)) continue;
+      this.legacyCache.delete(key);
+    }
+  }
+
+  /**
+   * Clean expired cache entries
+   */
+  cleanExpiredCache(): number {
+    let cleaned = 0;
+    const now = Date.now();
+
+    // Check main cache
+    if (this.cache && this.cache.expiresAt <= now) {
+      this.cache = null;
+      cleaned++;
+    }
+
+    // Clean legacy cache
+    for (const [key, entry] of this.legacyCache) {
+      if (entry.expiresAt <= now) {
+        this.legacyCache.delete(key);
+        cleaned++;
+      }
+    }
+
+    return cleaned;
   }
 }
 

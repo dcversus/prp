@@ -633,7 +633,7 @@ export class RealTimeEventEmitter {
   getDetailedStatistics(): {
     uptime: number;
     metrics: EventMetrics;
-    subscriptionMetrics: ReturnType<typeof this.getSubscriptionMetrics>;
+    subscriptionMetrics: any; // ReturnType<typeof this.getSubscriptionMetrics>
     recentEvents: Array<{
       type: string;
       timestamp: Date;

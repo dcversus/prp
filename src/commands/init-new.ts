@@ -103,7 +103,7 @@ export class InitCommand {
       .option('--skip-git', 'Skip Git initialization')
       .option('--no-install', 'Skip dependency installation')
       .option('-p, --package-manager <manager>', 'Package manager (npm, yarn, pnpm)', 'npm')
-      .action(async (options, command) => {
+      .action(async (options) => {
         const result = await this.execute(options);
         if (!result.success) {
           process.exit(result.exitCode);
@@ -399,7 +399,6 @@ export class InitCommand {
       name: projectInfo.name,
       version: '1.0.0',
       description: projectInfo.description,
-      type: projectInfo.template,
       author: projectInfo.author,
       license: projectInfo.license || 'MIT',
       settings: {
@@ -478,7 +477,65 @@ export class InitCommand {
           audit: true
         }
       },
-      scripts: this.getDefaultScripts(projectInfo.template)
+      scripts: this.getDefaultScripts(projectInfo.template),
+      // Add missing required properties for compatibility
+      storage: {
+        dataDir: './prp-data',
+        cacheDir: '/tmp/prp-cache',
+        worktreesDir: '/tmp/prp-worktrees',
+        notesDir: './prp-data/notes',
+        logsDir: '/tmp/prp-logs',
+        keychainFile: './prp-data/keychain.json',
+        persistFile: './prp-data/state.json',
+        maxCacheSize: 100 * 1024 * 1024,
+        retentionPeriod: 30 * 24 * 60 * 60 * 1000
+      },
+      agents: [],
+      guidelines: [],
+      signals: {},
+      orchestrator: {
+        enabled: false
+      },
+      scanner: {
+        enabled: false
+      },
+      inspector: {
+        enabled: false
+      },
+      tui: {
+        mode: 'cli',
+        activeScreen: 'main',
+        followEvents: true,
+        autoRefresh: true,
+        refreshInterval: 5000
+      },
+      features: {
+        scanner: false,
+        inspector: false,
+        orchestrator: false,
+        tui: false,
+        mcp: false,
+        worktrees: false
+      },
+      limits: {
+        maxConcurrentAgents: 5,
+        maxWorktrees: 50,
+        maxPRPsPerWorktree: 20,
+        tokenAlertThreshold: 0.8,
+        tokenCriticalThreshold: 0.95
+      },
+      logging: {
+        level: 'info',
+        enableFileLogging: true,
+        enableTokenTracking: true,
+        enablePerformanceTracking: true,
+        logRetentionDays: 7
+      },
+      security: {
+        enablePinProtection: false,
+        encryptSecrets: true,
+        sessionTimeout: 60
+      }
     };
 
     return config;
@@ -641,7 +698,7 @@ ${config.license}
   /**
    * Create .gitignore
    */
-  private async createGitignore(projectPath: string, template: string): Promise<void> {
+  private async createGitignore(projectPath: string, _template: string): Promise<void> {
     const gitignore = `# Dependencies
 node_modules/
 .pnp
@@ -935,7 +992,7 @@ describe('hello function', () => {
     }
   }
 
-  private async setupQualityGates(config: PRPConfig): Promise<void> {
+  private async setupQualityGates(_config: PRPConfig): Promise<void> {
     // This would setup linting config files, test configs, etc.
     logger.debug('Setting up quality gates');
     // Implementation details would depend on the specific tools

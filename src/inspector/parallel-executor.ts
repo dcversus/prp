@@ -8,12 +8,10 @@ import { EventEmitter } from 'events';
 import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
 import { Signal } from '../shared/types';
 import {
-  InspectorConfig,
   SignalProcessor,
-  InspectorResult,
+  DetailedInspectorResult,
   InspectorError,
-  InspectorMetrics,
-  InspectorBatch
+  InspectorMetrics
 } from './types';
 import { LLMExecutionEngine } from './llm-execution-engine';
 import { ContextManager } from './context-manager';
@@ -118,11 +116,9 @@ export class ParallelExecutor extends EventEmitter {
   private workers: Map<number, WorkerInfo> = new Map();
   private taskQueue: ExecutionTask[] = [];
   private processingTasks: Map<string, ExecutionTask> = new Map();
-  private completedTasks: Map<string, InspectorResult> = new Map();
+  private completedTasks: Map<string, DetailedInspectorResult> = new Map();
   private failedTasks: Map<string, InspectorError> = new Map();
   private llmEngine: LLMExecutionEngine;
-  private contextManager: ContextManager;
-  private guidelineAdapter: GuidelineAdapter;
   private isRunning = false;
   private shutdownRequested = false;
 
@@ -155,28 +151,23 @@ export class ParallelExecutor extends EventEmitter {
 
   constructor(
     config: ParallelExecutionConfig,
-    llmEngine: LLMExecutionEngine,
-    contextManager: ContextManager,
-    guidelineAdapter: GuidelineAdapter
+    llmEngine: LLMExecutionEngine
   ) {
     super();
 
     this.config = {
-      maxWorkers: 2,
-      maxConcurrentPerWorker: 3,
-      taskTimeout: 60000, // 1 minute
-      retryAttempts: 3,
-      retryDelay: 5000, // 5 seconds
-      enableLoadBalancing: true,
-      enableHealthChecks: true,
-      healthCheckInterval: 30000, // 30 seconds
-      gracefulShutdownTimeout: 30000, // 30 seconds
-      ...config
+      maxWorkers: config.maxWorkers || 2,
+      maxConcurrentPerWorker: config.maxConcurrentPerWorker || 3,
+      taskTimeout: config.taskTimeout || 60000, // 1 minute
+      retryAttempts: config.retryAttempts || 3,
+      retryDelay: config.retryDelay || 5000, // 5 seconds
+      enableLoadBalancing: config.enableLoadBalancing ?? true,
+      enableHealthChecks: config.enableHealthChecks ?? true,
+      healthCheckInterval: config.healthCheckInterval || 30000, // 30 seconds
+      gracefulShutdownTimeout: config.gracefulShutdownTimeout || 30000 // 30 seconds
     };
 
     this.llmEngine = llmEngine;
-    this.contextManager = contextManager;
-    this.guidelineAdapter = guidelineAdapter;
 
     // Setup event handlers
     this.setupEventHandlers();
@@ -270,7 +261,7 @@ export class ParallelExecutor extends EventEmitter {
   /**
    * Process a single signal
    */
-  async processSignal(signal: Signal, processor: SignalProcessor): Promise<InspectorResult> {
+  async processSignal(signal: Signal, processor: SignalProcessor): Promise<DetailedInspectorResult> {
     return new Promise((resolve, reject) => {
       const taskId = HashUtils.generateId();
       const task: ExecutionTask = {
@@ -286,8 +277,8 @@ export class ParallelExecutor extends EventEmitter {
       };
 
       // Set up result handlers
-      const handleResult = (result: InspectorResult) => {
-        if (result.signalId === signal.id) {
+      const handleResult = (result: DetailedInspectorResult) => {
+        if (result.signal.id === signal.id) {
           this.off('task:completed', handleResult);
           this.off('task:failed', handleError);
           resolve(result);
@@ -320,7 +311,7 @@ export class ParallelExecutor extends EventEmitter {
   /**
    * Process multiple signals in batch
    */
-  async processBatch(signals: Signal[], processors: SignalProcessor[]): Promise<InspectorResult[]> {
+  async processBatch(signals: Signal[], processors: SignalProcessor[]): Promise<DetailedInspectorResult[]> {
     if (signals.length !== processors.length) {
       throw new Error('Signals and processors must have the same length');
     }
@@ -341,7 +332,7 @@ export class ParallelExecutor extends EventEmitter {
     tasks.forEach(task => this.addTask(task));
 
     // Wait for all tasks to complete
-    const results: InspectorResult[] = [];
+    const results: DetailedInspectorResult[] = [];
     const errors: InspectorError[] = [];
 
     return new Promise((resolve, reject) => {
@@ -607,7 +598,7 @@ export class ParallelExecutor extends EventEmitter {
   /**
    * Handle task completion
    */
-  private handleTaskComplete(workerId: number, taskId: string, result: InspectorResult): void {
+  private handleTaskComplete(workerId: number, taskId: string, result: DetailedInspectorResult): void {
     const worker = this.workers.get(workerId);
     const task = this.processingTasks.get(taskId);
 
@@ -625,7 +616,7 @@ export class ParallelExecutor extends EventEmitter {
       this.updateMetrics(result, true);
 
       logger.debug('ParallelExecutor', `Task completed: ${taskId}`, {
-        signalType: result.type,
+        signalType: result.signal.type,
         processingTime: result.processingTime,
         workerId
       });
@@ -827,7 +818,7 @@ export class ParallelExecutor extends EventEmitter {
   /**
    * Update metrics
    */
-  private updateMetrics(result: InspectorResult, success: boolean): void {
+  private updateMetrics(result: DetailedInspectorResult, success: boolean): void {
     this.metrics.totalProcessed++;
 
     if (success) {
@@ -998,21 +989,51 @@ if (!isMainThread) {
   };
 
   // Execute task (placeholder implementation)
-  const executeTask = async (data: any): Promise<InspectorResult> => {
+  const executeTask = async (data: any): Promise<DetailedInspectorResult> => {
     // In a real implementation, this would use the LLM engine and other components
-    // For now, return a mock result
-    return {
+    // For now, return a mock result that matches the DetailedInspectorResult interface
+    const mockPreparedContext: any = {
+      id: `ctx-${data.signal.id}`,
       signalId: data.signal.id,
-      type: data.signal.type,
-      priority: data.signal.priority || 5,
-      processedAt: new Date(),
-      data: {},
-      guideline: '',
-      contextSize: 1000,
+      content: { signalContent: '' },
+      size: 1000,
+      compressed: false,
+      tokenCount: 250
+    };
+
+    const mockPayload: any = {
+      id: `payload-${data.signal.id}`,
+      signalId: data.signal.id,
+      classification: {
+        category: 'test',
+        subcategory: 'test',
+        priority: 5,
+        agentRole: 'developer' as any,
+        escalationLevel: 1,
+        deadline: new Date(),
+        dependencies: [],
+        confidence: 0.8
+      },
+      context: mockPreparedContext,
+      recommendations: [],
+      timestamp: new Date(),
+      size: 1000,
+      compressed: false
+    };
+
+    return {
+      id: `result-${data.signal.id}`,
+      signal: data.signal,
+      classification: mockPayload.classification,
+      context: mockPreparedContext,
+      payload: mockPayload,
+      recommendations: [],
       processingTime: 1000,
-      workerId,
-      success: true
-    } as InspectorResult;
+      tokenUsage: { input: 100, output: 150, total: 250, cost: 0.0005 },
+      model: 'mock-model',
+      timestamp: new Date(),
+      confidence: 0.8
+    };
   };
 
   // Initialize worker

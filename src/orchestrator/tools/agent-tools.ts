@@ -19,14 +19,8 @@ export interface SpawnAgentParams {
   prpContext?: string;
 }
 
-export interface AgentConfig {
-  apiKey?: string;
-  baseUrl?: string;
-  model?: string;
-  maxTokens?: number;
-  timeout?: number;
-  [key: string]: unknown;
-}
+// AgentConfig is imported from src/config/agent-config.ts to avoid duplication
+export type AgentConfig = import('../../config/agent-config.js').AgentConfig;
 
 export interface GetAgentStatusParams {
   agentId?: string;

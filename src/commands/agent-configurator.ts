@@ -8,8 +8,140 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { createLayerLogger } from '../shared';
 import { AgentConfig, AgentConfigConfig } from './types';
+import { AgentCapabilities } from '../config/agent-config';
 
 const logger = createLayerLogger('config');
+
+/**
+ * Helper function to convert old capabilities array to new AgentCapabilities format
+ */
+function createAgentCapabilities(capabilities: string[]): AgentCapabilities {
+  return {
+    supportsTools: capabilities.some(c => c.toLowerCase().includes('tool') || c.toLowerCase().includes('code')),
+    supportsImages: capabilities.some(c => c.toLowerCase().includes('image') || c.toLowerCase().includes('visual')),
+    supportsSubAgents: capabilities.some(c => c.toLowerCase().includes('agent') || c.toLowerCase().includes('orchestrate')),
+    supportsParallel: capabilities.some(c => c.toLowerCase().includes('parallel') || c.toLowerCase().includes('multi')),
+    supportsCodeExecution: capabilities.some(c => c.toLowerCase().includes('execute') || c.toLowerCase().includes('run')),
+    maxContextLength: 4000,
+    supportedModels: [],
+    supportedFileTypes: ['*'],
+    canAccessInternet: true,
+    canAccessFileSystem: true,
+    canExecuteCommands: capabilities.some(c => c.toLowerCase().includes('execute') || c.toLowerCase().includes('command'))
+  };
+}
+
+/**
+ * Helper function to create a complete AgentConfig from partial old-style config
+ */
+function createCompleteAgentConfig(partial: Partial<AgentConfig>): AgentConfig {
+  const now = new Date();
+  return {
+    // Required properties
+    id: partial.id || `agent-${Date.now()}`,
+    name: partial.name || 'Unknown Agent',
+    type: partial.type || 'claude-code-anthropic',
+    role: partial.role || 'orchestrator-agent',
+    provider: partial.provider || 'anthropic',
+    enabled: partial.enabled ?? true,
+    capabilities: partial.capabilities || createAgentCapabilities([]),
+    limits: {
+      maxTokensPerRequest: partial.defaultMaxTokens || 4000,
+      maxRequestsPerHour: 100,
+      maxRequestsPerDay: 1000,
+      maxCostPerDay: 10.0,
+      maxExecutionTime: 300000,
+      maxMemoryUsage: 1024,
+      maxConcurrentTasks: 1,
+      cooldownPeriod: 1000
+    },
+    authentication: {
+      type: 'api-key',
+      encrypted: true
+    },
+    personality: {
+      tone: 'professional',
+      language: 'en',
+      responseStyle: 'detailed',
+      verbosity: 'balanced',
+      creativity: 0.7,
+      strictness: 0.5,
+      proactivity: 0.3,
+      communicationStyle: {
+        useEmojis: false,
+        useFormatting: true,
+        includeCodeBlocks: true,
+        includeExplanations: true
+      }
+    },
+    tools: [],
+    environment: {
+      workingDirectory: process.cwd(),
+      shell: '/bin/bash',
+      envVars: {},
+      nodeVersion: '18',
+      pythonVersion: '3.9',
+      allowedCommands: ['git', 'npm', 'node', 'python', 'ls', 'cat', 'grep'],
+      blockedCommands: ['rm -rf', 'sudo', 'chmod 777'],
+      networkAccess: {
+        allowedDomains: [],
+        blockedDomains: [],
+        allowExternalRequests: true
+      },
+      fileSystem: {
+        allowedPaths: [],
+        blockedPaths: ['/etc', '/usr/bin', '/bin'],
+        maxFileSize: 10485760,
+        allowWrite: true,
+        allowDelete: false
+      }
+    },
+    preferences: {
+      autoSave: true,
+      autoCommit: false,
+      preferAsync: true,
+      useCache: true,
+      debugMode: false,
+      logLevel: 'info',
+      notifications: {
+        enabled: true,
+        types: ['error', 'warning'],
+        channels: ['console']
+      },
+      git: {
+        autoStage: true,
+        commitMessageFormat: 'feat: {description}',
+        branchNaming: 'feature/{name}'
+      }
+    },
+    metadata: {
+      version: '1.0.0',
+      author: 'system',
+      createdAt: now,
+      lastModified: now,
+      tags: [],
+      category: 'ai-assistant',
+      description: partial.description || '',
+      documentation: '',
+      examples: [],
+      dependencies: [],
+      compatibility: {
+        platforms: ['linux', 'macos', 'windows'],
+        nodeVersions: ['16', '18', '20'],
+        pythonVersions: ['3.8', '3.9', '3.10', '3.11']
+      }
+    },
+
+    // Backwards compatibility properties
+    description: partial.description,
+    category: partial.category,
+    enabledByDefault: partial.enabledByDefault,
+    availableModels: partial.availableModels,
+    defaultModel: partial.defaultModel,
+    defaultMaxTokens: partial.defaultMaxTokens,
+    configuration: partial.configuration
+  };
+}
 
 interface AgentRegistry {
   agents: Record<string, AgentConfig>;
@@ -166,7 +298,7 @@ export class AgentConfigurator {
    * Create developer configuration
    */
   private createDeveloperConfig(): AgentConfig {
-    return {
+    return createCompleteAgentConfig({
       id: 'robo-developer',
       name: 'Robo Developer',
       description: 'Software development and implementation specialist',
@@ -175,15 +307,19 @@ export class AgentConfigurator {
       availableModels: ['gpt-4', 'claude-3-sonnet', 'gemini-pro'],
       defaultModel: 'gpt-4',
       defaultMaxTokens: 8000,
-      capabilities: [
-        'Code writing and implementation',
-        'Debugging and troubleshooting',
-        'Code review and optimization',
-        'Testing setup and implementation',
-        'Documentation generation',
-        'API integration',
-        'Database design and implementation'
-      ],
+      capabilities: {
+        supportsTools: true,
+        supportsImages: false,
+        supportsSubAgents: false,
+        supportsParallel: false,
+        supportsCodeExecution: false,
+        maxContextLength: 4000,
+        supportedModels: ['gpt-4', 'claude-3-sonnet', 'gemini-pro'],
+        supportedFileTypes: ['*.js', '*.ts', '*.jsx', '*.tsx', '*.py', '*.md'],
+        canAccessInternet: true,
+        canAccessFileSystem: true,
+        canExecuteCommands: false
+      },
       configuration: {
         codingStyle: 'modern',
         testFramework: 'jest',
@@ -191,14 +327,14 @@ export class AgentConfigurator {
         libraries: ['react', 'node.js', 'express'],
         tools: ['git', 'npm', 'docker']
       }
-    };
+    });
   }
 
   /**
    * Create AQA configuration
    */
   private createAQAConfig(): AgentConfig {
-    return {
+    return createCompleteAgentConfig({
       id: 'robo-aqa',
       name: 'Robo AQA',
       description: 'Automated Quality Assurance and testing specialist',
@@ -207,7 +343,7 @@ export class AgentConfigurator {
       availableModels: ['gpt-4', 'claude-3-sonnet', 'gemini-pro'],
       defaultModel: 'gpt-4',
       defaultMaxTokens: 6000,
-      capabilities: [
+      capabilities: createAgentCapabilities([
         'Test strategy and planning',
         'Unit test creation and enhancement',
         'Integration testing',
@@ -216,7 +352,7 @@ export class AgentConfigurator {
         'Quality gate enforcement',
         'Bug detection and reporting',
         'Performance testing'
-      ],
+      ]),
       configuration: {
         testingFrameworks: ['jest', 'cypress', 'playwright'],
         coverageTarget: 80,
@@ -224,14 +360,14 @@ export class AgentConfigurator {
         reporting: ['junit', 'html', 'coverage'],
         qualityGates: true
       }
-    };
+    });
   }
 
   /**
    * Create UX/UI configuration
    */
   private createUXUIConfig(): AgentConfig {
-    return {
+    return createCompleteAgentConfig({
       id: 'robo-ux-ui-designer',
       name: 'Robo UX/UI Designer',
       description: 'User experience and interface design specialist',
@@ -240,7 +376,7 @@ export class AgentConfigurator {
       availableModels: ['gpt-4', 'claude-3-sonnet', 'gemini-pro'],
       defaultModel: 'gpt-4',
       defaultMaxTokens: 6000,
-      capabilities: [
+      capabilities: createAgentCapabilities([
         'User interface design',
         'User experience research',
         'Design system creation',
@@ -249,7 +385,7 @@ export class AgentConfigurator {
         'Prototype creation',
         'User journey mapping',
         'Visual design optimization'
-      ],
+      ]),
       configuration: {
         designTools: ['figma', 'sketch', 'adobe xd'],
         frameworks: ['react', 'vue', 'angular'],
@@ -257,14 +393,14 @@ export class AgentConfigurator {
         accessibilityStandards: ['wcag-2.1-aa'],
         designSystems: true
       }
-    };
+    });
   }
 
   /**
    * Create system analyst configuration
    */
   private createSystemAnalystConfig(): AgentConfig {
-    return {
+    return createCompleteAgentConfig({
       id: 'robo-system-analyst',
       name: 'Robo System Analyst',
       description: 'System analysis and requirements engineering specialist',
@@ -273,7 +409,7 @@ export class AgentConfigurator {
       availableModels: ['gpt-4', 'claude-3-sonnet', 'gemini-pro'],
       defaultModel: 'gpt-4',
       defaultMaxTokens: 8000,
-      capabilities: [
+      capabilities: createAgentCapabilities([
         'Requirements gathering and analysis',
         'System architecture design',
         'Business process modeling',
@@ -282,21 +418,21 @@ export class AgentConfigurator {
         'Risk assessment',
         'Stakeholder management',
         'Project planning'
-      ],
+      ]),
       configuration: {
         analysisMethods: ['use-cases', 'user-stories', 'data-flow'],
         documentationStandards: ['ieee-830', 'iso-29148'],
         modelingTools: ['uml', 'bpmn', 'flowcharts'],
         researchTechniques: ['surveys', 'interviews', 'observation']
       }
-    };
+    });
   }
 
   /**
    * Create DevOps configuration
    */
   private createDevOpsConfig(): AgentConfig {
-    return {
+    return createCompleteAgentConfig({
       id: 'robo-devops-sre',
       name: 'Robo DevOps/SRE',
       description: 'DevOps and Site Reliability Engineering specialist',
@@ -305,7 +441,7 @@ export class AgentConfigurator {
       availableModels: ['gpt-4', 'claude-3-sonnet', 'gemini-pro'],
       defaultModel: 'gpt-4',
       defaultMaxTokens: 6000,
-      capabilities: [
+      capabilities: createAgentCapabilities([
         'CI/CD pipeline setup',
         'Infrastructure as code',
         'Monitoring and observability',
@@ -314,21 +450,21 @@ export class AgentConfigurator {
         'Disaster recovery planning',
         'Scaling strategies',
         'Incident response'
-      ],
+      ]),
       configuration: {
         platforms: ['aws', 'azure', 'gcp', 'kubernetes'],
         tools: ['docker', 'terraform', 'ansible', 'jenkins'],
         monitoring: ['prometheus', 'grafana', 'datadog'],
         scripting: ['bash', 'python', 'powershell']
       }
-    };
+    });
   }
 
   /**
    * Create orchestrator configuration
    */
   private createOrchestratorConfig(): AgentConfig {
-    return {
+    return createCompleteAgentConfig({
       id: 'robo-orchestrator',
       name: 'Robo Orchestrator',
       description: 'Project orchestration and agent coordination specialist',
@@ -337,7 +473,7 @@ export class AgentConfigurator {
       availableModels: ['gpt-4', 'claude-3-opus', 'gemini-pro'],
       defaultModel: 'gpt-4',
       defaultMaxTokens: 12000,
-      capabilities: [
+      capabilities: createAgentCapabilities([
         'Agent task coordination',
         'Signal workflow management',
         'Project scheduling',
@@ -346,14 +482,14 @@ export class AgentConfigurator {
         'Decision making',
         'Conflict resolution',
         'Quality control'
-      ],
+      ]),
       configuration: {
         coordinationMethod: 'signal-based',
         decisionFramework: 'chain-of-thought',
         schedulingAlgorithm: 'priority-based',
         monitoringLevel: 'comprehensive'
       }
-    };
+    });
   }
 
   /**
@@ -459,7 +595,7 @@ ${Object.keys(this.registry.agents).map(agentId => {
 - **Description**: ${config.description}
 - **Default Model**: ${config.defaultModel}
 - **Max Tokens**: ${config.defaultMaxTokens}
-- **Capabilities**: ${config.capabilities.join(', ')}
+- **Capabilities**: ${Object.entries(config.capabilities).filter(([_, v]) => v).map(([k]) => k).join(', ')}
 `;
   }
   return '';

@@ -97,7 +97,7 @@ export class NudgeClient {
           message_id: response.data.message_id,
           sent_to: response.data.sent_to,
           timestamp: response.data.timestamp || new Date().toISOString(),
-          delivery_type: response.data.delivery_type || request.type
+          delivery_type: response.data.delivery_type || (request.type === 'direct' ? 'direct' : 'llm-enhanced')
         };
 
       } catch (error) {

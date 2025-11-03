@@ -2,7 +2,7 @@
  * Template engine using Handlebars
  */
 
-import Handlebars from 'handlebars';
+import * as Handlebars from 'handlebars';
 import { promises as fs } from 'fs';
 import { TemplateData, TemplateEngine } from './types.js';
 

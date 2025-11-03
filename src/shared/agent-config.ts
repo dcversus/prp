@@ -4,21 +4,8 @@
  * Configuration types and utilities for AI agents.
  */
 
-export interface AgentConfig {
-  id: string;
-  name: string;
-  type: string;
-  enabled: boolean;
-  model?: string;
-  maxTokens?: number;
-  temperature?: number;
-  timeout?: number;
-  credentials?: {
-    token?: string;
-    apiKey?: string;
-    [key: string]: unknown;
-  };
-}
+// AgentConfig is imported from src/config/agent-config.ts to avoid duplication
+export type AgentConfig = import('../config/agent-config.js').AgentConfig;
 
 export interface AgentRegistry {
   agents: Record<string, AgentConfig>;
@@ -29,12 +16,56 @@ export interface AgentRegistry {
 export const defaultAgentConfig: AgentConfig = {
   id: 'default',
   name: 'Default Agent',
-  type: 'claude-code',
+  type: 'claude-code-anthropic',
+  role: 'robo-developer',
+  provider: 'anthropic',
   enabled: true,
-  model: 'claude-3-sonnet-20240229',
-  maxTokens: 4000,
-  temperature: 0.7,
-  timeout: 30000
+  capabilities: {
+    supportsTools: true,
+    supportsMCP: true,
+    supportsFileOperations: true,
+    supportsGitOperations: true,
+    supportsCodeGeneration: true,
+    supportsCodeReview: true,
+    supportsTesting: true,
+    supportsDocumentation: true,
+    supportsDebugging: true,
+    supportsRefactoring: true
+  },
+  limits: {
+    maxTokens: 4000,
+    maxRequestsPerMinute: 60,
+    maxCostPerHour: 10.0,
+    maxContextLength: 200000
+  },
+  authentication: {
+    type: 'api-key',
+    apiKey: '',
+    organization: ''
+  },
+  personality: {
+    style: 'professional',
+    verbosity: 'balanced',
+    creativity: 'moderate',
+    friendliness: 'moderate'
+  },
+  tools: [],
+  environment: {
+    nodeVersion: '>=18.0.0',
+    workingDirectory: process.cwd(),
+    environmentVariables: {}
+  },
+  preferences: {
+    language: 'typescript',
+    framework: 'react',
+    codeStyle: 'eslint',
+    testingFramework: 'jest'
+  },
+  metadata: {
+    version: '1.0.0',
+    lastUpdated: new Date(),
+    createdBy: 'system'
+  }
 };
 
 export function createAgentConfig(config: Partial<AgentConfig>): AgentConfig {

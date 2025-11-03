@@ -25,6 +25,15 @@ export interface AgentConfig {
   environment: AgentEnvironment;
   preferences: AgentPreferences;
   metadata: AgentMetadata;
+
+  // Backwards compatibility properties for older interfaces
+  description?: string;
+  category?: string;
+  enabledByDefault?: boolean;
+  availableModels?: string[];
+  defaultModel?: string;
+  defaultMaxTokens?: number;
+  configuration?: Record<string, unknown>;
 }
 
 export type AgentType =

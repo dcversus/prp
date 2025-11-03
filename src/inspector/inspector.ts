@@ -10,7 +10,7 @@ import {
   InspectorConfig,
   InspectorState,
   InspectorProcessing,
-  InspectorResult,
+  DetailedInspectorResult,
   InspectorError,
   ProcessingContext,
   ModelResponse,
@@ -343,7 +343,7 @@ export class Inspector extends EventEmitter {
       };
 
       // Create result
-      const result: InspectorResult = {
+      const result: DetailedInspectorResult = {
         id: processing.id,
         signal: processing.signal,
         classification: inspectorClassification,
@@ -931,7 +931,7 @@ Focus on accuracy and provide clear reasoning for your classification.`;
   /**
    * Update metrics
    */
-  private updateMetrics(result: InspectorResult): void {
+  private updateMetrics(result: DetailedInspectorResult): void {
     const metrics = this.state.metrics;
 
     metrics.totalProcessed++;
@@ -995,7 +995,7 @@ Focus on accuracy and provide clear reasoning for your classification.`;
     return this.state.processing.get(processingId);
   }
 
-  getResult(processingId: string): InspectorResult | undefined {
+  getResult(processingId: string): DetailedInspectorResult | undefined {
     return this.state.completed.get(processingId);
   }
 

@@ -10,7 +10,7 @@ import { Signal } from '../shared/types';
 import { SignalDetectorImpl } from './signal-detector';
 import { createLayerLogger, HashUtils, FileUtils } from '../shared';
 
-const logger = createLayerLogger('enhanced-git-monitor');
+const logger = createLayerLogger('scanner');
 
 export interface EnhancedGitStatus {
   // Basic status info
@@ -102,7 +102,7 @@ export class EnhancedGitMonitor {
       const basicStatus = await this.getBasicGitStatus(repoPath);
 
       // Get last scanned commit for this repository
-      const repoKey = HashUtils.hashString(repoPath).substring(0, 16);
+      const repoKey = (await HashUtils.hashString(repoPath)).substring(0, 16);
       const lastScannedCommit = this.lastScannedCommits.get(repoKey);
 
       // Detect signals in commits since last scan
@@ -140,9 +140,7 @@ export class EnhancedGitMonitor {
       return enhancedStatus;
 
     } catch (error) {
-      logger.error('EnhancedGitMonitor', `Failed to get enhanced git status for ${repoPath}`, {
-        error: error instanceof Error ? error.message : String(error)
-      });
+      logger.error('EnhancedGitMonitor', `Failed to get enhanced git status for ${repoPath}`, error instanceof Error ? error : new Error(String(error)));
       throw new Error(`Failed to get enhanced git status for ${repoPath}: ${error}`);
     }
   }
@@ -230,7 +228,7 @@ export class EnhancedGitMonitor {
   /**
    * Parse git status output with enhanced file information
    */
-  private parseStatusOutput(statusOutput: string, repoPath: string): any[] {
+  private parseStatusOutput(statusOutput: string, _repoPath: string): any[] {
     if (!statusOutput) {
       return [];
     }
@@ -384,10 +382,10 @@ export class EnhancedGitMonitor {
         signals.forEach(signal => {
           signal.metadata = {
             ...signal.metadata,
-            commit,
-            author,
-            date: new Date(dateStr),
-            source: 'git-commit'
+            worktree: repoPath,
+            commit: commit as any,
+            author: author as any,
+            date: new Date(dateStr) as any
           };
         });
 
@@ -418,8 +416,8 @@ export class EnhancedGitMonitor {
       branchSignals.forEach(signal => {
         signal.metadata = {
           ...signal.metadata,
-          branch: branchName,
-          source: 'git-branch'
+          worktree: repoPath,
+          branch: branchName as any
         };
       });
 
@@ -438,8 +436,8 @@ export class EnhancedGitMonitor {
           descSignals.forEach(signal => {
             signal.metadata = {
               ...signal.metadata,
-              branch: branchName,
-              source: 'git-branch-description'
+              worktree: repoPath,
+              branch: branchName as any
             };
           });
 
@@ -494,10 +492,10 @@ export class EnhancedGitMonitor {
             prSignals.forEach(signal => {
               signal.metadata = {
                 ...signal.metadata,
-                prNumber: pr.number,
-                prAuthor: pr.author?.login || 'unknown',
-                prState: pr.state,
-                source: 'git-pr'
+                worktree: repoPath,
+                prNumber: pr.number as any,
+                prAuthor: pr.author?.login || 'unknown' as any,
+                prState: pr.state as any
               };
             });
 

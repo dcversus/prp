@@ -7,12 +7,12 @@
 
 import { readFile, readdir, stat, writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
-import { join, dirname } from 'path';
+import { join } from 'path';
 import { Signal } from '../shared/types';
 import { SignalDetectorImpl } from './signal-detector';
-import { createLayerLogger, HashUtils, FileUtils } from '../shared';
+import { createLayerLogger, HashUtils } from '../shared';
 
-const logger = createLayerLogger('enhanced-prp-parser');
+const logger = createLayerLogger('scanner');
 
 export interface EnhancedPRPFile {
   path: string;
@@ -101,7 +101,7 @@ export interface PRPVersion {
   version: number;
   timestamp: Date;
   hash: string;
-  changes: PRPChange;
+  changes: PRPChange[];
   content: string;
   metadata: EnhancedPRPMetadata;
   signals: Signal[];
@@ -158,9 +158,7 @@ export class EnhancedPRPParser {
       await this.scanDirectory(rootDir, prpFiles);
       logger.debug('EnhancedPRPParser', `Discovered ${prpFiles.length} PRP files in ${rootDir}`);
     } catch (error) {
-      logger.error('EnhancedPRPParser', `Error scanning directory ${rootDir}`, {
-        error: error instanceof Error ? error.message : String(error)
-      });
+      logger.error('EnhancedPRPParser', `Error scanning directory ${rootDir}`, error instanceof Error ? error : new Error(String(error)));
     }
 
     return prpFiles;
@@ -177,8 +175,9 @@ export class EnhancedPRPParser {
       }
 
       const stats = await stat(filePath);
-      const fileHash = await HashUtils.hashFile(filePath);
-      const cacheKey = HashUtils.hashString(filePath).substring(0, 16);
+      const content = await readFile(filePath, 'utf8');
+      const fileHash = await HashUtils.hashString(content);
+      const cacheKey = (await HashUtils.hashString(filePath)).substring(0, 16);
 
       // Check cache first
       const cached = this.cache.get(cacheKey);
@@ -187,9 +186,8 @@ export class EnhancedPRPParser {
         return cached.file;
       }
 
-      // Read and parse file
-      const content = await readFile(filePath, 'utf8');
-      const hash = HashUtils.hashString(content);
+      // Hash the content (already read above)
+      const contentHash = await HashUtils.hashString(content);
 
       // Detect signals in content
       const signals = await this.signalDetector.detectSignals(content, filePath);
@@ -207,8 +205,8 @@ export class EnhancedPRPParser {
         content,
         lastModified: stats.mtime,
         size: stats.size,
-        hash,
-        version: this.calculateVersion(cached?.file, hash),
+        hash: contentHash,
+        version: this.calculateVersion(cached?.file, contentHash),
         metadata,
         changes,
         signals
@@ -226,9 +224,7 @@ export class EnhancedPRPParser {
       return prpFile;
 
     } catch (error) {
-      logger.error('EnhancedPRPParser', `Error parsing PRP file ${filePath}`, {
-        error: error instanceof Error ? error.message : String(error)
-      });
+      logger.error('EnhancedPRPParser', `Error parsing PRP file ${filePath}`, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -259,7 +255,7 @@ export class EnhancedPRPParser {
    * Get PRP file version history
    */
   async getVersionHistory(filePath: string): Promise<PRPVersion[]> {
-    const cacheKey = HashUtils.hashString(filePath).substring(0, 16);
+    const cacheKey = (await HashUtils.hashString(filePath)).substring(0, 16);
     const cached = this.cache.get(cacheKey);
 
     if (!cached) {
@@ -283,7 +279,7 @@ export class EnhancedPRPParser {
   async compareVersions(filePath: string, version1: number, version2: number): Promise<{
     version1: PRPVersion;
     version2: PRPVersion;
-    differences: PRPChange;
+    differences: PRPChange[];
   } | null> {
     const v1 = await this.getPRPByVersion(filePath, version1);
     const v2 = await this.getPRPByVersion(filePath, version2);
@@ -292,8 +288,21 @@ export class EnhancedPRPParser {
       return null;
     }
 
+    const oldFile: EnhancedPRPFile = {
+      path: filePath,
+      name: `v${v1.version}`,
+      content: v1.content,
+      lastModified: v1.timestamp,
+      size: v1.content.length,
+      hash: v1.hash,
+      version: v1.version,
+      metadata: v1.metadata,
+      changes: v1.changes,
+      signals: v1.signals
+    };
+
     const differences = this.detectChanges(
-      { ...v1.content, metadata: v1.metadata, signals: v1.signals } as any,
+      oldFile,
       v2.content,
       v2.metadata,
       v2.signals
@@ -344,14 +353,14 @@ export class EnhancedPRPParser {
       for (const filePath of cachedFiles) {
         if (!currentFileSet.has(filePath)) {
           result.deleted.push(filePath);
-          const cacheKey = HashUtils.hashString(filePath).substring(0, 16);
+          const cacheKey = (await HashUtils.hashString(filePath)).substring(0, 16);
           this.cache.delete(cacheKey);
         }
       }
 
       // Find updated files
       for (const filePath of currentFiles) {
-        const cacheKey = HashUtils.hashString(filePath).substring(0, 16);
+        const cacheKey = (await HashUtils.hashString(filePath)).substring(0, 16);
         const cached = this.cache.get(cacheKey);
 
         if (cached) {
@@ -366,9 +375,7 @@ export class EnhancedPRPParser {
       logger.info('EnhancedPRPParser', `Sync completed for ${worktreePath}`, result);
 
     } catch (error) {
-      logger.error('EnhancedPRPParser', `Error syncing PRP files in ${worktreePath}`, error instanceof Error ? error : new Error(String(error)), {
-        error: error instanceof Error ? error.message : String(error)
-      });
+      logger.error('EnhancedPRPParser', `Error syncing PRP files in ${worktreePath}`, error instanceof Error ? error : new Error(String(error)));
     }
 
     return result;
@@ -461,13 +468,7 @@ export class EnhancedPRPParser {
         version: prpFile.version,
         timestamp: new Date(),
         hash: prpFile.hash,
-        changes: changes[0] || {
-          id: HashUtils.generateId(),
-          type: 'modified',
-          timestamp: new Date(),
-          currentVersion: prpFile.version,
-          changes: { content: false, metadata: false, signals: false, requirements: false }
-        },
+        changes: changes,
         content: prpFile.content,
         metadata: prpFile.metadata,
         signals: prpFile.signals
@@ -581,7 +582,7 @@ export class EnhancedPRPParser {
   /**
    * Extract enhanced metadata from PRP content
    */
-  private extractEnhancedMetadata(content: string, filePath: string, signals: Signal[]): EnhancedPRPMetadata {
+  private extractEnhancedMetadata(content: string, _filePath: string, signals: Signal[]): EnhancedPRPMetadata {
     const lines = content.split('\n');
 
     // Extract basic metadata

@@ -13,7 +13,7 @@ export class PackageManagerUtils {
   async detect(): Promise<PackageManager> {
     // Check for lock files
     try {
-      const { default: fs } = await import('fs-extra');
+      const fs = await import('fs-extra');
 
       if (await fs.pathExists('pnpm-lock.yaml')) {
         return 'pnpm';

@@ -85,7 +85,7 @@ export interface InspectorPayload {
 export interface SignalProcessor {
   signal: Signal;
   guideline: string;
-  context: ContextData;
+  context: ContextData | ProcessingContext;
   priority: number;
   createdAt: Date;
 }
@@ -128,7 +128,7 @@ export interface InspectorState {
   currentBatch?: string;
   queue: Signal[];
   processing: Map<string, InspectorProcessing>;
-  completed: Map<string, InspectorResult>;
+  completed: Map<string, DetailedInspectorResult>;
   failed: Map<string, InspectorError>;
   metrics: InspectorMetrics;
   lastError?: InspectorError;
@@ -148,7 +148,7 @@ export interface InspectorProcessing {
   };
 }
 
-export interface InspectorResult {
+export interface DetailedInspectorResult {
   id: string;
   signal: Signal;
   classification: SignalClassification;
@@ -197,7 +197,7 @@ export interface ProcessingContext {
   tokenStatus: TokenStatusInfo;
   agentStatus: AgentStatusInfo[];
   sharedNotes: SharedNoteInfo[];
-  environment: EnvironmentInfo;
+  environment: EnvironmentInfo | Record<string, string | number | boolean>;
   guidelineContext: GuidelineContext;
   historicalData: HistoricalData;
 }
@@ -410,7 +410,7 @@ export interface InspectorBatch {
   signals: Signal[];
   createdAt: Date;
   status: 'pending' | 'processing' | 'completed' | 'failed';
-  results: InspectorResult[];
+  results: DetailedInspectorResult[];
   errors: InspectorError[];
   processingTime: number;
   tokenUsage: {
@@ -504,7 +504,7 @@ export interface InspectorPayloadGeneratedEvent {
 
 export interface InspectorProcessingCompletedEvent {
   processingId: string;
-  result: InspectorResult;
+  result: DetailedInspectorResult;
   processingTime: number;
 }
 
@@ -516,6 +516,6 @@ export interface InspectorProcessingFailedEvent {
 
 export interface InspectorBatchCompletedEvent {
   batchId: string;
-  results: InspectorResult[];
+  results: DetailedInspectorResult[];
   summary: EventData;
 }

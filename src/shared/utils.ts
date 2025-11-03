@@ -49,7 +49,7 @@ export class SignalParser {
 
   static extractSignals(text: string): string[] {
     const matches = text.match(this.SIGNAL_PATTERN) || [];
-    return [...new Set(matches)]; // Remove duplicates
+    return Array.from(new Set(matches)); // Remove duplicates
   }
 
   static parseSignal(signal: string): { code: string; priority: number } | null {

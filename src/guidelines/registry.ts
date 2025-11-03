@@ -18,7 +18,9 @@ import {
   TokenStatusInfo,
   AgentStatusInfo,
   SharedNoteInfo,
-  EnvironmentInfo
+  EnvironmentInfo,
+  ExecutionError,
+  GuidelineResult
 } from './types';
 import {
   Signal,
@@ -29,13 +31,13 @@ import {
   TimeUtils,
   HashUtils,
   Validator,
-  AgentConfig,
   AgentRole
 } from '../shared';
 import { configManager, PRPConfig } from '../shared/config';
 
 // Interface for GitHub agent with credentials
-interface GitHubAgentConfig extends AgentConfig {
+interface GitHubAgentConfig {
+  type: string;
   credentials?: {
     token?: string;
   };
@@ -52,11 +54,7 @@ interface GuidelineCompletedEventData {
 interface GuidelineFailedEventData {
   executionId: string;
   guidelineId: string;
-  error: {
-    code: string;
-    message: string;
-    details?: unknown;
-  };
+  error: ExecutionError;
   context: GuidelineContext;
 }
 
@@ -197,7 +195,7 @@ export class GuidelinesRegistry extends EventEmitter {
               const githubAgent = config.agents.find(a => a.type.includes('github')) as GitHubAgentConfig | undefined;
               const hasToken = process.env.GITHUB_TOKEN ||
                 githubAgent?.credentials?.token;
-              return hasGitHubAgent && hasToken;
+              return Boolean(hasGitHubAgent && hasToken);
             } catch {
               return false;
             }
@@ -434,7 +432,7 @@ RESPOND WITH:
             const githubAgent = config.agents.find(a => a.type.includes('github')) as GitHubAgentConfig | undefined;
             const hasToken = process.env.GITHUB_TOKEN ||
               githubAgent?.credentials?.token;
-            return hasGitHubAgent && hasToken;
+            return Boolean(hasGitHubAgent && hasToken);
           },
           errorMessage: 'GitHub API access required for security review'
         }
@@ -656,7 +654,7 @@ RESPOND WITH:
             const githubAgent = config.agents.find(a => a.type.includes('github')) as GitHubAgentConfig | undefined;
             const hasToken = process.env.GITHUB_TOKEN ||
               githubAgent?.credentials?.token;
-            return hasGitHubAgent && hasToken;
+            return Boolean(hasGitHubAgent && hasToken);
           },
           errorMessage: 'GitHub API access required for performance review'
         }
@@ -801,9 +799,9 @@ RESPOND WITH:
     // Listen to guideline completion events
     eventBus.subscribeToChannel('guidelines', (event) => {
       if (event.type === 'guideline_completed') {
-        this.handleGuidelineCompleted(event.data);
+        this.handleGuidelineCompleted(event.data as GuidelineCompletedEventData);
       } else if (event.type === 'guideline_failed') {
-        this.handleGuidelineFailed(event.data);
+        this.handleGuidelineFailed(event.data as GuidelineFailedEventData);
       }
     });
   }
@@ -935,7 +933,7 @@ RESPOND WITH:
     const triggeredGuidelines: string[] = [];
 
     // Find guidelines that match this signal
-    for (const [guidelineId, guideline] of this.registry.guidelines) {
+    for (const [guidelineId, guideline] of Array.from(this.registry.guidelines.entries())) {
       if (!guideline.enabled) {
         continue;
       }
@@ -1144,10 +1142,21 @@ RESPOND WITH:
     if (execution) {
       execution.status = 'completed';
       execution.completedAt = TimeUtils.now();
-      execution.result = result;
-      execution.performance = performance;
+      execution.result = result as GuidelineResult;
+      execution.performance = performance as {
+        totalDuration: number;
+        tokenUsage: {
+          inspector: number;
+          orchestrator: number;
+          total: number;
+        };
+        stepBreakdown: Record<string, number>;
+      };
 
-      this.updateMetrics(execution.guidelineId, 'execution_completed', performance);
+      this.updateMetrics(execution.guidelineId, 'execution_completed', performance as {
+        totalDuration?: number;
+        tokenUsage?: { total?: number };
+      });
       logger.info('shared', 'GuidelinesRegistry',
         `Guideline execution completed: ${execution.guidelineId}`, { executionId });
     }
@@ -1163,11 +1172,19 @@ RESPOND WITH:
     if (execution) {
       execution.status = 'failed';
       execution.completedAt = TimeUtils.now();
-      execution.error = error;
+      execution.error = {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        stack: error.stack,
+        stepId: error.stepId,
+        recoverable: error.recoverable,
+        suggestions: error.suggestions
+      };
 
       this.updateMetrics(execution.guidelineId, 'execution_failed');
       logger.error('shared', 'GuidelinesRegistry',
-        `Guideline execution failed: ${execution.guidelineId}`, error instanceof Error ? error : new Error(String(error)), { executionId });
+        `Guideline execution failed: ${execution.guidelineId}`, new Error(error.message), { executionId });
     }
   }
 

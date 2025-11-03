@@ -118,7 +118,7 @@ export class EventBus {
 
   createChannel<T>(name: string, maxEvents: number = 1000): EventChannel<T> {
     const channel = new EventChannelImpl<T>(name, maxEvents);
-    this.channels.set(name, channel);
+    this.channels.set(name, channel as EventChannel<Record<string, unknown>>);
     return channel;
   }
 
@@ -210,7 +210,8 @@ export class EventBus {
   getChannelStats(): Record<string, ChannelStats> {
     const stats: Record<string, ChannelStats> = {};
 
-    for (const [name, channel] of this.channels) {
+    const channelEntries = Array.from(this.channels.entries());
+    for (const [name, channel] of channelEntries) {
       // Use type assertion to access getStats method since it's defined in the interface
       stats[name] = ('getStats' in channel && typeof channel.getStats === 'function')
         ? channel.getStats()
@@ -221,7 +222,8 @@ export class EventBus {
   }
 
   clearAllChannels(): void {
-    for (const channel of this.channels.values()) {
+    const channelValues = Array.from(this.channels.values());
+    for (const channel of channelValues) {
       channel.clear();
     }
     this.globalEmitter.removeAllListeners();

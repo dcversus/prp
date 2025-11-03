@@ -415,7 +415,8 @@ export class ToolImplementation {
           type: 'object',
           properties: {
             repositoryPath: { type: 'string', description: 'Path to git repository (optional)' }
-          }
+          },
+          required: []
         }
       },
 

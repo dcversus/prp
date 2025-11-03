@@ -93,6 +93,12 @@ export async function generateReact(context: GeneratorContext): Promise<FileToGe
     content: generateJestConfig(),
   });
 
+  // Test setup
+  files.push({
+    path: 'tests/setup.ts',
+    content: generateTestSetup(),
+  });
+
   // ESLint config
   if (options.includeESLint) {
     files.push({
@@ -477,6 +483,11 @@ function generatePrettierConfig(): string {
   "printWidth": 100,
   "tabWidth": 2
 }
+`;
+}
+
+function generateTestSetup(): string {
+  return `import '@testing-library/jest-dom';
 `;
 }
 

@@ -6,8 +6,8 @@
  */
 
 import { EventEmitter } from 'events';
-import { Signal, PRPFile, InspectorPayload } from '../shared/types';
-import { OrchestratorConfig, OrchestratorState, Tool, ChainOfThought, AgentTask, AgentStatus } from './types';
+import { Signal, PRPFile, InspectorPayload, AgentStatus } from '../shared/types';
+import { OrchestratorConfig, OrchestratorState, Tool, ChainOfThought, AgentTask } from './types';
 import { ToolRegistry } from './tool-registry';
 import { ContextManager } from './context-manager';
 import { CoTProcessor, ProcessingContext } from './cot-processor';
@@ -248,7 +248,13 @@ export class OrchestratorCore extends EventEmitter {
       // 3. Generate Chain of Thought
       const processingContext: ProcessingContext = {
         signals: [signal],
-        availableAgents: Array.from(this.state.activeAgents.values()) || [],
+        availableAgents: Array.from(this.state.activeAgents.values()).map(agent => ({
+          id: agent.id,
+          name: agent.agentConfig.name,
+          type: agent.agentConfig.type,
+          status: agent.status,
+          capabilities: agent.capabilities.availableTools
+        })) || [],
         systemState: {
           status: this.state.status,
           metrics: this.state.metrics

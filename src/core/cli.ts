@@ -3,7 +3,7 @@ import { logger } from '../utils/logger';
 import { ConfigurationManager } from '../config/manager';
 import { ErrorHandler } from '../utils/error-handler';
 import { ConfigurationError } from '../utils/error-handler';
-import type { PRPConfig, CommandResult, CLIEvent } from '../types';
+import type { PRPConfig, CommandResult } from '../types';
 
 /**
  * Main CLI class
@@ -221,7 +221,7 @@ export class PRPCli extends EventEmitter {
       if (error instanceof ConfigurationError) {
         throw error;
       }
-      throw new ConfigurationError(`Failed to load configuration: ${error.message}`);
+      throw new ConfigurationError(`Failed to load configuration: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -249,7 +249,7 @@ export class PRPCli extends EventEmitter {
     }
 
     // Check available disk space
-    const stats = require('fs').statSync(process.cwd());
+    require('fs').statSync(process.cwd());
     logger.debug(`Working directory: ${process.cwd()}`);
 
     logger.debug('System checks completed');
@@ -291,7 +291,7 @@ export class PRPCli extends EventEmitter {
   }
 
   // Command implementations (stubs for now)
-  private async executeInit(args: string[], options?: any): Promise<CommandResult> {
+  private async executeInit(_args: string[], _options?: any): Promise<CommandResult> {
     logger.info('Initializing project...');
     // Implementation will be added in init command
     return {
@@ -303,7 +303,7 @@ export class PRPCli extends EventEmitter {
     };
   }
 
-  private async executeBuild(args: string[], options?: any): Promise<CommandResult> {
+  private async executeBuild(_args: string[], _options?: any): Promise<CommandResult> {
     logger.info('Building project...');
     // Implementation will be added in build command
     return {
@@ -315,7 +315,7 @@ export class PRPCli extends EventEmitter {
     };
   }
 
-  private async executeTest(args: string[], options?: any): Promise<CommandResult> {
+  private async executeTest(_args: string[], _options?: any): Promise<CommandResult> {
     logger.info('Running tests...');
     // Implementation will be added in test command
     return {

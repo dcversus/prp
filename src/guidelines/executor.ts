@@ -17,7 +17,8 @@ import {
   ClassificationResult,
   Issue,
   StepDefinition,
-  Action
+  Action,
+  PullRequestReview
 } from './types';
 import { guidelinesRegistry } from './registry';
 import {
@@ -37,11 +38,43 @@ interface Inspector extends EventEmitter {
   analyze(payload: InspectorPayload, prompt?: string): Promise<EnhancedInspectorPayload>;
 }
 
-interface EnhancedInspectorPayload extends InspectorPayload {
+interface EnhancedInspectorPayload {
+  id: string;
+  timestamp: Date;
+  sourceSignals: Signal[];
+  classification: {
+    category: string;
+    priority: number;
+    severity: string;
+  }[];
+  recommendations: string[];
+  context: {
+    summary: string;
+    activePRPs: string[];
+    blockedItems: string[];
+    recentActivity: string[];
+    tokenStatus: {
+      used: number;
+      totalUsed: number;
+      totalLimit: number;
+      approachingLimit: boolean;
+      criticalLimit: boolean;
+      agentBreakdown: Record<string, unknown>;
+    };
+    agentStatus: unknown[];
+    sharedNotes: unknown[];
+  };
+  estimatedTokens: number;
+  priority: number;
   tokenUsage?: {
     input: number;
     output: number;
     total: number;
+  };
+  inspectorClassification?: {
+    category: string;
+    priority: number;
+    severity: string;
   };
 }
 
@@ -53,6 +86,16 @@ interface Orchestrator extends EventEmitter {
 // Extended interface for additional context that allows dynamic properties
 interface ExtendedAdditionalContext extends NonNullable<GuidelineContext['additionalContext']> {
   [key: string]: unknown;
+  fetchedData?: {
+    pr?: {
+      id: number;
+    };
+    files?: unknown[];
+    [key: string]: unknown;
+  };
+  inspectorAnalysis?: InspectorAnalysisResult;
+  structuralClassification?: ClassificationResult;
+  orchestratorDecision?: unknown;
 }
 
 /**
@@ -370,7 +413,12 @@ export class GuidelinesExecutor extends EventEmitter {
     if (!execution.context.additionalContext) {
       execution.context.additionalContext = initializeAdditionalContext();
     }
-    (execution.context.additionalContext as ExtendedAdditionalContext).fetchedData = prData;
+    const dataContext = execution.context.additionalContext as ExtendedAdditionalContext;
+    dataContext.fetchedData = prData as {
+      pr?: { id: number };
+      files?: unknown[];
+      [key: string]: unknown;
+    };
   }
 
   /**
@@ -452,7 +500,22 @@ export class GuidelinesExecutor extends EventEmitter {
     if (!execution.context.additionalContext) {
       execution.context.additionalContext = initializeAdditionalContext();
     }
-    (execution.context.additionalContext as ExtendedAdditionalContext).inspectorAnalysis = analysisResult;
+    const analysisContext = execution.context.additionalContext as ExtendedAdditionalContext;
+    // Create a mock InspectorAnalysisResult from the EnhancedInspectorPayload
+    const mockAnalysisResult: InspectorAnalysisResult = {
+      classification: analysisResult.inspectorClassification || {
+        category: 'general',
+        priority: 5,
+        severity: 'medium'
+      },
+      issues: analysisResult.recommendations ? [{
+        type: 'recommendation',
+        description: analysisResult.recommendations.join(', '),
+        impact: 'medium'
+      }] : [],
+      recommendations: analysisResult.recommendations || []
+    };
+    analysisContext.inspectorAnalysis = mockAnalysisResult;
   }
 
   /**
@@ -499,7 +562,8 @@ export class GuidelinesExecutor extends EventEmitter {
     if (!execution.context.additionalContext) {
       execution.context.additionalContext = initializeAdditionalContext();
     }
-    (execution.context.additionalContext as ExtendedAdditionalContext).structuralClassification = classification;
+    const context = execution.context.additionalContext as ExtendedAdditionalContext;
+    context.structuralClassification = classification;
   }
 
   /**
@@ -519,7 +583,7 @@ export class GuidelinesExecutor extends EventEmitter {
 
     // Prepare decision context
     const additionalContext = execution.context.additionalContext as ExtendedAdditionalContext;
-    const decisionContext = {
+    const decisionData = {
       execution,
       guideline,
       step,
@@ -533,7 +597,7 @@ export class GuidelinesExecutor extends EventEmitter {
 
     // Execute Orchestrator decision
     const decision = await this.orchestrator.makeDecision(
-      decisionContext,
+      decisionData,
       orchestratorPrompt,
       guideline.tools
     ) as {
@@ -585,7 +649,8 @@ export class GuidelinesExecutor extends EventEmitter {
     if (!execution.context.additionalContext) {
       execution.context.additionalContext = initializeAdditionalContext();
     }
-    (execution.context.additionalContext as ExtendedAdditionalContext).orchestratorDecision = decision;
+    const decisionContext = execution.context.additionalContext as ExtendedAdditionalContext;
+    decisionContext.orchestratorDecision = decision;
   }
 
   /**
@@ -609,7 +674,7 @@ export class GuidelinesExecutor extends EventEmitter {
   /**
    * Perform structural classification
    */
-  private performStructuralClassification(inspectorAnalysis: InspectorAnalysisResult, _guidelineId: string) : unknown {
+  private performStructuralClassification(inspectorAnalysis: InspectorAnalysisResult, _guidelineId: string): ClassificationResult {
     const classification: ClassificationResult = {
       category: 'structural',
       priority: 5,
@@ -746,7 +811,15 @@ export class GuidelinesExecutor extends EventEmitter {
         break;
       case 'create-review':
         if (action.prNumber && action.review) {
-          return await this.createReview(action.prNumber, action.review);
+          // Convert PullRequestReview to the expected format
+          const reviewData = {
+            body: action.review.body,
+            event: action.review.state === 'APPROVED' ? 'APPROVE' as const :
+                  action.review.state === 'CHANGES_REQUESTED' ? 'REQUEST_CHANGES' as const :
+                  'COMMENT' as const,
+            comments: [] // Could be populated from review comments if needed
+          };
+          return await this.createReview(action.prNumber, reviewData);
         }
         break;
       case 'escalate':
@@ -812,7 +885,7 @@ export class GuidelinesExecutor extends EventEmitter {
   /**
    * Create review
    */
-  private async createReview(prNumber: number, review: { body: string; event: 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT' | 'PENDING' }): Promise<unknown> {
+  private async createReview(prNumber: number, review: { body: string; event: 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT' | 'PENDING'; comments?: { path: string; line: number; body: string; }[] }): Promise<unknown> {
     const gitHubClient = getGitHubClient();
     return await gitHubClient.createReview(prNumber, review);
   }

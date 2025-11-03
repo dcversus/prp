@@ -2,12 +2,20 @@
  * Kubectl Secret Management Module
  */
 
-export {
-  SecretConfig,
-  SecretRetrievalOptions,
-  SecretValidationOptions,
+export type {
+  KubectlSecretConfig as SecretConfig,
+  SecretRetrievalResult,
+  SecretValidationResult,
+  KubectlStatus as SecretManagerStatus,
   SecretCache,
-  SecretManagerStatus
+  KubectlCommandOptions
+} from './types.js';
+
+export {
+  KubectlError,
+  DEFAULT_KUBECTL_CONFIG,
+  SECRET_VALIDATION_PATTERNS,
+  type SecretFormat
 } from './types.js';
 
 export {

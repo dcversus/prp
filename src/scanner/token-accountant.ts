@@ -504,7 +504,14 @@ export class TokenAccountant {
                   lastDailyReset: new Date((value as RawTokenLimit).currentUsage.lastDailyReset),
                   lastWeeklyReset: new Date((value as RawTokenLimit).currentUsage.lastWeeklyReset),
                   lastMonthlyReset: new Date((value as RawTokenLimit).currentUsage.lastMonthlyReset)
-                } : undefined
+                } : {
+                  lastDailyReset: new Date(),
+                  lastWeeklyReset: new Date(),
+                  lastMonthlyReset: new Date(),
+                  daily: 0,
+                  weekly: 0,
+                  monthly: 0
+                }
               }
             ])
           );

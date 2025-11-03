@@ -5,7 +5,52 @@
  * parallel execution framework, and intelligent context management.
  */
 
-export * from './types';
+// Export specific types to avoid conflicts
+export type {
+  DetailedInspectorResult as InspectorResult,
+  InspectorError,
+  InspectorConfig,
+  InspectorState,
+  InspectorMetrics,
+  InspectorBatch,
+  SignalClassification,
+  Recommendation,
+  ProcessingContext,
+  InspectorPayload,
+  PreparedContext,
+  ContextData,
+  EventData,
+  SignalProcessor,
+  InspectorEvent,
+  StructuredOutputConfig,
+  InspectorProcessing,
+  ClassificationRequest,
+  ClassificationRequirements,
+  ClassificationRule,
+  PayloadGenerationRequest,
+  PayloadSection,
+  ModelResponse,
+  PromptTemplate,
+  PromptVariable,
+  ValidationRule,
+  CacheEntry,
+  InspectorSignalReceivedEvent,
+  InspectorProcessingStartedEvent,
+  InspectorClassificationCompletedEvent,
+  InspectorPayloadGeneratedEvent,
+  InspectorProcessingCompletedEvent,
+  InspectorProcessingFailedEvent,
+  InspectorBatchCompletedEvent,
+  ActivityEntry,
+  TokenStatusInfo,
+  AgentStatusInfo,
+  SharedNoteInfo,
+  EnvironmentInfo,
+  GuidelineContext,
+  HistoricalData,
+  JSONSchema
+} from './types';
+
 export * from './inspector';
 export * from './inspector-core';
 export * from './llm-execution-engine';

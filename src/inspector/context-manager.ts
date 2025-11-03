@@ -14,8 +14,7 @@ import {
   SharedNoteInfo,
   EnvironmentInfo,
   GuidelineContext,
-  HistoricalData,
-  ContextData
+  HistoricalData
 } from './types';
 import { createLayerLogger, HashUtils } from '../shared';
 
@@ -88,7 +87,6 @@ export class ContextManager extends EventEmitter {
   private config: ContextWindowConfig;
   private entries: Map<string, ContextEntry> = new Map();
   private summaries: Map<string, SemanticSummary> = new Map();
-  private signalHistory: Signal[] = [];
   private lastCompression: Date = new Date();
   private lastSummary: Date = new Date();
   private totalTokens: number = 0;
@@ -292,7 +290,7 @@ export class ContextManager extends EventEmitter {
     const summariesGenerated = await this.generateSummaries();
 
     // Apply semantic compression
-    const compressedEntries = await this.applySemanticCompression();
+    await this.applySemanticCompression();
 
     const finalSize = this.totalTokens;
     const processingTime = Date.now() - startTime;
@@ -308,7 +306,12 @@ export class ContextManager extends EventEmitter {
 
     this.lastCompression = new Date();
 
-    logger.info('ContextManager', 'Context compression completed', result);
+    logger.info('ContextManager', 'Context compression completed', {
+      originalSize: result.originalSize,
+      compressedSize: result.compressedSize,
+      compressionRatio: result.compressionRatio,
+      processingTime: result.processingTime
+    });
 
     this.emit('context:compressed', result);
 
@@ -334,8 +337,6 @@ export class ContextManager extends EventEmitter {
     summaryCount: number;
   } {
     const entries = Array.from(this.entries.values());
-    const now = new Date();
-
     const entriesByType: Record<string, number> = {};
     const entriesByPriority: Record<string, number> = {};
 
@@ -367,7 +368,6 @@ export class ContextManager extends EventEmitter {
   clearContext(): void {
     this.entries.clear();
     this.summaries.clear();
-    this.signalHistory = [];
     this.totalTokens = 0;
 
     logger.info('ContextManager', 'Context cleared');

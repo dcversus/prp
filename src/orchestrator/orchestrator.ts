@@ -745,7 +745,7 @@ export class Orchestrator extends EventEmitter {
         success: results.every(r => r.status === 'completed'),
         summary: this.generateOutcomeSummary(results),
         achievedGoals: results.filter(r => r.status === 'completed').map(r => {
-          const result = r.result;
+          const result = r.result as { goal?: string } | undefined;
           return result?.goal || 'Task completed';
         }),
         blockedItems: results.filter(r => r.status === 'failed').map(r => r.error || 'Task failed'),
@@ -887,8 +887,8 @@ export class Orchestrator extends EventEmitter {
 
       return {
         content: response.content,
-        usage: response.usage,
-        finish_reason: response.finish_reason,
+        usage: response.tokens,
+        finish_reason: response.finishReason,
         processing_time: Date.now() - startTime
       };
 
@@ -1118,12 +1118,12 @@ export class Orchestrator extends EventEmitter {
    * Get step assignee (agent or tool)
    */
   private getStepAssignee(action: DecisionAction): string | undefined {
-    const payload = action.payload;
+    const payload = action.payload as Record<string, unknown>;
     if (action.type === 'spawn_agent' && payload?.agentId) {
-      return payload.agentId;
+      return payload.agentId as string;
     }
     if (action.type === 'call_tool' && payload?.toolName) {
-      return payload.toolName;
+      return payload.toolName as string;
     }
     return undefined;
   }
@@ -1477,9 +1477,10 @@ export class Orchestrator extends EventEmitter {
     const tokenState = storageManager.getTokenState();
     if (tokenState.limits.globalLimits?.daily && tokenState.accounting.totalUsed > tokenState.limits.globalLimits.daily * 0.9) {
       constraints.push({
-        type: 'token_budget',
+        type: 'resource',
         description: 'Approaching token usage limit',
-        severity: 'warning'
+        severity: 'warning',
+        status: 'active'
       });
     }
 
@@ -1490,7 +1491,7 @@ export class Orchestrator extends EventEmitter {
    * Get current goals
    */
   private async _getCurrentGoals(): Promise<Goal[]> {
-    const goals: unknown[] = [];
+    const goals: Goal[] = [];
 
     // Get active PRPs as goals
     const prps = storageManager.getAllPRPs();
@@ -1498,10 +1499,11 @@ export class Orchestrator extends EventEmitter {
       .filter(prp => prp.status === 'active')
       .forEach(prp => {
         goals.push({
-          type: 'prp_completion',
+          id: prp.name,
+          title: `Complete PRP: ${prp.name}`,
           description: `Complete PRP: ${prp.name}`,
-          priority: prp.metadata.priority || 5,
-          deadline: null
+          priority: (prp.metadata.priority || 5) >= 8 ? 'high' : (prp.metadata.priority || 5) >= 5 ? 'medium' : 'low',
+          status: 'pending'
         });
       });
 
@@ -1519,7 +1521,17 @@ export class Orchestrator extends EventEmitter {
    * Get applicable guidelines
    */
   private async getApplicableGuidelines(): Promise<Guideline[]> {
-    return guidelinesRegistry.getEnabledGuidelines();
+    const definitions = guidelinesRegistry.getEnabledGuidelines();
+    return definitions.map(def => ({
+      id: def.id,
+      name: def.name,
+      category: def.category,
+      description: def.description,
+      enabled: def.enabled,
+      priority: def.priority || 5,
+      conditions: [],
+      applicable: def.enabled
+    }));
   }
 
   /**

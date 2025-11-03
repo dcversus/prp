@@ -250,7 +250,7 @@ export class GitHubClient {
 
     // Get token from config or environment
     const token = config?.token ||
-      prpConfig.agents.find(a => a.type.includes('github'))?.customConfig?.['token'] ||
+      prpConfig.agents.find(a => a.type.includes('github'))?.configuration?.['token'] as string ||
       process['env']['GITHUB_TOKEN'];
 
     if (!token) {

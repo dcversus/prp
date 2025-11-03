@@ -6,7 +6,7 @@
  */
 
 // Type exports
-export {
+export type {
   NudgeContext,
   NudgeMetadata,
   BaseNudgeRequest,
@@ -14,14 +14,17 @@ export {
   LLMModeNudgeRequest,
   NudgeRequest,
   NudgeResponse,
-  NudgeError,
   NudgeErrorDetails,
   NudgeConfig,
   NudgeClientOptions,
   AgentNudgeMessage,
   NudgeResponsePayload,
   GitHubDispatchEvent,
-  NudgeMessageTemplate,
+  NudgeMessageTemplate
+} from './types.js';
+
+export {
+  NudgeError,
   isValidNudgeType,
   isValidUrgency,
   isValidResponseType

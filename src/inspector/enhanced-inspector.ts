@@ -6,14 +6,15 @@
  */
 
 import { EventEmitter } from 'events';
-import { Signal, AgentRole } from '../shared/types';
+import { Signal } from '../shared/types';
 import {
   InspectorConfig,
-  InspectorResult,
+  DetailedInspectorResult,
   InspectorMetrics,
   ProcessingContext,
-  SignalClassification,
-  Recommendation
+  Recommendation,
+  InspectorPayload,
+  PreparedContext
 } from './types';
 import { LLMExecutionEngine, LLMProvider, TokenLimitConfig } from './llm-execution-engine';
 import { ContextManager, ContextWindowConfig } from './context-manager';
@@ -74,7 +75,7 @@ export interface InspectorAnalysisRequest {
 export interface InspectorAnalysisResponse {
   id: string;
   request: InspectorAnalysisRequest;
-  result: InspectorResult;
+  result: DetailedInspectorResult;
   processingTime: number;
   tokenUsage: {
     input: number;
@@ -95,7 +96,7 @@ export class EnhancedInspector extends EventEmitter {
   private config: EnhancedInspectorConfig;
   private llmEngine: LLMExecutionEngine;
   private contextManager: ContextManager;
-  private parallelExecutor: ParallelExecutor;
+  private parallelExecutor!: ParallelExecutor;
   private guidelineAdapter: GuidelineAdapter;
   private isRunning = false;
   private processingRequests: Map<string, InspectorAnalysisRequest> = new Map();
@@ -256,7 +257,7 @@ export class EnhancedInspector extends EventEmitter {
       this.processingRequests.set(requestId, request);
 
       // Check cache if enabled
-      if (request.options.useCache && !request.options.forceReprocess) {
+      if (request.options?.useCache && !request.options?.forceReprocess) {
         const cachedResponse = this.getCachedResponse(signal);
         if (cachedResponse) {
           logger.debug('EnhancedInspector', `Cache hit for signal: ${signal.type}`);
@@ -279,7 +280,7 @@ export class EnhancedInspector extends EventEmitter {
       }
 
       // Process signal
-      let result: InspectorResult;
+      let result: DetailedInspectorResult;
 
       if (this.parallelExecutor && this.config.features.enableParallelProcessing) {
         // Use parallel execution
@@ -311,7 +312,7 @@ export class EnhancedInspector extends EventEmitter {
       };
 
       // Cache response if caching enabled
-      if (request.options.useCache) {
+      if (request.options?.useCache) {
         this.cacheResponse(signal, response);
       }
 
@@ -340,7 +341,7 @@ export class EnhancedInspector extends EventEmitter {
       this.updateMetrics({
         id: requestId,
         request,
-        result: {} as InspectorResult,
+        result: {} as DetailedInspectorResult,
         processingTime: 0,
         tokenUsage: { input: 0, output: 0, total: 0, cost: 0 },
         confidence: 0,
@@ -417,7 +418,7 @@ export class EnhancedInspector extends EventEmitter {
           const response = await this.analyzeSignal(signal);
           responses.push(response);
         } catch (error) {
-          logger.warn('EnhancedInspector', `Failed to analyze signal in batch: ${signal.type}`, error instanceof Error ? error : new Error(String(error)));
+          logger.warn('EnhancedInspector', `Failed to analyze signal in batch: ${signal.type}`, { error: error instanceof Error ? error.message : String(error) });
           // Continue with other signals
         }
       }
@@ -487,28 +488,49 @@ export class EnhancedInspector extends EventEmitter {
     signal: Signal,
     context: ProcessingContext,
     guideline: string
-  ): Promise<InspectorResult> {
+  ): Promise<DetailedInspectorResult> {
     // Use LLM execution engine directly
     const analysis = await this.llmEngine.analyzeSignal(signal, context, guideline);
 
     // Convert analysis to inspector result
-    return {
+    const preparedContext: PreparedContext = {
+      id: `ctx-${signal.id}`,
       signalId: signal.id,
-      type: signal.type,
-      priority: signal.priority || 5,
-      processedAt: new Date(),
-      data: {
-        classification: analysis.classification,
-        recommendations: analysis.recommendations,
-        confidence: analysis.confidence
+      content: {
+        signalContent: signal.data.content as string || '',
+        agentContext: context.agent ? { agent: context.agent } : {},
+        worktreeState: context.worktree ? { worktree: context.worktree } : {},
+        environment: context.environment as Record<string, string | number | boolean>
       },
-      guideline,
-      contextSize: this.estimateContextSize(context),
+      size: this.estimateContextSize(context),
+      compressed: false,
+      tokenCount: this.estimateTokenUsageFromContext(context)
+    };
+
+    const payload: InspectorPayload = {
+      id: `payload-${signal.id}`,
+      signalId: signal.id,
+      classification: analysis.classification,
+      context: preparedContext,
+      recommendations: analysis.recommendations,
+      timestamp: new Date(),
+      size: preparedContext.size,
+      compressed: preparedContext.compressed
+    };
+
+    return {
+      id: `result-${signal.id}`,
+      signal,
+      classification: analysis.classification,
+      context: preparedContext,
+      payload,
+      recommendations: analysis.recommendations,
       processingTime: analysis.processingTime,
-      workerId: -1, // Sequential processing
-      success: true,
-      tokenUsage: analysis.tokenUsage
-    } as InspectorResult;
+      tokenUsage: analysis.tokenUsage,
+      model: this.config.inspector.model,
+      timestamp: new Date(),
+      confidence: analysis.confidence
+    };
   }
 
   /**
@@ -557,7 +579,7 @@ export class EnhancedInspector extends EventEmitter {
   /**
    * Calculate token usage from result
    */
-  private calculateTokenUsage(result: InspectorResult): {
+  private calculateTokenUsage(result: DetailedInspectorResult): {
     input: number;
     output: number;
     total: number;
@@ -581,13 +603,13 @@ export class EnhancedInspector extends EventEmitter {
   /**
    * Estimate token usage
    */
-  private estimateTokenUsage(result: InspectorResult): {
+  private estimateTokenUsage(result: DetailedInspectorResult): {
     input: number;
     output: number;
     total: number;
   } {
-    const inputText = JSON.stringify(result.data) + result.guideline;
-    const outputText = JSON.stringify(result.data);
+    const inputText = JSON.stringify(result.classification) + JSON.stringify(result.context);
+    const outputText = JSON.stringify(result.recommendations);
 
     return {
       input: Math.ceil(inputText.length / 4),
@@ -596,13 +618,15 @@ export class EnhancedInspector extends EventEmitter {
     };
   }
 
-  /**
-   * Estimate context size
-   */
   private estimateContextSize(context: ProcessingContext): number {
     return JSON.stringify(context).length;
   }
 
+  private estimateTokenUsageFromContext(context: ProcessingContext): number {
+    return Math.ceil(JSON.stringify(context).length / 4);
+  }
+
+  
   /**
    * Update metrics
    */

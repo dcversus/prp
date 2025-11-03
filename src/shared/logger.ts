@@ -374,7 +374,8 @@ export class Logger {
   getPerformanceMetrics(): Record<string, { count: number; averageDuration: number }> {
     const result: Record<string, { count: number; averageDuration: number }> = {};
 
-    for (const [operation, metrics] of this.performanceMetrics) {
+    const performanceEntries = Array.from(this.performanceMetrics.entries());
+    for (const [operation, metrics] of performanceEntries) {
       result[operation] = {
         count: metrics.count,
         averageDuration: metrics.totalDuration / metrics.count,
@@ -391,7 +392,8 @@ export class Logger {
 
   // Cleanup
   async shutdown(): Promise<void> {
-    for (const stream of this.fileStreams.values()) {
+    const streamValues = Array.from(this.fileStreams.values());
+    for (const stream of streamValues) {
       stream.end();
     }
     this.fileStreams.clear();

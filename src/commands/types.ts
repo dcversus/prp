@@ -59,18 +59,8 @@ export interface TemplatePostSetup {
   description?: string;
 }
 
-export interface AgentConfig {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  enabledByDefault: boolean;
-  availableModels: string[];
-  defaultModel: string;
-  defaultMaxTokens: number;
-  capabilities: string[];
-  configuration: Record<string, unknown>;
-}
+// AgentConfig is imported from src/config/agent-config.ts to avoid duplication
+export type AgentConfig = import('../config/agent-config.js').AgentConfig;
 
 export interface PRPTemplate {
   id: string;

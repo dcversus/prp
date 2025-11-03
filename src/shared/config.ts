@@ -4,17 +4,45 @@
  * Centralized configuration system with validation and defaults.
  */
 
-import { StorageConfig, AgentConfig, GuidelineConfig, TUIState, AgentRole } from './types';
+import { StorageConfig, GuidelineConfig, TUIState, AgentRole } from './types';
+import type { AgentConfig } from '../config/agent-config';
 import { ConfigUtils, FileUtils, Validator } from './utils';
 import { logger } from './logger';
 import { dirname } from 'path';
 
-export interface PRPConfig {
+// SettingsConfig for backwards compatibility
+export interface SettingsConfig {
+  debug?: any;
+  quality?: any;
+  build?: any;
+  test?: any;
+  ci?: any;
+  development?: any;
+  packageManager?: any;
+}
+
+export interface PRPConfig extends Record<string, unknown> {
+  // Basic project information
   version: string;
+  name?: string;
+  description?: string;
+  author?: string;
+  license?: string;
+  type?: string; // Project type for template selection
+
+  // Core system configuration
   storage: StorageConfig;
   agents: AgentConfig[];
   guidelines: GuidelineConfig[];
+  signals: any;
+  orchestrator: any;
+  scanner: any;
+  inspector: any;
+
+  // TUI configuration
   tui: TUIState;
+
+  // Feature flags
   features: {
     scanner: boolean;
     inspector: boolean;
@@ -23,6 +51,8 @@ export interface PRPConfig {
     mcp: boolean;
     worktrees: boolean;
   };
+
+  // System limits
   limits: {
     maxConcurrentAgents: number;
     maxWorktrees: number;
@@ -30,6 +60,8 @@ export interface PRPConfig {
     tokenAlertThreshold: number;
     tokenCriticalThreshold: number;
   };
+
+  // Logging configuration
   logging: {
     level: 'debug' | 'info' | 'warn' | 'error';
     enableFileLogging: boolean;
@@ -37,11 +69,19 @@ export interface PRPConfig {
     enablePerformanceTracking: boolean;
     logRetentionDays: number;
   };
+
+  // Security settings
   security: {
     enablePinProtection: boolean;
     encryptSecrets: boolean;
-    sessionTimeout: number; // minutes
+    sessionTimeout: number;
   };
+
+  // Settings for backwards compatibility
+  settings: SettingsConfig;
+
+  // Optional scripts
+  scripts?: Record<string, string>;
 }
 
 export interface ConfigExportData {
@@ -51,7 +91,15 @@ export interface ConfigExportData {
 }
 
 export const DEFAULT_CONFIG: PRPConfig = {
+  // Basic project information
   version: '1.0.0',
+  name: undefined,
+  description: undefined,
+  author: undefined,
+  license: undefined,
+  type: undefined,
+
+  // Core system configuration
   storage: {
     dataDir: '.prp',
     cacheDir: '/tmp/prp-cache',
@@ -65,6 +113,12 @@ export const DEFAULT_CONFIG: PRPConfig = {
   },
   agents: [],
   guidelines: [],
+  signals: {},
+  orchestrator: {},
+  scanner: {},
+  inspector: {},
+
+  // TUI configuration
   tui: {
     mode: 'cli',
     activeScreen: 'main',
@@ -72,6 +126,8 @@ export const DEFAULT_CONFIG: PRPConfig = {
     autoRefresh: true,
     refreshInterval: 5000,
   },
+
+  // Feature flags
   features: {
     scanner: true,
     inspector: true,
@@ -80,6 +136,8 @@ export const DEFAULT_CONFIG: PRPConfig = {
     mcp: true,
     worktrees: true,
   },
+
+  // System limits
   limits: {
     maxConcurrentAgents: 5,
     maxWorktrees: 50,
@@ -87,6 +145,8 @@ export const DEFAULT_CONFIG: PRPConfig = {
     tokenAlertThreshold: 0.8,
     tokenCriticalThreshold: 0.95,
   },
+
+  // Logging configuration
   logging: {
     level: 'info',
     enableFileLogging: true,
@@ -94,11 +154,19 @@ export const DEFAULT_CONFIG: PRPConfig = {
     enablePerformanceTracking: true,
     logRetentionDays: 7,
   },
+
+  // Security settings
   security: {
     enablePinProtection: false,
     encryptSecrets: true,
     sessionTimeout: 60, // 1 hour
   },
+
+  // Settings for backwards compatibility
+  settings: {},
+
+  // Optional scripts
+  scripts: undefined,
 };
 
 /**
@@ -119,7 +187,7 @@ export class ConfigManager {
       if (exists) {
         const userConfig = await ConfigUtils.loadConfigFile<Partial<PRPConfig>>(this.configPath);
         if (userConfig) {
-          this.config = ConfigUtils.mergeDeep(DEFAULT_CONFIG, userConfig as Record<string, unknown>) as unknown as PRPConfig;
+          this.config = ConfigUtils.mergeDeep(DEFAULT_CONFIG, userConfig as Record<string, unknown>) as PRPConfig;
           this.validate();
           logger.info('shared', 'ConfigManager', 'Configuration loaded successfully', { configPath: this.configPath });
         }
@@ -150,7 +218,7 @@ export class ConfigManager {
   }
 
   update(updates: Partial<PRPConfig>): void {
-    this.config = ConfigUtils.mergeDeep(this.config, updates);
+    this.config = ConfigUtils.mergeDeep(this.config, updates as Record<string, unknown>) as PRPConfig;
     this.validate();
   }
 
@@ -184,7 +252,7 @@ export class ConfigManager {
   }
 
   getAgentsByRole(role: AgentRole): AgentConfig[] {
-    return this.config.agents.filter(a => a.roles.includes(role));
+    return this.config.agents.filter(a => a.role === role);
   }
 
   addGuideline(guideline: GuidelineConfig): void {
@@ -268,11 +336,8 @@ export class ConfigManager {
     return (
       Validator.isValidAgentId(agent.id) &&
       agent.name.length > 0 &&
-      ['claude-code', 'claude-code-glm', 'codex', 'gemini', 'amp', 'aider'].includes(agent.type) &&
-      Array.isArray(agent.roles) &&
-      agent.roles.length > 0 &&
-      agent.bestRole &&
-      agent.roles.includes(agent.bestRole) &&
+      ['claude-code-anthropic', 'claude-code-glm', 'codex', 'gemini', 'amp', 'aider', 'github-copilot', 'custom'].includes(agent.type) &&
+      agent.role &&
       agent.capabilities &&
       typeof agent.capabilities.supportsTools === 'boolean'
     );
@@ -305,7 +370,7 @@ export class ConfigManager {
   async export(exportPath: string): Promise<void> {
     try {
       const exportData = {
-        config: this.config,
+        config: this.config as Record<string, unknown>,
         exportedAt: new Date().toISOString(),
         version: this.config.version,
       };
@@ -322,7 +387,7 @@ export class ConfigManager {
     try {
       const importData = await ConfigUtils.loadConfigFile<unknown>(importPath);
       if (this.isValidConfigExportData(importData)) {
-        this.config = ConfigUtils.mergeDeep(DEFAULT_CONFIG, importData.config as Record<string, unknown>) as unknown as PRPConfig;
+        this.config = ConfigUtils.mergeDeep(DEFAULT_CONFIG, importData.config) as PRPConfig;
         this.validate();
         logger.info('shared', 'ConfigManager', `Configuration imported from ${importPath}`, { importPath });
       } else {

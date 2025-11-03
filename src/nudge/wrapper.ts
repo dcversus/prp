@@ -151,8 +151,6 @@ export class NudgeWrapper {
           context: request.context,
           metadata: {
             ...request.metadata,
-            fallback_from: 'llm-mode',
-            delivery_type: 'direct',
             timestamp: new Date().toISOString()
           }
         };
@@ -162,7 +160,7 @@ export class NudgeWrapper {
           console.info('Direct nudge fallback successful');
           return {
             ...response,
-            delivery_type: 'direct-fallback'
+            delivery_type: 'direct'
           };
         } catch (fallbackError) {
           console.error('Direct nudge fallback also failed:', fallbackError);

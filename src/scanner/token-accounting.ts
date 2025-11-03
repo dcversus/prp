@@ -198,11 +198,12 @@ export class TokenAccountingManager {
       operations: dailyUsage.operations
     };
 
+    const tokenLimits = (agentConfig as any).tokenLimits || {};
     const limits = {
-      daily: agentConfig.tokenLimits.daily,
-      weekly: agentConfig.tokenLimits.weekly,
-      monthly: agentConfig.tokenLimits.monthly,
-      maxPrice: agentConfig.tokenLimits.maxPrice
+      daily: tokenLimits.daily || 0,
+      weekly: tokenLimits.weekly || 0,
+      monthly: tokenLimits.monthly || 0,
+      maxPrice: tokenLimits.maxPrice || 0
     };
 
     const percentages = {

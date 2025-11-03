@@ -420,9 +420,9 @@ export interface CommandResult {
 }
 
 export interface ValidationResult {
-  valid: boolean;
-  errors: ValidationError[];
-  warnings: ValidationWarning[];
+  isValid: boolean;
+  errors?: string[];
+  warnings?: ValidationWarning[];
 }
 
 export interface ValidationError {

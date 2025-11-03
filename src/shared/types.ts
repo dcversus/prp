@@ -4,6 +4,41 @@
  * Core type definitions used across all layers of the system.
  */
 
+
+// Agent configuration
+export interface AgentConfig {
+  id: string;
+  name: string;
+  type: string;
+  roles: string[];
+  bestRole: string;
+  capabilities: {
+    supportsTools: boolean;
+    [key: string]: any;
+  };
+  customConfig?: Record<string, any>;
+  [key: string]: any;
+}
+
+// Guideline protocol
+export interface GuidelineProtocol {
+  steps: ProtocolStep[];
+  [key: string]: any;
+}
+
+
+
+// TUI state
+export interface TUIState {
+  mode: 'cli' | 'tui';
+  activeScreen: 'main' | 'status' | 'agent' | 'logs' | 'config';
+  selectedPRP?: string;
+  selectedAgent?: string;
+  followEvents: boolean;
+  autoRefresh: boolean;
+  refreshInterval: number;
+}
+
 export interface Signal {
   id: string;
   type: string;
@@ -16,6 +51,7 @@ export interface Signal {
     agent?: string;
     guideline?: string;
     tokenCost?: number;
+    [key: string]: unknown;
   };
 }
 
@@ -42,32 +78,10 @@ export interface ProgressEntry {
   actor: 'scanner' | 'inspector' | 'orchestrator' | 'agent' | 'user';
 }
 
-export interface AgentConfig {
-  id: string;
-  name: string;
-  type: 'claude-code' | 'claude-code-glm' | 'codex' | 'gemini' | 'amp' | 'aider';
-  roles: AgentRole[];
-  bestRole: AgentRole;
-  tokenLimits: TokenLimits;
-  runCommands: string[];
-  capabilities: AgentCapabilities;
-  customConfig: Record<string, unknown>;
-  mcpServers?: string[];
-  status: 'active' | 'inactive' | 'suspended';
-}
+// AgentConfig is imported from src/config/agent-config.ts to avoid duplication
 
-export type AgentRole =
-  | 'conductor'
-  | 'scanner'
-  | 'inspector'
-  | 'developer'
-  | 'tester'
-  | 'reviewer'
-  | 'deployer'
-  | 'analyst'
-  | 'researcher'
-  | 'designer'
-  | 'documenter';
+// AgentRole is imported from src/config/agent-config.ts to avoid duplication
+export type AgentRole = import('../config/agent-config.js').AgentRole;
 
 export interface TokenLimits {
   daily?: number;
@@ -78,14 +92,8 @@ export interface TokenLimits {
   timeWindow?: number; // time window in minutes
 }
 
-export interface AgentCapabilities {
-  supportsTools: boolean;
-  supportsImages: boolean;
-  supportsSubAgents: boolean;
-  supportsParallel: boolean;
-  maxContextLength: number;
-  supportedModels: string[];
-}
+// AgentCapabilities is imported from src/config/agent-config.ts to avoid duplication
+export type AgentCapabilities = import('../config/agent-config.js').AgentCapabilities;
 
 export interface WorktreeStatus {
   path: string;
@@ -196,15 +204,15 @@ export interface GuidelineConfig {
   name: string;
   enabled: boolean;
   protocol: GuidelineProtocol;
-  requirements: GuidelineRequirement[];
-  tools: string[];
-  prompts: {
-    inspector: string;
-    orchestrator: string;
+  requirements?: GuidelineRequirement[];
+  tools?: string[];
+  prompts?: {
+    inspector?: string;
+    orchestrator?: string;
   };
-  tokenLimits: {
-    inspector: number;
-    orchestrator: number;
+  tokenLimits?: {
+    inspector?: number;
+    orchestrator?: number;
   };
 }
 
@@ -330,16 +338,6 @@ export interface SystemStatus {
     disabled: number;
     errors: string[];
   };
-}
-
-export interface TUIState {
-  mode: 'cli' | 'tui';
-  activeScreen: 'main' | 'status' | 'agent' | 'logs' | 'config';
-  selectedPRP?: string;
-  selectedAgent?: string;
-  followEvents: boolean;
-  autoRefresh: boolean;
-  refreshInterval: number;
 }
 
 export interface ChannelEvent<T = unknown> {

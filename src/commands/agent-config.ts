@@ -7,43 +7,10 @@
 import { Command } from 'commander';
 import { agentConfigManager, AgentConfig } from '../config/agent-config';
 import { createLayerLogger, FileUtils } from '../shared';
-import inquirer, { type Question } from 'inquirer';
+import inquirer from 'inquirer';
 
 const logger = createLayerLogger('config');
 
-// Template variable answer interface
-interface TemplateVariableAnswers {
-  [key: string]: string | number | boolean;
-}
-
-// Interactive agent creation answers interface
-interface InteractiveAgentAnswers {
-  name: string;
-  type: string;
-  role: string;
-  provider: string;
-  apiKey?: string;
-  enabled: boolean;
-}
-
-// Agent editing answers interface
-interface EditAgentAnswers {
-  name: string;
-  enabled: boolean;
-  tone: string;
-  maxTokens: number;
-  creativity: number;
-}
-
-// Toggle agent answers interface
-interface ToggleAgentAnswers {
-  enabled: boolean;
-}
-
-// Remove agent answers interface
-interface RemoveAgentAnswers {
-  confirm: boolean;
-}
 
 interface CLIOptions {
   enabled?: boolean;

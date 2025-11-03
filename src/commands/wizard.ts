@@ -12,7 +12,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import chalk from 'chalk';
 import ora, { type Ora } from 'ora';
-import inquirer, { type Question } from 'inquirer';
+import inquirer from 'inquirer';
 import figlet from 'figlet';
 import boxen from 'boxen';
 import { createLayerLogger } from '../shared';
@@ -41,45 +41,6 @@ interface WizardState {
   warnings: string[];
 }
 
-// Project name question answers interface
-interface ProjectNameAnswers {
-  projectName: string;
-}
-
-// Template selection answers interface
-interface TemplateSelectionAnswers {
-  template: string;
-}
-
-// PRP definition answers interface
-interface PRPDefinitionAnswers {
-  prp: string;
-}
-
-// Agent selection answers interface
-interface AgentSelectionAnswers {
-  agents: string[];
-  customConfig: boolean;
-}
-
-// Agent configuration answers interface
-interface AgentConfigAnswers {
-  [key: string]: boolean | string | number;
-}
-
-// Additional options answers interface
-interface AdditionalOptionsAnswers {
-  gitInit: boolean;
-  npmInstall: boolean;
-  firstCommit: boolean;
-  githubRepo: boolean;
-  setupCI: boolean;
-}
-
-// Confirmation answers interface
-interface ConfirmationAnswers {
-  confirmed: boolean;
-}
 
 /**
  * CLI Wizard - Interactive project initialization
@@ -420,9 +381,9 @@ export class CLIWizard extends EventEmitter {
         name: 'agents',
         message: 'Select agents to enable:',
         choices: agentConfigs.map(config => ({
-          name: `${config.name} - ${config.description}`,
+          name: `${config.name} - ${(config as any).description || config.role}`,
           value: config.id,
-          checked: config.enabledByDefault
+          checked: (config as any).enabledByDefault || false
         }))
       },
       {
@@ -456,7 +417,7 @@ export class CLIWizard extends EventEmitter {
         [key: string]: boolean | string | number;
       };
 
-      const agentQuestions = [
+      const agentQuestions: any[] = [
         {
           type: 'confirm',
           name: `${agentId}_enabled`,
@@ -467,14 +428,14 @@ export class CLIWizard extends EventEmitter {
           type: 'list',
           name: `${agentId}_model`,
           message: `Select model for ${config.name}:`,
-          choices: config.availableModels,
-          default: config.defaultModel
+          choices: (config as any).availableModels || ['claude-3-sonnet'],
+          default: (config as any).defaultModel || 'claude-3-sonnet'
         },
         {
           type: 'number',
           name: `${agentId}_maxTokens`,
           message: `Max tokens for ${config.name}:`,
-          default: config.defaultMaxTokens,
+          default: (config as any).defaultMaxTokens || 100000,
           validate: (input: number) => input > 0 && input <= 200000
         }
       ];
@@ -581,9 +542,9 @@ export class CLIWizard extends EventEmitter {
       `${chalk.cyan('Template:')} ${data['template']}\n` +
       `${chalk.cyan('PRP:')} ${String(data['prp']).substring(0, 100)}${String(data['prp']).length > 100 ? '...' : ''}\n` +
       `${chalk.cyan('Agents:')} ${(data['agents'] as string[]).join(', ')}\n` +
-      `${chalk.cyan('Git Init:')} ${data['options']['gitInit'] ? 'Yes' : 'No'}\n` +
-      `${chalk.cyan('NPM Install:')} ${data['options']['npmInstall'] ? 'Yes' : 'No'}\n` +
-      `${chalk.cyan('First Commit:')} ${data['options']['firstCommit'] ? 'Yes' : 'No'}\n`,
+      `${chalk.cyan('Git Init:')} ${(data['options'] as any)['gitInit'] ? 'Yes' : 'No'}\n` +
+      `${chalk.cyan('NPM Install:')} ${(data['options'] as any)['npmInstall'] ? 'Yes' : 'No'}\n` +
+      `${chalk.cyan('First Commit:')} ${(data['options'] as any)['firstCommit'] ? 'Yes' : 'No'}\n`,
       {
         padding: 1,
         margin: 1,
@@ -618,17 +579,17 @@ export class CLIWizard extends EventEmitter {
       await this.configureAgentsFromData();
 
       // Initialize git if requested
-      if (this.state.data['options']['gitInit']) {
+      if ((this.state.data['options'] as any)['gitInit']) {
         await this.initializeGit();
       }
 
       // Install dependencies if requested
-      if (this.state.data['options']['npmInstall']) {
+      if ((this.state.data['options'] as any)['npmInstall']) {
         await this.installDependencies();
       }
 
       // Create initial commit if requested
-      if (this.state.data['options']['firstCommit']) {
+      if ((this.state.data['options'] as any)['firstCommit']) {
         await this.makeInitialCommit();
       }
 

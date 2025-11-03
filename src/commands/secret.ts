@@ -31,14 +31,10 @@ export function createSecretCommand(): Command {
       console.log(chalk.blue('🔑 Retrieving NUDGE_SECRET from Kubernetes...\n'));
 
       try {
-        const secret = await secretManager.getNudgeSecret({
-          config: {
-            namespace: options.namespace,
-            name: options.secret,
-            field: options.field
-          },
-          cache: options.cache !== false
+        const result = await secretManager.getNudgeSecret({
+          forceRefresh: options.cache === false
         });
+        const secret = result.value;
 
         if (options.show) {
           console.log(chalk.green('Secret value:'));
@@ -63,17 +59,26 @@ export function createSecretCommand(): Command {
       console.log(chalk.blue('🧪 Testing Secret Management...\n'));
 
       try {
-        const test = await secretManager.testSecretAccess();
+        const status = await secretManager.getStatus();
 
-        console.log(`${test.kubectl_available ? '✅ PASS' : '❌ FAIL'} kubectl Available`);
-        console.log(`${test.cluster_connected ? '✅ PASS' : '❌ FAIL'} Cluster Connected`);
-        console.log(`${test.secret_retrieved ? '✅ PASS' : '❌ FAIL'} Secret Retrieved`);
-        console.log(`${test.secret_validated ? '✅ PASS' : '❌ FAIL'} Secret Validated`);
+        console.log(`${status.kubectl_available ? '✅ PASS' : '❌ FAIL'} kubectl Available`);
+        console.log(`${status.cluster_connected ? '✅ PASS' : '❌ FAIL'} Cluster Connected`);
+        console.log(`${status.secret_accessible ? '✅ PASS' : '❌ FAIL'} Secret Retrieved`);
+        console.log(`${status.validation_result ? '✅ PASS' : '❌ FAIL'} Secret Validated`);
 
-        if (test.error) {
-          console.log(chalk.red(`\n❌ Error: ${test.error}`));
-        } else {
+        console.log(chalk.blue('\n📊 Status Details:'));
+        console.log(`   Cache Enabled: ${status.cache_enabled ? '✅ Yes' : '❌ No'}`);
+        if (status.last_retrieval) {
+          console.log(`   Last Retrieval: ${status.last_retrieval.toISOString()}`);
+        }
+        if (status.last_validation) {
+          console.log(`   Last Validation: ${status.last_validation.toISOString()}`);
+        }
+
+        if (status.kubectl_available && status.secret_accessible) {
           console.log(chalk.green('\n🎉 All tests passed!'));
+        } else {
+          console.log(chalk.yellow('\n⚠️  Some tests failed. Check configuration.'));
         }
 
       } catch (error) {
