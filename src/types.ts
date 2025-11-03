@@ -99,3 +99,27 @@ export interface TemplateEngine {
   render(template: string, data: TemplateData): string;
   renderFile(filePath: string, data: TemplateData): Promise<string>;
 }
+
+// Additional types for CLI and logging
+export interface CommandResult {
+  success: boolean;
+  message?: string;
+  data?: any;
+  error?: Error;
+  exitCode?: number;
+}
+
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'verbose';
+
+// Configuration interface
+export interface PRPConfig {
+  version: string;
+  storage: any;
+  agents: any;
+  guidelines: any;
+  signals: any;
+  orchestrator: any;
+  scanner: any;
+  inspector: any;
+  scripts?: Record<string, string>;
+}

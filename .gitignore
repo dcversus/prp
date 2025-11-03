@@ -36,6 +36,12 @@ logs/
 tmp/
 temp/
 .cache/
+worktrees/
+tests-artifacts/
+
+# System temp directories (used by PRP)
+/tmp/prp-*
+/tmp/prp.*
 
 # Debug
 debug/

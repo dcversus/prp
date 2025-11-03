@@ -1,1211 +1,355 @@
-# PRP-001: Interactive Project Bootstrap CLI (prp)
-
-**Status**: 📋 Planning & Research
-**Created**: 2025-10-28
-**Author**: dcversus
-**License**: MIT (Free & Open Source with optional donations)
-
----
-
-## 🎯 What is a PRP? Understanding Context-Driven Development
-
-**PRP** stands for **Phase Requirement Proposal** (or **Product Requirements Process**).
-
-### The Philosophy
-
-PRPs are the foundation of **context-driven development** - a methodology where:
-
-1. **Every feature is a self-contained proposal** with clear goals, requirements, and success criteria
-2. **Context is king** - all necessary information lives IN the PRP document
-3. **Incremental progress** - work is broken into digestible chunks (3-4 working days for middle developer)
-4. **Autonomous execution** - developers/AI agents can work independently with full context
-5. **Clear gates** - Definition of Ready (DoR) and Definition of Done (DoD) remove ambiguity
-
-### Why Context-Driven Development?
-
-**Traditional approach problems:**
-- Requirements scattered across docs, Slack, emails, meetings
-- Developers constantly asking "what should I build?"
-- Lost context when returning to work
-- Unclear when something is "done"
-
-**Context-driven development solutions:**
-- ✅ **Single source of truth** - Everything in PRP document
-- ✅ **Self-service** - Read PRP, understand task, execute
-- ✅ **Async-first** - No meetings needed, work across timezones
-- ✅ **AI-friendly** - Perfect for AI agents (like Claude) to execute autonomously
-- ✅ **Audit trail** - Full history of decisions and progress in one place
-
-### PRP Structure (This Document)
-
-Each PRP contains:
-- **Problem Statement** - What problem are we solving?
-- **Solution Overview** - How will we solve it?
-- **Definition of Ready (DoR)** - Prerequisites before starting
-- **Definition of Done (DoD)** - Clear completion criteria
-- **Research Tasks** - Investigation needed
-- **Implementation Breakdown** - Step-by-step work plan
-- **Success Criteria** - How do we measure success?
-- **Questions for Stakeholders** - Decisions needed
-
----
-
-## 📖 Project Description
-
-**prp** (Project Bootstrap CLI) is a **free and open-source** interactive command-line tool for scaffolding new software projects with best practices, multiple framework support, and optional AI integration.
-
-### Vision
-
-Create a **modern, delightful developer experience** for starting new projects - combining:
-- 🎨 Beautiful React-based terminal UI (Ink)
-- 📦 Comprehensive project templates (FastAPI, NestJS, React, TypeScript libs, etc.)
-- 📝 Complete documentation and community files (LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, etc.)
-- 🤖 Optional AI integration for intelligent code generation
-- 🎯 Context-driven development methodology built-in
-- 💰 Free to use, optional donations to support development
-
-### Target Users
-
-1. **Open Source Maintainers** - Need complete project setup with all community files
-2. **Solo Developers / Hackathon Teams** - Want to start coding in 5 minutes, not 5 hours
-3. **Consultants / Freelancers** - Need consistent project setup across multiple tech stacks
-4. **Enterprise Teams** - Want standardized "paved road" for new services
-5. **Students / Beginners** - Learn best practices by example
-6. **Multi-stack Developers** - Work across Python, TypeScript, Go, etc. daily
-
----
-
-## 🤔 Problem Statement
-
-### The Pain
-
-Starting a new software project is **tedious and error-prone**:
-
-```bash
-# Current reality - running 10+ commands, 30+ minutes
-npm init -y
-npx license mit
-npx gitignore node
-npx covgen me@email.com
-git init
-mkdir src tests docs .github
-touch README.md CONTRIBUTING.md SECURITY.md
-# ... configure ESLint
-# ... configure Prettier
-# ... configure TypeScript
-# ... create GitHub Actions workflows
-# ... create issue templates
-# ... create PR template
-# ... and on and on...
-```
-
-**Problems:**
-- ❌ **Repetitive setup** - Same boring tasks for every project
-- ❌ **Forgotten files** - Easy to miss LICENSE, CODE_OF_CONDUCT, SECURITY.md
-- ❌ **Inconsistent quality** - Every project configured slightly differently
-- ❌ **Framework-specific tools** - Must learn separate CLI for React vs NestJS vs FastAPI
-- ❌ **No AI assistance** - Static templates can't adapt to project description
-- ❌ **Time-consuming** - 30 minutes to 2 hours before writing first line of actual code
-
-### Evidence of Need
-
-From developer forums:
-- "I'm so tired of the massive up-front challenge any time I want to crack open a new project... It's so laborious just getting to square one" (Reddit)
-- "Why isn't there a Node equivalent of Cookiecutter?" (Reddit)
-- "Spending hours configuring ESLint/Prettier before writing code is exhausting" (Twitter)
-
-### Why Existing Tools Fall Short
-
-| Tool | Strengths | Weaknesses |
-|------|-----------|------------|
-| **Yeoman** | Mature, extensible | Complex, many outdated generators, heavy |
-| **Cookiecutter** | 6000+ templates | Requires Python, mostly Python ecosystem |
-| **create-react-app** | Dead simple | Only React, no community files, deprecated |
-| **Node-Genie** | Modern UX | Express-only, no LICENSE/CONTRIBUTING |
-| **TiLoKit** | Multi-framework | Non-commercial license, closed source |
-| **AI tools (GPT-Engineer)** | Flexible | Unreliable, no structure, forgets community files |
-
-**None provide:** Code scaffolding + community files + AI assistance + beautiful UX + multi-framework support
-
----
-
-## 💡 Solution Overview
-
-### The prp Approach
-
-**One CLI to rule them all** - comprehensive project scaffolding with:
-
-1. **🎨 Beautiful Interactive TUI**
-   - React-based terminal UI using Ink
-   - Checkbox-driven feature selection
-   - Live preview of selected options
-   - Guided wizard flow with back/forward navigation
-
-2. **📦 Multi-Framework Templates**
-   - **Built-in**: React, NestJS, FastAPI, TypeScript library, Express
-   - **Framework integration**: Can shell out to `create-vite`, `nest new`, etc.
-   - **Template engine**: Handlebars for dynamic file generation
-   - **Modular design**: Toggle any component on/off
-
-3. **📝 Complete Open Source Setup**
-   - LICENSE (MIT, Apache-2.0, GPL-3.0, BSD-3-Clause, ISC, Unlicense)
-   - CODE_OF_CONDUCT.md (Contributor Covenant)
-   - CONTRIBUTING.md
-   - SECURITY.md
-   - CHANGELOG.md (Keep a Changelog format)
-   - Issue templates (bug report, feature request)
-   - PR template with checklist
-   - GitHub Actions CI/CD workflows
-
-4. **🤖 Optional AI Integration**
-   - OpenAI GPT-4 / Codex
-   - Anthropic Claude
-   - Google Gemini
-   - AI-generated README sections
-   - AI-generated starter code based on description
-   - AI-generated tests
-   - **Always optional** - works perfectly without AI
-
-5. **⚡ Context-Driven Development Built-in**
-   - Generates PRPs/ directory structure
-   - Includes PRP template (based on this document!)
-   - Pre-configured for incremental development
-   - DoR/DoD checklist templates
-
-6. **🐳 Docker & CI/CD**
-   - Dockerfile generation for supported frameworks
-   - docker-compose.yml for local development
-   - GitHub Actions workflows for testing/building
-   - Pre-configured linting and formatting
-
-7. **🎯 Non-Interactive Mode**
-   - All options via CLI flags or environment variables
-   - Perfect for CI/CD pipelines
-   - Docker image available for consistent environment
-   - Configuration file support (.prprc)
-
-### Key Differentiators
-
-| Feature | prp | Yeoman | Cookiecutter | Framework CLIs |
-|---------|-----|--------|--------------|----------------|
-| Community files (LICENSE, etc.) | ✅ | ❓ Depends | ❓ Depends | ❌ |
-| Multi-framework support | ✅ | ❓ Via generators | ✅ | ❌ |
-| AI integration | ✅ | ❌ | ❌ | ❌ |
-| Beautiful TUI (Ink) | ✅ | ❌ | ❌ | ⚠️ Some |
-| Non-interactive mode | ✅ | ⚠️ Limited | ✅ | ⚠️ Limited |
-| Context-driven development | ✅ | ❌ | ❌ | ❌ |
-| Free & open source | ✅ | ✅ | ✅ | ✅ |
-
----
-
-## 🔍 Research & Investigation Tasks
-
-### Phase 1: Competitive Research (3-4 days)
-
-**🎯 Goal**: Deeply understand existing solutions and identify exact gaps
-
-#### Task 1.1: Tool Deep Dive
-- [ ] **Yeoman**: Install, create project, analyze generator architecture
-  - How extensible is it really?
-  - Why did popularity decline?
-  - Can we learn from mistakes?
-- [ ] **Cookiecutter**: Test with 5 popular templates
-  - Template format analysis
-  - How does conditional logic work?
-  - Performance characteristics
-- [ ] **Node-Genie**: Analyze UI/UX implementation
-  - How is interactive CLI built?
-  - What makes it "beautiful"?
-  - Code structure and patterns
-- [ ] **TiLoKit**: Research licensing and community feedback
-  - Why non-commercial?
-  - User complaints/feature requests
-  - Technical architecture (if available)
-- [ ] **Plop & Hygen**: Study micro-generator approach
-  - How do they handle templating?
-  - Integration patterns with existing projects
-  - Performance and simplicity trade-offs
-
-**📦 Deliverable**: Competitive analysis document in `PRPs/research/competitive-analysis.md`
-
-#### Task 1.2: Framework CLI Analysis
-- [ ] **React ecosystem**: `create-vite`, `create-next-app`, `create-react-app` (deprecated)
-  - Output structure analysis
-  - Configuration files generated
-  - Dependencies included
-- [ ] **Node/TypeScript**: NestJS CLI, Express generators
-  - Project structure conventions
-  - Testing setup
-  - Deployment configurations
-- [ ] **Python**: FastAPI project structure, Django `startproject`
-  - Virtual environment handling
-  - Requirements.txt vs poetry vs pipenv
-  - Testing frameworks (pytest)
-
-**📦 Deliverable**: Framework conventions document in `PRPs/research/framework-conventions.md`
-
-#### Task 1.3: AI Coding Assistant Research
-- [ ] **OpenAI Codex**: API capabilities, pricing, limitations
-- [ ] **Anthropic Claude**: Context window, API design, cost
-- [ ] **Google Gemini**: Availability, pricing, code generation quality
-- [ ] **GPT-Engineer**: Study architecture - how does it work?
-- [ ] **Aider**: Study iterative code generation approach
-- [ ] **Smol Developer**: Analyze autonomous project generation
-
-**📦 Deliverable**: AI integration strategy document in `PRPs/research/ai-integration-strategy.md`
-
-### Phase 2: Technical Architecture Research (2-3 days)
-
-**🎯 Goal**: Make informed technology choices
-
-#### Task 2.1: CLI Framework Selection
-- [ ] **Oclif vs Commander.js**: Feature comparison, complexity analysis
-  - Do we need subcommands? (probably not initially)
-  - Plugin system necessity
-  - Help documentation generation
-- [ ] **Ink deep dive**: Build prototype TUI
-  - Checkbox component
-  - Text input component
-  - Multi-step wizard flow
-  - Performance with many options
-- [ ] **Inquirer.js vs Prompts vs Clack**: Comparison if not using Ink
-  - UX quality
-  - Customization options
-  - TypeScript support
-
-**📦 Deliverable**: Technology decision document in `PRPs/research/tech-decisions.md`
-
-#### Task 2.2: Template Engine Evaluation
-- [ ] **Handlebars** vs **EJS** vs **Mustache**
-  - Conditional logic support
-  - Performance benchmarks
-  - Learning curve
-- [ ] **Templated filenames**: How to implement?
-- [ ] **Binary files**: How to include (images, fonts)?
-- [ ] **Template validation**: Ensure templates are valid before generation
-
-**📦 Deliverable**: Template engine PoC in `PRPs/prototypes/template-engine-poc/`
-
-#### Task 2.3: File Generation Strategy
-- [ ] **Bundle vs fetch**: Include templates in package vs download?
-  - npm package size limits
-  - Offline capability importance
-  - Update/versioning strategy
-- [ ] **Template organization**: Directory structure
-- [ ] **Conditional inclusion**: How to toggle files on/off?
-- [ ] **Post-generation hooks**: Running `npm install`, `git init`, etc.
-
-**📦 Deliverable**: File generation architecture document
-
-### Phase 3: Reference Project Analysis (2-3 days)
-
-**🎯 Goal**: Learn from dcmaidbot and EdgeCraft implementations
-
-#### Task 3.1: dcmaidbot Analysis
-- [ ] Study `PRPs/` directory structure
-- [ ] Analyze PRP format and conventions
-- [ ] Understand DoR/DoD implementation
-- [ ] Review Python project structure
-  - `handlers/`, `middlewares/`, `models/`, `services/`
-  - Testing patterns
-  - Deployment configuration
-- [ ] Extract reusable patterns for Python templates
-
-**📦 Deliverable**: Python template design based on dcmaidbot patterns
-
-#### Task 3.2: EdgeCraft Analysis
-- [ ] Study TypeScript/React project structure
-- [ ] Analyze build system (Vite, Rolldown)
-- [ ] Review testing infrastructure (Jest, React Testing Library)
-- [ ] Understand CI/CD workflows
-- [ ] Review legal compliance pipeline (asset validation)
-- [ ] Extract TypeScript/React best practices
-
-**📦 Deliverable**: TypeScript template design based on EdgeCraft patterns
-
-#### Task 3.3: Template Extraction
-- [ ] Create **TypeScript Library** template from EdgeCraft structure
-- [ ] Create **Python Service** template from dcmaidbot structure
-- [ ] Create **React App** template from EdgeCraft UI patterns
-- [ ] Create **NestJS Service** template (research + EdgeCraft patterns)
-- [ ] Create **FastAPI Service** template (research + dcmaidbot patterns)
-
-**📦 Deliverable**: 5 initial templates in `src/templates/`
-
-### Phase 4: Community & Licensing Research (1-2 days)
-
-**🎯 Goal**: Understand open-source best practices and legal requirements
-
-#### Task 4.1: License Analysis
-- [ ] **Telefónica opensource-scaffold**: Study their comprehensive approach
-  - LICENSE templates
-  - CLA document
-  - CONTRIBUTING.md structure
-  - Code of Conduct implementation
-  - Issue/PR templates
-- [ ] **GitHub community standards**: What does GitHub recommend?
-- [ ] **SPDX license identifiers**: How to include in files?
-
-**📦 Deliverable**: Community files templates in `src/templates/common/`
-
-#### Task 4.2: Donation & Monetization Strategy
-- [ ] **GitHub Sponsors**: How to integrate?
-- [ ] **Open Collective**: Alternative funding platform?
-- [ ] **Ko-fi / Buy Me a Coffee**: Simple donation links?
-- [ ] **Dual licensing**: MIT for free, commercial license for enterprise?
-- [ ] **SaaS option**: Web version with paid features?
-
-**📦 Deliverable**: Monetization strategy document in `PRPs/research/monetization.md`
-
----
-
-## 🚪 Definition of Ready (DoR)
-
-**Prerequisites before starting implementation:**
-
-### Research Phase
-- [ ] All Phase 1-4 research tasks completed
-- [ ] Competitive analysis document finalized
-- [ ] Technology decisions documented and approved
-- [ ] At least 3 templates designed and validated
-- [ ] Community files templates created
-
-### Technical Prerequisites
-- [ ] Node.js 20+ installed on development machine
-- [ ] TypeScript 5.6+ configured
-- [ ] GitHub account for repository
-- [ ] npm organization created (@dcversus)
-- [ ] GitHub Container Registry access configured
-
-### Project Setup
-- [x] Repository initialized (`prp`) ✅
-- [x] Basic project structure created ✅
-- [x] package.json configured with metadata ✅
-- [x] ESLint + Prettier configured ✅
-- [x] Jest testing framework set up ✅
-- [x] CI/CD workflow created (.github/workflows/ci.yml) ✅
-  - [x] Parallel job CI/CD pipeline ✅
-  - [x] CHANGELOG.md check workflow ✅
-  - [x] Claude Code Review workflow ✅
-  - [x] Security audit job ✅
-  - [x] Quality gate ✅
-- [x] README with project vision ✅
-- [x] Pre-commit hooks configured (husky + lint-staged) ✅
-- [x] GitHub issue and PR templates created ✅
-- [x] .editorconfig added ✅
-
-### Design & Planning
-- [ ] UI/UX mockups or wireframes created (ASCII art acceptable)
-- [ ] User flow diagram (interactive mode)
-- [ ] CLI arguments specification
-- [ ] Template structure finalized
-- [ ] API surface design (public functions/interfaces)
-
-### Questions Answered
-- [ ] All "🙋 Questions for User" section items resolved (see below)
-
----
-
-## ✅ Definition of Done (DoD)
-
-**Criteria for considering this PRP complete:**
-
-### Core Functionality
-- [ ] CLI installs globally: `npm install -g @dcversus/prp`
-- [ ] CLI runs: `prp` command available in terminal
-- [ ] Interactive mode works: Beautiful TUI with Ink
-- [ ] Non-interactive mode works: All options via CLI flags
-- [ ] At least 3 templates functional:
-  - [ ] TypeScript Library (from EdgeCraft patterns)
-  - [ ] React App (Vite + TypeScript)
-  - [ ] Python Service (FastAPI or similar)
-- [ ] All community files generated:
-  - [ ] LICENSE (user-selectable)
-  - [ ] README.md (with project info)
-  - [ ] CONTRIBUTING.md
-  - [ ] CODE_OF_CONDUCT.md
-  - [ ] SECURITY.md
-  - [ ] CHANGELOG.md
-  - [ ] .gitignore (language-appropriate)
-- [ ] Configuration files generated:
-  - [ ] .editorconfig
-  - [ ] ESLint config (for TS/JS projects)
-  - [ ] Prettier config (for TS/JS projects)
-- [ ] GitHub templates generated:
-  - [ ] Issue templates (bug, feature)
-  - [ ] PR template
-  - [ ] GitHub Actions workflow (CI)
-- [ ] Post-generation actions:
-  - [ ] Git init optional
-  - [ ] Dependency installation optional
-  - [ ] Initial commit optional
-
-### Quality Standards
-- [ ] TypeScript strict mode passes with 0 errors
-- [ ] ESLint passes with 0 warnings
-- [ ] Prettier formatting applied
-- [ ] Test coverage > 70%
-- [ ] All public APIs have JSDoc comments
-- [ ] No `any` types (except where absolutely necessary)
-
-### Testing
-- [ ] Unit tests for:
-  - [ ] Template engine
-  - [ ] File generator
-  - [ ] CLI argument parser
-  - [ ] Each template
-- [ ] Integration tests for:
-  - [ ] Full project generation flow
-  - [ ] Generated project validity (can build/run)
-- [ ] E2E tests for:
-  - [ ] Interactive mode (simulated user input)
-  - [ ] Non-interactive mode (all templates)
-
-### Documentation
-- [ ] README.md complete with:
-  - [ ] Installation instructions
-  - [ ] Usage examples (interactive & non-interactive)
-  - [ ] Supported templates list
-  - [ ] Configuration options
-  - [ ] Contributing guide link
-  - [ ] License badge
-  - [ ] Donation links (GitHub Sponsors, etc.)
-- [ ] CLAUDE.md created with:
-  - [ ] Development guidelines
-  - [ ] Architecture explanation
-  - [ ] PRP workflow instructions
-  - [ ] Template creation guide
-- [ ] CONTRIBUTING.md with:
-  - [ ] How to add new templates
-  - [ ] Code style guide
-  - [ ] Testing requirements
-  - [ ] PR process
-- [ ] CHANGELOG.md started with v0.1.0 entry
-
-### Deployment
-- [ ] Package published to npm: `@dcversus/prp`
-- [ ] GitHub releases created with changelog
-- [ ] Docker image published (optional for v0.1.0)
-- [ ] Website deployed (optional for v0.1.0)
-
-### Marketing & Community
-- [ ] GitHub repository is public
-- [ ] README has compelling description and examples
-- [ ] Donation links configured (GitHub Sponsors)
-- [ ] License clearly stated (MIT)
-- [ ] Twitter/social media announcement drafted (optional)
-- [ ] Post to Reddit r/programming, r/node (optional)
-- [ ] Post to Hacker News "Show HN" (optional)
-
----
-
-## 🏗️ Implementation Breakdown
-
-### Sprint 1: Foundation (Week 1)
-
-#### Day 1-2: Project Setup & Core Architecture
-**Tasks:**
-- [ ] Create repository structure:
-  ```
-  prp/
-  ├── src/
-  │   ├── cli.ts           # Commander.js entry point
-  │   ├── index.ts         # Public API
-  │   ├── types.ts         # TypeScript types
-  │   ├── ui/              # Ink components
-  │   ├── generators/      # Template generators
-  │   ├── templates/       # Template files
-  │   ├── ai/              # AI integration (optional)
-  │   └── utils/           # Helper functions
-  ├── tests/
-  ├── PRPs/
-  ├── .github/workflows/
-  ├── package.json
-  ├── tsconfig.json
-  ├── .eslintrc.json
-  ├── .prettierrc.json
-  └── README.md
-  ```
-- [ ] Configure TypeScript with strict mode
-- [ ] Configure ESLint + Prettier (from EdgeCraft patterns)
-- [ ] Configure Jest (from EdgeCraft patterns)
-- [ ] Create types.ts with core interfaces:
-  ```typescript
-  interface ProjectOptions {
-    name: string;
-    description: string;
-    author: string;
-    email: string;
-    template: Template;
-    license: LicenseType;
-    includeCodeOfConduct: boolean;
-    includeContributing: boolean;
-    // ... more options
-  }
-
-  type Template = 'none' | 'react' | 'nestjs' | 'fastapi' | 'typescript-lib';
-  type LicenseType = 'MIT' | 'Apache-2.0' | 'GPL-3.0' | // ...
-  ```
-
-**Acceptance:**
-- Project builds with `npm run build`
-- Tests run with `npm test`
-- Linting passes with `npm run lint`
-
-#### Day 3-4: CLI Framework & Basic Flow
-**Tasks:**
-- [ ] Implement Commander.js setup in cli.ts
-  ```typescript
-  program
-    .name('prp')
-    .description('Interactive Project Bootstrap CLI')
-    .version('0.1.0')
-    .option('-n, --name <name>', 'project name')
-    .option('-t, --template <template>', 'project template')
-    .option('--no-interactive', 'non-interactive mode')
-    // ... more options
-  ```
-- [ ] Create basic Ink UI components:
-  - [ ] Welcome screen
-  - [ ] Checkbox list for features
-  - [ ] Text input for metadata
-  - [ ] Progress indicator
-  - [ ] Success/error messages
-- [ ] Implement non-interactive mode (CLI flags only)
-- [ ] Add option validation
-
-**Acceptance:**
-- `prp --help` shows usage
-- `prp --name test --template none --no-interactive` runs
-- Interactive mode shows welcome screen
-
-### Sprint 2: Template Engine (Week 2)
-
-#### Day 1-2: Template Engine Core
-**Tasks:**
-- [ ] Research and choose template engine (Handlebars recommended)
-- [ ] Create template engine wrapper:
-  ```typescript
-  class TemplateEngine {
-    render(template: string, context: ProjectOptions): string
-    renderFile(path: string, context: ProjectOptions): Promise<string>
-    registerHelper(name: string, fn: Function): void
-  }
-  ```
-- [ ] Implement file generator:
-  ```typescript
-  interface FileToGenerate {
-    path: string;
-    content: string;
-    executable?: boolean;
-  }
-
-  class FileGenerator {
-    async generateFiles(files: FileToGenerate[], targetPath: string): Promise<void>
-  }
-  ```
-- [ ] Add conditional file inclusion logic
-- [ ] Handle binary files (copy vs template)
-
-**Acceptance:**
-- Template engine renders simple template
-- File generator writes files to disk
-- Conditional logic works (if X then include Y)
-
-#### Day 3-4: Common Templates
-**Tasks:**
-- [ ] Create LICENSE templates (MIT, Apache-2.0, GPL-3.0, BSD-3-Clause)
-- [ ] Create README.md template:
-  ```handlebars
-  # {{projectName}}
-
-  {{description}}
-
-  ## Installation
-
-  ```bash
-  npm install {{projectName}}
-  ```
-
-  ## Usage
-
-  {{#if hasExamples}}
-  {{examples}}
-  {{/if}}
-
-  ## License
-
-  {{license}}
-  ```
-- [ ] Create CONTRIBUTING.md template (from EdgeCraft/dcmaidbot)
-- [ ] Create CODE_OF_CONDUCT.md (Contributor Covenant)
-- [ ] Create SECURITY.md template
-- [ ] Create CHANGELOG.md template
-- [ ] Create .gitignore templates (per language)
-- [ ] Create .editorconfig template
-
-**Acceptance:**
-- All common files generate with correct content
-- Variables are replaced correctly
-- Files validate against specifications
-
-### Sprint 3: Framework Templates (Week 3)
-
-#### Day 1: TypeScript Library Template
-**Tasks:**
-- [ ] Study EdgeCraft structure for TypeScript best practices
-- [ ] Create `src/templates/typescript-lib/` directory
-- [ ] Create package.json template
-- [ ] Create tsconfig.json template
-- [ ] Create src/ structure
-- [ ] Create tests/ structure
-- [ ] Create build scripts
-
-**Reference**: EdgeCraft's package.json, tsconfig.json, project structure
-
-**Acceptance:**
-- Generated project builds with `npm run build`
-- Generated project passes linting
-- Generated tests run
-
-#### Day 2: React App Template
-**Tasks:**
-- [ ] Study EdgeCraft React+Vite setup
-- [ ] Create `src/templates/react/` directory
-- [ ] Create Vite configuration
-- [ ] Create React component structure
-- [ ] Create routing setup (React Router)
-- [ ] Create testing setup (React Testing Library)
-- [ ] Create build scripts
-
-**Reference**: EdgeCraft's Vite config, React structure, testing patterns
-
-**Acceptance:**
-- Generated project runs with `npm run dev`
-- Generated project builds for production
-- Generated tests pass
-
-#### Day 3: Python/FastAPI Template
-**Tasks:**
-- [ ] Study dcmaidbot structure for Python best practices
-- [ ] Create `src/templates/fastapi/` directory
-- [ ] Create requirements.txt / pyproject.toml template
-- [ ] Create FastAPI app structure:
-  ```
-  app/
-  ├── main.py
-  ├── models/
-  ├── services/
-  ├── routers/
-  └── tests/
-  ```
-- [ ] Create pytest configuration
-- [ ] Create Dockerfile (optional)
-
-**Reference**: dcmaidbot's structure (handlers, services, models, tests)
-
-**Acceptance:**
-- Generated project runs with `uvicorn app.main:app`
-- Generated tests pass with `pytest`
-- Python type checking passes
-
-#### Day 4: NestJS Template (if time permits)
-**Tasks:**
-- [ ] Research NestJS project structure
-- [ ] Create `src/templates/nestjs/` directory
-- [ ] Create NestJS modules, controllers, services structure
-- [ ] Create testing setup
-- [ ] Create build configuration
-
-**Alternative**: Shell out to `nest new` and add community files on top
-
-**Acceptance:**
-- Generated project builds and runs
-- Tests pass
-
-### Sprint 4: GitHub Integration & Post-Generation (Week 4)
-
-#### Day 1-2: GitHub Templates & CI/CD
-**Tasks:**
-- [ ] Create issue templates:
-  - [ ] Bug report (`.github/ISSUE_TEMPLATE/bug_report.md`)
-  - [ ] Feature request (`.github/ISSUE_TEMPLATE/feature_request.md`)
-- [ ] Create PR template (`.github/PULL_REQUEST_TEMPLATE.md`)
-- [ ] Create GitHub Actions CI workflow:
-  ```yaml
-  name: CI
-  on: [push, pull_request]
-  jobs:
-    test:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
-        - uses: actions/setup-node@v4
-        # ... test, lint, build
-  ```
-- [ ] Make workflows template-specific (Node vs Python vs etc.)
-
-**Reference**: EdgeCraft's `.github/workflows/ci.yml`, dcmaidbot's workflows
-
-**Acceptance:**
-- Generated workflows are valid YAML
-- Workflows run successfully on fresh project
-
-#### Day 3-4: Post-Generation Actions
-**Tasks:**
-- [ ] Implement git initialization:
-  ```typescript
-  async function initGit(targetPath: string, makeInitialCommit: boolean): Promise<void> {
-    await execAsync('git init', { cwd: targetPath });
-    if (makeInitialCommit) {
-      await execAsync('git add .', { cwd: targetPath });
-      await execAsync('git commit -m "Initial commit"', { cwd: targetPath });
-    }
-  }
-  ```
-- [ ] Implement dependency installation:
-  ```typescript
-  async function installDependencies(
-    targetPath: string,
-    packageManager: 'npm' | 'yarn' | 'pnpm',
-    framework: Template
-  ): Promise<void>
-  ```
-- [ ] Add progress indicators for long-running tasks
-- [ ] Add error handling and rollback on failure
-- [ ] Add success message with next steps:
-  ```
-  ✅ Project created successfully!
-
-  Next steps:
-    cd my-project
-    npm install
-    npm run dev
-
-  Happy coding! 🚀
-  ```
-
-**Acceptance:**
-- Git initializes correctly
-- Dependencies install successfully
-- Error handling works (graceful failure)
-
-### Sprint 5: AI Integration (Optional) (Week 5)
-
-#### Day 1-2: AI Provider Integration
-**Tasks:**
-- [ ] Create AI module architecture:
-  ```typescript
-  interface AIProvider {
-    generateCode(prompt: string, context: ProjectOptions): Promise<string>
-    generateDocumentation(context: ProjectOptions): Promise<string>
-  }
-
-  class OpenAIProvider implements AIProvider { /* ... */ }
-  class AnthropicProvider implements AIProvider { /* ... */ }
-  class GoogleProvider implements AIProvider { /* ... */ }
-  ```
-- [ ] Implement OpenAI integration:
-  - [ ] API key detection (env var or config file)
-  - [ ] Prompt engineering for code generation
-  - [ ] Error handling (rate limits, API errors)
-  - [ ] Fallback to non-AI mode
-- [ ] Add AI toggle in interactive mode
-- [ ] Add `--ai-provider <provider>` CLI flag
-
-**Acceptance:**
-- AI generates reasonable code given project description
-- Gracefully handles missing API keys
-- Doesn't break project generation if AI fails
-
-#### Day 3-4: AI-Enhanced Generation
-**Tasks:**
-- [ ] AI-generated README sections:
-  - [ ] Enhanced project description
-  - [ ] Usage examples
-  - [ ] API documentation outline
-- [ ] AI-generated starter code:
-  - [ ] Example component/service
-  - [ ] Example test
-  - [ ] TODO comments for next steps
-- [ ] Clearly label AI-generated content:
-  ```typescript
-  // ⚠️ This code was generated by AI based on your project description.
-  // Please review and modify as needed.
-  ```
-
-**Acceptance:**
-- AI-generated content is clearly labeled
-- Content quality is reasonable (not perfect)
-- Users can easily identify and modify AI code
-
-### Sprint 6: Polish, Testing & Documentation (Week 6)
-
-#### Day 1-2: Comprehensive Testing
-**Tasks:**
-- [ ] Unit tests for all modules (target >70% coverage)
-- [ ] Integration tests for each template
-- [ ] E2E tests simulating full user flows
-- [ ] Test generated projects actually work:
-  - [ ] Build succeeds
-  - [ ] Tests pass
-  - [ ] Dev server runs
-- [ ] Test edge cases:
-  - [ ] Invalid project names
-  - [ ] Missing required options
-  - [ ] Filesystem errors (permissions, disk full)
-  - [ ] Network errors (AI API down)
-
-**Acceptance:**
-- `npm test` passes with >70% coverage
-- All templates generate valid, working projects
-- Edge cases handled gracefully
-
-#### Day 3: Documentation
-**Tasks:**
-- [ ] Complete README.md:
-  - [ ] Compelling description
-  - [ ] GIF/screenshot of interactive mode
-  - [ ] Installation instructions
-  - [ ] Usage examples (multiple templates)
-  - [ ] Configuration options table
-  - [ ] Template list with descriptions
-  - [ ] Contributing section
-  - [ ] Donation links
-- [ ] Create CLAUDE.md:
-  - [ ] Project architecture
-  - [ ] Development guidelines
-  - [ ] Template creation guide
-  - [ ] PRP workflow instructions
-- [ ] Update CONTRIBUTING.md
-- [ ] Create CHANGELOG.md with v0.1.0 entry
-
-**Acceptance:**
-- Documentation is complete and clear
-- New contributors can add templates
-- Users can use tool without reading code
-
-#### Day 4: Publishing & Launch
-**Tasks:**
-- [ ] Publish to npm: `npm publish --access public`
-- [ ] Create GitHub release with:
-  - [ ] Version tag (v0.1.0)
-  - [ ] Changelog from CHANGELOG.md
-  - [ ] Binary assets (if applicable)
-- [ ] Set up GitHub Sponsors page
-- [ ] Write launch announcement:
-  - [ ] Twitter/X thread
-  - [ ] Reddit post (r/programming, r/node)
-  - [ ] Hacker News "Show HN"
-  - [ ] Dev.to article
-- [ ] Monitor initial feedback and bug reports
-
-**Acceptance:**
-- `npm install -g @dcversus/prp` works
-- GitHub release is created
-- Donation links are live
-- Launch announcement posted
-
----
-
-## 📊 Success Criteria
-
-### Quantitative Metrics
-
-**v0.1.0 Launch (6 weeks after start):**
-- [ ] ≥ 3 templates working (TypeScript, React, Python)
-- [ ] ≥ 70% test coverage
-- [ ] ≥ 100 GitHub stars in first month
-- [ ] ≥ 500 npm downloads in first month
-- [ ] 0 critical bugs in generated projects
-
-**v0.2.0 (3 months):**
-- [ ] ≥ 5 templates working
-- [ ] ≥ 1000 npm downloads/month
-- [ ] ≥ 5 community-contributed templates
-- [ ] AI integration stable and useful
-
-**v1.0.0 (6 months):**
-- [ ] ≥ 10 templates working
-- [ ] ≥ 10,000 npm downloads/month
-- [ ] ≥ 1000 GitHub stars
-- [ ] ≥ $100/month in donations
-- [ ] Used in production by ≥ 10 teams
-
-### Qualitative Metrics
-
-**User Satisfaction:**
-- [ ] "I saved 30+ minutes on project setup" feedback
-- [ ] "Beautiful CLI experience" comments
-- [ ] "Generated project just works" testimonials
-- [ ] "Better than [competitor]" comparisons
-
-**Code Quality:**
-- [ ] No `any` types in codebase (with exceptions documented)
-- [ ] All public APIs documented
-- [ ] Codebase maintainable by external contributors
-- [ ] Generated projects pass linters without changes
-
-**Community Health:**
-- [ ] ≥ 5 external contributors
-- [ ] ≥ 10 community templates shared
-- [ ] Active discussions in GitHub Discussions
-- [ ] Positive sentiment in social media mentions
-
----
-
-## 🙋 Questions for User (dcversus)
-
-**Please answer these questions so work can proceed autonomously:**
-
-### 1. **Scope & Priorities** (CRITICAL)
-
-**Q1.1**: Which 3 templates should be **highest priority** for v0.1.0?
-- [x] **Option A: TypeScript Library, React App, Python/FastAPI Service** ✅
-- [ ] Option B: TypeScript Library, React App, NestJS Service
-- [ ] Option C: React App, NestJS Service, Python/FastAPI Service
-- [ ] Option D: Other (please specify): ___________
-
-**Decision**: Option A chosen to cover both dcmaidbot (Python) and EdgeCraft (TypeScript/React) reference patterns.
-
-**Q1.2**: Should we include **AI integration** in v0.1.0, or defer to v0.2.0?
-- [ ] Include in v0.1.0 (adds 1-2 weeks)
-- [x] **Defer to v0.2.0 (ship faster)** ✅
-- [ ] Make it optional/experimental in v0.1.0
-
-**Decision**: Defer to v0.2.0 to ship core functionality faster. Focus on quality templates first.
-
-**Q1.3**: Should we shell out to official framework CLIs (e.g., `nest new`, `create-vite`) or build our own templates?
-- [ ] Shell out (faster, always up-to-date, but less control)
-- [x] **Own templates (more control, offline-friendly, but more maintenance)** ✅
-- [ ] Hybrid: Own templates + optional "use official CLI" flag
-
-**Decision**: Own templates for complete control and offline capability. Can add hybrid approach in future.
-
-### 2. **Technology Choices** (HIGH PRIORITY)
-
-**Q2.1**: CLI Framework - Commander.js vs Oclif?
-- [x] **Commander.js (simpler, single command use case)** ✅
-- [ ] Oclif (more features, subcommands, plugins)
-
-**Decision**: Commander.js is simpler and sufficient for single command use case.
-
-**Q2.2**: Template Engine - Handlebars vs EJS vs Mustache?
-- [x] **Handlebars (most popular, powerful)** ✅
-- [ ] EJS (JavaScript-native, flexible)
-- [ ] Mustache (simple, logic-less)
-- [ ] Other: ___________
-
-**Decision**: Handlebars provides good balance of power and simplicity with wide adoption.
-
-**Q2.3**: TUI Framework - Ink vs Inquirer.js vs Prompts?
-- [x] **Ink (React-based, modern, but heavier)** ✅
-- [ ] Inquirer.js (battle-tested, mature)
-- [ ] Prompts (lightweight, simple)
-- [ ] Clack (new, beautiful, inspired by Rust)
-
-**Decision**: Ink provides beautiful modern UI and we're already using React patterns in reference projects.
-
-### 3. **Community & Monetization** (MEDIUM PRIORITY)
-
-**Q3.1**: Donation platform preference?
-- [x] **GitHub Sponsors (recommended for open source)** ✅
-- [ ] Open Collective (more transparent)
-- [ ] Ko-fi / Buy Me a Coffee (simpler)
-- [ ] Multiple (all of the above)
-
-**Decision**: GitHub Sponsors integrates well with GitHub ecosystem.
-
-**Q3.2**: Should we offer a **paid tier** or **SaaS version** in future?
-- [ ] Yes, web version with paid features (template marketplace, AI credits, etc.)
-- [ ] No, always 100% free and open source
-- [x] **Maybe, decide after v1.0 based on traction** ✅
-
-**Decision**: Focus on free/open-source first, evaluate paid options based on community feedback.
-
-**Q3.3**: Contributor License Agreement (CLA) requirement?
-- [ ] Yes, require CLA for contributions (like big projects)
-- [x] **No, MIT license is enough** ✅
-- [ ] Only for large contributions (>100 lines)
-
-**Decision**: Keep contribution barrier low, MIT license is sufficient for open source.
-
-### 4. **Distribution & Packaging** (MEDIUM PRIORITY)
-
-**Q4.1**: Should we publish a **Docker image** in v0.1.0?
-- [ ] Yes (helps users without Node.js installed)
-- [x] **No, defer to v0.2.0 (npm is enough for now)** ✅
-
-**Decision**: Focus on core functionality first, add Docker in future release.
-
-**Q4.2**: Should we publish **standalone binaries** (pkg, ncc)?
-- [ ] Yes (no Node.js required, but large file size)
-- [x] **No (npm global install is standard for Node CLIs)** ✅
-
-**Decision**: npm global install is the standard distribution method for Node CLIs.
-
-**Q4.3**: Website for the project?
-- [ ] Yes, build simple website (docs, examples, playground)
-- [x] **No, GitHub README is enough for v0.1.0** ✅
-- [ ] Maybe later, focus on CLI first
-
-**Decision**: GitHub README provides sufficient documentation for initial release.
-
-### 5. **References & Integration** (CRITICAL)
-
-**Q5.1**: Template structure - how closely should we follow dcmaidbot and EdgeCraft?
-- [ ] Exact copy (minimal changes, preserve conventions)
-- [x] **Inspired by (take best ideas, adapt for general use)** ✅
-- [ ] Custom (build from scratch using research)
-
-**Decision**: Take best practices from both projects but adapt for broader use cases.
-
-**Q5.2**: Should generated projects include **PRPs/ directory** by default?
-- [ ] Yes, with PRP-001 template and this PRP format
-- [x] **Optional (checkbox in interactive mode)** ✅
-- [ ] No, that's too opinionated
-
-**Decision**: Make it optional to avoid forcing methodology, but encourage best practices.
-
-**Q5.3**: Should generated projects include **CLAUDE.md** by default?
-- [ ] Yes, encourage context-driven development
-- [x] **Optional (checkbox in interactive mode)** ✅
-- [ ] No, that's specific to AI-assisted development
-
-**Decision**: Make it optional, users can choose if they want AI development guidance.
-
-### 6. **Licensing & Legal** (HIGH PRIORITY)
-
-**Q6.1**: Confirm main license for `prp` CLI?
-- [x] **MIT (permissive, standard for CLI tools)** ✅
-- [ ] Apache-2.0 (permissive with patent grant)
-- [ ] GNU AGPL-3.0 (copyleft, like dcmaidbot)
-
-**Decision**: MIT is the standard for CLI tools and most permissive.
-
-**Q6.2**: Generated projects - force license choice or allow "none"?
-- [x] **Force license choice (best practice for open source)** ✅
-- [ ] Allow "none" (let users decide later)
-- [ ] Default to MIT but allow skipping
-
-**Decision**: Encourage best practices by requiring license selection for proper open source setup.
-
-**Q6.3**: Should we include **CLA template** in generated projects?
-- [ ] Yes (from Telefónica opensource-scaffold)
-- [x] **Optional (checkbox for "enterprise-ready" setup)** ✅
-- [ ] No (too heavy for most projects)
-
-**Decision**: Make CLA optional for users who need enterprise-grade contribution management.
-
----
-
-## 📈 Progress Tracking
-
-### Research Phase (Weeks 1-2)
-- [ ] 🔍 Competitive analysis complete
-- [ ] 🔍 Framework conventions documented
-- [ ] 🔍 AI integration strategy defined
-- [ ] 🔍 Technology decisions finalized
-- [ ] 🔍 dcmaidbot patterns extracted
-- [ ] 🔍 EdgeCraft patterns extracted
-- [ ] 🔍 Community files templates created
-- [ ] ✅ DoR checklist complete
-
-### Implementation Phase (Weeks 3-6)
-- [ ] ⚙️ Sprint 1: Foundation complete
-- [ ] ⚙️ Sprint 2: Template engine complete
-- [ ] ⚙️ Sprint 3: Framework templates complete
-- [ ] ⚙️ Sprint 4: GitHub integration complete
-- [ ] ⚙️ Sprint 5: AI integration complete (optional)
-- [ ] ⚙️ Sprint 6: Polish & testing complete
-
-### Launch Phase (Week 6-7)
-- [ ] 📦 Published to npm
-- [ ] 🎉 GitHub release created
-- [ ] 💰 Donations configured
-- [ ] 📢 Launch announcement posted
-- [ ] ✅ DoD checklist complete
-
----
-
-## 🎊 Celebration & Next Steps
-
-Once this PRP is complete, we will have:
-
-1. **A working product** - `prp` CLI that developers can use immediately
-2. **A foundation** - Architecture for adding more templates and features
-3. **A community** - Open-source project accepting contributions
-4. **A business model** - Donations to sustain development
-5. **A methodology** - Context-driven development proven in real project
-
-**Next PRPs** (future work):
-- **PRP-002**: Web-based version of prp (browser playground)
-- **PRP-003**: Template marketplace (community template discovery)
-- **PRP-004**: Advanced AI features (multi-file generation, architecture suggestions)
-- **PRP-005**: IDE integrations (VS Code extension, JetBrains plugin)
-- **PRP-006**: Pro features (team templates, private template registries)
-
----
-
-## 📚 References & Resources
-
-### Documentation
-- [Ink (React for CLIs)](https://github.com/vadimdemedes/ink)
-- [Commander.js](https://github.com/tj/commander.js)
-- [Oclif](https://oclif.io/)
-- [Handlebars](https://handlebarsjs.com/)
-- [Yeoman](https://yeoman.io/)
-- [Cookiecutter](https://github.com/cookiecutter/cookiecutter)
-- [Keep a Changelog](https://keepachangelog.com/)
-- [Contributor Covenant](https://www.contributor-covenant.org/)
-
-### Inspiration Projects
-- **dcmaidbot** (`../dcmaidbot/`) - Python service structure, PRP workflow
-- **EdgeCraft** (`../EdgeCraft/`) - TypeScript/React structure, testing patterns
-- [Telefónica opensource-scaffold](https://github.com/Telefonica/opensource-scaffold) - Community files
-- [Node-Genie](https://github.com/Balastrong/node-genie) - Modern CLI UX
-- [TiLoKit](https://github.com/Schrodinger-Hat/tilokit) - Multi-framework approach
-- [GPT-Engineer](https://github.com/AntonOsika/gpt-engineer) - AI code generation
-
-### Articles & Discussions
-- [Reddit: Node.js project scaffolding](https://www.reddit.com/r/node/comments/example)
-- [Phil Nash: Project setup automation](https://philna.sh/blog/2019/01/10/how-to-start-a-node-js-project/)
-- [OpenAI: Using Codex for scaffolding](https://platform.openai.com/docs/)
-
----
-
-## 💭 Implementation Notes & Learnings
-
-_This section will be updated during implementation with discoveries, blockers, and decisions._
-
-### 🎉 Milestones
-- **2025-10-28 06:00**: PRP created, research phase started
-- **2025-10-28 09:30**: v0.2.0 released - PRP methodology and signal system
-- **2025-10-28 14:00**: v0.3.0 released - Wiki.js template and orchestrator autonomy
-
-### 🚧 Blockers
-_None - All blockers resolved_
-
-### 💡 Key Decisions
-- TypeScript + Ink for beautiful CLI UX
-- Flat PRP structure (no subdirectories)
-- 14-signal emotional system for orchestration
-- Autonomous AI orchestrator (no human approval needed)
-- Wiki.js template for non-developer documentation
-
----
-
-## 📡 Progress Log
-
-| Role | DateTime | Comment | Signal |
-|------|----------|---------|--------|
-| System Analyst | 2025-10-28 06:00 | PRP-001 created. Research phase started. | 🔴 ATTENTION (10) |
-| Developer | 2025-10-28 09:30 | v0.2.0 released to npm. PRP methodology, signal system, 5 templates (fastapi, nestjs, react, typescript-lib, none). | ✅ CONFIDENT (3) |
-| Orchestrator | 2025-10-28 14:00 | **v0.3.0 RELEASED!** Published to npm and GitHub. Added Wiki.js template (20 starter articles, Docker Compose, Authentik SSO). Implemented orchestrator autonomy protocol (300+ lines AGENTS.md). Created PRP-009 specification. All validation passing: typecheck ✓, lint ✓, 18/18 tests ✓. **OUTCOME:** PRP methodology fully operational with autonomous orchestration. **LINKS:** [npm package](https://www.npmjs.com/package/@dcversus/prp/v/0.3.0), [GitHub release](https://github.com/dcversus/prp/releases/tag/v0.3.0). | 🎯 VALIDATED (2) |
-| Orchestrator | 2025-10-28 17:55 | **v0.4.1 RELEASED!** Published to npm and GitHub. Completed all 13 stub Wiki.js articles (~6,894 lines added). User verified stubs, requested completion. Created PRP-010, launched 8 parallel sub-agents for article completion. All articles now comprehensive with fact-check sections and Tier 1 sources. Template production-ready. All validation passing: typecheck ✓, lint ✓, 18/18 tests ✓. **OUTCOME:** Wiki.js template fully complete and production-ready. **STATS:** 13 articles (228-835 lines each), 12 academic papers, 67+ curated resources. **LINKS:** [npm package](https://www.npmjs.com/package/@dcversus/prp/v/0.4.1), [GitHub release](https://github.com/dcversus/prp/releases/tag/v0.4.1), [PRP-010](PRP-010-wikijs-articles-completed.md). | 🎆 COMPLETED (1) |
-
----
-
-**Last Updated**: 2025-10-28 17:55
-**Status**: 🎆 COMPLETED - v0.4.1 Released
-**Next Review**: After user feedback or new feature requests
+# PRP-001: CLI Bootstrap System - Initialization, Debug, and CI Implementation
+
+> Build comprehensive CLI bootstrap system with initialization wizard, debug modes, CI/CD pipeline validation, development workflow automation, package management, and complete infrastructure for project scaffolding and orchestration
+
+## progress
+[gg] Goal Clarification - Consolidating all CLI/debug/CI requirements from agents05.md and tui-implementation.md into comprehensive bootstrap PRP for CLI implementation | Robo-System-Analyst | 2025-11-03-22:00
+[rp] Ready for Preparation - CLI bootstrap system PRP consolidation complete with all requirements, user quotes, specifications, and comprehensive 12-phase implementation plan | Robo-System-Analyst | 2025-11-03-22:15
+[dp] Development Progress - Comprehensive CLI documentation structure completed with reference guides, CI/CD documentation, configuration reference, workflow guides, and API documentation | Robo-Developer | 2025-11-03-22:45
+[dp] Development Progress - Core CLI foundation implemented with TypeScript types, Logger utility, ErrorHandler, ConfigurationManager, and PRPCli core class providing robust CLI infrastructure | Robo-Developer | 2025-11-03-23:00
+[tp] Tests Prepared - Initialization wizard framework completed with interactive prompts, project template support, existing project detection, and comprehensive project scaffolding capabilities | Robo-Developer | 2025-11-03-23:15
+[dp] Development Progress - Successfully implemented and tested npm run dev functionality with working PRP orchestrator start in debug mode. Fixed fs-extra import syntax, ES module __dirname issues, and tool registration conflicts. All three core agents (Scanner, Inspector, Orchestrator) now start successfully with debug logging and demonstration signals. | Robo-Developer | 2025-11-03-01:30
+
+## dod
+- [ ] CLI initialization system with comprehensive wizard for new and existing projects
+- [ ] Debug mode implementation with CI-like console output and orchestrator integration
+- [ ] Complete CI/CD pipeline validation and management system
+- [ ] Development workflow automation with pre-commit hooks and validation
+- [ ] Package management system with npm, configuration files, and dependency handling
+- [ ] Build system integration with compilation, bundling, and optimization
+- [ ] Testing infrastructure with unit, integration, and E2E test automation
+- [ ] Node.js debugging infrastructure with MCP integration
+- [ ] Python debugging infrastructure and validation
+- [ ] Token accounting and cost calculation system
+- [ ] Project description input and management system
+- [ ] Code style enforcement with linting and formatting
+- [ ] Pre-checks and validation for all operations
+- [ ] Changelog enforcement and documentation management
+- [ ] Quality gate system with scanning, data preparation, and decision making
+- [ ] Incident flow and post-mortem analysis system
+- [ ] Shared context window across all PRPs with status tracking
+- [ ] GitHub API integration for PR and CI operations
+
+## dor
+- [ ] All CLI/debug/CI requirements extracted from agents05.md and consolidated
+- [ ] User quotes and detailed specifications analyzed
+- [ ] Technical architecture and component structure defined
+- [ ] Implementation plan broken down into manageable phases
+- [ ] Dependencies and integration points identified
+- [ ] Performance targets and quality criteria established
+
+## pre-release checklist
+- [ ] CLI commands work across all platforms (macOS, Linux, Windows)
+- [ ] Debug mode provides comprehensive logging and error reporting
+- [ ] CI/CD pipeline validates all aspects of the development workflow
+- [ ] Initialization wizard handles all project types and configurations
+- [ ] Package management integrates seamlessly with npm/yarn/pnpm
+- [ ] Build system produces optimized, production-ready artifacts
+- [ ] Testing infrastructure validates all functionality
+- [ ] Debugging tools work for Node.js and Python environments
+- [ ] Token accounting provides accurate cost tracking
+- [ ] Documentation is complete with user guides and examples
+
+## post-release checklist
+- [ ] User feedback collected and analyzed for CLI experience
+- [ ] Performance metrics monitored for initialization and build times
+- [ ] Debug mode effectiveness evaluated and improvements made
+- [ ] CI/CD pipeline reliability tracked and optimized
+- [ ] Documentation updated based on user questions and issues
+
+## main goal for CLI bootstrap system
+Create a comprehensive CLI bootstrap system that transforms project initialization, debugging, and CI/CD management into an efficient, automated, and delightful developer experience. The system should provide complete infrastructure for scaffolding projects, managing development workflows, handling debugging scenarios, and ensuring quality through automated validation and testing.
+
+## key user requirements & quotes
+
+### CLI & CI Mode Requirements
+> "cli / ci mode - Ensure complete CLI coverage of all features for CI environments and validation checks (TUI features covered in PRPs/tui-implementation.md)"
+
+### Initialization Wizard Requirements
+> "init wizard - Build comprehensive wizard supporting both new and existing projects, governance file upgrades, agent setup (TUI wizard specifications in PRPs/tui-implementation.md)"
+
+### Debug Mode Requirements
+> "debug mode (ci-like output to console with option to send message to orchestrator CTRL+D switch interface)"
+> "debug mode (Ctrl+d/--debug) show all as logs with console to orchestrator instead interface"
+
+### Node.js Debugging Requirements
+> "node debug (need setup all infra and tools including mcp to enable all debuger, same to browser and python, we need always setup and ensure all dedug tools in place and worked well)"
+
+### Python Debugging Requirements
+> "python debug"
+
+### Quality Gate Requirements
+> "quality gate flow (how to scan, how to prepare data, how to decidion making and resolve, write for each case from dcmaidbot judge prompt section and implement exact guidelines and new signals to agents.md included to enable llm-judge and e2e self-verification flow in all possible configurations)"
+
+### CI/CD Workflow Requirements
+> "CI/CD workflows setup/validate (should all be setuped, worked and be meaningness to current project state, what we enable claude code cloud review or coderabbit, if no, need ask user to install and setup it)"
+
+### Shared Context Requirements
+> "shared context window (across all prp we working on, with additional tool to report prp status, should be preserved in format as what current working on / blockes / whats next, for each prp and if there incedent, should contain incident log too, until resolved) THIS SHOULD BE DISPLAYED in debug and info screens"
+
+### Token Accounting Requirements
+> "token accounting and cost calculation system with configuration options"
+
+### GitHub Integration Requirements
+> "github api tools, we already ask for github auth during init, now we should using github sdk create tools for working with PR and CI, should be researched and then prepared as checklist of tools"
+
+## what we done before 1,2,3
+1. **PRP Analysis Complete** - Extracted comprehensive CLI/debug/CI requirements from agents05.md including initialization wizard, debug modes, CI/CD pipeline, debugging infrastructure, token accounting, and quality gates
+2. **User Requirements Identified** - Analyzed detailed user quotes and specifications for CLI coverage, debug functionality, integration patterns, and workflow automation
+3. **Technical Architecture Defined** - Established component structure for CLI initialization, debug systems, build automation, testing infrastructure, and development workflow management
+
+## consolidated CLI specifications
+
+### CLI & CI Mode Implementation
+- Complete CLI coverage for all features with CI environment validation
+- Non-interactive mode for automated CI/CD pipeline integration
+- Command-line interface for all TUI features and operations
+- Validation checks and quality gates for CI environments
+- Seamless integration between CLI and TUI modes
+
+### Initialization Wizard System
+- Comprehensive wizard for new project creation
+- Support for existing project upgrades and governance file management
+- Agent setup and configuration management
+- Project template selection and customization
+- Dependency management and package configuration
+- Git repository initialization and configuration
+- Development environment setup and validation
+
+### Debug Mode Implementation
+- CI-like console output with verbose logging
+- Debug interface with orchestrator integration (CTRL+D toggle)
+- Console logging throughout application with configurable levels
+- Debug switches and flags for all components
+- Error reporting and troubleshooting tools
+- Performance monitoring and profiling capabilities
+
+### Node.js Debugging Infrastructure
+- Complete Node.js debugging setup with MCP integration
+- Browser debugging tools and configuration
+- Debug protocol support and validation
+- Source map integration for debugging
+- Hot reload and development server debugging
+- Breakpoint management and inspection tools
+
+### Python Debugging Infrastructure
+- Python debugging environment setup
+- Virtual environment debugging support
+- Django/FastAPI application debugging
+- Test debugging and validation
+- Performance profiling for Python applications
+
+### CI/CD Pipeline Management
+- Automated CI/CD workflow validation
+- GitHub Actions workflow generation and management
+- Build pipeline configuration and optimization
+- Test automation and integration
+- Code quality validation and enforcement
+- Deployment pipeline management and monitoring
+
+### Token Accounting System
+- Token usage tracking across all AI operations
+- Cost calculation with provider-specific pricing
+- Usage limits and quota management
+- Token efficiency monitoring and optimization
+- Cost reporting and budget management
+
+### Quality Gate System
+- Automated code scanning and analysis
+- Data preparation for quality assessment
+- Decision making algorithms for quality validation
+- Resolution protocols for quality issues
+- Integration with LLM-based code review
+- E2E self-verification workflow
+
+### GitHub Integration Tools
+- GitHub SDK integration for API operations
+- Pull request creation and management
+- Issue tracking and workflow automation
+- Repository management and collaboration
+- Code review automation and integration
+
+### Shared Context System
+- Cross-PRP context window management
+- Status tracking for all active PRPs
+- Incident logging and resolution tracking
+- Blocker identification and management
+- Progress monitoring and reporting
+
+## Completed Work Summary
+
+### ✅ Comprehensive Documentation Structure
+Created complete documentation ecosystem in `/docs` folder:
+- **CLI Reference Documentation** (`/docs/cli/README.md`) - Comprehensive command reference with all options, examples, and usage patterns
+- **CLI Detailed Reference** (`/docs/cli/cli-reference.md`) - Complete API reference for all CLI commands, options, exit codes, and environment variables
+- **CI/CD Pipeline Guide** (`/docs/ci-cd/README.md`) - Detailed guide for CI/CD setup, workflows, quality gates, deployment strategies, and monitoring
+- **Configuration Reference** (`/docs/config/README.md`) - Complete .prprc configuration reference with all settings, templates, and best practices
+- **Development Workflow Guide** (`/docs/workflow/README.md`) - Comprehensive workflow documentation covering development lifecycle, testing, debugging, and collaboration
+- **API Documentation** (`/docs/api/README.md`) - Complete API reference for programmatic CLI usage with TypeScript interfaces and examples
+
+### ✅ Core CLI Foundation Implementation
+Implemented robust TypeScript-based CLI infrastructure:
+- **Type Definitions** (`/src/types/index.ts`) - Complete type system with interfaces for all CLI components, configuration, results, and events
+- **Logger Utility** (`/src/utils/logger.ts`) - Advanced logging system with multiple output modes, colors, timestamps, progress tracking, and spinner support
+- **Error Handler** (`/src/utils/error-handler.ts`) - Comprehensive error handling with custom error classes, error recovery, and user-friendly suggestions
+- **Configuration Manager** (`/src/config/manager.ts`) - Full configuration management supporting JSON/YAML formats, validation, environment variables, and schema validation
+- **Core CLI Class** (`/src/core/cli.ts`) - Main CLI engine with event system, command execution, lifecycle management, and system checks
+
+### ✅ Initialization Wizard Framework
+Built comprehensive project initialization system:
+- **Interactive Prompts** - User-friendly inquirer-based prompts with validation
+- **Project Templates** - Support for 10+ project templates (Node.js, React, Next.js, Express, Python, Django, FastAPI, Go, CLI, Library)
+- **Existing Project Detection** - Automatic detection and upgrade of existing projects
+- **Package Manager Support** - Full support for npm, yarn, and pnpm
+- **Git Integration** - Automatic Git repository initialization
+- **Configuration Generation** - Intelligent .prprc configuration generation based on project type
+- **Dependency Management** - Automatic dependency installation with proper tooling setup
+
+### Key Features Implemented
+- **Multi-format Configuration Support** - JSON, YAML, and JavaScript configuration files
+- **Environment Variable Substitution** - `${VAR:-default}` syntax with fallback values
+- **Comprehensive Validation** - JSON schema-based configuration validation
+- **Error Recovery** - Graceful error handling with actionable suggestions
+- **Event-Driven Architecture** - Extensible event system for plugins and integrations
+- **Debug Mode Foundation** - Structured logging system ready for CI-like output
+- **Quality Gate Framework** - Configuration system for linting, testing, security, and performance gates
+- **CI/CD Integration Ready** - Configuration structure for GitHub Actions, GitLab CI, and other providers
+
+## plan
+
+### Phase 1: CLI Foundation & Initialization (Week 1-2) ✅ COMPLETED
+- [x] Initialize CLI project structure with TypeScript configuration
+- [x] Set up package.json with comprehensive dependencies and scripts
+- [x] Implement CLI argument parsing and command structure
+- [x] Create initialization wizard framework with interactive prompts
+- [x] Build project template system for new project creation
+- [x] Implement existing project upgrade functionality
+- [x] Set up configuration management with .prprc support
+- [x] Create Git repository initialization and management
+- [x] Implement dependency management (npm, yarn, pnpm support)
+- [x] Set up development environment validation
+- [x] Create comprehensive error handling and user feedback
+- [x] Implement logging system with configurable levels
+- [x] Set up build system with compilation and bundling
+- [x] Create package management automation
+- [x] Implement code style enforcement with ESLint/Prettier
+- [x] Set up pre-commit hooks and validation
+
+### Phase 2: Debug Mode & Logging Infrastructure (Week 2-3)
+- [ ] Implement debug mode with CI-like console output
+- [ ] Create debug interface with orchestrator integration (CTRL+D)
+- [ ] Set up comprehensive logging throughout application
+- [ ] Implement configurable debug levels and output formats
+- [ ] Create error reporting and troubleshooting tools
+- [ ] Set up performance monitoring and profiling
+- [ ] Implement debug switches and flags for all components
+- [ ] Create debug data visualization and reporting
+- [ ] Set up debug session management and persistence
+- [ ] Implement debug mode integration with CI/CD pipelines
+- [ ] Create debug mode validation and testing
+
+### Phase 3: Node.js & Python Debugging Infrastructure (Week 3-4)
+- [ ] Set up Node.js debugging with MCP integration
+- [ ] Configure browser debugging tools and protocols
+- [ ] Implement source map integration for debugging
+- [ ] Create hot reload and development server debugging
+- [ ] Set up breakpoint management and inspection
+- [ ] Configure Python debugging environment
+- [ ] Implement virtual environment debugging support
+- [ ] Set up Django/FastAPI application debugging
+- [ ] Create test debugging and validation tools
+- [ ] Implement performance profiling for Python
+- [ ] Set up debugging infrastructure validation
+
+### Phase 4: CI/CD Pipeline & Quality Gates (Week 4-5)
+- [ ] Implement CI/CD pipeline validation system
+- [ ] Create GitHub Actions workflow generation
+- [ ] Set up build pipeline configuration and optimization
+- [ ] Implement test automation and integration
+- [ ] Create code quality validation and enforcement
+- [ ] Set up deployment pipeline management
+- [ ] Implement quality gate scanning and analysis
+- [ ] Create data preparation for quality assessment
+- [ ] Set up decision making algorithms for quality
+- [ ] Implement resolution protocols for quality issues
+- [ ] Create LLM-based code review integration
+- [ ] Set up E2E self-verification workflow
+
+### Phase 5: Token Accounting & Cost Management (Week 5-6)
+- [ ] Implement token usage tracking across AI operations
+- [ ] Create cost calculation with provider-specific pricing
+- [ ] Set up usage limits and quota management
+- [ ] Implement token efficiency monitoring
+- [ ] Create cost reporting and budget management
+- [ ] Set up token accounting validation and testing
+- [ ] Implement cost optimization recommendations
+- [ ] Create usage analytics and insights
+
+### Phase 6: GitHub Integration & API Tools (Week 6-7)
+- [ ] Integrate GitHub SDK for API operations
+- [ ] Implement pull request creation and management
+- [ ] Create issue tracking and workflow automation
+- [ ] Set up repository management tools
+- [ ] Implement code review automation
+- [ ] Create collaboration features and integrations
+- [ ] Set up GitHub authentication and authorization
+- [ ] Implement webhook handling and event processing
+- [ ] Create GitHub Actions integration and management
+
+### Phase 7: Shared Context & Incident Management (Week 7-8)
+- [ ] Implement cross-PRP context window management
+- [ ] Create status tracking for all active PRPs
+- [ ] Set up incident logging and resolution tracking
+- [ ] Implement blocker identification and management
+- [ ] Create progress monitoring and reporting
+- [ ] Set up context synchronization and persistence
+- [ ] Implement context validation and error handling
+- [ ] Create context visualization and reporting tools
+
+### Phase 8: Testing & Quality Assurance (Week 8-9)
+- [ ] Create comprehensive unit tests for all CLI components
+- [ ] Implement integration tests for CLI workflows
+- [ ] Set up E2E tests for complete user journeys
+- [ ] Create performance tests for CLI operations
+- [ ] Implement security tests for CLI functionality
+- [ ] Set up cross-platform compatibility testing
+- [ ] Create usability testing for CLI experience
+- [ ] Implement automated testing in CI/CD pipeline
+
+### Phase 9: Documentation & User Experience (Week 9-10)
+- [ ] Write comprehensive CLI documentation
+- [ ] Create user guides and tutorials
+- [ ] Build API documentation for CLI components
+- [ ] Create troubleshooting guides and FAQ
+- [ ] Implement help system and command documentation
+- [ ] Create video tutorials and examples
+- [ ] Set up user feedback collection and analysis
+- [ ] Implement CLI usage analytics and improvement
+
+### Phase 10: Polish, Performance & Release (Week 10-12)
+- [ ] Optimize CLI performance and startup time
+- [ ] Implement error handling and recovery mechanisms
+- [ ] Create CLI packaging and distribution
+- [ ] Set up release automation and deployment
+- [ ] Implement user onboarding and first-run experience
+- [ ] Create CLI update management and notifications
+- [ ] Set up monitoring and analytics for CLI usage
+- [ ] Prepare launch materials and community engagement
+
+## research materials
+- Complete CLI specification document (above)
+- Reference: agents05.md CLI/debug/CI requirements
+- Reference: tui-implementation.md TUI specifications
+- Reference: Node.js debugging best practices and tools
+- Reference: Python debugging infrastructure patterns
+- Reference: CI/CD pipeline design and automation
+- Reference: GitHub API integration patterns
+- Reference: Token accounting and cost management systems
+- Reference: Quality gate implementation and LLM integration
+- Reference: Shared context management architectures
+- Reference: Package management and build system optimization
+- Reference: Error handling and troubleshooting patterns
+- Reference: Performance monitoring and profiling tools
+- Reference: Security best practices for CLI applications
+- Reference: Cross-platform compatibility requirements
+- Reference: User experience design for CLI tools

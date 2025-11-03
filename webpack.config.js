@@ -1,0 +1,265 @@
+const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+const fs = require('fs-extra');
+const glob = require('glob');
+
+module.exports = (env, argv) => {
+  const isProduction = argv.mode === 'production';
+
+  return {
+    mode: isProduction ? 'production' : 'development',
+    entry: {
+      main: './src/docs/index.js',
+      // Generate entries for each MDX file
+      ...generateMDXEntries()
+    },
+    output: {
+      path: path.resolve(__dirname, 'build'),
+      filename: isProduction ? '[name].[contenthash].js' : '[name].js',
+      clean: true,
+      publicPath: '/'
+    },
+    module: {
+      rules: [
+        {
+          test: /\.mdx?$/,
+          use: [
+            {
+              loader: 'babel-loader',
+              options: {
+                presets: ['@babel/preset-env', '@babel/preset-react']
+              }
+            },
+            '@mdx-js/loader'
+          ]
+        },
+        {
+          test: /\.jsx?$/,
+          exclude: /node_modules/,
+          use: {
+            loader: 'babel-loader',
+            options: {
+              presets: ['@babel/preset-env', '@babel/preset-react']
+            }
+          }
+        },
+        {
+          test: /\.css$/,
+          use: ['style-loader', 'css-loader']
+        },
+        {
+          test: /\.(png|svg|jpg|jpeg|gif)$/i,
+          type: 'asset/resource',
+          generator: {
+            filename: 'images/[name].[hash][ext]'
+          }
+        },
+        {
+          test: /\.(woff|woff2|eot|ttf|otf)$/i,
+          type: 'asset/resource',
+          generator: {
+            filename: 'fonts/[name].[hash][ext]'
+          }
+        }
+      ]
+    },
+    plugins: [
+      // Generate HTML files for each documentation page
+      ...generateHTMLPlugins(),
+      // Copy static assets
+      new CopyWebpackPlugin({
+        patterns: [
+          { from: 'CNAME', to: 'CNAME', noErrorOnMissing: true },
+          { from: 'images', to: 'images', noErrorOnMissing: true },
+          { from: 'docs/images', to: 'images/docs', noErrorOnMissing: true },
+          { from: '*.png', to: '[name][ext]', noErrorOnMissing: true },
+          { from: '*.jpg', to: '[name][ext]', noErrorOnMissing: true },
+          { from: '*.ico', to: '[name][ext]', noErrorOnMissing: true }
+        ]
+      }),
+      // Generate search index
+      new class SearchIndexPlugin {
+        apply(compiler) {
+          compiler.hooks.done.tap('SearchIndexPlugin', () => {
+            generateSearchIndex();
+          });
+        }
+      }()
+    ],
+    resolve: {
+      extensions: ['.js', '.jsx', '.mdx', '.md'],
+      alias: {
+        '@': path.resolve(__dirname, 'src')
+      }
+    },
+    devtool: isProduction ? 'source-map' : 'eval-source-map',
+    devServer: {
+      static: {
+        directory: path.join(__dirname, 'build'),
+      },
+      compress: true,
+      port: 3000,
+      open: true,
+      historyApiFallback: true
+    }
+  };
+};
+
+function generateMDXEntries() {
+  const entries = {};
+  const mdxFiles = glob.sync('docs/**/*.mdx');
+
+  mdxFiles.forEach(file => {
+    const name = file
+      .replace(/^docs\//, '')
+      .replace(/\.mdx$/, '')
+      .replace(/\//g, '-');
+    entries[name] = `./${file}`;
+  });
+
+  return entries;
+}
+
+function generateHTMLPlugins() {
+  const plugins = [];
+
+  // Main landing page
+  plugins.push(new HtmlWebpackPlugin({
+    template: './index.html',
+    filename: 'index.html',
+    chunks: [],
+    inject: false
+  }));
+
+  // Documentation pages
+  const mdxFiles = glob.sync('docs/**/*.mdx');
+
+  mdxFiles.forEach(file => {
+    const outputPath = file
+      .replace(/^docs\//, '')
+      .replace(/\.mdx$/, '.html');
+
+    const chunkName = file
+      .replace(/^docs\//, '')
+      .replace(/\.mdx$/, '')
+      .replace(/\//g, '-');
+
+    plugins.push(new HtmlWebpackPlugin({
+      template: './src/docs/template.html',
+      filename: outputPath,
+      chunks: [chunkName, 'main'],
+      templateParameters: {
+        mdxPath: file,
+        title: generateTitle(outputPath),
+        breadcrumb: generateBreadcrumb(outputPath)
+      }
+    }));
+  });
+
+  // Generate HTML for regular markdown files
+  const mdFiles = glob.sync('docs/**/*.md');
+
+  mdFiles.forEach(file => {
+    const outputPath = file
+      .replace(/^docs\//, '')
+      .replace(/\.md$/, '.html');
+
+    plugins.push(new HtmlWebpackPlugin({
+      template: './src/docs/markdown-template.html',
+      filename: outputPath,
+      templateParameters: {
+        mdPath: file,
+        title: generateTitle(outputPath),
+        breadcrumb: generateBreadcrumb(outputPath)
+      }
+    }));
+  });
+
+  return plugins;
+}
+
+function generateTitle(outputPath) {
+  const parts = outputPath.split('/');
+  const fileName = parts[parts.length - 1].replace('.html', '');
+
+  // Convert kebab-case to title case
+  return fileName
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+function generateBreadcrumb(outputPath) {
+  const parts = outputPath.split('/');
+  const breadcrumb = [
+    { name: 'Home', url: '/' },
+    { name: 'Documentation', url: '/docs/' }
+  ];
+
+  if (parts.length > 1) {
+    let path = '/docs/';
+    for (let i = 0; i < parts.length - 1; i++) {
+      path += parts[i] + '/';
+      breadcrumb.push({
+        name: generateTitle(parts[i]),
+        url: path
+      });
+    }
+  }
+
+  // Current page
+  const currentPage = parts[parts.length - 1].replace('.html', '');
+  breadcrumb.push({
+    name: generateTitle(currentPage),
+    url: null,
+    active: true
+  });
+
+  return breadcrumb;
+}
+
+function generateSearchIndex() {
+  const searchIndex = [];
+  const buildDir = path.resolve(__dirname, 'build');
+
+  // Index all HTML files
+  const htmlFiles = glob.sync(path.join(buildDir, '**/*.html'));
+
+  htmlFiles.forEach(file => {
+    const content = fs.readFileSync(file, 'utf8');
+    const relativePath = path.relative(buildDir, file);
+
+    // Extract title and description
+    const titleMatch = content.match(/<title>(.*?)<\/title>/);
+    const h1Match = content.match(/<h1[^>]*>(.*?)<\/h1>/);
+    const title = titleMatch?.[1] || h1Match?.[1] || 'Untitled';
+
+    // Extract meta description
+    const descMatch = content.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["']/);
+    const description = descMatch?.[1] || '';
+
+    // Strip HTML tags for content indexing
+    const textContent = content
+      .replace(/<script[^>]*>.*?<\/script>/gs, '')
+      .replace(/<style[^>]*>.*?<\/style>/gs, '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .substring(0, 1000); // Limit content length
+
+    searchIndex.push({
+      title,
+      description,
+      content: textContent,
+      url: '/' + relativePath,
+      path: relativePath
+    });
+  });
+
+  // Write search index
+  fs.ensureDirSync(path.join(buildDir, 'assets'));
+  fs.writeJSONSync(path.join(buildDir, 'assets', 'search-index.json'), searchIndex, { spaces: 2 });
+
+  console.log(`✅ Generated search index with ${searchIndex.length} pages`);
+}
