@@ -5,10 +5,10 @@
  * nudge execution for orchestrator coordination and admin communication.
  */
 
-import { SignalDetector, SignalPattern } from './types';
 import { createAgentNudgeIntegration } from '../nudge/agent-integration';
 import { Signal } from '../shared/types';
 import { createLayerLogger } from '../shared';
+import type { NodeJS } from 'node';
 
 const logger = createLayerLogger('orchestrator-scanner');
 

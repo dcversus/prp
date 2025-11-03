@@ -8,6 +8,7 @@
 import { EventEmitter } from 'events';
 import { EventBus } from '../shared/events';
 import { createLayerLogger } from '../shared/logger';
+import type { NodeJS } from 'node';
 
 export interface DebugEvent {
   id: string;
@@ -498,7 +499,7 @@ export class TuiDebugScreen extends EventEmitter {
       .replace(/: (\d+)/g, `: ${this.config.colorScheme.json.number}$1\x1b[0m`)
       .replace(/: (true|false)/g, `: ${this.config.colorScheme.json.boolean}$1\x1b[0m`)
       .replace(/: null/g, `: ${this.config.colorScheme.json.null}null\x1b[0m`)
-      .replace(/[\[\]]/g, `${this.config.colorScheme.json.bracket}$&\x1b[0m`)
+      .replace(/[[\]]/g, `${this.config.colorScheme.json.bracket}$&\x1b[0m`)
       .replace(/[{}]/g, `${this.config.colorScheme.json.brace}$&\x1b[0m`);
   }
 

@@ -4,6 +4,7 @@ import * as path from 'path';
 import { format } from 'util';
 
 import type { LogLevel } from '../types';
+import type { NodeJS } from 'node';
 
 /**
  * Logger utility for consistent logging across the CLI

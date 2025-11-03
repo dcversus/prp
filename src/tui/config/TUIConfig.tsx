@@ -242,8 +242,7 @@ export function getSignalColor(
       '[da]': 'robo-ux-ui',
       '[dc]': 'robo-ux-ui',
       '[df]': 'robo-ux-ui',
-      '[dt]': 'robo-ux-ui',
-      '[dp]': 'robo-ux-ui'
+      '[dt]': 'robo-ux-ui'
     };
 
     const role = signalRoleMap[code] || 'orchestrator';

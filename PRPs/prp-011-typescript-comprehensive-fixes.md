@@ -1,6 +1,6 @@
-# PRP-011: Comprehensive TypeScript strict mode fixes across all modules
+# PRP-011: Comprehensive TypeScript and ESLint fixes across entire codebase
 
-> Fix ALL TypeScript errors in src/config/*.ts, src/templates/*.ts, and src/storage/*.ts files with strict TypeScript settings to achieve 0 TypeScript errors across the entire codebase
+> Fix ALL 503 ESLint errors and 178 warnings across the entire codebase including TypeScript strict mode violations, import issues, unused variables, and linting rule violations to achieve clean linting across all source files
 
 ## progress
 [tp] Tests prepared for comprehensive TypeScript error fixes across config, templates, and storage modules - identified specific strict mode violations and import issues | 2025-11-03T15:30:00Z | robo-developer (claude-sonnet-4-5-20250929)
@@ -13,6 +13,8 @@
 [mg] Merged and implemented: Successfully resolved merge conflicts in tsconfig.json and manager.ts, updated TypeScript configuration with strict mode compliance, and verified 0 compilation errors across all affected modules | 2025-11-03T16:15:00Z | robo-developer (claude-sonnet-4-5-20250929)
 [dp] Development progress: Successfully merged PRP-011 and PRP-012 into unified comprehensive TypeScript fixes PRP. All config, templates, and storage module errors documented in single PRP with consolidated progress tracking and unified plan. | 2025-11-03T17:00:00Z | robo-developer (claude-sonnet-4-5-20250929)
 [dp] Development progress: TypeScript compilation fixes verified across all modules. Removed duplicate backup PRP to maintain single source of truth for TypeScript fixes. All strict mode violations resolved with proper type safety. | 2025-11-03T23:00:00Z | robo-developer (claude-opus-4-1-20250805)
+[dp] Development progress: Analyzed complete linting error landscape - identified 503 ESLint errors and 178 warnings across entire codebase. Main issues: NodeJS type not defined, require() imports, unused variables, duplicate keys, missing imports, case block declarations. | 2025-11-03T23:30:00Z | robo-developer (claude-sonnet-4-5-20250929)
+[dp] Development progress: Fixed major linting issues - added NodeJS type imports to 6 files, converted require() statements to ES6 imports in core/cli.ts and orchestrator tools, removed duplicate keys, fixed type redeclarations, added missing component imports, fixed case block declarations, removed unnecessary regex escapes. Errors reduced from 503 to ~472. | 2025-11-03T23:45:00Z | robo-developer (claude-sonnet-4-5-20250929)
 
 ## dod
 - [x] All TypeScript strict mode errors in src/config/manager.ts are resolved
@@ -25,6 +27,16 @@
 - [x] Type compatibility issues are fixed
 - [x] Missing types are properly defined or imported
 - [x] Code maintains functionality while being type-safe
+- [ ] ALL 503 ESLint errors across entire codebase are resolved
+- [ ] ALL 178 ESLint warnings across entire codebase are resolved
+- [ ] NodeJS type not defined errors are fixed with proper imports
+- [ ] All require() statements converted to ES6 imports
+- [ ] All unused variables removed or prefixed with underscore
+- [ ] All duplicate object keys removed
+- [ ] All missing imports added for undefined variables
+- [ ] All lexical declarations in case blocks properly scoped
+- [ ] All unnecessary regex escapes removed
+- [ ] npm run lint passes with 0 errors and 0 warnings
 
 ## dor
 - [x] Identify current TypeScript errors in config module
@@ -71,6 +83,16 @@
 - [x] Resolved AgentConfig type conflicts between different modules
 - [x] Fixed export conflicts in shared/index.ts
 - [x] Verified all modules compile with 0 TypeScript errors
+- [ ] Add NodeJS type imports to files with 'NodeJS' is not defined errors
+- [ ] Convert require() statements to ES6 imports in init-new.ts
+- [ ] Remove or prefix unused variables with underscore across all files
+- [ ] Fix duplicate key '[dp]' in TUIConfig.tsx
+- [ ] Fix SettingsConfig redeclaration in types.ts
+- [ ] Add missing imports for undefined components (AgentCard, PRPItem, HistoryItem, etc.)
+- [ ] Fix lexical declarations in case blocks with proper scoping
+- [ ] Remove unnecessary escape characters in regex patterns
+- [ ] Fix no-case-declarations errors by adding block scoping
+- [ ] Remove unused imports and variables throughout codebase
 
 ## research materials
 - TypeScript strict mode documentation: https://www.typescriptlang.org/tsconfig#strict

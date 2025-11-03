@@ -6,7 +6,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useApp } from 'ink';
-import { TUIConfig, TUIState, TerminalResizeEvent, SignalUpdateEvent, AgentUpdateEvent, HistoryUpdateEvent, IntroCompleteEvent, InputSubmitEvent, ScreenType } from '../types/TUIConfig.js';
+import { TUIConfig, TUIState, TerminalResizeEvent, SignalUpdateEvent, AgentUpdateEvent, HistoryUpdateEvent, IntroCompleteEvent, ScreenType, AgentCard, PRPItem, HistoryItem } from '../types/TUIConfig.js';
 import { EventBus } from '../../shared/events.js';
 import { IntroSequence } from './IntroSequence.js';
 import { OrchestratorScreen } from './screens/OrchestratorScreen.js';

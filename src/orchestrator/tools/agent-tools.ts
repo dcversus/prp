@@ -6,6 +6,9 @@
 
 import { Tool, ToolResult } from '../types';
 import { createLayerLogger } from '../../shared';
+import { spawn } from 'child_process';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { join, resolve } from 'path';
 
 const logger = createLayerLogger('orchestrator');
 
@@ -126,9 +129,7 @@ export const spawnAgentTool: Tool = {
     }
   },
   execute: async (params: unknown) => {
-    const { spawn } = require('child_process');
-    const { existsSync, mkdirSync, writeFileSync } = require('fs');
-    const { join, resolve } = require('path');
+    // spawn, existsSync, mkdirSync, writeFileSync, join, resolve already imported
 
     try {
       const typedParams = params as SpawnAgentParams;
@@ -516,8 +517,7 @@ function getSpawnArgs(_agentType: string, _config: unknown): string[] {
 }
 
 async function setupClaudeCodeConfig(worktree: string, _config: unknown): Promise<void> {
-  const { writeFileSync, mkdirSync } = require('fs');
-  const { join } = require('path');
+  // writeFileSync, mkdirSync, join already imported
 
   // Create .claude directory
   const claudeDir = join(worktree, '.claude');

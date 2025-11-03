@@ -7,7 +7,7 @@
 
 import { createAgentNudgeIntegration } from '../nudge/agent-integration';
 import { createLayerLogger } from '../shared';
-import { Signal } from '../shared/types';
+import type { NodeJS } from 'node';
 
 const logger = createLayerLogger('orchestrator-message-handler');
 

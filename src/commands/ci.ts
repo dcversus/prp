@@ -9,10 +9,11 @@
 import { Command } from 'commander';
 import fs from 'fs-extra';
 import path from 'path';
+import { execSync } from 'child_process';
 import { logger } from '../utils/logger';
 import { PRPCli } from '../core/cli';
 import { ConfigurationManager } from '../config/manager';
-import { ValidationError, FileSystemError } from '../utils/error-handler';
+import { ValidationError } from '../utils/error-handler';
 import type { CommandResult } from '../types';
 
 interface CIOptions {
@@ -350,7 +351,6 @@ class CIManager {
       // Check GitHub Actions status if configured
       if (config.provider === 'github') {
         try {
-          const { execSync } = require('child_process');
           const branch = execSync('git branch --show-current', { encoding: 'utf8' }).trim();
           logger.info(`Current branch: ${branch}`);
 
@@ -361,7 +361,7 @@ class CIManager {
           } else {
             logger.warn('⚠️  Not a GitHub repository - GitHub Actions may not work');
           }
-        } catch (error) {
+        } catch {
           logger.warn('Could not determine Git status');
         }
       }
@@ -542,15 +542,19 @@ class CIManager {
       `name: ${workflow.description}`,
       '',
       'on:',
-      ...workflow.triggers.map(trigger => {
+      ...workflow.triggers.flatMap(trigger => {
         if (trigger === 'push') {
-          return '  push:';
-          return '    branches: [ main, master ]';
+          return [
+            '  push:',
+            '    branches: [ main, master ]'
+          ];
         } else if (trigger === 'pull_request') {
-          return '  pull_request:';
-          return '    branches: [ main, master ]';
+          return [
+            '  pull_request:',
+            '    branches: [ main, master ]'
+          ];
         }
-        return `  ${trigger}:`;
+        return [`  ${trigger}:`];
       }),
       '',
       'jobs:'
@@ -741,13 +745,12 @@ class CIManager {
     if (provider === 'github') {
       // Check if this is a GitHub repository
       try {
-        const { execSync } = require('child_process');
         const remoteUrl = execSync('git config --get remote.origin.url', { encoding: 'utf8' }).trim();
 
         if (!remoteUrl.includes('github.com')) {
           result.warnings.push('GitHub Actions configured but not in a GitHub repository');
         }
-      } catch (error) {
+      } catch {
         result.warnings.push('Could not verify GitHub repository status');
       }
 

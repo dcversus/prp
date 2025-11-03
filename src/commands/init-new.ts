@@ -3,6 +3,7 @@ import inquirer from 'inquirer';
 // import chalk from 'chalk'; // Temporarily commented for linting
 import fs from 'fs-extra';
 import path from 'path';
+import { execSync } from 'child_process';
 import { logger } from '../utils/logger';
 import { PRPCli } from '../core/cli';
 import { ConfigurationManager } from '../config/manager';
@@ -856,7 +857,6 @@ describe('hello function', () => {
    */
   private async initializeGit(projectPath: string): Promise<void> {
     try {
-      const { execSync } = require('child_process');
 
       execSync('git init', { cwd: projectPath, stdio: 'ignore' });
       execSync('git add .', { cwd: projectPath, stdio: 'ignore' });
@@ -873,7 +873,6 @@ describe('hello function', () => {
    */
   private async installDependencies(projectPath: string, packageManager: string): Promise<void> {
     try {
-      const { execSync } = require('child_process');
 
       logger.info('Installing dependencies...');
 

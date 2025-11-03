@@ -238,10 +238,11 @@ export class ConfigurationManager {
         case '.yaml':
         case '.yml':
           return yaml.parse(content);
-        case '.js':
+        case '.js': {
           // Dynamic import for JS config files
           const module = await import(path.resolve(filePath));
           return module.default || module;
+        }
         default:
           // Try JSON as default
           return JSON.parse(content);

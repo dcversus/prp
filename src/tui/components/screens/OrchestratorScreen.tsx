@@ -8,8 +8,6 @@
 import React from 'react';
 import { Box, Text, useInput } from 'ink';
 import { TUIState, TUIConfig, TerminalLayout } from '../../types/TUIConfig.js';
-import { RoboRolePill } from '../RoboRolePill.js';
-import { MusicIcon } from '../MusicIcon.js';
 import { SignalBar } from '../SignalBar.js';
 import { AgentCard } from '../AgentCard.js';
 import { HistoryItem } from '../HistoryItem.js';
@@ -53,7 +51,7 @@ export function OrchestratorScreen({ state, config, terminalLayout }: Orchestrat
   const { columns, rows, layoutMode } = terminalLayout;
   const rightPanelWidth = layoutMode === 'compact' ? 0 : 35;
   const mainContentWidth = columns - rightPanelWidth;
-  const availableHeight = rows - 4; // Account for header/footer and input
+  const _availableHeight = rows - 4; // Account for header/footer and input
 
   // Header with logo and status
   const renderHeader = () => (

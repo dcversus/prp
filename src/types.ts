@@ -114,11 +114,6 @@ export interface CommandResult {
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'verbose';
 
-// Settings configuration interface
-export interface SettingsConfig {
-  [key: string]: any;
-}
-
 // Validation result interface
 export interface ValidationResult {
   isValid: boolean;

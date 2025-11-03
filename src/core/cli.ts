@@ -3,6 +3,9 @@ import { logger } from '../utils/logger';
 import { ConfigurationManager } from '../config/manager';
 import { ErrorHandler } from '../utils/error-handler';
 import { ConfigurationError } from '../utils/error-handler';
+import { execSync } from 'child_process';
+import { statSync } from 'fs';
+import packageJson from '../../package.json';
 import type { PRPConfig, CommandResult } from '../types';
 
 /**
@@ -184,8 +187,8 @@ export class PRPCli extends EventEmitter {
    */
   getVersion(): string {
     try {
-      const packageJson = require('../../package.json');
-      return packageJson.version;
+      const pkg = packageJson;
+      return pkg.version;
     } catch {
       return '1.0.0';
     }
@@ -241,7 +244,7 @@ export class PRPCli extends EventEmitter {
 
     // Check if we're in a git repository (optional)
     try {
-      const { execSync } = require('child_process');
+      // execSync already imported
       execSync('git rev-parse --git-dir', { stdio: 'ignore' });
       logger.debug('Git repository detected');
     } catch {
@@ -249,7 +252,7 @@ export class PRPCli extends EventEmitter {
     }
 
     // Check available disk space
-    require('fs').statSync(process.cwd());
+    statSync(process.cwd());
     logger.debug(`Working directory: ${process.cwd()}`);
 
     logger.debug('System checks completed');

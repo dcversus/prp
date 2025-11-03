@@ -8,6 +8,7 @@
 import { Signal } from '../shared/types';
 import { createAgentNudgeIntegration } from '../nudge/agent-integration';
 import { createLayerLogger } from '../shared';
+import type { NodeJS } from 'node';
 
 const logger = createLayerLogger('signal-aggregation');
 

@@ -6,6 +6,9 @@
 
 import { Tool, ToolResult } from '../types';
 import { createLayerLogger } from '../../shared';
+import { https } from 'https';
+import { http } from 'http';
+import { URL } from 'url';
 
 const logger = createLayerLogger('orchestrator');
 
@@ -139,9 +142,7 @@ export const httpRequestTool: Tool = {
   },
   execute: async (params: unknown) => {
     const typedParams = params as HttpRequestParams;
-    const https = require('https');
-    const http = require('http');
-    const { URL } = require('url');
+    // https, http, URL already imported
 
     return new Promise((resolve, reject) => {
       try {
@@ -460,7 +461,7 @@ export const urlValidationTool: Tool = {
   },
   execute: async (params: unknown) => {
     const typedParams = params as UrlValidationParams;
-    const { URL } = require('url');
+    // URL already imported
 
     try {
       new URL(typedParams.url); // Validate URL format

@@ -9,7 +9,6 @@
 import { Command } from 'commander';
 import { logger } from '../utils/logger';
 import { PRPCli } from '../core/cli';
-import type { CommandResult } from '../types';
 
 interface StatusOptions {
   json?: boolean;
