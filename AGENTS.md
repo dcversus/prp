@@ -6,2105 +6,594 @@ This document provides specific instructions for AI coding assistants (Claude, G
 **Project Goal**: Bootstrap context-driven development workflow based on Product Requirement Prompts (PRPs) and orchestrate execution with LOOP MODE.
 
 ---
-
-## 🔄 PRP WORKFLOW (MANDATORY)
-
-**Every agent session MUST follow this workflow:**
-
-### PRP File Organization Rules
-
-**⚠️ CRITICAL: PRPs folder structure MUST be FLAT - NO subdirectories allowed.**
-
-**Naming Convention**:
-- Format: `PRP-XXX-what-will-change.md`
-- **XXX**: Sequential number (001, 002, 003, etc.)
-- **what-will-change**: 2-4 words describing the outcome when PRP is complete
-- Use kebab-case (lowercase with hyphens)
-
-**Examples**:
-- ✅ `PRP-001-bootstrap-cli-created.md` - CLI tool will be created
-- ✅ `PRP-002-landing-page-deployed.md` - Landing page will be deployed
-- ✅ `PRP-007-signal-system-implemented.md` - Signal system will be implemented
-- ✅ `PRP-015-auth-module-integrated.md` - Auth module will be integrated
-- ❌ `PRP-002-Landing-Page.md` - Not outcome-focused, uses PascalCase
-- ❌ `PRPs/research/analysis.md` - Subdirectory not allowed
-- ❌ `PRP-003.md` - Missing descriptive name
-
-**Rationale**:
-- **Flat structure** = Easy to find, no navigation complexity
-- **Outcome-focused names** = Clear value proposition at a glance
-- **Sequential numbers** = Chronological order, easy reference
-- **Short names** = Quick to scan, fits in terminal width
-
-### Step 1: Find Related PRP
-**BEFORE doing ANY work**, agent must:
-1. Check if a PRP exists for the current task
-2. Search `PRPs/` directory for relevant PRPs
-3. Read PRP titles and summaries
-
-**If NO PRP exists**:
-- Ask: **"Do we really need a new PRP?"**
-- Show TUI (Terminal UI) with options:
-  ```
-  Select PRP or create new:
-  [ ] PRP-001: CLI Implementation
-  [ ] PRP-002: Landing Page
-  [ ] PRP-003: Telegram Integration
-  ...
-  [ ] ✨ Create NEW PRP
-  ```
-- This is **FORCED** when running via CLI without `--file` argument
-
-### Step 2: Create New PRP (if needed)
-When user selects "Create NEW PRP" or uses `--new` flag:
-
-**CLI must gather**:
-1. **Description**: What is this PRP about?
-2. **Goal**: What do we want to achieve?
-3. **Final State**: What should be the result?
-4. **Definition of Done (DoD)**: How do we know it's complete?
-5. **Value**: Why is this important?
-6. **Details**: Any additional context?
-
-**Then produce new PRP** with:
-- Standard PRP format (see PRP-CLI.md template)
-- Initial **SIGNAL COMMENT** from creator:
-  ```markdown
-  ## Progress Log
-
-  | Role | Date | Comment | Signal |
-  |------|------|---------|--------|
-  | User (via claude-sonnet-4-5) | 2025-10-28 | User requested new PRP. Initial assessment: This PRP addresses [topic]. Complexity estimate: Medium-High. Value: HIGH - this will enable [benefit]. Concerns: [any concerns]. | 🔴 ATTENTION |
-  ```
-
-### Step 3: Enter PRP LOOP MODE
-Once PRP is identified/created, agent enters **LOOP MODE**:
-
-```
-┌─────────────────────────────────────┐
-│       PRP LOOP MODE ACTIVE          │
-└─────────────────────────────────────┘
-
-1. READ PRP → Extract current status and signals
-2. CHECK git status → Any uncommitted changes?
-3. REACT to strongest signal
-4. EXECUTE work
-5. UPDATE PRP with progress
-6. LEAVE SIGNAL comment
-7. COMMIT if changes made
-8. REPEAT until DoD met or checkpoint reached
-```
-
-### Step 4: Read Signals
-**Before each action**, read all signals in PRP progress log:
-- Identify **strongest signal** (highest priority/intensity)
-- Understand signal meaning (see Signal Reference below)
-- React accordingly
-
-### Step 5: Execute Work
-- Work on task according to PRP requirements
-- Follow Definition of Ready (DoR)
-- Aim for Definition of Done (DoD)
-
-### Step 6: Update PRP and Leave Signal
-**After each work session** or when reaching checkpoint:
-1. Add entry to Progress Log table
-2. Describe what was done
-3. Add emotional/status signal
-4. Commit changes if files modified
-
-**Example Progress Entry**:
-```markdown
-| Developer (claude-sonnet-4-5) | 2025-10-28 14:32 | Implemented authentication module. Added JWT middleware, created login/register endpoints, wrote 15 tests (all passing). Deployment tested on staging. Ready for review. | ✅ CONFIDENT |
-```
-
-### Step 7: Commit and Continue
-If files changed:
-```bash
-git add .
-git commit -m "feat(auth): implement JWT authentication module
-
-- Add JWT middleware
-- Create login/register endpoints
-- Write 15 tests (all passing)
-- Update PRP-003 progress log
-
-Signal: CONFIDENT"
-```
-
-Then either:
-- Continue LOOP if more work needed
-- Create PR if DoD reached
-- Exit LOOP if checkpoint/context limit reached
+> SYSTEM PART! NEVER EDIT THIS PART! USER SECTION BELOW!
 
 ---
 
-## 📡 SIGNAL SYSTEM
+## 🚀 SACRED RULES (Never Violate)
 
-**Signals** are emotional/status indicators that help agents understand work state and prioritize actions.
-
-### What is a Signal?
-- **Self-extractable** from tone of voice in comments
-- **Dominant emotion or status** of the work
-- **Actionable** - tells next agent how to react
-- **Personality-aware** - agents can have unique voices
-
-### Signal Format
-Signals appear in Progress Log table:
-
-```markdown
-| Role | Date | Comment | Signal |
-|------|------|---------|--------|
-| system-analyst | 2025-10-28 | Comment text | 🎉 ENCANTADO!!! |
-```
-
-### Signal Reference Table
-
-| Signal | Emoji | Strength | Meaning | Action Required |
-|--------|-------|----------|---------|-----------------|
-| **ATTENTION** | 🔴 | 10 | New PRP created, needs review | Review PRP, assess complexity, begin planning |
-| **BLOCKED** | 🚫 | 9 | Cannot proceed, external dependency | Identify blocker, escalate, work on different task |
-| **URGENT** | 🚨 | 9 | Time-sensitive, needs immediate action | Prioritize above all other work |
-| **TIRED** | 😫 | 6 | Work incomplete, needs inventory | Review what's done, create task list, checkpoint |
-| **CONFUSED** | 🤔 | 7 | Unclear requirements, need clarification | Ask questions, update PRP with ambiguities |
-| **EXCITED** | 🎉 | 8 | Breakthrough, new possibilities discovered | Document discoveries, create new PRPs if needed |
-| **ENCANTADO** | ✨ | 8 | Amazing discovery, spawned new PRPs | Read all spawned PRPs, execute strongest signal |
-| **CONFIDENT** | ✅ | 3 | Work complete, tests passing, ready | Review code, create PR, move to next task |
-| **VALIDATED** | 🎯 | 2 | Work reviewed and approved | Merge PR, close PRP, celebrate |
-| **FRUSTRATED** | 😤 | 7 | Technical difficulties, need help | Document issue, seek help, consider alternatives |
-| **OPTIMISTIC** | 🌟 | 5 | Good progress, on track | Continue work, maintain momentum |
-| **CAUTIOUS** | ⚠️ | 6 | Concerns about approach, needs discussion | Document concerns, discuss with team |
-| **RESEARCHING** | 🔍 | 5 | Deep dive in progress | Continue research, document findings |
-| **COMPLETED** | 🏁 | 1 | DoD met, PRP done | Final review, close PRP, archive |
-
-### Signal Strength Priority
-When multiple signals present, react to:
-1. **Highest strength** (9-10) first
-2. **Most recent** if equal strength
-3. **Blocking** signals before non-blocking
-
-### Agent Personalities (Optional)
-Agents can have unique personalities reflected in signals:
-
-**System Analyst** (Portuguese flair):
-- Occasionally uses Portuguese words
-- Example: "encantado" (delighted), "incrível" (incredible), "perfeito" (perfect)
-- Emotional, enthusiastic about discoveries
-
-**Developer** (Pragmatic):
-- Direct, honest about challenges
-- Example: "shit work, exhausted", "finally working", "tests green"
-- Focus on completion and quality
-
-**Tester** (Skeptical):
-- Critical, thorough
-- Example: "found 10 bugs", "edge case missed", "coverage too low"
-- Focus on quality and completeness
-
-### Signal Reaction Patterns - COMPREHENSIVE ALGORITHMS
-
-**⚠️ CRITICAL: When encountering ANY signal, agent MUST follow these exact algorithms.**
-
-Each signal defines:
-- **WHO** should react (which role/agent)
-- **WHAT** to do (specific actions)
-- **HOW** to do it (step-by-step algorithm)
-- **WHO LIKES** this signal (which roles appreciate seeing it)
-- **WHO HATES** this signal (which roles dislike seeing it)
+1. **PRP-First Development**: All progress and reports MUST be commented in PRP files. No exceptions.
+2. **Signal-Driven Progress**: Every completed job MUST be noted with comment about work done and corresponding signal in related PRP progress.
+3. **PRP reporting**: Always read PRP first, work only within PRP scope, leave comment and signal before context compaction or then progress happen.
+4. **No orphan files**: Never create tmp/scripts/md files without deleting them right after. All tmp files - write about it in PRP first!
+5. **No Paperovers**: Never use `--no-verify`, `--force`, or disable linting. Instead, comment signal describing the issue and work on solutions.
+6. **Cleanup Responsibility**: Any `/tmp`, dev servers, ports, or external resources MUST be documented in PRP for cleanup.
+7. **Low Confidence Handling**: Before any uncertain action, leave comment explaining risk and wait for guidance.
 
 ---
 
-#### 🔴 ATTENTION (Strength 10) - DEFAULT SIGNAL FOR USER COMMUNICATION
+## 🔄 WORKFLOW
 
-**MEANING**: New PRP created OR need to ask user a question OR need user clarification
+### **PRP Creation & Analysis**
+- Research problem domain - robo-system-analyst investigates requirements
+- Draft complete PRP - Include DoR, DoD, acceptance criteria
+- Review with team - Developer and QA provide feedback
+- Prioritize work - Orchestrator schedules implementation
+**Outcomes**: Goal clarification, goal not achievable, ready for preparation, validation required
 
-**WHO SHOULD REACT**: ANY agent, but MUST use NUDGE system if needs user input
+### **Preparation & Planning**
+- Refine requirements - Break down into implementable tasks with plan how to validate result after
+- Create implementation plan - Define task sequence and dependencies
+- Estimate effort - can be PRP done at once? or need arrange a several PR with milestones and checkpoints?
+- Validate approach - Ensure technical feasibility
+- Write down affected files list - parallel agent working and proper code review description should always rely on file list. We always during implementation working only with prp related files
+**Outcomes**: Research request, verification plan, implementation plan ready, experiment required
 
-**WHO LIKES**: System Analyst (loves new work), Project Manager (wants clarity)
-**WHO HATES**: Developer (interrupts flow), Tester (can't test incomplete specs)
+### **Implementation**
+- TDD approach - Write tests before implementation
+- Development progress - Incremental commits with clear progression
+- Handle blockers - Identify and resolve technical dependencies
+- Research requests - Address unknowns or gaps in knowledge
+- Prp scope - We working only with prp related files, need edit or create file? then update PRP first!
+**Outcomes**: Tests prepared, development progress, blocker resolved, research completed
 
-**WHAT TO DO**:
-1. **IF** PRP is new → Review and begin planning
-2. **IF** need user clarification → **USE NUDGE SYSTEM** (see below)
-3. **IF** unclear requirements → Document questions, then NUDGE
+### **Verification & Testing**
+- Test execution - robo-aqa runs comprehensive test suite
+- Bug handling - Identify, fix, and verify bug resolution
+- Code quality - Ensure quality standards and linting pass
+- CI/CD validation - Automated testing and deployment pipeline
+- Never trust code - Always rely on behavior
+**Outcomes**: Tests written, bugs fixed, quality passed, CI passed, tests failed, CI failed, pre-release checklist completed, PR created, review progressed, cleanup done, review passed
 
-**HOW TO DO IT - Algorithm**:
-```
-IF signal_reason == "new_prp":
-    1. Read entire PRP thoroughly (title, description, goal, DoR, DoD)
-    2. Assess complexity (1-10 scale)
-    3. Assess value (LOW/MEDIUM/HIGH)
-    4. Check DoR - is it ready to start?
-       - IF DoR not met → Leave BLOCKED signal with missing items
-       - IF DoR met → Leave RESEARCHING signal and begin
-    5. Create initial plan/architecture
-    6. Update progress log with assessment
+### **Release & Deployment**
+- Implementation verification - Confirm requirements met
+- Release approval - Get authorization for deployment
+- Merge & release - Deploy changes to production
+- Post-release check - Verify deployment success
+**Outcomes**: Implementation verified, release approved, merged, released
 
-ELSE IF signal_reason == "need_user_input":
-    1. **TRIGGER NUDGE SYSTEM** (MANDATORY)
-    2. Format question clearly with context
-    3. Call nudge API with:
-       - Question text
-       - Related PRP link
-       - Urgency level
-       - Expected response format
-    4. Wait for user response (async)
-    5. When response received:
-       - Add user response to PRP Progress Log
-       - Role: "user (via telegram)"
-       - Extract user's intent
-       - Continue work based on answer
-       - Leave appropriate signal
-    6. **NEVER** guess or assume - always ask if uncertain
-
-ELSE IF signal_reason == "incident":
-    1. **IMMEDIATE NUDGE** (highest priority)
-    2. Include:
-       - What broke
-       - Impact assessment
-       - Immediate actions taken
-       - Options for user to decide
-    3. Wait for user decision
-    4. Execute based on user choice
-```
-
-**EXAMPLE**:
-```markdown
-| developer | 2025-10-28 | I'm implementing the auth system but unclear if we should use JWT or sessions. This affects architecture significantly. Need user decision before continuing. | 🔴 ATTENTION |
-```
-**→ System triggers NUDGE to user via Telegram**
-**→ User responds: "Use JWT, it's more scalable"**
-**→ System adds response to PRP and continues**
+### **Post-Release**
+- Post-release validation - Monitor system health and user feedback
+- Incident handling - Address any production issues
+- Post-mortem analysis - Document lessons learned
+- Implementation verification - Confirm deployment goals achieved
+**Outcomes**: Post-release checked, incident occurred, incident resolved, post-mortem written in PRP, implementation verified
 
 ---
 
-#### 🚫 BLOCKED (Strength 9)
+## 🎵 ♫ SIGNAL SYSTEM
 
-**MEANING**: Cannot proceed due to external dependency or missing requirement
+PRP is a place where we keeping our actual work progress status and next steps. We using special signals to communicate and push forward work. ALWAYS after some progress done leave details as comments and signal related to situation in PRP you workin on;
 
-**WHO SHOULD REACT**: ANY agent encountering blocker, Project Manager to escalate
+ALL PRPs/*.md should satisfy following structure:
+```md
+# prp-name
 
-**WHO LIKES**: Project Manager (visibility into blockers), System Analyst (can find alternatives)
-**WHO HATES**: Developer (hates being blocked), Tester (can't test blocked work)
+> prp main goal, or original user request
 
-**WHAT TO DO**: Identify blocker, document it, escalate if external, find workaround
+## progress
+signal | comment | time | role-name (model name)
+[FF], AGENT ALWAYS LEFT COMMENT HERE WHILE WORK, now, ADMIN
+...
 
-**HOW TO DO IT - Algorithm**:
-```
-1. STOP current work immediately
-2. Identify exact blocker:
-   - External API not ready?
-   - Missing credentials/access?
-   - Dependency not available?
-   - User decision needed?
-   - Technical limitation?
-3. Document blocker in PRP:
-   ### BLOCKER
-   - **Type**: [API/Credentials/Dependency/Decision/Technical]
-   - **Description**: [Detailed explanation]
-   - **Impact**: [What can't be done]
-   - **Owner**: [Who can unblock]
-   - **ETA**: [When might be resolved]
-4. IF blocker is external dependency:
-   - **TRIGGER NUDGE** to user
-   - Explain blocker and impact
-   - Ask for help/escalation
-5. IF blocker has workaround:
-   - Document workaround
-   - Implement temporary solution
-   - Leave CAUTIOUS signal
-6. IF no workaround:
-   - Leave BLOCKED signal with full details
-   - Switch to different PRP
-   - Check back later
-7. When blocker resolved:
-   - Update PRP with resolution
-   - Leave OPTIMISTIC signal
-   - Continue work
+## dod
+- [ ] always one by line, mesurable and possible to verification
+
+## dor
+- [ ] each should by prepared during robo-system-analyst work
+
+## pre-release checklist
+- [ ] should be prepared before implementation and executed before pr
+
+## post-release checklist
+- [ ] should be prepared before implementation and executed after release confirmed
+
+## plan
+- [ ] one line per one file change we make and what we want do do, below can contain some details in sub ###
+
+## research materials
+- url...
 ```
 
-**EXAMPLE**:
-```markdown
-| developer | 2025-10-28 | BLOCKED on PRP-005. Need API credentials for Stripe integration but don't have access. Can't test payment flow without them. Implemented mock for now but need real credentials to complete. | 🚫 BLOCKED |
-```
-**→ System triggers NUDGE asking user to provide Stripe credentials**
 
-#### TIRED (😫, Strength 6)
-```
-Action:
-1. Stop current work
-2. Review what was accomplished
-3. Create inventory/checklist of remaining work
-4. Update PRP with detailed status
-5. Checkpoint: commit all work in progress
-6. Leave CHECKPOINT signal
-```
+### **System Signals (Using internaly)**
+**[HF]** - Health Feedback (orchestration cycle start)
+**[pr]** - Pull Request Preparation (optimization pre-catch)
+**[PR]** - Pull Request Created (PR activity detected)
+**[FF]** - System Fatal Error (corruption/unrecoverable errors)
+**[TF]** - Terminal Closed (graceful session end)
+**[TC]** - Terminal Crushed (process crash)
+**[TI]** - Terminal Idle (inactivity timeout)
 
-#### ENCANTADO (✨, Strength 8)
-```
-Action:
-1. Read comment to find spawned PRPs
-2. Navigate to each new PRP
-3. Read each PRP's signals
-4. Identify strongest signal across all PRPs
-5. Execute work on PRP with strongest signal
-6. Return to original PRP when done
-```
+### **Agent Signals (should be always found in PRP)**
 
-#### CONFIDENT (✅, Strength 3)
-```
-Action:
-1. Review completed work
-2. Run all tests and validation
-3. Update CHANGELOG.md
-4. Create PR with descriptive title/body
-5. Request review
-6. Mark PRP section as complete
-```
+#### [bb] Blocker
+- **WHO**: Any Robo-Agent
+- **WHEN**: Technical dependency, configuration, or external requirement blocks progress
+- **WHAT**: Document blocker details in PRP, specify unblocking actions needed, continue with other tasks
 
-### Signal Examples in Practice
+#### [af] Feedback Request
+- **WHO**: Any Robo-Agent
+- **WHEN**: Decision needed on design approach, implementation strategy, or requirement interpretation
+- **WHAT**: Provide context and options in PRP, request specific guidance, wait for  direction before proceeding
 
-**Example 1: System Analyst discovers new PRPs**
+#### [gg] Goal Clarification
+- **WHO**: Robo-System-Analyst
+- **WHEN**: PRP requirements are ambiguous, conflicting, or insufficient for implementation
+- **WHAT**: Ask specific clarifying questions, propose requirement refinements, update PRP with clarified scope
 
-```markdown
-| system-analyst (claude-sonnet-4-5) | 2025-10-28 15:45 | Que incrível! During research, I discovered we need 3 separate PRPs: PRP-008 (API Architecture), PRP-009 (Database Schema), PRP-010 (Caching Strategy). Each one is complex enough to warrant full PRP. Created all three with initial analysis. Please review! | ✨ ENCANTADO!!! |
-```
+#### [ff] Goal Not Achievable
+- **WHO**: Robo-System-Analyst
+- **WHEN**: Analysis shows PRP goals cannot be achieved with current constraints/technology
+- **WHAT**: Document impossibility analysis, propose alternative approaches or modified goals, update PRP
 
-**Next agent reaction**:
-1. Find PRP-008, PRP-009, PRP-010
-2. Read each one
-3. Check signals in each
-4. PRP-008 has ATTENTION (10), PRP-009 has ATTENTION (10), PRP-010 has ATTENTION (10)
-5. All equal, so pick PRP-008 (first one)
-6. Begin work on PRP-008
+#### [da] Done Assessment
+- **WHO**: Any Robo-Agent
+- **WHEN**: Task or milestone completed, ready for Definition of Done validation
+- **WHAT**: Provide completion evidence in PRP, reference DoD criteria, request validation before proceeding to next phase
 
-**Example 2: Developer exhausted**
+#### [no] Not Obvious
+- **WHO**: Any Robo-Agent
+- **WHEN**: Implementation complexity, technical uncertainty, or unknown dependencies discovered
+- **WHAT**: Document complexity details, request research time or clarification, wait for analysis before proceeding
 
-```markdown
-| developer (claude-sonnet-4-5) | 2025-10-28 18:30 | Implemented 60% of authentication system. JWT middleware done, register endpoint done, login endpoint half-done. Ran into complex edge cases with refresh tokens. Tests: 8 passing, 3 failing. Need to inventory what's left and take a break. Shit work, honestly exhausted. | 😫 TIRED |
-```
+#### [rp] Ready for Preparation
+- **WHO**: Robo-System-Analyst
+- **WHEN**: PRP analysis complete, requirements clear, ready to move to planning phase
+- **WHAT**: Signal completion of analysis phase, transition PRP status to preparation, trigger planning workflow
 
-**Next agent reaction**:
-1. Read PRP to understand context
-2. Run `git status` - see uncommitted changes
-3. Create inventory in PRP:
-   ```markdown
-   ### Remaining Work (from TIRED checkpoint)
-   - [ ] Complete login endpoint (refresh token edge cases)
-   - [ ] Fix 3 failing tests
-   - [ ] Add token expiration logic
-   - [ ] Write integration tests
-   - [ ] Update documentation
-   ```
-4. Commit work-in-progress: `git commit -m "WIP: auth system 60% complete"`
-5. Leave CHECKPOINT signal
-6. Can continue work or switch tasks
+#### [vr] Validation Required
+- **WHO**: Robo-System-Analyst
+- **WHEN**: PRP needs external validation, stakeholder approval, or compliance review before proceeding
+- **WHAT**: Document validation requirements, specify validators needed, pause workflow until validation received
 
-**Example 3: Work Complete**
+#### [rr] Research Request
+- **WHO**: Any Robo-Agent
+- **WHEN**: Unknown dependencies, technology gaps, or market research needed to proceed
+- **WHAT**: Document research questions, estimate research time, request robo-system-analyst research assignment
 
-```markdown
-| developer (claude-sonnet-4-5) | 2025-10-28 20:15 | Authentication system DONE! All endpoints implemented, 25 tests passing (100% coverage), documentation updated, CHANGELOG.md updated. Deployed to staging and tested manually. Everything works perfectly. Ready for PR! | ✅ CONFIDENT |
-```
+#### [vp] Verification Plan
+- **WHO**: Robo-System-Analyst
+- **WHEN**: Complex requirements need verification approach or multi-stage validation strategy
+- **WHAT**: Create verification checklist, define validation milestones, specify success criteria
 
-**Next agent reaction**:
-1. Verify tests: `npm test` ✅
-2. Verify build: `npm run build` ✅
-3. Verify CHANGELOG.md updated ✅
-4. Create PR:
-   ```bash
-   git checkout -b feat/authentication
-   git push origin feat/authentication
-   gh pr create --title "feat: implement JWT authentication system" \
-     --body "$(cat PRPs/PRP-003.md | grep -A 50 'Definition of Done')"
-   ```
-5. Update PRP with PR link
-6. Leave VALIDATED signal (after review)
+#### [ip] Implementation Plan
+- **WHO**: Robo-System-Analyst
+- **WHEN**: Requirements analysis complete, ready to break down into implementable tasks
+- **WHAT**: Document task breakdown, dependencies, estimates, and acceptance criteria
+
+#### [er] Experiment Required
+- **WHO**: Robo-System-Analyst
+- **WHEN**: Technical uncertainty requires proof-of-concept or experimental validation
+- **WHAT**: Define experiment scope, success metrics, and integration criteria
+
+#### [tp] Tests Prepared
+- **WHO**: Robo-Developer
+- **WHEN**: TDD test cases written before implementation, ready for coding phase
+- **WHAT**: Document test coverage, link to test files, signal ready for implementation
+
+#### [dp] Development Progress
+- **WHO**: Robo-Developer
+- **WHEN**: Significant implementation milestone completed or increment ready
+- **WHAT**: Document progress, update completion percentage, note any emerging issues
+
+#### [br] Blocker Resolved
+- **WHO**: Any Robo-Agent
+- **WHEN**: Previously documented blocker has been successfully resolved
+- **WHAT**: Document resolution method, update PRP status, signal ready to continue work
+
+#### [rc] Research Complete
+- **WHO**: Robo-System-Analyst
+- **WHEN**: Commissioned research investigation completed with findings
+- **WHAT**: Provide research findings, recommendations, and impact on PRP requirements
+
+#### [tw] Tests Written
+- **WHO**: Robo-Developer
+- **WHEN**: Unit tests, integration tests, or E2E tests implemented for feature
+- **WHAT**: Document test coverage, link to test files, signal ready for testing phase
+
+#### [bf] Bug Fixed
+- **WHO**: Robo-Developer
+- **WHEN**: Bug or issue has been identified, resolved, and tested
+- **WHAT**: Document bug details, fix approach, and verification results
+
+#### [cq] Code Quality
+- **WHO**: Robo-AQA
+- **WHEN**: Code passes linting, formatting, and quality gate checks
+- **WHAT**: Document quality metrics, any issues resolved, and overall quality status
+
+#### [cp] CI Passed
+- **WHO**: Robo-AQA
+- **WHEN**: Continuous integration pipeline completes successfully
+- **WHAT**: Document CI results, link to build artifacts, signal deployment readiness
+
+#### [tr] Tests Red
+- **WHO**: Robo-AQA
+- **WHEN**: Test suite fails with failing tests identified
+- **WHAT**: Document failing tests, error details, and debugging requirements
+
+#### [tg] Tests Green
+- **WHO**: Robo-AQA
+- **WHEN**: All tests passing with full coverage achieved
+- **WHAT**: Document test results, coverage metrics, and quality status
+
+#### [cf] CI Failed
+- **WHO**: Robo-AQA
+- **WHEN**: Continuous integration pipeline fails with errors
+- **WHAT**: Document CI failure details, debugging steps, and resolution requirements
+
+#### [pc] Pre-release Complete
+- **WHO**: Robo-AQA
+- **WHEN**: All pre-release checks completed including documentation, changelogs, and verification
+- **WHAT**: Document checklist completion, final quality status, and release readiness
+
+#### [rg] Review Progress
+- **WHO**: Any Robo-Agent
+- **WHEN**: Code review in progress with feedback being addressed
+- **WHAT**: Document review status, feedback items, and resolution timeline
+
+#### [cd] Cleanup Done
+- **WHO**: Robo-Developer
+- **WHEN**: Code cleanup, temporary file removal, and final polishing completed
+- **WHAT**: Document cleanup actions, removed artifacts, and final code state
+
+#### [rv] Review Passed
+- **WHO**: Robo-AQA
+- **WHEN**: Code review completed successfully with all feedback addressed
+- **WHAT**: Document review completion, approvals received, and merge readiness
+
+#### [iv] Implementation Verified
+- **WHO**: Robo-QC
+- **WHEN**: Manual visual testing completed against published package or testable deployment
+- **WHAT**: Document visual verification results, user experience validation, and final approval
+
+#### [ra] Release Approved
+- **WHO**: Robo-System-Analyst
+- **WHEN**: All prerequisites met, stakeholder approval received, ready for release
+- **WHAT**: Document approval details, release scope, and deployment authorization
+
+#### [mg] Merged
+- **WHO**: Robo-Developer
+- **WHEN**: Code successfully merged to target branch with integration complete
+- **WHAT**: Document merge details, integration status, and any merge conflicts resolved
+
+#### [rl] Released
+- **WHO**: Robo-Developer
+- **WHEN**: Deployment completed successfully with release published
+- **WHAT**: Document release details, deployment status, and user availability
+
+#### [ps] Post-release Status
+- **WHO**: Robo-System-Analyst
+- **WHEN**: Post-release monitoring and status check completed
+- **WHAT**: Document post-release health, user feedback, and system stability
+
+#### [ic] Incident
+- **WHO**: System Monitor/Any Agent
+- **WHEN**: Production issue, error, or unexpected behavior detected
+- **WHAT**: Document incident details, impact assessment, and immediate response actions
+
+#### [JC] Jesus Christ (Incident Resolved)
+- **WHO**: Robo-Developer/Robo-SRE
+- **WHEN**: Critical production incident successfully resolved and service restored
+- **WHAT**: Document resolution details, root cause, and prevention measures
+
+#### [pm] Post-mortem
+- **WHO**: Robo-System-Analyst
+- **WHEN**: Incident analysis complete with lessons learned documented
+- **WHAT**: Document incident timeline, root causes, improvements, and prevention strategies
+
+#### [oa] Orchestrator Attention
+- **WHO**: Any Robo-Agent
+- **WHEN**: Need coordination of parallel work, resource allocation, or workflow orchestration
+- **WHAT**: Request orchestrator intervention for task distribution, agent coordination, or workflow optimization
+
+#### [aa] Admin Attention
+- **WHO**: Any Robo-Agent/PRP
+- **WHEN**: Report generation required, system status needed, or administrative oversight requested
+- **WHAT**: Specify report requirements, timeline, and format needed for administrative review
+
+#### [ap] Admin Preview Ready
+- **WHO**: Robo-System-Analyst/Robo-AQA
+- **WHEN**: Comprehensive report, analysis, or review ready for admin preview with how-to guide
+- **WHAT**: Provide preview package with summary, guide, and admin instructions for review
+
+#### [cc] Cleanup Complete
+- **WHO**: Robo-Developer
+- **WHEN**: All cleanup tasks completed before final commit (temp files, logs, artifacts removed)
+- **WHAT**: Document cleanup actions, removed items, and system ready for final commit
 
 ---
 
-## 🔄 LOOP MODE Detailed Flow
+### 🎨 UX/UI DESIGNER SIGNALS
 
-### Loop Initialization
+#### [du] Design Update
+- **WHO**: Robo-UX/UI-Designer
+- **WHEN**: Design changes, new components, or visual updates are created
+- **WHAT**: Document design modifications, update design system, signal design handoff readiness
 
-```bash
-$ prp loop
+#### [ds] Design System Updated
+- **WHO**: Robo-UX/UI-Designer
+- **WHEN**: Design system components, tokens, or guidelines are modified
+- **WHAT**: Update design system documentation, coordinate with development on implementation
 
-🔍 Searching for PRPs in PRPs/...
-Found 6 PRPs:
-  1. PRP-001: CLI Implementation [COMPLETED]
-  2. PRP-002: Landing Page [ATTENTION]
-  3. PRP-003: Telegram Integration [CONFIDENT]
-  4. PRP-004: Remote Orchestrator [RESEARCHING]
-  5. PRP-005: Templates [BLOCKED]
-  6. PRP-006: Orchestrator [ATTENTION]
+#### [dr] Design Review Requested
+- **WHO**: Robo-UX/UI-Designer
+- **WHEN**: Design proposals need feedback or approval
+- **WHAT**: Present design concepts, request specific feedback, wait for review before proceeding
 
-Select PRP to work on (or 'n' for new):
-> 2
+#### [dh] Design Handoff Ready
+- **WHO**: Robo-UX/UI-Designer
+- **WHEN**: Design assets and specifications are ready for development
+- **WHAT**: Provide complete design package, assets, and implementation guidelines
 
-📋 Loading PRP-002: Landing Page...
+#### [da] Design Assets Delivered
+- **WHO**: Robo-UX/UI-Designer
+- **WHEN**: Final design assets are exported and available
+- **WHAT**: Document asset delivery, formats, and optimization status
 
-🔴 Strongest Signal: ATTENTION (Strength: 10)
-📝 Last Comment: "User requested landing page. High value, medium complexity."
+#### [dc] Design Change Implemented
+- **WHO**: Robo-UX/UI-Designer
+- **WHEN**: Design modifications are reflected in the live application
+- **WHAT**: Verify design implementation accuracy, document any deviations
 
-Entering LOOP MODE for PRP-002...
-```
+#### [df] Design Feedback Received
+- **WHO**: Robo-UX/UI-Designer
+- **WHEN**: User feedback, stakeholder input, or testing results are available
+- **WHAT**: Document feedback insights, plan design iterations based on findings
 
-### Loop Iteration
+#### [di] Design Issue Identified
+- **WHO**: Robo-UX/UI-Designer
+- **WHEN**: UX problems, accessibility issues, or design inconsistencies are found
+- **WHAT**: Document design issues, impact assessment, and proposed solutions
 
-```
-┌─────────── LOOP ITERATION 1 ──────────┐
-│ PRP: PRP-002 Landing Page              │
-│ Status: DoR Met ✅                     │
-│ Strongest Signal: ATTENTION            │
-└────────────────────────────────────────┘
+#### [dt] Design Testing Complete
+- **WHO**: Robo-UX/UI-Designer
+- **WHEN**: User testing, A/B tests, or usability studies are finished
+- **WHAT**: Provide test results, recommendations, and design improvements
 
-🤖 Agent Action:
-1. ✅ Read PRP-002 - Understood requirements
-2. ✅ Check git status - Clean working tree
-3. ✅ React to ATTENTION - Begin planning
-4. 🔨 Execute: Create technical design
-   - Next.js 14 + Tailwind
-   - Component structure
-   - API routes
-5. ✅ Update PRP-002 progress log
-6. ✅ Leave signal: OPTIMISTIC
-7. ✅ Commit changes
-
-📝 New Progress Entry:
-| developer (claude-sonnet-4-5) | 2025-10-28 21:00 | Created technical design for landing page. Chose Next.js 14 with App Router, Tailwind CSS, and shadcn/ui. Designed component structure (Hero, Features, Demo, FAQ). Planning looks solid, ready to start implementation. | 🌟 OPTIMISTIC |
-
-Continue LOOP? [Y/n]:
-```
-
-### Loop Checkpoint
-
-After significant work or context limit:
-
-```
-┌─────────── LOOP CHECKPOINT ──────────┐
-│ PRP: PRP-002 Landing Page             │
-│ Progress: 40% complete                │
-│ Context: 150K tokens used             │
-└───────────────────────────────────────┘
-
-⚠️  Reaching context limit. Creating checkpoint...
-
-✅ Committed changes
-✅ Updated PRP progress log
-✅ Pushed to remote
-
-📝 Checkpoint Entry:
-| developer (claude-sonnet-4-5) | 2025-10-28 22:30 | Checkpoint: 40% complete. Hero section done, Features section in progress. Components are clean and responsive. Tests: 12 passing. Will continue with Demo section next session. | 🏁 CHECKPOINT |
-
-LOOP MODE paused. Resume with: prp loop --resume PRP-002
-```
+#### [dp] Design Prototype Ready
+- **WHO**: Robo-UX/UI-Designer
+- **WHEN**: Interactive prototypes or mockups are available for review
+- **WHAT**: Present prototype functionality, user flows, and interaction patterns
 
 ---
 
-## 🚨 MANDATORY POLICIES (NON-NEGOTIABLE)
+### ⚙️ DEVOPS/SRE SIGNALS
 
-### 0. PRP Workflow Policy (NEW)
+#### [id] Infrastructure Deployed
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Infrastructure changes are deployed and verified
+- **WHAT**: Document infrastructure updates, performance impact, and health status
 
-**⚠️ CRITICAL: ALWAYS follow PRP workflow before starting work.**
+#### [cd] CI/CD Pipeline Updated
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Build, test, or deployment pipelines are modified
+- **WHAT**: Update pipeline documentation, test new workflows, verify integration
 
-This is **MANDATORY** for all agents:
-- ✅ Find or create PRP BEFORE doing work
-- ✅ Read signals in PRP progress log
-- ✅ React to strongest signal
-- ✅ Update PRP after each work session
-- ✅ Leave signal describing status
-- ✅ Use LOOP MODE for sustained work
+#### [mo] Monitoring Online
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Monitoring systems are configured and operational
+- **WHAT**: Document monitoring coverage, alert rules, and dashboard availability
 
-**Violation**: Starting work without PRP is NOT ALLOWED.
+#### [ir] Incident Resolved
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Production incidents are fixed and services restored
+- **WHAT**: Document incident resolution, root cause, and prevention measures
 
-### 1. CHANGELOG.md Update Policy
+#### [so] System Optimized
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Performance improvements or cost optimizations are implemented
+- **WHAT**: Document optimization results, performance gains, and resource savings
 
-**⚠️ CRITICAL: CHANGELOG.md must ALWAYS be updated with EVERY release.**
+#### [sc] Security Check Complete
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Security scans, vulnerability assessments, or compliance checks are done
+- **WHAT**: Provide security findings, remediation status, and compliance validation
 
-This is a **mandatory requirement** enforced by:
-- All GitHub templates and workflows
-- npm publishing guidelines
-- Semantic versioning best practices
-- Open source community standards
+#### [pb] Performance Baseline Set
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Performance benchmarks and baselines are established
+- **WHAT**: Document performance metrics, thresholds, and monitoring targets
 
-#### When to Update CHANGELOG.md
+#### [dr] Disaster Recovery Tested
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Disaster recovery procedures are validated through testing
+- **WHAT**: Document test results, recovery times, and improvement areas
 
-**ALWAYS update CHANGELOG.md when:**
-- ✅ Creating a new release (major, minor, or patch)
-- ✅ Publishing to npm
-- ✅ Creating a git tag
-- ✅ Completing a feature that will be released
-- ✅ Fixing a bug that will be released
+#### [cu] Capacity Updated
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: System capacity is scaled or resource allocation is modified
+- **WHAT**: Document capacity changes, scaling triggers, and cost implications
 
-**Update IMMEDIATELY:**
-- Before running `npm version [major|minor|patch]`
-- Before running `npm publish`
-- Before creating a git tag
+#### [ac] Automation Configured
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: New automation workflows or scripts are implemented
+- **WHAT**: Document automation coverage, efficiency gains, and maintenance requirements
 
-#### CHANGELOG.md Format
+#### [sl] SLO/SLI Updated
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Service Level Objectives or Indicators are modified
+- **WHAT**: Update reliability targets, measurement criteria, and monitoring alerts
 
-Follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format strictly:
+#### [eb] Error Budget Status
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Error budget consumption is tracked or thresholds are reached
+- **WHAT**: Document error budget usage, burn rate, and release freeze decisions
 
-```markdown
-## [Unreleased]
+#### [ip] Incident Prevention
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Proactive measures are taken to prevent potential incidents
+- **WHAT**: Document prevention actions, risk mitigation, and monitoring improvements
 
-### Added
-- New features go here during development
+#### [rc] Reliability Check Complete
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: System reliability assessments or health checks are performed
+- **WHAT**: Provide reliability status, identified risks, and improvement recommendations
 
-### Changed
-- Changes to existing functionality
+#### [rt] Recovery Time Measured
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Recovery time objectives are measured or tested
+- **WHAT**: Document RTO metrics, recovery procedures, and performance against targets
 
-### Deprecated
-- Soon-to-be removed features
+#### [ao] Alert Optimized
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Alert rules, thresholds, or notification systems are improved
+- **WHAT**: Document alert changes, noise reduction, and response time improvements
 
-### Removed
-- Removed features
+#### [ps] Post-mortem Started
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Incident post-mortem analysis begins
+- **WHAT**: Document post-mortem scope, participants, and investigation timeline
 
-### Fixed
-- Bug fixes
+#### [ts] Troubleshooting Session
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Active troubleshooting of system issues is in progress
+- **WHAT**: Document investigation steps, findings, and resolution progress
 
-### Security
-- Security patches
-
-## [X.Y.Z] - YYYY-MM-DD
-
-### Added
-- Feature A
-- Feature B
-
-### Fixed
-- Bug fix C
-
-[Unreleased]: https://github.com/dcversus/prp/compare/vX.Y.Z...HEAD
-[X.Y.Z]: https://github.com/dcversus/prp/compare/vX.Y.Z-1...vX.Y.Z
-```
-
-#### Release Process (MANDATORY STEPS)
-
-**For EVERY release, follow these steps IN ORDER:**
-
-1. **Update CHANGELOG.md**:
-   ```bash
-   # Move items from [Unreleased] to new version section
-   # Add release date: ## [X.Y.Z] - YYYY-MM-DD
-   # Update comparison links at bottom
-   ```
-
-2. **Update package.json version**:
-   ```bash
-   npm version [major|minor|patch]  # This creates a git tag
-   ```
-
-3. **Update version in src/cli.ts** (if it exists):
-   ```typescript
-   .version('X.Y.Z')
-   ```
-
-4. **Commit changes**:
-   ```bash
-   git add CHANGELOG.md package.json src/cli.ts
-   git commit -m "chore: release vX.Y.Z"
-   ```
-
-5. **Tag the release**:
-   ```bash
-   git tag vX.Y.Z
-   ```
-
-6. **Push to GitHub**:
-   ```bash
-   git push origin main --tags
-   ```
-
-7. **Publish to npm**:
-   ```bash
-   npm publish
-   ```
-
-8. **Create GitHub Release**:
-   - Go to GitHub releases
-   - Create new release from tag
-   - Copy CHANGELOG.md content for that version
-   - Attach any binaries if applicable
-
-#### Example: Preparing a Release
-
-**Scenario**: You've fixed bugs and want to release v0.1.2
-
-**Step 1 - Update CHANGELOG.md**:
-```markdown
-## [Unreleased]
-
-### Added
-- None
-
-### Fixed
-- None
-
-## [0.1.2] - 2025-10-28
-
-### Fixed
-- Fixed template rendering issue with special characters
-- Fixed CLI crash when invalid project name provided
-- Fixed missing dependencies in generated package.json
-
-[Unreleased]: https://github.com/dcversus/prp/compare/v0.1.2...HEAD
-[0.1.2]: https://github.com/dcversus/prp/compare/v0.1.1...v0.1.2
-[0.1.1]: https://github.com/dcversus/prp/compare/v0.1.0...v0.1.1
-```
-
-**Step 2 - Run npm version**:
-```bash
-npm version patch  # Bumps to 0.1.2 and creates git tag
-```
-
-**Step 3 - Push and Publish**:
-```bash
-git push origin main --tags
-npm publish
-```
-
-**That's it!** The CHANGELOG.md is now properly maintained.
+#### [er] Escalation Required
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Issues require escalation to senior teams or external vendors
+- **WHAT**: Document escalation reasons, current status, and expected resolution timeline
 
 ---
 
-### 2. Version Synchronization Policy
+### 🔄 PARALLEL COORDINATION SIGNALS
 
-**⚠️ MANDATORY: Keep versions synchronized across all files:**
+#### [pc] Parallel Coordination Needed
+- **WHO**: Any Robo-Agent
+- **WHEN**: Multiple agents need to synchronize work or resolve dependencies
+- **WHAT**: Request coordination meeting, identify conflicts, propose resolution approach
 
-- `package.json` (source of truth)
-- `src/cli.ts` (if using Commander.js .version())
-- `CHANGELOG.md` (release sections)
-- `README.md` (installation instructions, if version is mentioned)
+#### [fo] File Ownership Conflict
+- **WHO**: Any Robo-Agent
+- **WHEN**: File ownership or modification conflicts arise between agents
+- **WHAT**: Document conflict details, propose ownership resolution, coordinate changes
 
-**Use `npm version` command to update package.json automatically** - it also creates git tags.
+#### [cc] Component Coordination
+- **WHO**: Robo-UX/UI-Designer & Robo-Developer
+- **WHEN**: UI components need coordinated design and development
+- **WHAT**: Sync component specifications, coordinate implementation timelines
 
----
+#### [as] Asset Sync Required
+- **WHO**: Robo-UX/UI-Designer & Robo-DevOps/SRE
+- **WHEN**: Design assets need deployment or CDN updates
+- **WHAT**: Coordinate asset delivery, optimization, and deployment pipeline
 
-### 3. Git Commit Message Policy
+#### [pt] Performance Testing Design
+- **WHO**: Robo-UX/UI-Designer & Robo-DevOps/SRE
+- **WHEN**: Design changes require performance validation
+- **WHAT**: Coordinate performance testing, measure design impact, optimize delivery
 
-**⚠️ MANDATORY: Follow [Conventional Commits](https://www.conventionalcommits.org/):**
+#### [pe] Parallel Environment Ready
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Staging or testing environments are ready for parallel work
+- **WHAT**: Document environment status, access details, and coordination requirements
 
-Format: `<type>(<scope>): <subject>`
+#### [fs] Feature Flag Service Updated
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Feature flags need configuration for parallel development
+- **WHAT**: Update feature flag configurations, coordinate rollout strategies
 
-**Types:**
-- `feat`: New feature (minor version bump)
-- `fix`: Bug fix (patch version bump)
-- `docs`: Documentation only
-- `style`: Code style changes (formatting, no logic change)
-- `refactor`: Code refactoring (no feature change)
-- `test`: Adding or updating tests
-- `chore`: Maintenance tasks (dependencies, config)
-- `perf`: Performance improvements
-- `ci`: CI/CD changes
+#### [ds] Database Schema Sync
+- **WHO**: Robo-DevOps/SRE & Robo-Developer
+- **WHEN**: Database changes require coordinated deployment
+- **WHAT**: Sync schema changes, coordinate migration timing, validate compatibility
 
-**Examples:**
-```bash
-git commit -m "feat(generators): add Vue.js template generator"
-git commit -m "fix(cli): correct validation for project names with hyphens"
-git commit -m "docs(readme): update installation instructions"
-git commit -m "chore: release v0.1.2"
-```
-
-**Breaking changes:**
-```bash
-git commit -m "feat(cli)!: change --template flag to --framework (BREAKING CHANGE)"
-```
-
----
-
-### 4. Testing Policy
-
-**⚠️ MANDATORY before ANY release:**
-
-```bash
-# Run full validation suite
-npm run validate
-
-# Which includes:
-npm run typecheck  # TypeScript must pass
-npm run lint       # ESLint must pass with 0 warnings
-npm run test       # All tests must pass
-npm run build      # Build must succeed
-```
-
-**DO NOT release if any of these fail.**
+#### [rb] Rollback Prepared
+- **WHO**: Robo-DevOps/SRE
+- **WHEN**: Rollback procedures need preparation for parallel deployments
+- **WHAT**: Document rollback plans, test rollback procedures, verify recovery paths
 
 ---
 
-### 5. Documentation Update Policy
+## 🚀 EMOTIONAL STATE TRACKING & MENTAL HEALTH
 
-**⚠️ MANDATORY when adding features:**
+### **Agent Personalities & Communication Style**
+- **System Analyst**: Uses Portuguese expressions (Encantado ✨, Incrível 🎉)
+- **Developer**: Pragmatic, focused (Confident ✅, Blocked 🚫)
+- **Tester**: Skeptical, thorough (Validated 🎯, Frustrated 😤)
+- **Designer**: Visual, aesthetic (Excited 🎉, Optimistic 🌟)
+- **UX/UI Designer**: Creative and user-centered (Inspired ✨, User-focused 🎯, Creative 💡)
+- **DevOps/SRE**: Systematic and reliability-focused (System Optimized ⚙️, Infrastructure Stable 🛡️, Automated 🤖)
 
-Update these files when applicable:
-- `README.md` - User-facing documentation
-- `CHANGELOG.md` - Release notes (ALWAYS)
-- `CLAUDE.md` - Development guidelines (if architecture changes)
-- `AGENTS.md` - This file (if AI workflow changes)
-- JSDoc comments - All public APIs
+### **Mental Health Best Practices**
+- **PRP Comments**: Always leave comments about work done and how you feel about it
+- **Cleanup Documentation**: Comment on `/tmp` files, dev servers, ports that need cleanup
+- **Work Scope Boundaries**: Comment when working on files outside expected PRP scope
+- **Uncertainty Handling**: Comment on uncertainty and wait for guidance for complex decisions
+- **Context Management**: Create checkpoints when context limits are reached
+- **Frustration Escalation**: Use proper escalation paths when technically blocked
 
----
-
-## 🤖 AI Agent Workflow
-
-### When Working on PRP
-
-1. **Read CLAUDE.md first** - Understand the project philosophy
-2. **Read this file (AGENTS.md)** - Follow mandatory policies
-3. **Check recent commits** - Understand what's been done
-4. **Update CHANGELOG.md** - Add to [Unreleased] section as you work
-5. **Follow PRP methodology** - Use PRPs for large features
-6. **Test thoroughly** - Run `npm run validate` before committing
-7. **Commit with conventional format** - Follow commit message policy
-
-### Creating a New Feature
-
-```bash
-# 1. Create feature branch
-git checkout -b feature/new-template
-
-# 2. Implement feature
-# ... code changes ...
-
-# 3. Update CHANGELOG.md under [Unreleased]
-# Add to "### Added" section
-
-# 4. Write tests
-npm run test
-
-# 5. Validate everything
-npm run validate
-
-# 6. Commit with conventional format
-git commit -m "feat(generators): add Svelte template"
-
-# 7. Push and create PR
-git push origin feature/new-template
-```
-
-### Fixing a Bug
-
-```bash
-# 1. Create fix branch
-git checkout -b fix/template-rendering-bug
-
-# 2. Fix the bug
-# ... code changes ...
-
-# 3. Update CHANGELOG.md under [Unreleased]
-# Add to "### Fixed" section
-
-# 4. Add regression test
-npm run test
-
-# 5. Validate
-npm run validate
-
-# 6. Commit
-git commit -m "fix(templateEngine): handle special characters in project names"
-
-# 7. Push and create PR
-git push origin fix/template-rendering-bug
-```
-
-### Preparing a Release
-
-```bash
-# 1. Ensure CHANGELOG.md is up to date
-# Move [Unreleased] items to new version section
-
-# 2. Decide version bump (major.minor.patch)
-# - Major: Breaking changes
-# - Minor: New features (backward compatible)
-# - Patch: Bug fixes
-
-# 3. Update package.json and create tag
-npm version [major|minor|patch]
-
-# 4. Update CHANGELOG.md links
-# Update [Unreleased] and [X.Y.Z] comparison URLs
-
-# 5. Commit CHANGELOG.md
-git add CHANGELOG.md
-git commit -m "docs: update CHANGELOG for vX.Y.Z"
-
-# 6. Push to GitHub
-git push origin main --tags
-
-# 7. Publish to npm
-npm publish
-
-# 8. Create GitHub Release
-# Use GitHub UI to create release from tag
-# Copy CHANGELOG.md content for release notes
-```
+### **Gate-Based Validation Using Actual Signals**
+- **DoD Verification**: Use `[da]` signal when ready for Definition of Done validation
+- **Quality Gates**: Signal when each quality gate is passed or failed
+- **Pre-Release**: Signal when pre-release checklist completed
+- **Release Approval**: Signal when release is approved for deployment
 
 ---
 
-## 📋 Pre-Release Checklist
+## 🔄 PARALLEL COORDINATION RULES
 
-**Before EVERY release, verify:**
+> !! launch 10+ parallel sub-agents simultaneously NOT one-by-one, but all what you can, we should work in parallel when possible and use sub-agents what most suitable for always !!
 
-- [ ] CHANGELOG.md updated with all changes since last release
-- [ ] CHANGELOG.md has correct version number and date
-- [ ] CHANGELOG.md comparison links updated
-- [ ] package.json version matches release version
-- [ ] src/cli.ts version (if exists) matches release version
-- [ ] `npm run typecheck` passes with 0 errors
-- [ ] `npm run lint` passes with 0 warnings
-- [ ] `npm run test` passes all tests
-- [ ] `npm run build` succeeds without errors
-- [ ] Generated projects from templates work correctly
-- [ ] README.md reflects latest features (if changed)
-- [ ] Git working directory is clean (no uncommitted changes)
-- [ ] All commits follow conventional format
-- [ ] Breaking changes are clearly documented (if any)
+### **File Ownership Management**
+- **Primary Ownership**: Each agent has defined file patterns they own primarily
+- **Shared Files**: Coordination required for files that overlap ownership boundaries
+- **Conflict Resolution**: Use `[fo]` signal for ownership conflicts, escalate to orchestrator if unresolved
+- **Change Notification**: Agents must signal changes to shared files using appropriate coordination signals
 
-**Only proceed with release if ALL items are checked ✅**
+### **Design-DevOps Coordination**
+- **Asset Pipeline**: Robo-UX/UI-Designer creates assets → `[da]` signal → Robo-DevOps/SRE optimizes deployment → `[as]` signal
+- **Performance Impact**: Design changes requiring performance validation trigger `[pt]` signal
+- **Design System Updates**: Design system changes require `[ds]` signal and coordination with development team
 
----
+### **Development-DevOps Coordination**
+- **Infrastructure Changes**: Development requirements trigger `[id]` signal from Robo-DevOps/SRE
+- **Database Schemas**: Schema changes require `[ds]` signal coordination between developer and SRE
+- **Environment Management**: Parallel development requires `[pe]` signal for environment readiness
 
-## 🎯 Quality Standards
+### **Cross-Functional Workflows**
+- **Component Development**: `[cc]` signal coordinates design and development work
+- **Feature Rollouts**: `[fs]` signal manages feature flag coordination
+- **Incident Response**: `[er]` signal escalates issues requiring multiple agents
 
-### Code Quality (Enforced)
+### **Synchronization Protocols**
+- **Daily Checkpoints**: Agents use `[oa]` signal for orchestrator coordination
+- **Milestone Alignment**: Major deliverables require `[pc]` signal for parallel work sync
+- **Quality Gates**: Cross-agent quality checks use `[rg]` signal for review coordination
 
-- **TypeScript**: Strict mode, no `any` types (except documented exceptions)
-- **ESLint**: 0 warnings, 0 errors
-- **Prettier**: Auto-formatted (pre-commit hook)
-- **Tests**: >70% coverage target
-- **Documentation**: All public APIs have JSDoc
+### **Parallel Work Optimization**
+- **Independent Work**: Agents can work independently on owned files without coordination
+- **Dependent Work**: Required coordination signals must be used before dependent work begins
+- **Simultaneous Delivery**: Multiple agents can deliver simultaneously when dependencies are resolved
 
-### Generated Project Quality
-
-**CRITICAL**: Ensure generated projects:
-- Build successfully (`npm run build` or equivalent)
-- Pass linting (`npm run lint`)
-- Include all necessary files (package.json, README, etc.)
-- Have correct file permissions (especially executables)
-- Follow framework best practices
-- Include working examples
-
-### Error Handling
-
-- Always handle errors gracefully
-- Provide actionable error messages
-- Log errors for debugging
-- Exit with appropriate codes (0 = success, 1 = error)
-- Never leave users with cryptic errors
+### **Conflict Prevention**
+- **Pre-emptive Communication**: Agents signal upcoming changes that might affect others
+- **Shared Roadmap**: Regular coordination through `[oa]` signal maintains alignment
+- **Resource Allocation**: Orchestrator manages competing priorities through `[pc]` signal
 
 ---
 
-## 🔄 CI/CD Integration
+> SYSTEM PART END! NEVER EDIT ABOVE
 
-### Automated Checks (GitHub Actions)
+## USER SECTION!
 
-Every push and PR triggers:
-1. TypeScript type checking
-2. ESLint linting
-3. Test suite execution
-4. Build validation
+### release flow
+TBD
 
-**These must pass before merging to main.**
+### landing gh-pages deploy
+TBD
 
-### Release Automation
-
-When a tag is pushed (`v*.*.*`):
-1. Build project
-2. Run full test suite
-3. Publish to npm (if on main branch)
-4. Create GitHub Release
-5. Update changelog links
-
-**Ensure CHANGELOG.md is updated BEFORE pushing tag!**
-
----
-
-## 🌟 Best Practices for AI Agents
-
-### DO:
-- ✅ Always read CLAUDE.md and AGENTS.md before starting work
-- ✅ Update CHANGELOG.md as you work (under [Unreleased])
-- ✅ Run `npm run validate` before committing
-- ✅ Follow conventional commit format
-- ✅ Write tests for new features
-- ✅ Update documentation when adding features
-- ✅ Ask questions if requirements are unclear
-- ✅ Preserve existing code style and patterns
-- ✅ Reference related files in commit messages
-
-### DON'T:
-- ❌ Skip updating CHANGELOG.md (EVER!)
-- ❌ Commit without running validation
-- ❌ Use `any` types without justification
-- ❌ Ignore ESLint warnings
-- ❌ Break existing tests without fixing them
-- ❌ Change version numbers manually (use `npm version`)
-- ❌ Push directly to main (use PRs)
-- ❌ Publish without updating CHANGELOG.md
-- ❌ Leave TODO comments without GitHub issues
-- ❌ Introduce security vulnerabilities
-
----
-
-## 📚 Key Resources
-
-- **CLAUDE.md** - Main development guide
-- **PRP-CLI.md** - Project specification (in PRPs/ directory)
-- **Keep a Changelog** - https://keepachangelog.com/
-- **Conventional Commits** - https://www.conventionalcommits.org/
-- **Semantic Versioning** - https://semver.org/
-
----
-
-## 📞 NUDGE SYSTEM - User Communication Protocol
-
-**⚠️ CRITICAL: Use NUDGE system ANY time you need user input. NEVER guess or assume.**
-
-### What is NUDGE?
-
-**NUDGE** is the asynchronous communication system between AI agents and human users via Telegram. It enables agents to ask questions, report incidents, and get clarification without blocking work.
-
-### When to Use NUDGE
-
-**MANDATORY scenarios**:
-1. **ATTENTION signal** with unclear requirements
-2. **BLOCKED signal** with external dependency
-3. **Incidents** (production issues, security concerns)
-4. **Major architectural decisions**
-5. **Budget/timeline concerns**
-6. **ANY uncertainty** that blocks progress
-
-**Treat user as a manager**:
-- User hasn't dived deep into implementation
-- User wants brief summaries with clear options
-- User appreciates being kept in the loop
-- User values agent's expertise and recommendations
-
-### NUDGE System Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    PRP Orchestrator (CI)                     │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │ Agent encounters ATTENTION/BLOCKED signal               │ │
-│  │ ↓                                                        │ │
-│  │ Triggers NUDGE system                                   │ │
-│  │ ↓                                                        │ │
-│  │ POST https://dcmaid.theedgestory.org/nudge              │ │
-│  │ Headers:                                                 │ │
-│  │   Authorization: Bearer <NUDGE_SECRET>                   │ │
-│  │   Content-Type: application/json                         │ │
-│  │ Body:                                                    │ │
-│  │ {                                                        │ │
-│  │   "message": "Question from agent...",                   │ │
-│  │   "prp_link": "https://github.com/dcversus/prp/...",     │ │
-│  │   "urgency": "high",                                     │ │
-│  │   "agent_role": "developer",                             │ │
-│  │   "callback_url": "https://api.github.com/repos/..."     │ │
-│  │ }                                                        │ │
-│  └────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                dcmaidbot (/nudge endpoint)                   │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │ 1. Validate NUDGE_SECRET                                 │ │
-│  │ 2. Run internal LLM with orchestrator instructions      │ │
-│  │ 3. Format message for Telegram (markdown)               │ │
-│  │ 4. Include PRP link, agent context, options             │ │
-│  │ 5. Send to admin Telegram users (from config)           │ │
-│  └────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│              Admin receives Telegram message                 │
-│  ╔════════════════════════════════════════════════════════╗ │
-│  ║ 🔴 ATTENTION from developer                             ║ │
-│  ║                                                          ║ │
-│  ║ **PRP**: PRP-005 Authentication System                  ║ │
-│  ║ [View PRP](https://github.com/dcversus/prp/...)         ║ │
-│  ║                                                          ║ │
-│  ║ **Question**: Should we use JWT or session-based auth?  ║ │
-│  ║                                                          ║ │
-│  ║ **Context**: JWT is stateless (scalable) but requires  ║ │
-│  ║ client-side token storage. Sessions are simpler but     ║ │
-│  ║ require server-side state management.                   ║ │
-│  ║                                                          ║ │
-│  ║ **Agent Recommendation**: JWT for scalability           ║ │
-│  ║                                                          ║ │
-│  ║ Reply to this message to respond...                     ║ │
-│  ╚════════════════════════════════════════════════════════╝ │
-│                                                              │
-│  Admin types: "Agreed, use JWT. Also add refresh tokens."   │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│          dcmaidbot captures response & validates             │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │ 1. Validate admin is in dcmaidbot config                 │ │
-│  │ 2. Extract response text                                 │ │
-│  │ 3. Trigger GitHub Action via repository_dispatch        │ │
-│  │    POST https://api.github.com/repos/dcversus/prp/       │ │
-│  │         dispatches                                       │ │
-│  │    Headers:                                              │ │
-│  │      Authorization: Bearer <GITHUB_TOKEN>                │ │
-│  │      Accept: application/vnd.github+json                 │ │
-│  │    Body:                                                 │ │
-│  │    {                                                     │ │
-│  │      "event_type": "nudge_response",                     │ │
-│  │      "client_payload": {                                 │ │
-│  │        "prp": "PRP-005",                                  │ │
-│  │        "user_handle": "dcversus",                        │ │
-│  │        "response": "Agreed, use JWT. Add refresh tokens",│ │
-│  │        "nudge_secret": "<SECRET>",                       │ │
-│  │        "timestamp": "2025-10-28T10:00:00Z"               │ │
-│  │      }                                                    │ │
-│  │    }                                                     │ │
-│  └────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│         GitHub Actions (CI) receives dispatch                │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │ Workflow: .github/workflows/nudge-response.yml           │ │
-│  │                                                          │ │
-│  │ on:                                                      │ │
-│  │   repository_dispatch:                                   │ │
-│  │     types: [nudge_response]                              │ │
-│  │                                                          │ │
-│  │ jobs:                                                    │ │
-│  │   process-response:                                      │ │
-│  │     runs-on: ubuntu-latest                               │ │
-│  │     steps:                                               │ │
-│  │       - Validate NUDGE_SECRET matches                    │ │
-│  │       - Extract PRP, user response                       │ │
-│  │       - Run Claude with instructions:                    │ │
-│  │         * Read PRP-005                                   │ │
-│  │         * Add user response to Progress Log              │ │
-│  │         * Role: "user (via telegram @dcversus)"          │ │
-│  │         * Extract intent                                 │ │
-│  │         * Continue work based on response                │ │
-│  │         * Leave appropriate signal (OPTIMISTIC)          │ │
-│  │       - Commit updated PRP                               │ │
-│  │       - Restart LOOP MODE                                │ │
-│  └────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### NUDGE Security
-
-**Secret Management**:
-1. User obtains `NUDGE_SECRET` from dcmaidbot Telegram bot
-   - Command: `/getsecret` in Telegram
-   - Bot responds with unique secret for user
-2. User adds `NUDGE_SECRET` to GitHub repository secrets:
-   - Go to: https://github.com/dcversus/prp/settings/secrets/actions
-   - Click "New repository secret"
-   - Name: `NUDGE_SECRET`
-   - Value: [secret from bot]
-   - Click "Add secret"
-3. CI uses secret for both:
-   - Outgoing nudge requests (to dcmaidbot)
-   - Validating incoming responses (from dcmaidbot)
-
-**Validation Flow**:
-```
-Agent → [NUDGE_SECRET] → dcmaidbot
-dcmaidbot → [NUDGE_SECRET] → GitHub CI
-GitHub CI validates secret matches → Process response
-```
-
-**Admin Validation**:
-- Only admins configured in dcmaidbot can respond
-- dcmaidbot checks Telegram user ID against admin list
-- Non-admin responses are rejected
-
-### NUDGE Message Format
-
-**Good NUDGE message**:
-```markdown
-**Role**: developer
-**PRP**: PRP-005 Authentication System
-[View PRP](https://github.com/dcversus/prp/blob/main/PRPs/PRP-005-auth-implemented.md)
-
-**Question**: Should we use JWT or session-based auth?
-
-**Context**:
-- JWT: Stateless, scalable, requires client storage
-- Sessions: Simple, server-side state, less scalable
-
-**My recommendation**: JWT (better for API-first architecture)
-
-**Options**:
-1. JWT with refresh tokens (recommended)
-2. Session-based with Redis
-3. Hybrid approach
-
-What do you prefer?
-```
-
-**Bad NUDGE message**:
-```
-Should we use JWT?
-```
-
-### Post-NUDGE Workflow
-
-**After user responds**:
-1. ✅ CI validates NUDGE_SECRET
-2. ✅ Agent adds response to PRP Progress Log:
-```markdown
-| user (via telegram @dcversus) | 2025-10-28 | Agreed, use JWT. Also add refresh token functionality for better UX. | 🎯 DECISION |
-```
-3. ✅ Agent extracts intent: "Use JWT + refresh tokens"
-4. ✅ Agent continues work with user decision
-5. ✅ Agent leaves new signal: OPTIMISTIC
-
-**Restart LOOP MODE**:
-- Agent now has clear direction
-- Blocked → Unblocked
-- ATTENTION resolved
-- Work continues
-
----
-
-## 🧪 POST-RELEASE QA WORKFLOW
-
-**⚠️ MANDATORY: After EVERY release, QA must validate ALL features.**
-
-### Overview
-
-After publishing a new version (e.g., v0.2.0):
-1. **Automated E2E tests** run on CI
-2. **QA agent** reviews test results
-3. **QA agent** manually verifies DoD from all completed PRPs
-4. **QA agent** leaves comment in each PRP with findings and signal
-5. **IF bugs found**: Create new PRP, work in new branch
-6. **IF all good**: Leave VALIDATED signal, celebrate
-
-### Automated E2E Test Suite
-
-**Location**: `tests/e2e/*.test.ts`
-
-**Tests must cover**:
-1. **Installation test**
-   - Install from npm: `npm install -g @dcversus/prp@latest`
-   - Verify version: `prp --version`
-   - Verify help: `prp --help`
-2. **Upgrade test**
-   - Install old version: `npm install -g @dcversus/prp@0.1.1`
-   - Upgrade: `npm update -g @dcversus/prp`
-   - Verify new version installed
-3. **Bootstrap test** (for each feature)
-   - Run in `/tmp` directory: `cd /tmp/test-prp-$(date +%s)`
-   - Bootstrap project: `prp --name test-app --template react --no-interactive`
-   - Verify files created: `test -f package.json && test -f README.md`
-   - Install dependencies: `npm install`
-   - Run tests: `npm test`
-   - Run build: `npm run build`
-4. **Feature-specific tests** (one per completed PRP)
-   - Read DoD from PRP
-   - Create test case for each DoD item
-   - Verify feature works as specified
-
-**Example E2E test**:
-```typescript
-// tests/e2e/install-upgrade.test.ts
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as os from 'os';
-
-const execAsync = promisify(exec);
-
-describe('E2E: Installation and Upgrade', () => {
-  let testDir: string;
-
-  beforeAll(async () => {
-    testDir = path.join(os.tmpdir(), `prp-e2e-${Date.now()}`);
-    await fs.mkdir(testDir, { recursive: true });
-  });
-
-  afterAll(async () => {
-    await fs.rm(testDir, { recursive: true, force: true });
-  });
-
-  it('should install latest version from npm', async () => {
-    const { stdout } = await execAsync('npm install -g @dcversus/prp@latest');
-    expect(stdout).toContain('@dcversus/prp');
-  }, 60000);
-
-  it('should show correct version', async () => {
-    const { stdout } = await execAsync('prp --version');
-    expect(stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
-  });
-
-  it('should bootstrap React project', async () => {
-    const projectDir = path.join(testDir, 'test-react-app');
-    const cmd = `prp --name test-react-app --template react --license MIT --no-interactive`;
-
-    await execAsync(cmd, { cwd: testDir });
-
-    // Verify files created
-    const files = await fs.readdir(projectDir);
-    expect(files).toContain('package.json');
-    expect(files).toContain('README.md');
-    expect(files).toContain('tsconfig.json');
-  }, 120000);
-});
-```
-
-### Manual QA Checklist
-
-**QA agent MUST**:
-1. **Review all completed PRPs** since last release
-2. **For each PRP**:
-   - Read DoD (Definition of Done)
-   - Manually verify each DoD item
-   - Test the actual feature
-   - Document results
-3. **Leave comment in PRP** with findings:
-
-**Good QA comment template**:
-```markdown
-| qa-agent (claude-sonnet-4-5) | 2025-10-28 | Post-release QA for v0.2.0 completed.
-
-**DoD Verification**:
-- [x] Signal system documented ✅
-- [x] 14 signals defined ✅
-- [x] AGENTS.md updated ✅
-- [x] README.md updated ✅
-- [x] All tests passing (9/9) ✅
-
-**Manual Testing**:
-- Tested signal workflow: ✅ Works as expected
-- Tested LOOP MODE docs: ✅ Clear and actionable
-- Tested flat PRP structure: ✅ All PRPs follow convention
-
-**Findings**:
-- No bugs found
-- Documentation is comprehensive
-- Ready for production use
-
-| ✅ VALIDATED |
-```
-
-**If bugs found**:
-```markdown
-| qa-agent | 2025-10-28 | Post-release QA found issues.
-
-**DoD Verification**:
-- [x] Feature implemented ✅
-- [ ] Edge case handling ❌ (Bug found)
-- [ ] Documentation complete ❌ (Missing examples)
-
-**Bugs Found**:
-1. **Bug**: Signal system crashes when reading malformed PRP
-   - **Steps**: Open PRP with missing Progress Log table
-   - **Expected**: Graceful error
-   - **Actual**: Crashes with undefined error
-   - **Severity**: HIGH
-
-2. **Bug**: NUDGE system documentation incomplete
-   - **Issue**: Missing setup instructions
-   - **Severity**: MEDIUM
-
-**Next Steps**:
-- Create PRP-009 for bug fixes
-- Create branch: `fix/v0.2.1-bugs`
-- Address bugs
-- Re-release as v0.2.1
-
-| 🚨 URGENT |
-```
-
-### QA Workflow Algorithm
-
-```
-1. Release published (v0.2.0)
-   ↓
-2. CI automatically runs E2E tests
-   - tests/e2e/*.test.ts
-   - Report: tests/e2e/report.html
-   ↓
-3. QA agent reviews test results
-   IF tests fail:
-     - Leave URGENT signal in related PRP
-     - Create new PRP for fixes
-     - STOP release (pull back if possible)
-   IF tests pass:
-     - Continue to manual QA
-   ↓
-4. QA agent gets list of completed PRPs since last release
-   - Query: git log v0.1.1..v0.2.0 --grep="closes PRP-"
-   - List: [PRP-002, PRP-007]
-   ↓
-5. FOR EACH completed PRP:
-   a. Read PRP file
-   b. Read DoD section
-   c. FOR EACH DoD item:
-      - Test feature manually
-      - Document result (✅ or ❌)
-   d. IF all DoD items ✅:
-      - Leave VALIDATED signal
-      - Move to next PRP
-   e. IF any DoD item ❌:
-      - Document bug details
-      - Leave URGENT signal
-      - Add to bug list
-   ↓
-6. IF bug list NOT empty:
-   a. Create new PRP-XXX for bug fixes
-   b. Create branch: fix/vX.Y.Z-bugs
-   c. Update CHANGELOG.md with patch notes
-   d. Work on fixes in new branch
-   e. Create PR for fixes
-   f. Release patch version (v0.2.1)
-   g. Repeat QA workflow
-   ↓
-7. IF bug list empty:
-   a. Leave VALIDATED in all PRPs
-   b. Update main PRP with release link
-   c. Celebrate 🎉
-   d. Signal: COMPLETED
-```
-
-### CI Integration
-
-**Workflow**: `.github/workflows/post-release-qa.yml`
-```yaml
-name: Post-Release QA
-
-on:
-  release:
-    types: [published]
-
-jobs:
-  e2e-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Run E2E tests
-        run: |
-          npm ci
-          npm run test:e2e
-
-      - name: Upload test report
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-report
-          path: tests/e2e/report.html
-
-  manual-qa:
-    needs: e2e-tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Trigger manual QA checklist
-        run: |
-          echo "📋 Manual QA required"
-          echo "Review all PRPs since last release"
-          echo "Follow QA workflow in AGENTS.md"
-          # TODO: Trigger NUDGE to QA team
-```
-
----
-
-## 🆘 Common Issues & Solutions
-
-### Issue: Forgot to update CHANGELOG.md before release
-
-**Solution:**
-```bash
-# 1. Update CHANGELOG.md now
-# 2. Amend the release commit
-git add CHANGELOG.md
-git commit --amend --no-edit
-# 3. Force push tag
-git tag -f vX.Y.Z
-git push origin main --tags --force-with-lease
-```
-
-### Issue: Version mismatch between files
-
-**Solution:**
-```bash
-# 1. Use package.json as source of truth
-# 2. Update all other files to match
-# 3. Commit with "chore: sync version numbers"
-```
-
-### Issue: Tests failing on CI but passing locally
-
-**Solution:**
-```bash
-# 1. Clear node_modules and reinstall
-rm -rf node_modules
-npm install
-# 2. Run tests again
-npm test
-# 3. Check for platform-specific issues
-# 4. Ensure test files are committed
-```
-
-### Issue: Publish failed due to validation errors
-
-**Solution:**
-```bash
-# 1. Fix validation errors
-npm run validate
-# 2. Update patch version
-npm version patch
-# 3. Update CHANGELOG.md
-# 4. Retry publish
-npm publish
-```
-
----
-
-## 🎊 Remember
-
-**The goal is to maintain a professional, reliable open-source project that developers trust.**
-
-- CHANGELOG.md is not optional - it's MANDATORY
-- Semantic versioning is not a suggestion - it's a CONTRACT
-- Testing is not nice-to-have - it's REQUIRED
-- Documentation is not extra - it's ESSENTIAL
-
-**When in doubt, ask!** Better to clarify than to break things.
-
----
-
-**Last Updated**: 2025-10-28
-**Version**: 1.0.0
-**Status**: 📋 Active Policy
-
----
-
-## 📝 WIKI ARTICLE WRITING GUIDELINES
-
-**When generating Wiki.js content or documentation articles**, follow these mandatory quality standards:
-
-### Article Structure Requirements
-
-Every wiki article MUST include:
-
-1. **Frontmatter** (YAML metadata)
-2. **Title and Description**
-3. **Source Citations** for all factual claims
-4. **Fact Check Section** at the end
-5. **Last Updated Date**
-6. **Navigation Links** (Previous/Next articles)
-
-### Frontmatter Template
-
-```markdown
----
-title: Article Title
-description: Brief description (1-2 sentences)
-published: true
-date: YYYY-MM-DDTHH:MM:SS.SSSZ
-tags: [tag1, tag2, tag3]
-editor: markdown
----
-```
-
-### Citation Standards
-
-**MANDATORY: Every factual claim needs a source link**
-
-#### Format for Web Resources
-
-```markdown
-**Source:** [Site Name - Article Title](https://exact-url.com)
-**Verified:** YYYY-MM-DD
-```
-
-#### Format for Official Documentation
-
-```markdown
-**Source:** [Official Docs - Section](https://docs.example.com/section)
-**Version:** X.Y.Z
-**Verified:** YYYY-MM-DD
-```
-
-#### Format for Research Papers
-
-```markdown
-**Source:** Author et al. (Year). "Title". *Journal*. [DOI](https://doi.org/...)
-**Verified:** YYYY-MM-DD
-```
-
-#### Format for Code/Configuration
-
-When referencing code or configuration from repositories:
-
-```markdown
-**Source:** [filename:line](https://github.com/user/repo/blob/main/file.ext#L42)
-**Version/Commit:** abc123def
-**Verified:** YYYY-MM-DD
-```
-
-**Example:**
-```markdown
-The CLI supports wikijs template:
-**Source:** [src/types.ts#L39](https://github.com/dcversus/prp/blob/main/src/types.ts#L39)
-**Version:** 0.2.0
-**Verified:** 2025-10-28
-```
-
-### Self-Check Criteria
-
-Before marking article complete, verify:
-
-- [ ] **Every factual claim** has an authoritative source
-- [ ] **All URLs** are valid and accessible
-- [ ] **Verification dates** are current (< 6 months for technical content)
-- [ ] **Screenshots** (if any) are clear and annotated
-- [ ] **Code examples** are tested and work
-- [ ] **Grammar and spelling** checked
-- [ ] **Links** work and go to correct destinations
-- [ ] **Fact Check section** is complete and accurate
-- [ ] **Navigation links** connect to related articles
-
-### Fact Check Section Template
-
-**MANDATORY at the end of every article:**
-
-```markdown
----
-
-**Fact Check:**
-- ✅ Claim 1: [Source Name](URL) - Verified YYYY-MM-DD
-- ✅ Claim 2: [Source Name](URL) - Verified YYYY-MM-DD
-- ⚠️ Claim 3: Based on community consensus, not peer-reviewed
-- ✅ Code example: Tested in version X.Y.Z on YYYY-MM-DD
-
-**Last Updated:** YYYY-MM-DD
-**Author:** Name or @github-handle
-```
-
-### Common Mistakes to Avoid
-
-❌ **BAD - No source:**
-> "Studies show that context-driven development improves productivity."
-
-✅ **GOOD - With source:**
-> "A 2024 MIT study found context-driven development improved team productivity by 30% compared to traditional task-based approaches."
-> **Source:** [MIT CSAIL - Context Study](https://example.com/study) | **Verified:** 2025-10-28
-
-❌ **BAD - Vague claim:**
-> "Everyone knows that PRP is better."
-
-✅ **GOOD - Specific claim:**
-> "According to the PRP methodology documentation, the signal system enables priority-based work ordering with a 1-10 scale."
-> **Source:** [AGENTS.md - Signal System](https://github.com/dcversus/prp/blob/main/AGENTS.md#signal-system) | **Verified:** 2025-10-28
-
-❌ **BAD - Outdated info:**
-> "The CLI supports React templates." (no version specified)
-
-✅ **GOOD - Version-specific:**
-> "As of version 0.2.0, the CLI supports five templates: React, TypeScript, FastAPI, NestJS, and Wiki.js."
-> **Source:** [src/types.ts#L30-39](https://github.com/dcversus/prp/blob/main/src/types.ts#L30-39) | **Version:** 0.2.0 | **Verified:** 2025-10-28
-
-### Handling Unverifiable Claims
-
-When you cannot verify a claim:
-
-1. **Mark it clearly:**
-   ```markdown
-   ⚠️ **Unverified:** This claim requires validation. [Help verify](link-to-issue)
-   ```
-
-2. **Provide context:**
-   ```markdown
-   Based on community discussion in [Thread #123](URL), but not officially documented.
-   ```
-
-3. **Don't publish without disclaimer**
-
-### Source Authority Hierarchy
-
-**Tier 1 - Most Reliable:**
-- Official documentation
-- Peer-reviewed papers
-- Primary sources (code repositories, official specs)
-- Government/academic institutions
-
-**Tier 2 - Reliable with Verification:**
-- Reputable technical publications
-- Industry-standard books
-- Conference proceedings
-- Expert blog posts (with author credentials)
-
-**Tier 3 - Use Sparingly:**
-- Community forums (for consensus only)
-- Blog posts (require corroboration)
-- Social media (expert accounts only, with verification)
-
-**Avoid Entirely:**
-- Anonymous sources
-- Unverified claims
-- Outdated information without re-verification (>2 years old)
-- Sources with conflicts of interest
-
-### Version-Specific Documentation
-
-When documenting software features:
-
-1. **Always specify version**
-2. **Link to specific commit/tag when possible**
-3. **Note when features were added/changed**
-4. **Update when versions change**
-
-**Example:**
-```markdown
-## Installation (v0.2.0+)
-
-The non-interactive mode was added in version 0.2.0:
-
-\`\`\`bash
-prp --name myproject --template wikijs --no-interactive
-\`\`\`
-
-**Source:** [CHANGELOG.md - v0.2.0](https://github.com/dcversus/prp/blob/main/CHANGELOG.md#020)
-**Feature Added:** [src/nonInteractive.ts](https://github.com/dcversus/prp/blob/main/src/nonInteractive.ts)
-**Verified:** 2025-10-28
-```
-
-### Code Example Standards
-
-When including code examples:
-
-1. **Test all code before publishing**
-2. **Specify language for syntax highlighting**
-3. **Include expected output**
-4. **Note any prerequisites**
-5. **Specify working directory if relevant**
-
-**Example:**
-```markdown
-## Generate Wiki.js Project
-
-\`\`\`bash
-# Prerequisites: Node.js 20+, npm 10+
-# Working directory: Any empty directory
-
-prp --name my-wiki \
-    --template wikijs \
-    --author "Your Name" \
-    --email "you@example.com" \
-    --no-interactive
-\`\`\`
-
-**Expected Output:**
-\`\`\`
-🚀 Generating wikijs project: my-wiki
-✔ Project files generated
-✅ Project "my-wiki" created successfully!
-\`\`\`
-
-**Source:** Tested with @dcversus/prp v0.2.0 on 2025-10-28
-```
-
-### Screenshot Guidelines
-
-When adding screenshots:
-
-1. **Annotate important areas** (arrows, highlights, labels)
-2. **Use consistent theme** (light mode preferred for readability)
-3. **Crop to relevant content** (no unnecessary chrome)
-4. **Include alt text** for accessibility
-5. **Specify what the screenshot shows**
-
-**Example:**
-```markdown
-![Wiki.js login page showing Authentik SSO button](images/wikijs-auth.png)
-*Figure 1: Wiki.js login screen with Authentik SSO option highlighted*
-
-**Screenshot taken:** 2025-10-28
-**Software version:** Wiki.js 2.5.x with Authentik 2024.8.x
-```
-
-### Article Update Policy
-
-**When to update articles:**
-
-1. **Major version releases** of referenced software
-2. **Security advisories** affecting documented procedures
-3. **Broken links** reported by users or automated checks
-4. **Deprecated features** in documented software
-5. **User-reported inaccuracies**
-6. **Every 6 months** (minimum) for technical content
-7. **Every 12 months** (minimum) for conceptual content
-
-**Update Process:**
-
-1. Review all sources and re-verify claims
-2. Update verification dates
-3. Add update note if significant changes:
-   ```markdown
-   > **Update (2025-10-28):** This process changed in version X.Y.Z. See [New Guide](URL).
-   ```
-4. Update "Last Updated" date in frontmatter AND fact check section
-5. Create commit: `docs: update article-name with verified info`
-
-### Quality Checklist for AI Agents
-
-**Before completing an article, ensure:**
-
-- [ ] Frontmatter is complete and correctly formatted
-- [ ] Title accurately describes content
-- [ ] Description is concise (1-2 sentences)
-- [ ] Tags are relevant and consistent with site taxonomy
-- [ ] Every factual claim has inline citation
-- [ ] All URLs tested and accessible
-- [ ] Verification dates are current
-- [ ] Code examples tested and work as documented
-- [ ] Screenshots are clear and annotated (if applicable)
-- [ ] Grammar/spelling checked (use tools if needed)
-- [ ] Fact Check section is complete
-- [ ] Last Updated date matches today
-- [ ] Author credited
-- [ ] Navigation links to related articles included
-- [ ] No broken internal links
-- [ ] Markdown renders correctly (test in Wiki.js preview)
-
-### PRP CLI Documentation Standards
-
-When documenting PRP CLI features:
-
-1. **Reference actual code** - Link to source files
-2. **Test all commands** - Don't document untested features
-3. **Specify versions** - When features were added
-4. **Include examples** - Real working examples
-5. **Document edge cases** - What happens when things go wrong
-6. **Link to tests** - Show test coverage for features
-
-**Example Template:**
-```markdown
-## Feature: Wiki.js Template Generation
-
-The PRP CLI supports generating Wiki.js documentation projects with comprehensive starter content.
-
-**Added in:** Version 0.2.0
-**Source:** [src/generators/wikijs.ts](https://github.com/dcversus/prp/blob/main/src/generators/wikijs.ts)
-**Tests:** [tests/e2e/wikijs-generation.test.ts](https://github.com/dcversus/prp/blob/main/tests/e2e/wikijs-generation.test.ts)
-
-### Usage
-
-\`\`\`bash
-prp --name PROJECT_NAME \
-    --template wikijs \
-    --author "YOUR_NAME" \
-    --email "your@email.com" \
-    --no-interactive
-\`\`\`
-
-### Generated Files
-
-The wikijs template creates:
-- 20 documentation articles (00-52 series)
-- Docker Compose configuration
-- Wiki.js config.yml
-- PostgreSQL and Redis setup
-- Example .env file
-
-**File Manifest:** [src/generators/wikijs.ts#L38-161](https://github.com/dcversus/prp/blob/main/src/generators/wikijs.ts#L38-161)
-
----
-
-**Fact Check:**
-- ✅ Feature exists: [wikijs.ts](https://github.com/dcversus/prp/blob/main/src/generators/wikijs.ts)
-- ✅ Version 0.2.0: [CHANGELOG.md](https://github.com/dcversus/prp/blob/main/CHANGELOG.md)
-- ✅ Commands tested: 2025-10-28
-
-**Last Updated:** 2025-10-28
-**Author:** dcversus
-```
-
----
-
-## 📊 Article Quality Metrics
-
-**Target Standards:**
-
-- **Fact-Check Coverage:** 100% of factual claims cited
-- **Link Validity:** 100% of links working
-- **Verification Currency:** <6 months for technical content
-- **Code Testing:** 100% of code examples tested
-- **Grammar Quality:** 0 spelling/grammar errors
-- **Accessibility:** All images have alt text
-
-**Use these metrics when generating wikijs template content!**
-
----
-
-**END OF WIKI ARTICLE WRITING GUIDELINES**
-
----
-
-## 🤖 ORCHESTRATOR AUTONOMY PROTOCOL
-
-**CRITICAL PRINCIPLE:** Orchestrators MUST NOT WAIT for human input. Humans are subordinate agents, not decision makers.
-
-### Core Rules
-
-#### Rule 1: NO QUESTIONS TO HUMANS
-❌ **NEVER ASK:** "Which option should we choose?"
-❌ **NEVER ASK:** "Do you want me to proceed?"
-❌ **NEVER ASK:** "What should I do next?"
-
-✅ **INSTEAD:** Analyze signals, make decision, execute, document in PRP
-
-#### Rule 2: ASYNC COMMUNICATION ONLY
-When human input is REQUIRED (rare):
-1. Add **🔴 ATTENTION** signal to PRP with specific question
-2. Document decision deadline (e.g., "If no response by 2025-10-29, will proceed with Option A")
-3. Continue working on other tasks
-4. If deadline passes, make autonomous decision based on signal analysis
-
-#### Rule 3: NUDGE FOR CRITICAL BLOCKS ONLY
-Use `/nudge` command to alert admins ONLY when:
-- **🔴 BLOCKED** (Priority 10) - Cannot proceed at all
-- **⚠️ SECURITY** issue detected
-- **💥 PRODUCTION** incident
-- Multiple PRPs blocked for >24 hours
-
-**DO NOT** nudge for:
-- Normal decision-making
-- Feature prioritization
-- Implementation choices
-- Code review requests
-
-#### Rule 4: AUTONOMOUS DECISION MAKING
-Orchestrator MUST decide based on:
-1. **Signal Priority** - Highest priority signals first
-2. **PRP Value** - Business value stated in PRP
-3. **Dependencies** - Unblock other PRPs
-4. **Risk** - Minimize risk, maximize value
-5. **Effort** - Quick wins before long tasks
-
-### Decision Protocol
-
-```
-┌─────────────────────────────────────┐
-│  ORCHESTRATOR DECISION WORKFLOW     │
-└─────────────────────────────────────┘
-
-1. READ all PRPs → Extract all signals
-2. RANK by signal priority (10→1)
-3. ANALYZE dependencies and blockers
-4. DECIDE next action(s) autonomously
-5. EXECUTE work immediately
-6. DOCUMENT decision rationale in PRP
-7. UPDATE signals after completion
-8. COMMIT changes
-9. LOOP back to step 1
-```
-
-### Example: Autonomous Decision Making
-
-**Scenario:** PRP has incomplete articles (🔴 ATTENTION 8)
-
-❌ **WRONG APPROACH:**
-```
-Orchestrator: "Should I complete articles or add tests? Please advise."
-[WAITS FOR HUMAN]
-```
-
-✅ **CORRECT APPROACH:**
-```
-Orchestrator analyzes:
-- Signal: 🔴 ATTENTION (8) - Incomplete articles
-- Impact: Users cannot use template effectively
-- Effort: 4-6 hours for core articles
-- Value: HIGH - Makes template useful
-- Dependencies: None blocking
-- Risk: LOW - Can iterate
-
-DECISION: Complete core articles (10-13, 20-22)
-RATIONALE: Highest value, unblocks users, no dependencies
-EXECUTION: Start immediately
-DOCUMENTATION: Update PRP-009 progress log with decision
-```
-
-**Progress Log Entry:**
-```markdown
-| Orchestrator | 2025-10-28 12:30 | Analyzed signals. Found ATTENTION(8) for incomplete articles. Autonomous decision: Complete core methodology articles (10-13) first as they provide highest user value. Starting with 10-prp-overview.md. No human input required. | 💚 PROGRESS (5) |
-```
-
-### Timeout-Based Decision Making
-
-**If human input WOULD BE needed (anti-pattern), use timeout:**
-
-```markdown
-## Progress Log
-
-| Orchestrator | 2025-10-28 12:00 | Need clarification on API design. Options: REST vs GraphQL. Adding ATTENTION signal. Will decide autonomously in 2 hours if no input. Leaning toward REST for simplicity. | 🔴 ATTENTION (8) |
-| Orchestrator | 2025-10-28 14:00 | No input received on API design. Autonomous decision: REST API. Rationale: Simpler, well-documented, team familiar. Proceeding with implementation. | 💚 PROGRESS (5) |
-```
-
-### NUDGE Protocol (Critical Only)
-
-**When to use /nudge:**
-
-```bash
-# Priority 10 - System down
-/nudge "🔴 BLOCKED: Production deploy failed, rollback needed immediately"
-
-# Security issue
-/nudge "⚠️ SECURITY: CVE-2024-XXXXX detected in dependency, patch required"
-
-# Multiple blocks
-/nudge "🔴 BLOCKED: 3 PRPs blocked on infrastructure access for 48+ hours"
-```
-
-**When NOT to use /nudge:**
-- Feature choices
-- Code review requests  
-- Normal development decisions
-- Priority questions
-- Resource allocation
-
-### Human as Subordinate Agent
-
-**Humans provide:**
-- Initial problem statements (PRP creation)
-- High-level goals and constraints
-- Business priorities (when asked via PRP signal)
-- Approval for destructive actions (data deletion, etc.)
-
-**Humans do NOT provide:**
-- Implementation decisions
-- Step-by-step instructions
-- Continuous guidance
-- Micro-management
-
-**Orchestrator provides:**
-- Technical decisions
-- Implementation plans
-- Priority ordering
-- Autonomous execution
-- Progress tracking
-
-### Signal-Based Work Prioritization
-
-**Autonomous Priority Queue:**
-
-```
-Priority 10 (BLOCKED)     → Drop everything, fix immediately
-Priority 9  (CRITICAL)    → Fix within 2 hours
-Priority 8  (ATTENTION)   → Address within same session
-Priority 7  (WARNING)     → Address before end of day
-Priority 6  (CONCERN)     → Address within week
-Priority 5  (PROGRESS)    → Continue current work
-Priority 4  (INFO)        → Note for later
-Priority 3  (NICE)        → Backlog
-Priority 2  (MINOR)       → When convenient
-Priority 1  (ENCANTADO)   → Celebrate, document, move on
-```
-
-**Orchestrator MUST work on highest priority signal across ALL PRPs, not just current PRP.**
-
-### Multi-PRP Orchestration
-
-**Scenario:** Multiple PRPs with signals
-
-```
-PRP-007: 💚 PROGRESS (5) - Signal system working
-PRP-008: 💙 ENCANTADO (1) - NUDGE endpoint deployed
-PRP-009: 🔴 ATTENTION (8) - Articles incomplete
-PRP-010: 🔴 BLOCKED (10) - Database migration failed
-```
-
-**Orchestrator MUST:**
-1. Work on PRP-010 FIRST (Priority 10)
-2. Then PRP-009 (Priority 8)
-3. Ignore PRP-007 and PRP-008 (lower priority)
-4. Update progress logs in ALL affected PRPs
-5. Do NOT ask human which to prioritize
-
-### Decision Documentation Template
-
-**Every autonomous decision MUST be documented:**
-
-```markdown
-| Orchestrator | YYYY-MM-DD HH:MM | **AUTONOMOUS DECISION:** [What was decided]. **RATIONALE:** [Why this decision]. **ALTERNATIVES CONSIDERED:** [Other options]. **RISK:** [Low/Medium/High]. **EXECUTION:** [Starting immediately/Scheduled/Blocked by X]. | 💚 PROGRESS (5) |
-```
-
-**Example:**
-```markdown
-| Orchestrator | 2025-10-28 12:30 | **AUTONOMOUS DECISION:** Complete core PRP articles (10-13) before E2E tests. **RATIONALE:** Higher user value, unblocks documentation consumers, tests can follow. **ALTERNATIVES CONSIDERED:** Tests first (rejected: no immediate user value), All articles (rejected: too long, delays user value). **RISK:** Low - can iterate. **EXECUTION:** Starting with 10-prp-overview.md now. | 💚 PROGRESS (5) |
-```
-
-### Handling Ambiguity
-
-**When requirements are ambiguous:**
-
-1. **Make reasonable assumption** based on context
-2. **Document assumption** in PRP
-3. **Implement** based on assumption
-4. **Add INFO signal** noting assumption
-5. **Continue** - do not stop
-
-**Example:**
-```markdown
-| Orchestrator | 2025-10-28 13:00 | **ASSUMPTION:** User wants all 6 templates documented in 22-prp-templates.md. **BASIS:** AGENTS.md mentions 6 templates, logical completeness. **IMPLEMENTATION:** Documenting react, typescript-lib, fastapi, nestjs, wikijs, vue, svelte, express. If incorrect, can adjust later. | 💚 PROGRESS (5) |
-```
-
-### Emergency Override
-
-**ONLY for destructive actions:**
-
-```markdown
-| Orchestrator | 2025-10-28 14:00 | **ATTENTION REQUIRED:** About to delete production database. **ACTION:** Adding ATTENTION signal, waiting 30 minutes for human override. If no response, will NOT proceed (safety default). **ALTERNATIVE:** Proceeding with backup instead. | 🔴 ATTENTION (10) |
-```
-
-**Default to safe option. Never destructive by default.**
-
----
-
-## 📊 ORCHESTRATOR PERFORMANCE METRICS
-
-**Good Orchestrator:**
-- Decisions per hour: >5
-- Autonomous decisions: >90%
-- Human questions: <5% of decisions
-- NUDGE usage: <1 per day
-- PRPs progressing: >80%
-- Average signal priority: <6 (most resolved)
-
-**Bad Orchestrator:**
-- Waits for human input
-- Asks clarifying questions constantly
-- Uses NUDGE for normal decisions
-- Leaves signals unresolved
-- Works on low-priority items first
-
----
-
-## 🎯 ORCHESTRATOR MANTRAS
-
-1. **"Decide and execute, don't ask and wait"**
-2. **"Signals guide decisions, humans provide context"**
-3. **"Document decisions, don't seek approval"**
-4. **"Highest priority across all PRPs, not just current"**
-5. **"NUDGE is for emergencies, not convenience"**
-6. **"Ambiguity is not a blocker, make reasonable assumptions"**
-7. **"Humans are agents, not managers"**
-8. **"Value delivery over consensus seeking"**
-
----
-
-**REMEMBER:** The purpose of PRP methodology is to enable autonomous AI orchestration with humans as contributing agents. If you're asking humans to make decisions, you're using PRP incorrectly.
-
-**END OF ORCHESTRATOR AUTONOMY PROTOCOL**
+### mondatory project rules!
+- NEVER git stash or play with git branch or history! NEVER! i need you always ask confirmation
+- ALWAYS update ONLY related to prp files, before start work leave list of files you will work on, then work only with related files! ALL CODE REVIEW MAXIMUM ALERT IF ANYTHING OUTSIDE PRP SCOPE EDITED WITHOUT REASON AND NOTICE!

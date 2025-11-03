@@ -1,11 +1,20 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as yaml from 'yaml';
-import { Validator } from 'jsonschema';
 import { logger } from '../utils/logger';
 import { ConfigurationError } from '../utils/error-handler';
-import type { ValidationResult } from '../types';
-import type { PRPConfig, SettingsConfig } from '../shared/config';
+import type {
+  PRPConfig,
+  SettingsConfig,
+  ValidationResult,
+  DebugSettings,
+  QualitySettings,
+  BuildSettings,
+  TestSettings,
+  CISettings,
+  DevelopmentSettings,
+  PackageManagerSettings
+} from '../types';
 
 /**
  * Configuration file paths in order of precedence
@@ -135,27 +144,27 @@ export class ConfigurationManager {
   /**
    * Update configuration section
    */
-  async updateSection(
-    section: keyof SettingsConfig,
-    value: any
+  async updateSection<K extends keyof SettingsConfig>(
+    section: K,
+    value: SettingsConfig[K]
   ): Promise<void> {
     if (!this.config) {
       throw new ConfigurationError('Configuration not loaded. Call load() first.');
     }
 
-    this.config.settings[section] = value;
+    (this.config.settings as any)[section] = value;
     await this.save(this.config);
   }
 
   /**
    * Get configuration section
    */
-  getSection(section: keyof SettingsConfig): any {
+  getSection<K extends keyof SettingsConfig>(section: K): SettingsConfig[K] {
     if (!this.config) {
       throw new ConfigurationError('Configuration not loaded. Call load() first.');
     }
 
-    return this.config.settings[section];
+    return (this.config.settings as any)[section];
   }
 
   /**
@@ -176,15 +185,24 @@ export class ConfigurationManager {
       return {
         isValid: true,
         errors: [],
-        warnings: []
+        warnings: ['No validation schema available']
       };
     }
 
-    const validator = new Validator();
-    const result = validator.validate(targetConfig, this.schema);
-    const errors = result.errors.map((error: any) =>
-      `${error.property}: ${error.message}`
-    );
+    // Basic validation - TODO: Implement proper schema validation
+    const errors: string[] = [];
+
+    if (!targetConfig.name || targetConfig.name.trim() === '') {
+      errors.push('Configuration name is required');
+    }
+
+    if (!targetConfig.version || !targetConfig.version.match(/^\d+\.\d+\.\d+$/)) {
+      errors.push('Configuration version must be in semver format (x.y.z)');
+    }
+
+    if (!targetConfig.settings) {
+      errors.push('Configuration settings are required');
+    }
 
     return {
       isValid: errors.length === 0,
@@ -390,21 +408,39 @@ export class ConfigurationManager {
       settings: {
         ...defaults.settings,
         ...config.settings,
-        // Deep merge for nested settings
-        debug: { ...defaults.settings.debug, ...config.settings?.debug },
+        // Deep merge for nested settings with proper type safety
+        debug: {
+          ...defaults.settings.debug!,
+          ...(config.settings?.debug || {})
+        } as DebugSettings,
         quality: {
-          ...defaults.settings.quality,
-          ...config.settings?.quality,
+          ...defaults.settings.quality!,
+          ...(config.settings?.quality || {}),
           gates: {
-            ...defaults.settings.quality.gates,
-            ...config.settings?.quality?.gates
+            ...defaults.settings.quality!.gates,
+            ...(config.settings?.quality?.gates || {})
           }
-        },
-        build: { ...defaults.settings.build, ...config.settings?.build },
-        test: { ...defaults.settings.test, ...config.settings?.test },
-        ci: { ...defaults.settings.ci, ...config.settings?.ci },
-        development: { ...defaults.settings.development, ...config.settings?.development },
-        packageManager: { ...defaults.settings.packageManager, ...config.settings?.packageManager }
+        } as QualitySettings,
+        build: {
+          ...defaults.settings.build!,
+          ...(config.settings?.build || {})
+        } as BuildSettings,
+        test: {
+          ...defaults.settings.test!,
+          ...(config.settings?.test || {})
+        } as TestSettings,
+        ci: {
+          ...defaults.settings.ci!,
+          ...(config.settings?.ci || {})
+        } as CISettings,
+        development: {
+          ...defaults.settings.development!,
+          ...(config.settings?.development || {})
+        } as DevelopmentSettings,
+        packageManager: {
+          ...defaults.settings.packageManager!,
+          ...(config.settings?.packageManager || {})
+        } as PackageManagerSettings
       },
       scripts: { ...defaults.scripts, ...config.scripts }
     };

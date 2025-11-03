@@ -5,6 +5,7 @@ import { render } from 'ink';
 import React from 'react';
 import App from './ui/App.js';
 import { createNudgeCommand } from './commands/nudge.js';
+import { createTUICommand } from './commands/tui.js';
 
 const program = new Command();
 
@@ -38,5 +39,8 @@ program
 
 // Add nudge subcommand
 program.addCommand(createNudgeCommand());
+
+// Add TUI subcommand
+program.addCommand(createTUICommand());
 
 program.parse();

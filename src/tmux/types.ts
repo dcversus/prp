@@ -220,7 +220,7 @@ export interface TmuxErrorEvent {
 export interface TabInfo {
   id: string;
   title: string;
-  type: 'main' | 'orchestrator' | 'agent' | 'info' | 'logs';
+  type: 'main' | 'orchestrator' | 'agent' | 'info' | 'logs' | 'debug';
   sessionId?: string;
   agentId?: string;
   isActive: boolean;

@@ -1,13 +1,11 @@
 import { EventEmitter } from 'events';
 import { Worker } from 'worker_threads';
-import { join } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { join, resolve } from 'path';
 import { GuidelineAdapter } from './guideline-adapter';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-import { InspectorConfig, SignalProcessor } from './types';
+// For now, use a relative path approach
+const __dirname = resolve('.');
+import { InspectorConfig, SignalProcessor, InspectorResult } from './types';
 import { Signal } from '../shared/types';
 
 /**
@@ -27,20 +25,6 @@ export interface InspectorWorkerData {
   guideline: string;
   context: Record<string, unknown>;
   config: InspectorConfig;
-}
-
-export interface InspectorResult {
-  signalId: string;
-  type: string;
-  priority: number;
-  processedAt: Date;
-  data: Record<string, unknown>;
-  guideline: string;
-  contextSize: number;
-  processingTime: number;
-  workerId: number;
-  success: boolean;
-  error?: string;
 }
 
 /**
@@ -179,17 +163,63 @@ export class InspectorCore extends EventEmitter {
       this.emit('inspector:error', error);
 
       return {
-        signalId: signal.id,
-        type: signal.type,
-        priority: signal.priority || 5,
-        processedAt: new Date(),
-        data: {} as Record<string, unknown>,
-        guideline: '',
-        contextSize: 0,
+        id: `error-${signal.id}-${Date.now()}`,
+        signal,
+        classification: {
+          category: 'error',
+          subcategory: 'processing_failed',
+          priority: 1,
+          agentRole: 'conductor',
+          escalationLevel: 0,
+          deadline: new Date(Date.now() + 86400000), // 24 hours from now
+          dependencies: [],
+          confidence: 0
+        },
+        context: {
+          id: `error-context-${signal.id}`,
+          signalId: signal.id,
+          content: {},
+          size: 0,
+          compressed: false,
+          tokenCount: 0
+        },
+        payload: {
+          id: `error-payload-${signal.id}`,
+          signalId: signal.id,
+          classification: {
+            category: 'error',
+            subcategory: 'processing_failed',
+            priority: 1,
+            agentRole: 'conductor',
+            escalationLevel: 0,
+            deadline: new Date(Date.now() + 86400000),
+            dependencies: [],
+            confidence: 0
+          },
+          context: {
+            id: `error-context-${signal.id}`,
+            signalId: signal.id,
+            content: {},
+            size: 0,
+            compressed: false,
+            tokenCount: 0
+          },
+          recommendations: [],
+          timestamp: new Date(),
+          size: 0,
+          compressed: false
+        },
+        recommendations: [],
         processingTime: Date.now() - startTime,
-        workerId: -1,
-        success: false,
-        error: error instanceof Error ? error.message : String(error)
+        tokenUsage: {
+          input: 0,
+          output: 0,
+          total: 0,
+          cost: 0
+        },
+        model: 'error',
+        timestamp: new Date(),
+        confidence: 0
       };
     }
   }
@@ -256,7 +286,7 @@ export class InspectorCore extends EventEmitter {
    * Get results by signal type
    */
   getResultsByType(signalType: string): InspectorResult[] {
-    return this.results.filter(result => result.type === signalType);
+    return this.results.filter(result => result.signal.type === signalType);
   }
 
   /**
@@ -354,7 +384,6 @@ export class InspectorCore extends EventEmitter {
    */
   private handleWorkerResult(workerId: number, result: unknown): void {
     const typedResult = result as InspectorResult;
-    typedResult.workerId = workerId;
     this.results.push(typedResult);
 
     // Update metrics
@@ -405,7 +434,7 @@ export class InspectorCore extends EventEmitter {
         worker.off('message', handleMessage);
 
         const payload = data.payload as InspectorResult;
-        if (data.type === 'result' && payload.signalId === processor.signal.id) {
+        if (data.type === 'result' && payload.signal.id === processor.signal.id) {
           resolve(payload);
         } else if (data.type === 'error') {
           const errorPayload = data.payload as { error: string };
@@ -481,7 +510,7 @@ export class InspectorCore extends EventEmitter {
     const timeWindow = 60000; // 1 minute in milliseconds
     const now = Date.now();
     const recentResults = this.results.filter(r =>
-      (now - r.processedAt.getTime()) < timeWindow
+      (now - r.timestamp.getTime()) < timeWindow
     );
 
     return recentResults.length;

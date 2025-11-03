@@ -21,6 +21,11 @@ export interface NudgeMetadata {
   prp_link?: string;
   agent_version?: string;
   cli_version?: string;
+  delivery_type?: 'direct' | 'llm-enhanced';
+  fallback_from?: 'llm-mode';
+  agent_type?: string;
+  signal_type?: string;
+  auto_generated?: boolean;
 }
 
 export interface BaseNudgeRequest {
@@ -48,7 +53,7 @@ export interface NudgeResponse {
   message_id?: string;
   sent_to?: string[];
   timestamp?: string;
-  delivery_type?: 'direct' | 'llm-enhanced';
+  delivery_type?: 'direct' | 'llm-enhanced' | 'direct-fallback';
   error?: string;
 }
 

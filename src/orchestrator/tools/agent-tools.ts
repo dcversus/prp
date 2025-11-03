@@ -267,7 +267,7 @@ export const getAgentStatusTool: Tool = {
 
       for (const agent of agents) {
         if (!typedParams.agentId || agent.id === typedParams.agentId) {
-          const status = await getDetailedAgentStatus(agent.id, typedParams.includeMetrics);
+          const status = await getDetailedAgentStatus(agent.id, Boolean(typedParams.includeMetrics));
           agentStatuses.push(status);
         }
       }
@@ -349,7 +349,7 @@ export const killAgentTool: Tool = {
           killed = true;
           method = 'graceful';
         } catch (error) {
-          logger.warn('kill_agent', `Graceful shutdown failed`, error instanceof Error ? error : new Error(String(error)));
+          logger.warn('kill_agent', `Graceful shutdown failed`, error instanceof Error ? error as unknown as Record<string, unknown> : new Error(String(error)) as unknown as Record<string, unknown>);
         }
       }
 

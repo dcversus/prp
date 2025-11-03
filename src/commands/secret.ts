@@ -139,7 +139,7 @@ export function createSecretCommand(): Command {
     .action(async (options) => {
       try {
         if (options.namespace || options.secret) {
-          secretManager.clearCache({
+          secretManager.clearCacheFiltered({
             namespace: options.namespace,
             name: options.secret,
             field: 'NUDGE_SECRET'

@@ -5,6 +5,10 @@
  */
 
 import type { GuidelineRequirement } from './types';
+import { execSync } from 'child_process';
+import { promises as fs } from 'fs';
+import { join } from 'path';
+import * as https from 'https';
 
 /**
  * Create a feature requirement with proper typing
@@ -106,7 +110,6 @@ export function createCommandCheckRequirement(
     required,
     check: async () => {
       try {
-        const { execSync } = require('child_process');
         execSync(checkCommand, { stdio: 'pipe' });
         return true;
       } catch (error) {
@@ -171,8 +174,6 @@ export const COMMON_REQUIREMENTS = {
     'File system access not available',
     async () => {
       try {
-        const fs = require('fs').promises;
-        const { join } = require('path');
         const tmpDir = join(process.cwd(), '.tmp-check');
         await fs.mkdir(tmpDir, { recursive: true });
         await fs.writeFile(join(tmpDir, 'test'), 'test');
@@ -195,7 +196,6 @@ export const COMMON_REQUIREMENTS = {
     'Network access not available',
     async () => {
       try {
-        const https = require('https');
         return new Promise((resolve) => {
           const req = https.request('https://www.google.com', (res: { statusCode?: number }) => {
             resolve(res.statusCode === 200);
@@ -223,8 +223,6 @@ export const COMMON_REQUIREMENTS = {
     'Authentication not configured',
     async () => {
       try {
-        const fs = require('fs').promises;
-        const { join } = require('path');
         const configPath = join(process.cwd(), '.prprc');
         try {
           await fs.access(configPath);

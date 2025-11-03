@@ -29,7 +29,7 @@ import {
 import {
   FileChange,
   Signal,
-  eventBus,
+  EventBus,
   createLayerLogger,
   PerformanceMonitor,
   TimeUtils,
@@ -38,6 +38,7 @@ import {
   SignalParser,
   HashUtils
 } from '../shared';
+import { join, basename } from 'path';
 
 const logger = createLayerLogger('scanner');
 
@@ -52,7 +53,7 @@ export class Scanner extends EventEmitter {
   private prpParsers: Map<string, PRPParser> = new Map();
   private scanQueue: Array<{ worktree: string; type: 'full' | 'incremental' }> = [];
   private isScanning: boolean = false;
-  private scanTimer?: NodeJS.Timeout;
+  private scanTimer?: ReturnType<typeof setTimeout>;
 
   constructor(config: Partial<ScannerConfig> = {}) {
     super();
@@ -138,7 +139,7 @@ export class Scanner extends EventEmitter {
   private setupEventHandlers(): void {
     this.on('scanStarted', (event: ScannerStartedEvent) => {
       logger.info('Scanner', `Scan started for ${event.worktree}`, { event });
-      eventBus.publishToChannel('scanner', {
+      EventBus.publishToChannel('scanner', {
         id: HashUtils.generateId(),
         type: 'scanner_scan_started',
         timestamp: TimeUtils.now(),
@@ -158,7 +159,7 @@ export class Scanner extends EventEmitter {
       });
 
       this.updateMetrics(event.result);
-      eventBus.publishToChannel('scanner', {
+      EventBus.publishToChannel('scanner', {
         id: HashUtils.generateId(),
         type: 'scanner_scan_completed',
         timestamp: TimeUtils.now(),
@@ -170,7 +171,7 @@ export class Scanner extends EventEmitter {
 
     this.on('scanError', (event: ScannerErrorEvent) => {
       logger.error('Scanner', `Scan error in ${event.worktree}: ${event.error instanceof Error ? event.error.message : String(event.error)}`);
-      eventBus.publishToChannel('scanner', {
+      EventBus.publishToChannel('scanner', {
         id: HashUtils.generateId(),
         type: 'scanner_scan_error',
         timestamp: TimeUtils.now(),
@@ -181,10 +182,10 @@ export class Scanner extends EventEmitter {
     });
 
     // Handle token accounting alerts
-    eventBus.subscribeToChannel('scanner', (event) => {
+    EventBus.subscribeToChannel('scanner', (event) => {
       if (event.type === 'token_alert') {
         this.emit('tokenAlert', event.data as TokenAlertEvent);
-        eventBus.publishToChannel('scanner', {
+        EventBus.publishToChannel('scanner', {
           id: HashUtils.generateId(),
           type: 'scanner_token_alert',
           timestamp: TimeUtils.now(),
@@ -336,7 +337,7 @@ export class Scanner extends EventEmitter {
     };
 
     this.emit('fileChange', { worktree, event } as FileChangeEvent);
-    eventBus.publishToChannel('scanner', {
+    EventBus.publishToChannel('scanner', {
       id: HashUtils.generateId(),
       type: 'scanner_file_change',
       timestamp: TimeUtils.now(),
@@ -549,7 +550,7 @@ export class Scanner extends EventEmitter {
 
       // Process modified files
       for (const file of status.modified) {
-        const fullPath = require('path').join(monitor.path, file);
+        const fullPath = join(monitor.path, file);
         const stats = await FileUtils.readFileStats(fullPath);
 
         changes.push({
@@ -562,7 +563,7 @@ export class Scanner extends EventEmitter {
 
       // Process added files
       for (const file of status.added) {
-        const fullPath = require('path').join(monitor.path, file);
+        const fullPath = join(monitor.path, file);
         const stats = await FileUtils.readFileStats(fullPath);
 
         changes.push({
@@ -632,20 +633,18 @@ export class Scanner extends EventEmitter {
    */
   private async findPRPFiles(dirPath: string): Promise<string[]> {
     const fs = await import('fs/promises');
-    const path = require('path');
     const prpFiles: string[] = [];
-    const self = this;
 
     const scanDirectory = async (currentPath: string): Promise<void> => {
       try {
         const entries = await fs.readdir(currentPath, { withFileTypes: true });
 
         for (const entry of entries) {
-          const fullPath = path.join(currentPath, entry.name);
+          const fullPath = join(currentPath, entry.name);
 
           if (entry.isDirectory()) {
             // Skip excluded directories
-            if (self.state.config.excludedPaths.includes(entry.name)) {
+            if (this.state.config.excludedPaths.includes(entry.name)) {
               continue;
             }
             await scanDirectory(fullPath);
@@ -653,7 +652,7 @@ export class Scanner extends EventEmitter {
             prpFiles.push(fullPath);
           }
         }
-      } catch (error) {
+      } catch {
         // Ignore permission errors
       }
     }
@@ -700,7 +699,7 @@ export class Scanner extends EventEmitter {
         changeType: 'modified',
         newVersion: {
           path: filePath,
-          name: require('path').basename(filePath),
+          name: basename(filePath),
           signals,
           lastModified: stats.modified
         },
@@ -769,7 +768,7 @@ export class Scanner extends EventEmitter {
           });
 
           allSignals.push(...signals);
-        } catch (error) {
+        } catch {
           // Ignore files that can't be read
         }
       }
@@ -786,27 +785,25 @@ export class Scanner extends EventEmitter {
    */
   private async findRelevantFiles(dirPath: string): Promise<string[]> {
     const fs = await import('fs/promises');
-    const path = require('path');
     const relevantFiles: string[] = [];
-    const self = this;
 
     const scanDirectory = async (currentPath: string): Promise<void> => {
       try {
         const entries = await fs.readdir(currentPath, { withFileTypes: true });
 
         for (const entry of entries) {
-          const fullPath = path.join(currentPath, entry.name);
+          const fullPath = join(currentPath, entry.name);
 
           if (entry.isDirectory()) {
-            if (self.state.config.excludedPaths.includes(entry.name)) {
+            if (this.state.config.excludedPaths.includes(entry.name)) {
               continue;
             }
             await scanDirectory(fullPath);
-          } else if (entry.isFile() && self.isRelevantFile(fullPath)) {
+          } else if (entry.isFile() && this.isRelevantFile(fullPath)) {
             relevantFiles.push(fullPath);
           }
         }
-      } catch (error) {
+      } catch {
         // Ignore permission errors
       }
     }

@@ -14,7 +14,9 @@ import {
   InspectorError,
   ProcessingContext,
   ModelResponse,
-  InspectorMetrics
+  InspectorMetrics,
+  AgentStatusInfo,
+  SharedNoteInfo
 } from './types';
 import {
   Signal,
@@ -47,25 +49,6 @@ interface InspectorModelResponse {
   finish_reason?: string;
 }
 
-// Interface for agent status
-interface AgentStatusInfo {
-  id: string;
-  name: string;
-  type: string;
-  status: string;
-  lastActivity: Date;
-  capabilities: string[];
-}
-
-// Interface for shared notes
-interface SharedNoteInfo {
-  id: string;
-  name: string;
-  pattern: string;
-  lastModified: Date;
-  content: string;
-  tags: string[];
-}
 
 /**
  * ♫ Inspector - The signal analysis conductor
@@ -318,7 +301,7 @@ export class Inspector extends EventEmitter {
       const inspectorPreparedContext: import('./types').PreparedContext = {
         id: HashUtils.generateId(),
         signalId: processing.signal.id,
-        content: preparedContext,
+        content: preparedContext as import('./types').ContextData,
         size: JSON.stringify(preparedContext).length,
         compressed: false,
         tokenCount: TokenCounter.estimateTokensFromObject(preparedContext)
@@ -349,7 +332,13 @@ export class Inspector extends EventEmitter {
         classification: inspectorClassification,
         context: inspectorPreparedContext,
         payload: inspectorPayload,
-        recommendations: Array.isArray(recommendations) ? recommendations as string[] : [],
+        recommendations: Array.isArray(recommendations) ? recommendations.map((rec) => ({
+          type: rec.type || 'unknown',
+          priority: rec.priority?.toString() || 'medium',
+          description: rec.reasoning || rec.description || 'No description available',
+          estimatedTime: rec.estimatedTime || 30,
+          prerequisites: rec.prerequisites || []
+        })) : [],
         processingTime: Date.now() - startTime,
         tokenUsage: {
           ...processing.tokenUsage,
@@ -525,7 +514,7 @@ export class Inspector extends EventEmitter {
         }
       })),
       sharedNotes: context.sharedNotes.filter(note =>
-        note.relevantTo.some(id =>
+        Array.isArray(note.relevantTo) && note.relevantTo.some(id =>
           [classification.signal.id, ...context.activePRPs].includes(id)
         )
       )
@@ -602,17 +591,23 @@ export class Inspector extends EventEmitter {
       // For now, simulate a response
       const response = await this.simulateModelCall(prompt, options);
 
-      return {
+      const modelResponse = response as unknown as InspectorModelResponse;
+    return {
         id: HashUtils.generateId(),
         model: this.config.model,
         prompt,
-        response: response['content'],
+        response: {
+        type: 'model_response',
+        payload: modelResponse.content,
+        timestamp: TimeUtils.now(),
+        source: 'inspector'
+      },
         usage: {
-          promptTokens: (response as InspectorModelResponse)?.usage?.promptTokens || 0,
-          completionTokens: (response as InspectorModelResponse)?.usage?.completionTokens || 0,
-          totalTokens: (response as InspectorModelResponse)?.usage?.totalTokens || 0
+          promptTokens: modelResponse?.usage?.promptTokens || 0,
+          completionTokens: modelResponse?.usage?.completionTokens || 0,
+          totalTokens: modelResponse?.usage?.totalTokens || 0
         },
-        finishReason: String(response['finish_reason'] || 'unknown'),
+        finishReason: String(modelResponse?.finish_reason || 'unknown'),
         timestamp: TimeUtils.now(),
         processingTime: Date.now() - startTime
       };
@@ -725,9 +720,20 @@ export class Inspector extends EventEmitter {
       id: agent.id,
       name: agent.name,
       type: agent.type,
-      status: agent.status,
+      status: agent.status === 'inactive' ? 'idle' : agent.status as AgentStatusInfo['status'],
       lastActivity: agent.lastActivity,
-      capabilities: agent.capabilities
+      capabilities: {
+        supportsTools: agent.capabilities.supportsTools,
+        supportsImages: agent.capabilities.supportsImages,
+        supportsSubAgents: agent.capabilities.supportsSubAgents,
+        supportsParallel: agent.capabilities.supportsParallel,
+        maxContextLength: 4000
+      },
+      performance: {
+        tasksCompleted: 0,
+        averageTaskTime: 0,
+        errorRate: 0
+      }
     }));
   }
 
@@ -740,7 +746,7 @@ export class Inspector extends EventEmitter {
       content: note.content,
       lastModified: note.lastModified,
       tags: note.tags,
-      relevantTo: note.relevantTo,
+      relevantTo: Array.isArray(note.relevantTo) ? note.relevantTo : [],
       priority: 1,
       wordCount: note.content.split(' ').length,
       readingTime: Math.ceil(note.content.split(' ').length / 200)
@@ -857,7 +863,8 @@ Focus on accuracy and provide clear reasoning for your classification.`;
         guideline: parsed.guideline
       };
     } catch (error) {
-      logger.warn('Inspector', 'Failed to parse classification response', error instanceof Error ? error : new Error(String(error)));
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.warn('Inspector', 'Failed to parse classification response', { error: errorObj.message, stack: errorObj.stack });
       return {
         signal,
         category: 'general',
@@ -873,7 +880,8 @@ Focus on accuracy and provide clear reasoning for your classification.`;
     try {
       return JSON.parse(String(response.response));
     } catch (error) {
-      logger.warn('Inspector', 'Failed to parse recommendation response', error instanceof Error ? error : new Error(String(error)));
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.warn('Inspector', 'Failed to parse recommendation response', { error: errorObj.message, stack: errorObj.stack });
       return [];
     }
   }

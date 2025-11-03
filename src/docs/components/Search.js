@@ -1,16 +1,30 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+
+// @ts-check
+
+/**
+ * @typedef {Object} PageData
+ * @property {string} [title]
+ * @property {string} [description]
+ * @property {string} [content]
+ * @property {string} [url]
+ * @property {string} [path]
+ */
 
 const Search = () => {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-  const searchRef = useRef(null);
-  const searchTimeoutRef = useRef(null);
+  const [query, setQuery] = useState(/** @type {string} */ (''));
+  const [results, setResults] = useState(/** @type {PageData[]} */ ([]));
+  const [isLoading, setIsLoading] = useState(/** @type {boolean} */ (false));
+  const [isOpen, setIsOpen] = useState(/** @type {boolean} */ (false));
+  const searchRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  const searchTimeoutRef = useRef(/** @type {NodeJS.Timeout | null} */ (null));
 
   useEffect(() => {
+    /**
+     * @param {MouseEvent} event
+     */
     const handleClickOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
+      if (searchRef.current && !searchRef.current.contains(/** @type {Node} */ (event.target))) {
         setIsOpen(false);
       }
     };
@@ -21,7 +35,9 @@ const Search = () => {
 
   useEffect(() => {
     if (query.length > 2) {
-      clearTimeout(searchTimeoutRef.current);
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
       setIsLoading(true);
 
       searchTimeoutRef.current = setTimeout(() => {
@@ -32,18 +48,25 @@ const Search = () => {
       setIsLoading(false);
     }
 
-    return () => clearTimeout(searchTimeoutRef.current);
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
   }, [query]);
 
+  /**
+   * @param {string} searchQuery
+   */
   const performSearch = async (searchQuery) => {
     try {
       const response = await fetch('/assets/search-index.json');
-      const searchIndex = await response.json();
+      const searchIndex = /** @type {PageData[]} */ (await response.json());
 
-      const filteredResults = searchIndex.filter(page =>
-        page.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        page.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        page.content.toLowerCase().includes(searchQuery.toLowerCase())
+      const filteredResults = searchIndex.filter(/** @type {(page: PageData) => boolean} */ (page) =>
+        Boolean(page.title?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        Boolean(page.description?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        Boolean(page.content?.toLowerCase().includes(searchQuery.toLowerCase()))
       );
 
       setResults(filteredResults.slice(0, 10)); // Limit to 10 results
@@ -55,20 +78,31 @@ const Search = () => {
     }
   };
 
+  /**
+   * @param {React.ChangeEvent<HTMLInputElement>} e
+   */
   const handleInputChange = (e) => {
     setQuery(e.target.value);
   };
 
+  /**
+   * @param {string} url
+   */
   const handleResultClick = (url) => {
     setIsOpen(false);
     setQuery('');
     window.location.href = url;
   };
 
-  const highlightText = (text, query) => {
-    if (!query) return text;
+  /**
+   * @param {string} text
+   * @param {string} searchQuery
+   * @returns {React.ReactNode[] | string}
+   */
+  const highlightText = (text, searchQuery) => {
+    if (!searchQuery) return text;
 
-    const regex = new RegExp(`(${query})`, 'gi');
+    const regex = new RegExp(`(${searchQuery})`, 'gi');
     const parts = text.split(regex);
 
     return parts.map((part, index) =>
@@ -108,18 +142,18 @@ const Search = () => {
             </div>
           ) : results.length > 0 ? (
             <div className="search-results-list">
-              {results.map((result, index) => (
+              {results.map((/** @type {PageData} */ result, /** @type {number} */ index) => (
                 <button
                   key={index}
                   className="search-result-item"
-                  onClick={() => handleResultClick(result.url)}
+                  onClick={() => handleResultClick(result.url || '#')}
                 >
                   <div className="search-result-title">
-                    {highlightText(result.title, query)}
+                    {highlightText(result.title || '', query)}
                   </div>
                   <div className="search-result-path">{result.path}</div>
                   <div className="search-result-description">
-                    {highlightText(result.description || result.content.substring(0, 150), query)}
+                    {highlightText(result.description || (result.content && result.content.substring(0, 150)) || '', query)}
                   </div>
                 </button>
               ))}

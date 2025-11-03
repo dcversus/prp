@@ -703,7 +703,7 @@ Always think step-by-step and explain your reasoning clearly.`),
         const persisted = JSON.parse(data);
         Object.assign(this.sharedContext, persisted);
       }
-    } catch (error) {
+    } catch {
       logger.warn('loadPersistedContext', 'Failed to load persisted context');
     }
   }
@@ -712,7 +712,7 @@ Always think step-by-step and explain your reasoning clearly.`),
     try {
       const sharedContextFile = join(this.storagePath, 'shared-context.json');
       writeFileSync(sharedContextFile, JSON.stringify(this.sharedContext, null, 2));
-    } catch (error) {
+    } catch {
       logger.error('persistSharedContext', 'Failed to persist shared context');
     }
   }

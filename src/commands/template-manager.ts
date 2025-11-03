@@ -472,7 +472,7 @@ export class TemplateManager {
     }
 
     // Create directories
-    for (const dir of directories) {
+    for (const dir of Array.from(directories)) {
       const fullPath = join(projectPath, dir);
       await fs.mkdir(fullPath, { recursive: true });
     }

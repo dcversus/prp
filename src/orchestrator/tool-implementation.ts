@@ -9,6 +9,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import fetch from 'node-fetch';
 import { ToolUsage } from './types';
 
 interface ToolDefinition {
@@ -193,7 +194,6 @@ export class ToolImplementation {
     body: string;
   }> {
     try {
-      const fetch = require('node-fetch');
       const response = await fetch(url, {
         method: options.method || 'GET',
         headers: options.headers,

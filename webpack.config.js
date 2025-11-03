@@ -82,11 +82,12 @@ export default (env, argv) => {
           { from: '*.ico', to: '[name][ext]', noErrorOnMissing: true }
         ]
       }),
-      // Generate search index
+      // Generate search index and sitemap
       new class SearchIndexPlugin {
         apply(compiler) {
           compiler.hooks.done.tap('SearchIndexPlugin', () => {
             generateSearchIndex();
+            generateSitemap();
           });
         }
       }()
@@ -266,4 +267,46 @@ function generateSearchIndex() {
   fs.writeJSONSync(path.join(buildDir, 'assets', 'search-index.json'), searchIndex, { spaces: 2 });
 
   console.log(`✅ Generated search index with ${searchIndex.length} pages`);
+}
+
+function generateSitemap() {
+  const buildDir = path.resolve(__dirname, 'build');
+  const BASE_URL = 'https://prp.theedgestory.org';
+
+  // Get all HTML files
+  const htmlFiles = glob.sync(path.join(buildDir, '**/*.html'));
+
+  let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
+
+  // Add main page first
+  sitemap += `
+  <url>
+    <loc>${BASE_URL}/</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>`;
+
+  // Add all other pages
+  htmlFiles.forEach(file => {
+    const relativePath = path.relative(buildDir, file);
+    const url = relativePath === 'index.html' ? null : `${BASE_URL}/${relativePath}`;
+
+    if (url) {
+      sitemap += `
+  <url>
+    <loc>${url}</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+    }
+  });
+
+  sitemap += '\n</urlset>';
+
+  // Write sitemap
+  fs.writeFileSync(path.join(buildDir, 'sitemap.xml'), sitemap);
+  console.log(`✅ Generated sitemap with ${htmlFiles.length} pages`);
 }

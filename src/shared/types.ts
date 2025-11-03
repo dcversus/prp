@@ -5,20 +5,8 @@
  */
 
 
-// Agent configuration
-export interface AgentConfig {
-  id: string;
-  name: string;
-  type: string;
-  roles: string[];
-  bestRole: string;
-  capabilities: {
-    supportsTools: boolean;
-    [key: string]: any;
-  };
-  customConfig?: Record<string, any>;
-  [key: string]: any;
-}
+// AgentConfig is imported from src/config/agent-config.ts to avoid duplication
+export type AgentConfig = import('../config/agent-config.js').AgentConfig;
 
 // Guideline protocol
 export interface GuidelineProtocol {

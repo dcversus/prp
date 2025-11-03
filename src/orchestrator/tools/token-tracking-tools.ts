@@ -151,9 +151,10 @@ export const getTokenUsageTool: Tool = {
       required: false
     }
   },
-  execute: async (params: GetTokenUsageParams) => {
+  execute: async (params: unknown) => {
+    const typedParams = params as GetTokenUsageParams;
     try {
-      const usageData = await collectTokenUsageData(params);
+      const usageData = await collectTokenUsageData(typedParams);
 
       const typedUsageData = usageData as TokenUsageData;
       logger.info('get_token_usage', `Collected token usage data for ${typedUsageData.agents?.length || 0} agents`);
@@ -161,7 +162,7 @@ export const getTokenUsageTool: Tool = {
       return {
         success: true,
         data: {
-          period: params.period || 'current',
+          period: typedParams.period || 'current',
           timestamp: new Date().toISOString(),
           ...typedUsageData
         },
@@ -222,23 +223,24 @@ export const setTokenLimitsTool: Tool = {
       required: false
     }
   },
-  execute: async (params: SetTokenLimitsParams) => {
+  execute: async (params: unknown) => {
+    const typedParams = params as SetTokenLimitsParams;
     try {
       const limits = {
-        agentId: params.agentId,
-        agentType: params.agentType,
-        daily: params.dailyLimit,
-        weekly: params.weeklyLimit,
-        monthly: params.monthlyLimit,
-        warningThreshold: params.warningThreshold || 80,
-        actionThreshold: params.actionThreshold || 95,
+        agentId: typedParams.agentId,
+        agentType: typedParams.agentType,
+        daily: typedParams.dailyLimit,
+        weekly: typedParams.weeklyLimit,
+        monthly: typedParams.monthlyLimit,
+        warningThreshold: typedParams.warningThreshold || 80,
+        actionThreshold: typedParams.actionThreshold || 95,
         updatedAt: new Date().toISOString()
       };
 
       // Store limits in persistent storage
       await storeTokenLimits(limits);
 
-      logger.info('set_token_limits', `Set token limits for ${params.agentId || params.agentType || 'default'}`);
+      logger.info('set_token_limits', `Set token limits for ${typedParams.agentId || typedParams.agentType || 'default'}`);
 
       return {
         success: true,
@@ -283,17 +285,18 @@ export const getTokenProjectionsTool: Tool = {
       required: false
     }
   },
-  execute: async (params: GetTokenProjectionsParams) => {
+  execute: async (params: unknown) => {
+    const typedParams = params as GetTokenProjectionsParams;
     try {
-      const historicalData = await getHistoricalTokenUsage(params.timeframe || 'daily');
-      const projections = calculateProjections(historicalData, params);
+      const historicalData = await getHistoricalTokenUsage(typedParams.timeframe || 'daily');
+      const projections = calculateProjections(historicalData, typedParams);
 
-      logger.info('get_token_projections', `Generated ${params.timeframe || 'daily'} token projections`);
+      logger.info('get_token_projections', `Generated ${typedParams.timeframe || 'daily'} token projections`);
 
       return {
         success: true,
         data: {
-          timeframe: params.timeframe || 'daily',
+          timeframe: typedParams.timeframe || 'daily',
           generatedAt: new Date().toISOString(),
           projections,
           methodology: 'Linear regression based on historical usage patterns'
@@ -335,9 +338,10 @@ export const getTokenEfficiencyTool: Tool = {
       required: false
     }
   },
-  execute: async (params: AnalyzeTokenEfficiencyParams) => {
+  execute: async (params: unknown) => {
+    const typedParams = params as AnalyzeTokenEfficiencyParams;
     try {
-      const efficiencyData = await analyzeTokenEfficiency(params);
+      const efficiencyData = await analyzeTokenEfficiency(typedParams);
 
       const typedEfficiencyData = efficiencyData as TokenEfficiencyData;
       logger.info('analyze_token_efficiency', `Analyzed token efficiency for ${typedEfficiencyData.analyzedAgents || 0} agents`);
@@ -345,7 +349,7 @@ export const getTokenEfficiencyTool: Tool = {
       return {
         success: true,
         data: {
-          period: params.period,
+          period: typedParams.period,
           analyzedAt: new Date().toISOString(),
           ...typedEfficiencyData
         },
@@ -402,22 +406,23 @@ export const configureTokenAlertsTool: Tool = {
       required: false
     }
   },
-  execute: async (params: ConfigureTokenAlertsParams) => {
+  execute: async (params: unknown) => {
+    const typedParams = params as ConfigureTokenAlertsParams;
     try {
       const alertConfig = {
-        agentId: params.agentId,
-        alertType: params.alertType,
-        threshold: params.threshold,
-        notificationMethod: params.notificationMethod,
-        enabled: params.enabled !== false,
-        recipients: params.recipients || [],
+        agentId: typedParams.agentId,
+        alertType: typedParams.alertType,
+        threshold: typedParams.threshold,
+        notificationMethod: typedParams.notificationMethod,
+        enabled: typedParams.enabled !== false,
+        recipients: typedParams.recipients || [],
         configuredAt: new Date().toISOString()
       };
 
       // Store alert configuration
       await storeAlertConfiguration(alertConfig);
 
-      logger.info('configure_token_alerts', `Configured ${params.alertType} alert for ${params.agentId || 'default'}`);
+      logger.info('configure_token_alerts', `Configured ${typedParams.alertType} alert for ${typedParams.agentId || 'default'}`);
 
       return {
         success: true,

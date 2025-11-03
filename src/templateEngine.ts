@@ -4,7 +4,7 @@
 
 import * as Handlebars from 'handlebars';
 import { promises as fs } from 'fs';
-import { TemplateData, TemplateEngine } from './types.js';
+import { TemplateData, TemplateEngine } from './types';
 
 // Register Handlebars helpers
 Handlebars.registerHelper('uppercase', (str: string) => str.toUpperCase());

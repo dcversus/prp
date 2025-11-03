@@ -420,6 +420,13 @@ export class HashUtils {
     return crypto.createHash('sha256').update(str).digest('hex');
   }
 
+  static async hashFile(filePath: string): Promise<string> {
+    const crypto = await import('crypto');
+    const fs = await import('fs/promises');
+    const data = await fs.readFile(filePath);
+    return crypto.createHash('sha256').update(data).digest('hex');
+  }
+
   static generateId(): string {
     return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }

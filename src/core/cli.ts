@@ -327,7 +327,7 @@ export class PRPCli extends EventEmitter {
     };
   }
 
-  private async executeLint(args: string[], options?: any): Promise<CommandResult> {
+  private async executeLint(_args: string[], _options?: any): Promise<CommandResult> {
     logger.info('Running linting...');
     // Implementation will be added in lint command
     return {
@@ -339,7 +339,7 @@ export class PRPCli extends EventEmitter {
     };
   }
 
-  private async executeQuality(args: string[], options?: any): Promise<CommandResult> {
+  private async executeQuality(_args: string[], _options?: any): Promise<CommandResult> {
     logger.info('Running quality gates...');
     // Implementation will be added in quality command
     return {
@@ -351,7 +351,7 @@ export class PRPCli extends EventEmitter {
     };
   }
 
-  private async executeStatus(args: string[], options?: any): Promise<CommandResult> {
+  private async executeStatus(_args: string[], _options?: any): Promise<CommandResult> {
     logger.info('Checking status...');
     // Implementation will be added in status command
     return {
@@ -363,7 +363,7 @@ export class PRPCli extends EventEmitter {
     };
   }
 
-  private async executeConfig(args: string[], options?: any): Promise<CommandResult> {
+  private async executeConfig(_args: string[], _options?: any): Promise<CommandResult> {
     logger.info('Managing configuration...');
     // Implementation will be added in config command
     return {
@@ -399,7 +399,7 @@ export class PRPCli extends EventEmitter {
     };
   }
 
-  private async executeDeploy(args: string[], options?: any): Promise<CommandResult> {
+  private async executeDeploy(_args: string[], _options?: any): Promise<CommandResult> {
     logger.info('Deploying application...');
     // Implementation will be added in deploy command
     return {

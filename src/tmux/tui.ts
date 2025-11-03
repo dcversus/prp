@@ -17,6 +17,8 @@ import {
   TmuxResourceAlertEvent,
   TmuxAgentMessageEvent
 } from './types';
+import { TuiDebugScreen } from '../tui/debug-screen';
+import { createDebugConfig } from '../tui/debug-config';
 
 type Timeout = ReturnType<typeof setTimeout>;
 
@@ -79,13 +81,16 @@ export class TabbedTUI extends EventEmitter {
   private screenContents: Map<string, ScreenContent> = new Map();
   private isRunning = false;
   private refreshInterval: Timeout | null = null;
+  private debugScreen: TuiDebugScreen | null = null;
 
   constructor(config: TUIConfig, eventBus: EventBus) {
     super();
     this.config = config;
     this.eventBus = eventBus;
     this.logger = createLayerLogger('tui');
+    this.debugScreen = new TuiDebugScreen(createDebugConfig(), eventBus);
     this.setupEventListeners();
+    this.setupDebugScreenListeners();
   }
 
   /**
@@ -324,6 +329,13 @@ export class TabbedTUI extends EventEmitter {
       type: 'orchestrator'
     });
 
+    // Debug tab
+    this.createTab({
+      id: 'debug',
+      title: '🐛 Debug',
+      type: 'debug'
+    });
+
     // Info tab
     this.createTab({
       id: 'info',
@@ -354,12 +366,47 @@ export class TabbedTUI extends EventEmitter {
     });
   }
 
+  private setupDebugScreenListeners(): void {
+    if (!this.debugScreen) return;
+
+    this.debugScreen.on('debug.activated', () => {
+      this.logger.debug('debug', 'Debug screen activated');
+      this.updateDebugScreen();
+    });
+
+    this.debugScreen.on('debug.deactivated', () => {
+      this.logger.debug('debug', 'Debug screen deactivated');
+    });
+
+    this.debugScreen.on('debug.refresh', () => {
+      if (this.activeTabId === 'debug') {
+        this.updateDebugScreen();
+      }
+    });
+
+    this.debugScreen.on('debug.back.to.main', () => {
+      this.switchToTab('main');
+    });
+  }
+
   private setupKeyboardHandling(): void {
     process.stdin.setRawMode(true);
     process.stdin.resume();
     process.stdin.setEncoding('utf8');
 
     process.stdin.on('data', (key: string) => {
+      // Handle debug mode toggle with Ctrl+D
+      if (key === '\x04') { // Ctrl+D
+        this.toggleDebugMode();
+        return;
+      }
+
+      // If debug screen is active, let it handle its own keys
+      if (this.activeTabId === 'debug' && this.debugScreen) {
+        // Debug screen handles its own keys internally
+        // Continue to default handling for global keys
+      }
+
       switch (key) {
         case this.config.keyBindings.nextTab:
           this.switchToNextTab();
@@ -552,6 +599,9 @@ export class TabbedTUI extends EventEmitter {
       case 'orchestrator':
         this.updateOrchestratorScreen();
         break;
+      case 'debug':
+        this.updateDebugScreen();
+        break;
       case 'info':
         this.updateInfoScreen();
         break;
@@ -710,6 +760,30 @@ export class TabbedTUI extends EventEmitter {
 
     if (agentTab) {
       this.refreshTab(agentTab.id);
+    }
+  }
+
+  private updateDebugScreen(): void {
+    if (!this.debugScreen) return;
+
+    const debugContent = this.debugScreen.getDebugContent();
+    this.updateTabContent('debug', debugContent, {
+      lastUpdate: new Date(),
+      active: this.debugScreen['isActive']
+    });
+  }
+
+  private toggleDebugMode(): void {
+    if (!this.debugScreen) return;
+
+    if (this.activeTabId === 'debug') {
+      // Switch away from debug tab
+      this.switchToTab('main');
+      this.debugScreen.deactivate();
+    } else {
+      // Switch to debug tab and activate
+      this.switchToTab('debug');
+      this.debugScreen.activate();
     }
   }
 }

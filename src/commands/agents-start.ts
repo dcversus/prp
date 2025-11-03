@@ -12,6 +12,7 @@ import { ScannerCore } from '../scanner/scanner-core.js';
 import { InspectorCore } from '../inspector/inspector-core.js';
 import { OrchestratorCore } from '../orchestrator/orchestrator-core.js';
 import { Signal } from '../shared/types.js';
+import { AgentConfig } from '../config/agent-config.js';
 
 interface AgentProcess {
   name: string;
@@ -134,7 +135,7 @@ class AgentManager extends EventEmitter {
     }
 
     // Check if at least one agent is enabled
-    const enabledAgents = prprc.agents.filter((agent: any) => agent.enabled);
+    const enabledAgents = prprc.agents.filter((agent: AgentConfig) => agent.enabled);
     if (enabledAgents.length === 0) {
       throw new Error('No enabled agents found in .prprc configuration');
     }

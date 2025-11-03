@@ -443,7 +443,8 @@ export class CLIWizard extends EventEmitter {
       const answers = await inquirer.prompt(agentQuestions) as AgentConfigAnswers;
 
       this.state.data['agentConfigs'] = this.state.data['agentConfigs'] || {};
-      this.state.data['agentConfigs'][agentId] = {
+      const agentConfigs = this.state.data['agentConfigs'] as Record<string, any>;
+      agentConfigs[agentId] = {
         enabled: answers[`${agentId}_enabled`],
         model: answers[`${agentId}_model`],
         maxTokens: answers[`${agentId}_maxTokens`]

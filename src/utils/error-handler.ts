@@ -1,4 +1,3 @@
-import chalk from 'chalk';
 import { logger } from './logger';
 import type { CommandResult } from '../types';
 
@@ -192,7 +191,7 @@ export class ErrorHandler {
   private debug: boolean = false;
 
   constructor(debug?: boolean) {
-    this.debug = debug || process.env.DEBUG_MODE === 'true';
+    this.debug = debug || process.env['DEBUG_MODE'] === 'true';
   }
 
   /**
@@ -345,6 +344,14 @@ export class ErrorHandler {
    */
   async handleMultiple(errors: Error[]): Promise<CommandResult> {
     const primaryError = errors[0];
+    if (!primaryError) {
+      return {
+        success: false,
+        message: 'No errors to handle',
+        data: null,
+        exitCode: 1
+      };
+    }
     const result = await this.handle(primaryError);
 
     // Log additional errors
@@ -354,7 +361,7 @@ export class ErrorHandler {
 
     // Update result data with all errors
     result.data = {
-      ...result.data,
+      ...(result.data || {}),
       errors: errors.map(e => ({
         message: e.message,
         code: this.getErrorCode(e),
@@ -368,7 +375,7 @@ export class ErrorHandler {
   /**
    * Wrap async function with error handling
    */
-  wrap<T extends any[], R>(
+  wrap<T extends unknown[], R>(
     fn: (...args: T) => Promise<R>
   ): (...args: T) => Promise<R | CommandResult> {
     return async (...args: T): Promise<R | CommandResult> => {
@@ -378,7 +385,7 @@ export class ErrorHandler {
         const result = await this.handle(error as Error);
 
         // In production, throw the error to be handled by caller
-        if (process.env.NODE_ENV === 'production') {
+        if (process.env['NODE_ENV'] === 'production') {
           throw error;
         }
 
@@ -390,7 +397,7 @@ export class ErrorHandler {
   /**
    * Create error from various sources
    */
-  static from(source: any, context?: string): PRPError {
+  static from(source: any, _context?: string): PRPError {
     if (source instanceof PRPError) {
       return source;
     }

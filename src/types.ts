@@ -136,3 +136,106 @@ export interface CLIEvent {
 
 // PRPConfig is imported from src/shared/config.ts to avoid duplication
 export type PRPConfig = import('./shared/config.js').PRPConfig;
+
+// Configuration settings interfaces
+export interface DebugSettings {
+  enabled: boolean;
+  level: 'error' | 'warn' | 'info' | 'debug' | 'verbose';
+  console: boolean;
+  file: boolean;
+  timestamp: boolean;
+  colors: boolean;
+  profiling: boolean;
+}
+
+export interface QualitySettings {
+  linting: {
+    enabled: boolean;
+    rules: Record<string, any>;
+    fixOnSave: boolean;
+  };
+  testing: {
+    enabled: boolean;
+    coverage: number;
+    frameworks: string[];
+  };
+  security: {
+    enabled: boolean;
+    tools: string[];
+    rules: Record<string, any>;
+  };
+  performance: {
+    enabled: boolean;
+    thresholds: Record<string, number>;
+  };
+}
+
+export interface BuildSettings {
+  tool: 'webpack' | 'vite' | 'rollup' | 'esbuild' | 'tsc';
+  optimization: boolean;
+  minification: boolean;
+  sourceMap: boolean;
+  target: string[];
+  output: {
+    directory: string;
+    filename: string;
+    format: string[];
+  };
+}
+
+export interface TestSettings {
+  framework: 'jest' | 'vitest' | 'mocha' | 'jasmine';
+  coverage: {
+    enabled: boolean;
+    threshold: number;
+    reporters: string[];
+  };
+  environment: string;
+  setupFiles: string[];
+  testMatch: string[];
+}
+
+export interface CISettings {
+  platform: 'github' | 'gitlab' | 'bitbucket' | 'azure';
+  workflows: {
+    build: boolean;
+    test: boolean;
+    deploy: boolean;
+    security: boolean;
+  };
+  triggers: {
+    onPush: boolean;
+    onPR: boolean;
+    onSchedule: boolean;
+  };
+  environment: Record<string, string>;
+}
+
+export interface DevelopmentSettings {
+  watch: boolean;
+  hotReload: boolean;
+  port: number;
+  host: string;
+  proxy: Record<string, string>;
+  server: string;
+}
+
+export interface PackageManagerSettings {
+  manager: 'npm' | 'yarn' | 'pnpm';
+  registry?: string;
+  autoInstall: boolean;
+  scripts: Record<string, string>;
+  dependencies: Record<string, string>;
+  devDependencies: Record<string, string>;
+}
+
+// Settings config interface that contains all settings
+export interface SettingsConfig {
+  debug: DebugSettings;
+  quality: QualitySettings;
+  build: BuildSettings;
+  test: TestSettings;
+  ci: CISettings;
+  development: DevelopmentSettings;
+  packageManager: PackageManagerSettings;
+}

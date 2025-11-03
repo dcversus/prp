@@ -6,11 +6,9 @@
 
 import { readFileSync } from 'fs';
 import { join, resolve } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// For now, use a relative path approach
+const __dirname = resolve('.');
 import { GuidelineConfig, Signal } from '../shared/types';
 import { createLayerLogger, HashUtils } from '../shared';
 
@@ -633,7 +631,6 @@ export class GuidelineAdapter {
    * Recommend agent roles for signal processing
    */
   private async recommendAgentRoles(signal: Signal): Promise<string[]> {
-    const signalType = signal.type.toLowerCase();
     const roles = [];
 
     // Role recommendation logic based on signal type

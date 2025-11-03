@@ -72,7 +72,7 @@ export class ScannerCore extends EventEmitter {
   private config: ScannerConfig;
   private fileWatcher: FSWatcher | null = null;
   private worktrees: Map<string, WorktreeStatus> = new Map();
-  private scanTimer: NodeJS.Timeout | null = null;
+  private scanTimer: ReturnType<typeof setTimeout> | null = null;
   private isScanning = false;
 
   // Component dependencies

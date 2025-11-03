@@ -9,6 +9,15 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { runNudgeTest, testNudgeConnectivity } from '../nudge/simple-test.js';
 
+interface NudgeResponse {
+  success: boolean;
+  message_id?: string;
+  sent_to?: string[];
+  delivery_type?: string;
+  timestamp?: string;
+  error?: string;
+}
+
 /**
  * Create nudge command group
  */
@@ -46,8 +55,8 @@ export function createNudgeCommand(): Command {
       try {
         const spinner = ora('Sending nudge...').start();
 
-        const secret = process.env.NUDGE_SECRET;
-        const endpoint = process.env.NUDGE_ENDPOINT || 'https://dcmaid.theedgestory.org/nudge';
+        const secret = process.env['NUDGE_SECRET'];
+        const endpoint = process.env['NUDGE_ENDPOINT'] || 'https://dcmaid.theedgestory.org/nudge';
 
         if (!secret) {
           spinner.fail('NUDGE_SECRET not configured');
@@ -74,7 +83,7 @@ export function createNudgeCommand(): Command {
         });
 
         if (response.ok) {
-          const data: any = await response.json();
+          const data: NudgeResponse = await response.json();
           spinner.succeed('Nudge sent successfully!');
 
           console.log(chalk.green('\n📊 Response Details:'));
@@ -107,9 +116,9 @@ export function createNudgeCommand(): Command {
     .action(async () => {
       console.log(chalk.blue('📊 Nudge System Status\n'));
 
-      const secret = process.env.NUDGE_SECRET;
-      const adminId = process.env.ADMIN_ID;
-      const endpoint = process.env.NUDGE_ENDPOINT || 'https://dcmaid.theedgestory.org/nudge';
+      const secret = process.env['NUDGE_SECRET'];
+      const adminId = process.env['ADMIN_ID'];
+      const endpoint = process.env['NUDGE_ENDPOINT'] || 'https://dcmaid.theedgestory.org/nudge';
 
       console.log('Configuration:');
       console.log(`   Endpoint: ${endpoint}`);

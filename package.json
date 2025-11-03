@@ -27,6 +27,8 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "typecheck:watch": "tsc --noEmit --watch",
+    "debug:demo": "tsx examples/debug-screen-demo.ts",
+    "debug:test": "tsx src/tui/debug-screen.test.ts",
     "validate": "npm run typecheck && npm run lint && npm run test",
     "build:docs": "webpack --mode production",
     "dev:docs": "webpack serve --mode development",

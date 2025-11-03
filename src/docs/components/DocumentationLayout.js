@@ -1,13 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import MDXContent from '../MDXContent.js';
 
+// @ts-check
+
+/**
+ * @typedef {Object} PageData
+ * @property {string} [title]
+ * @property {string} [description]
+ * @property {string} [content]
+ * @property {string} [url]
+ * @property {string} [path]
+ * @property {string} [mdxPath]
+ * @property {Array<{name: string, url?: string}>} [breadcrumb]
+ */
+
+/**
+ * @typedef {Object} WindowWithPageData
+ * @property {PageData} [CURRENT_PAGE]
+ */
+
 const DocumentationLayout = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(/** @type {string} */ (''));
+  const [searchResults, setSearchResults] = useState(/** @type {PageData[]} */ ([]));
+  const [isSearching, setIsSearching] = useState(/** @type {boolean} */ (false));
 
   // Get current page data from window
-  const currentPage = window.CURRENT_PAGE || {};
+  const currentPage = /** @type {WindowWithPageData} */ (window).CURRENT_PAGE || {};
 
   useEffect(() => {
     if (searchQuery.length > 2) {
@@ -17,16 +35,19 @@ const DocumentationLayout = () => {
     }
   }, [searchQuery]);
 
+  /**
+   * @param {string} query
+   */
   const performSearch = async (query) => {
     setIsSearching(true);
     try {
       const response = await fetch('/assets/search-index.json');
-      const searchIndex = await response.json();
+      const searchIndex = /** @type {PageData[]} */ (await response.json());
 
-      const results = searchIndex.filter(page =>
-        page.title.toLowerCase().includes(query.toLowerCase()) ||
-        page.description.toLowerCase().includes(query.toLowerCase()) ||
-        page.content.toLowerCase().includes(query.toLowerCase())
+      const results = searchIndex.filter(/** @type {(page: PageData) => boolean} */ (page) =>
+        Boolean(page.title?.toLowerCase().includes(query.toLowerCase())) ||
+        Boolean(page.description?.toLowerCase().includes(query.toLowerCase())) ||
+        Boolean(page.content?.toLowerCase().includes(query.toLowerCase()))
       );
 
       setSearchResults(results);
@@ -62,7 +83,7 @@ const DocumentationLayout = () => {
                 type="text"
                 placeholder="Search documentation..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => setSearchQuery(/** @type {HTMLInputElement} */ (e.target).value)}
                 className="search-input"
               />
               {isSearching && <div className="search-spinner">⟳</div>}
@@ -75,12 +96,12 @@ const DocumentationLayout = () => {
           <div className="search-results">
             <div className="docs-container">
               <div className="search-results-content">
-                {searchResults.map((result, index) => (
+                {searchResults.map((/** @type {PageData} */ result, /** @type {number} */ index) => (
                   <a key={index} href={result.url} className="search-result-item">
                     <div className="search-result-title">{result.title}</div>
                     <div className="search-result-url">{result.path}</div>
                     <div className="search-result-description">
-                      {result.description || result.content.substring(0, 150)}...
+                      {result.description || (result.content && result.content.substring(0, 150))}...
                     </div>
                   </a>
                 ))}
@@ -96,7 +117,7 @@ const DocumentationLayout = () => {
           <div className="docs-container">
             <nav aria-label="Breadcrumb">
               <ol className="breadcrumb-list">
-                {currentPage.breadcrumb.map((item, index) => (
+                {currentPage.breadcrumb?.map((/** @type {{name: string, url?: string}} */ item, /** @type {number} */ index) => (
                   <li key={index} className="breadcrumb-item">
                     {item.url ? (
                       <a href={item.url} className="breadcrumb-link">

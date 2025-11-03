@@ -148,6 +148,27 @@ export interface InspectorProcessing {
   };
 }
 
+export interface InspectorResult {
+  id: string;
+  signal: Signal;
+  classification?: SignalClassification;
+  context?: PreparedContext;
+  payload?: InspectorPayload;
+  recommendations?: Recommendation[];
+  processingTime: number;
+  tokenUsage?: {
+    input: number;
+    output: number;
+    total: number;
+    cost: number;
+  };
+  model?: string;
+  timestamp: Date;
+  confidence?: number;
+  success: boolean;
+  error?: string;
+}
+
 export interface DetailedInspectorResult {
   id: string;
   signal: Signal;

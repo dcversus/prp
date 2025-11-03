@@ -5,14 +5,13 @@
  */
 
 import { EventEmitter } from 'events';
-import { Signal, AgentRole } from '../shared/types';
+import { Signal } from '../shared/types';
 import {
   InspectorConfig,
   ModelResponse,
   ProcessingContext,
   SignalClassification,
   Recommendation,
-  PromptTemplate,
   InspectorMetrics
 } from './types';
 import { createLayerLogger, HashUtils } from '../shared';
@@ -51,7 +50,7 @@ export interface LLMExecuteOptions {
   stopSequences?: string[];
   structuredOutput?: {
     enabled: boolean;
-    schema?: any;
+    schema?: Record<string, unknown>;
   };
 }
 
@@ -92,7 +91,7 @@ export class LLMExecutionEngine extends EventEmitter {
   private tokenLimits: TokenLimitConfig;
   private provider: LLMProvider;
   private metrics: InspectorMetrics;
-  private contextCache: Map<string, any> = new Map();
+  private contextCache: Map<string, unknown> = new Map();
   private compressionStrategies: Map<string, ContextCompression> = new Map();
 
   constructor(config: InspectorConfig, provider: LLMProvider) {
@@ -271,7 +270,12 @@ export class LLMExecutionEngine extends EventEmitter {
     basePrompt: string;
     guidelinePrompt: string;
     contextPrompt: string;
-    tokenDistribution: any;
+    tokenDistribution: {
+        base: number;
+        guideline: number;
+        context: number;
+        total: number;
+      };
   }): Promise<string> {
     const { basePrompt, guidelinePrompt, contextPrompt, tokenDistribution } = components;
 
@@ -312,7 +316,7 @@ export class LLMExecutionEngine extends EventEmitter {
   /**
    * Generate base prompt for signal analysis
    */
-  private async generateBasePrompt(signal: Signal, context: ProcessingContext): Promise<string> {
+  private async generateBasePrompt(signal: Signal, _context: ProcessingContext): Promise<string> {
     return `You are an expert signal analysis system for the PRP (Project Requirements and Progress) workflow system.
 
 Your task is to analyze the provided signal and determine:
@@ -331,7 +335,7 @@ Signal Information:
 
 Analysis Guidelines:
 1. Provide accurate classification with confidence scoring (0-100%)
-2. Assign appropriate agent roles from: ${Object.values(AgentRole).join(', ')}
+2. Assign appropriate agent roles from: conductor, scanner, inspector, developer, tester, reviewer, deployer, analyst, researcher, designer, documenter
 3. Recommend specific, actionable steps
 4. Consider context dependencies and relationships
 5. Maintain consistency with previous similar signals
@@ -435,7 +439,7 @@ Respond in structured JSON format with all required fields.`;
         category: responseData.category || 'unknown',
         subcategory: responseData.subcategory || 'general',
         priority: responseData.priority || signal.priority || 5,
-        agentRole: responseData.agentRole || AgentRole.Developer,
+        agentRole: responseData.agentRole || 'developer',
         escalationLevel: responseData.escalationLevel || 1,
         deadline: responseData.deadline ? new Date(responseData.deadline) : new Date(Date.now() + 86400000), // 24h default
         dependencies: responseData.dependencies || [],
@@ -443,7 +447,7 @@ Respond in structured JSON format with all required fields.`;
       };
 
       // Extract recommendations
-      const recommendations: Recommendation[] = (responseData.recommendations || []).map((rec: any) => ({
+      const recommendations: Recommendation[] = (responseData.recommendations || []).map((rec) => ({
         type: rec.type || 'action',
         priority: rec.priority || 'medium',
         description: rec.description || 'No description provided',
@@ -496,7 +500,7 @@ Respond in structured JSON format with all required fields.`;
         category: 'unknown',
         subcategory: 'general',
         priority: signal.priority || 5,
-        agentRole: AgentRole.Developer,
+        agentRole: 'developer',
         escalationLevel: 1,
         deadline: new Date(Date.now() + 86400000),
         dependencies: [],
@@ -525,7 +529,17 @@ Respond in structured JSON format with all required fields.`;
   /**
    * Compress prompt when exceeding token limits
    */
-  private async compressPrompt(components: any): Promise<string> {
+  private async compressPrompt(components: {
+    basePrompt: string;
+    guidelinePrompt: string;
+    contextPrompt: string;
+    tokenDistribution: {
+      base: number;
+      guideline: number;
+      context: number;
+      total: number;
+    };
+  }): Promise<string> {
     logger.warn('LLMExecutionEngine', 'Applying prompt compression to meet token limits');
 
     // Apply hierarchical compression
@@ -611,7 +625,7 @@ Respond in structured JSON format with all required fields.`;
     for (const key of priorityOrder) {
       if (remainingTokens <= 0) break;
 
-      const value = (context as any)[key];
+      const value = (context as Record<string, unknown>)[key];
       if (!value) continue;
 
       const sectionText = this.serializeContextSection(key, value);
@@ -697,7 +711,7 @@ Respond in structured JSON format with all required fields.`;
   /**
    * Serialize context section
    */
-  private serializeContextSection(key: string, value: any): string {
+  private serializeContextSection(key: string, value: unknown): string {
     switch (key) {
       case 'signalId':
         return `**Signal ID:** ${value}`;

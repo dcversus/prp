@@ -94,8 +94,8 @@ export class TokenAccountingManager {
       layer,
       metadata: {
         ...metadata,
-        scanId: metadata['scanId'],
-        worktree: metadata['worktree'],
+        scanId: metadata.scanId,
+        worktree: metadata.worktree,
       }
     };
 
@@ -283,14 +283,20 @@ export class TokenAccountingManager {
       if (!byAgent[entry.agentId]) {
         byAgent[entry.agentId] = { tokens: 0, cost: 0, operations: 0, percentage: 0 };
       }
-      byAgent[entry.agentId].tokens += entry.totalTokens;
-      byAgent[entry.agentId].cost += entry.cost;
-      byAgent[entry.agentId].operations += 1;
+      const agentStats = byAgent[entry.agentId];
+      if (agentStats) {
+        agentStats.tokens += entry.totalTokens;
+        agentStats.cost += entry.cost;
+        agentStats.operations += 1;
+      }
     });
 
     // Calculate percentages for agents
     Object.keys(byAgent).forEach(agentId => {
-      byAgent[agentId].percentage = (byAgent[agentId].tokens / totalTokens) * 100;
+      const agentStats = byAgent[agentId];
+      if (agentStats) {
+        agentStats.percentage = (agentStats.tokens / totalTokens) * 100;
+      }
     });
 
     // Breakdown by layer
@@ -299,13 +305,19 @@ export class TokenAccountingManager {
       if (!byLayer[entry.layer]) {
         byLayer[entry.layer] = { tokens: 0, cost: 0, operations: 0, percentage: 0 };
       }
-      byLayer[entry.layer].tokens += entry.totalTokens;
-      byLayer[entry.layer].cost += entry.cost;
-      byLayer[entry.layer].operations += 1;
+      const layerStats = byLayer[entry.layer];
+      if (layerStats) {
+        layerStats.tokens += entry.totalTokens;
+        layerStats.cost += entry.cost;
+        layerStats.operations += 1;
+      }
     });
 
     Object.keys(byLayer).forEach(layer => {
-      byLayer[layer].percentage = (byLayer[layer].tokens / totalTokens) * 100;
+      const layerStats = byLayer[layer];
+      if (layerStats) {
+        layerStats.percentage = (layerStats.tokens / totalTokens) * 100;
+      }
     });
 
     // Breakdown by model
@@ -314,13 +326,19 @@ export class TokenAccountingManager {
       if (!byModel[entry.model]) {
         byModel[entry.model] = { tokens: 0, cost: 0, operations: 0, percentage: 0 };
       }
-      byModel[entry.model].tokens += entry.totalTokens;
-      byModel[entry.model].cost += entry.cost;
-      byModel[entry.model].operations += 1;
+      const modelStats = byModel[entry.model];
+      if (modelStats) {
+        modelStats.tokens += entry.totalTokens;
+        modelStats.cost += entry.cost;
+        modelStats.operations += 1;
+      }
     });
 
     Object.keys(byModel).forEach(model => {
-      byModel[model].percentage = (byModel[model].tokens / totalTokens) * 100;
+      const modelStats = byModel[model];
+      if (modelStats) {
+        modelStats.percentage = (modelStats.tokens / totalTokens) * 100;
+      }
     });
 
     // Time series data (hourly buckets)
@@ -597,7 +615,7 @@ export class TokenAccountingManager {
         lastSaved: TimeUtils.now().toISOString()
       };
 
-      await FileUtils.ensureDir(require('path').dirname(this.persistPath));
+      await FileUtils.ensureDir((await import('path')).dirname(this.persistPath));
       await FileUtils.writeTextFile(this.persistPath, JSON.stringify(data, null, 2));
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
@@ -653,18 +671,18 @@ export class TokenAccountingManager {
     const cutoffDate = TimeUtils.daysAgo(30);
 
     // Remove old entries
-    for (const [id, entry] of this.entries) {
+    Array.from(this.entries.entries()).forEach(([id, entry]) => {
       if (new Date(entry.timestamp) < cutoffDate) {
         this.entries.delete(id);
       }
-    }
+    });
 
     // Remove old resolved alerts
-    for (const [id, alert] of this.alerts) {
+    Array.from(this.alerts.entries()).forEach(([id, alert]) => {
       if (alert.resolved && alert.resolvedAt && new Date(alert.resolvedAt) < cutoffDate) {
         this.alerts.delete(id);
       }
-    }
+    });
 
     await this.persistData();
     logger.info('TokenAccounting', 'Token accounting data cleaned up');

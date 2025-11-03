@@ -41,7 +41,7 @@ export class AgentManager extends EventEmitter {
   private agents: Map<string, AgentConfig> = new Map();
   private activeSessions: Map<string, AgentProcess> = new Map();
   private taskHistory: Map<string, AgentTask> = new Map();
-  private healthCheckInterval: NodeJS.Timeout | null = null;
+  private healthCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(config: OrchestratorConfig) {
     super();
@@ -169,7 +169,7 @@ export class AgentManager extends EventEmitter {
   getAllStatuses(): Map<string, AgentStatus> {
     const statuses = new Map<string, AgentStatus>();
 
-    for (const [sessionId, agentProcess] of this.activeSessions) {
+    for (const [sessionId, agentProcess] of Array.from(this.activeSessions.entries())) {
       statuses.set(sessionId, {
         id: sessionId,
         name: agentProcess.session.agentConfig.name,
@@ -256,7 +256,7 @@ export class AgentManager extends EventEmitter {
   private findBestAgent(task: AgentTask): AgentConfig | null {
     const candidates: Array<{ agent: AgentConfig; score: number }> = [];
 
-    for (const agent of this.agents.values()) {
+    for (const agent of Array.from(this.agents.values())) {
       let score = 0;
 
       // Check if agent can handle the task type
@@ -320,7 +320,7 @@ export class AgentManager extends EventEmitter {
    * Find session by agent ID
    */
   private findSessionByAgent(agentId: string): AgentProcess | null {
-    for (const [_sessionId, agentProcess] of this.activeSessions) {
+    for (const [, agentProcess] of Array.from(this.activeSessions.entries())) {
       if (agentProcess.session.agentConfig.id === agentId) {
         return agentProcess;
       }
@@ -542,7 +542,7 @@ export class AgentManager extends EventEmitter {
             clearTimeout(timeout);
             agentProcess.process.stdout?.removeListener('data', onData);
             resolve(response);
-          } catch (parseError) {
+          } catch {
             // Not a valid JSON response, keep listening
           }
         };
@@ -605,7 +605,7 @@ export class AgentManager extends EventEmitter {
   private checkAgentHealth(): void {
     const now = Date.now();
 
-    for (const [sessionId, agentProcess] of this.activeSessions) {
+    for (const [sessionId, agentProcess] of Array.from(this.activeSessions.entries())) {
       // Check if agent is responsive
       const timeSinceLastPing = now - agentProcess.lastPing.getTime();
 

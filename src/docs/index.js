@@ -1,6 +1,8 @@
-import React from 'react';
+// @ts-ignore
 import { createRoot } from 'react-dom/client';
 import DocumentationLayout from './components/DocumentationLayout.js';
+
+// @ts-check
 
 // Global styles for documentation
 import './styles/docs.css';

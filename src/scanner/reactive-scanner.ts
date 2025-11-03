@@ -473,7 +473,7 @@ export class ReactiveScanner extends EventEmitter {
     }
 
     // Stop git watchers
-    for (const [_path, watcher] of Array.from(this.gitWatchers.entries())) {
+    for (const [, watcher] of Array.from(this.gitWatchers.entries())) {
       await watcher.close();
     }
     this.gitWatchers.clear();

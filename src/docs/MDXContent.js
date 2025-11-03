@@ -1,4 +1,6 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
+
+// @ts-check
 
 // This component will be replaced by the actual MDX content
 // The webpack MDX loader will replace this with the compiled MDX component
