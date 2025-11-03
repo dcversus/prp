@@ -89,7 +89,7 @@ describe('Real-time Event Emitter', () => {
         metadata: {}
       };
 
-      let capturedEvent: { type: string; signal: any; source: string; timestamp: Date } | null = null;
+      let capturedEvent: { type: string; signal: { code: string; priority: number; source: string; timestamp: Date; data: unknown; metadata: unknown }; source: string; timestamp: Date } | null = null;
       emitter.subscribeToSignals((event) => {
         capturedEvent = event;
       });
