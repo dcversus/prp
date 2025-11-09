@@ -279,7 +279,7 @@ export class AgentConfigManager extends EventEmitter {
    * Load agent configuration from file
    */
   async loadConfig(configPath?: string): Promise<AgentConfig[]> {
-    const path = configPath || this.configPath;
+    const path = configPath ?? this.configPath;
 
     try {
       const exists = await FileUtils.pathExists(path);
@@ -289,7 +289,7 @@ export class AgentConfigManager extends EventEmitter {
       }
 
       const configData = await ConfigUtils.loadConfigFile<Record<string, unknown>>(path);
-      if (!configData || !configData['agents']) {
+      if (!configData?.['agents']) {
         logger.warn('AgentConfigManager', 'Invalid config format, using defaults', { path });
         return this.createDefaultConfig();
       }
@@ -317,7 +317,7 @@ export class AgentConfigManager extends EventEmitter {
    * Save agent configuration to file
    */
   async saveConfig(agents: AgentConfig[], configPath?: string): Promise<void> {
-    const path = configPath || this.configPath;
+    const path = configPath ?? this.configPath;
 
     try {
       const configData = {
@@ -441,7 +441,7 @@ export class AgentConfigManager extends EventEmitter {
     const suggestions: string[] = [];
 
     // Type guard for agent object
-    if (!agent || typeof agent !== 'object' || agent === null) {
+    if (!agent || typeof agent !== 'object') {
       errors.push({
         field: 'agent',
         message: 'Agent configuration must be a valid object',
@@ -505,7 +505,7 @@ export class AgentConfigManager extends EventEmitter {
     // Validate capabilities
     if (agentObj['capabilities'] && typeof agentObj['capabilities'] === 'object') {
       const capabilities = agentObj['capabilities'] as Record<string, unknown>;
-      if (typeof capabilities['maxContextLength'] !== 'number' || (capabilities['maxContextLength'] as number) <= 0) {
+      if (typeof capabilities['maxContextLength'] !== 'number' || (capabilities['maxContextLength']) <= 0) {
         errors.push({
           field: 'capabilities.maxContextLength',
           message: 'Max context length must be a positive number',
@@ -526,7 +526,7 @@ export class AgentConfigManager extends EventEmitter {
     // Validate limits
     if (agentObj['limits'] && typeof agentObj['limits'] === 'object') {
       const limits = agentObj['limits'] as Record<string, unknown>;
-      if (typeof limits['maxTokensPerRequest'] !== 'number' || (limits['maxTokensPerRequest'] as number) <= 0) {
+      if (typeof limits['maxTokensPerRequest'] !== 'number' || (limits['maxTokensPerRequest']) <= 0) {
         errors.push({
           field: 'limits.maxTokensPerRequest',
           message: 'Max tokens per request must be greater than 0',
@@ -535,7 +535,7 @@ export class AgentConfigManager extends EventEmitter {
         });
       }
 
-      if (typeof limits['maxCostPerDay'] !== 'number' || (limits['maxCostPerDay'] as number) < 0) {
+      if (typeof limits['maxCostPerDay'] !== 'number' || (limits['maxCostPerDay']) < 0) {
         errors.push({
           field: 'limits.maxCostPerDay',
           message: 'Max cost per day cannot be negative',
@@ -550,7 +550,7 @@ export class AgentConfigManager extends EventEmitter {
       const auth = agentObj['authentication'] as Record<string, unknown>;
       if (auth['type'] === 'api-key') {
         const credentials = auth['credentials'] as Record<string, unknown>;
-        if (!credentials || !credentials['apiKey']) {
+        if (!credentials['apiKey']) {
           errors.push({
             field: 'authentication.credentials.apiKey',
             message: 'API key is required for api-key authentication',
@@ -597,7 +597,7 @@ export class AgentConfigManager extends EventEmitter {
       if (!validation.valid) {
         logger.error('AgentConfigManager', 'Invalid agent configuration', new Error('Validation failed'), {
           errors: validation.errors.map(e => e.message).join(', '),
-          agentId: agentData && typeof agentData === 'object' ? (agentData as Record<string, unknown>)['id'] : 'unknown'
+          agentId: agentData && typeof agentData === 'object' ? String((agentData as Record<string, unknown>)['id'] ?? 'unknown') : 'unknown'
         });
         return null;
       }
@@ -610,11 +610,11 @@ export class AgentConfigManager extends EventEmitter {
 
       // Apply defaults and normalize
       const agent: AgentConfig = {
-        id: String(data['id'] || ''),
-        name: String(data['name'] || ''),
-        type: data['type'] as AgentType || 'claude-code-anthropic',
-        role: data['role'] as AgentRole || 'orchestrator-agent',
-        provider: data['provider'] as ProviderType || 'anthropic',
+        id: String(data['id'] ?? ''),
+        name: String(data['name'] ?? ''),
+        type: (data['type'] as AgentType) ?? 'claude-code-anthropic',
+        role: (data['role'] as AgentRole) ?? 'orchestrator-agent',
+        provider: (data['provider'] as ProviderType) ?? 'anthropic',
         enabled: Boolean(data['enabled'] ?? true),
         capabilities: {
           supportsTools: data['capabilities'] && typeof data['capabilities'] === 'object' ? Boolean((data['capabilities'] as Record<string, unknown>)['supportsTools'] ?? true) : true,
@@ -628,7 +628,7 @@ export class AgentConfigManager extends EventEmitter {
           canAccessInternet: data['capabilities'] && typeof data['capabilities'] === 'object' ? Boolean((data['capabilities'] as Record<string, unknown>)['canAccessInternet'] ?? true) : true,
           canAccessFileSystem: data['capabilities'] && typeof data['capabilities'] === 'object' ? Boolean((data['capabilities'] as Record<string, unknown>)['canAccessFileSystem'] ?? true) : true,
           canExecuteCommands: data['capabilities'] && typeof data['capabilities'] === 'object' ? Boolean((data['capabilities'] as Record<string, unknown>)['canExecuteCommands'] ?? false) : false,
-          ...(data['capabilities'] as Record<string, unknown> || {})
+          ...(data['capabilities'] as Record<string, unknown> ?? {})
         },
         limits: {
           maxTokensPerRequest: data['limits'] && typeof data['limits'] === 'object' ? Number((data['limits'] as Record<string, unknown>)['maxTokensPerRequest'] ?? 4000) : 4000,
@@ -639,7 +639,7 @@ export class AgentConfigManager extends EventEmitter {
           maxMemoryUsage: data['limits'] && typeof data['limits'] === 'object' ? Number((data['limits'] as Record<string, unknown>)['maxMemoryUsage'] ?? 1024) : 1024,
           maxConcurrentTasks: data['limits'] && typeof data['limits'] === 'object' ? Number((data['limits'] as Record<string, unknown>)['maxConcurrentTasks'] ?? 1) : 1,
           cooldownPeriod: data['limits'] && typeof data['limits'] === 'object' ? Number((data['limits'] as Record<string, unknown>)['cooldownPeriod'] ?? 1000) : 1000,
-          ...(data['limits'] as Record<string, unknown> || {})
+          ...(data['limits'] as Record<string, unknown> ?? {})
         },
         authentication: {
           type: data['authentication'] && typeof data['authentication'] === 'object' ? ((data['authentication'] as Record<string, unknown>)['type'] as 'token' | 'basic' | 'certificate' | 'api-key' | 'oauth') ?? 'api-key' : 'api-key',
@@ -647,7 +647,7 @@ export class AgentConfigManager extends EventEmitter {
           headers: data['authentication'] && typeof data['authentication'] === 'object' ? ((data['authentication'] as Record<string, unknown>)['headers'] as Record<string, string> | undefined) ?? {} : {},
           endpoints: data['authentication'] && typeof data['authentication'] === 'object' ? ((data['authentication'] as Record<string, unknown>)['endpoints'] as Record<string, string> | undefined) ?? {} : {},
           encrypted: data['authentication'] && typeof data['authentication'] === 'object' ? Boolean((data['authentication'] as Record<string, unknown>)['encrypted'] ?? false) : false,
-          ...(data['authentication'] as Record<string, unknown> || {})
+          ...(data['authentication'] as Record<string, unknown> ?? {})
         },
         personality: {
           tone: data['personality'] && typeof data['personality'] === 'object' ? ((data['personality'] as Record<string, unknown>)['tone'] as 'professional' | 'friendly' | 'casual' | 'technical' | 'creative') ?? 'professional' : 'professional',
@@ -665,7 +665,7 @@ export class AgentConfigManager extends EventEmitter {
             includeExplanations: data['personality'] && typeof data['personality'] === 'object' && (data['personality'] as Record<string, unknown>)['communicationStyle'] && typeof ((data['personality'] as Record<string, unknown>)['communicationStyle']) === 'object' ? Boolean(((data['personality'] as Record<string, unknown>)['communicationStyle'] as Record<string, unknown>)['includeExplanations'] ?? true) : true,
             ...(data['personality'] && typeof data['personality'] === 'object' ? ((data['personality'] as Record<string, unknown>)['communicationStyle'] as Record<string, unknown>) || {} : {})
           },
-          ...(data['personality'] as Record<string, unknown> || {})
+          ...(data['personality'] as Record<string, unknown> ?? {})
         },
         tools: Array.isArray(data['tools']) ? data['tools'] as AgentTool[] : [],
         environment: {
@@ -690,7 +690,7 @@ export class AgentConfigManager extends EventEmitter {
             allowDelete: data['environment'] && typeof data['environment'] === 'object' && (data['environment'] as Record<string, unknown>)['fileSystem'] && typeof ((data['environment'] as Record<string, unknown>)['fileSystem']) === 'object' ? Boolean(((data['environment'] as Record<string, unknown>)['fileSystem'] as Record<string, unknown>)['allowDelete'] ?? false) : false,
             ...(data['environment'] && typeof data['environment'] === 'object' ? ((data['environment'] as Record<string, unknown>)['fileSystem'] as Record<string, unknown>) || {} : {})
           },
-          ...(data['environment'] as Record<string, unknown> || {})
+          ...(data['environment'] as Record<string, unknown> ?? {})
         },
         preferences: {
           autoSave: data['preferences'] && typeof data['preferences'] === 'object' ? Boolean((data['preferences'] as Record<string, unknown>)['autoSave'] ?? true) : true,
@@ -711,7 +711,7 @@ export class AgentConfigManager extends EventEmitter {
             branchNaming: data['preferences'] && typeof data['preferences'] === 'object' && (data['preferences'] as Record<string, unknown>)['git'] && typeof ((data['preferences'] as Record<string, unknown>)['git']) === 'object' ? ((data['preferences'] as Record<string, unknown>)['git'] as Record<string, unknown>)['branchNaming'] as string | undefined ?? 'feature/{name}' : 'feature/{name}',
             ...(data['preferences'] && typeof data['preferences'] === 'object' ? ((data['preferences'] as Record<string, unknown>)['git'] as Record<string, unknown>) || {} : {})
           },
-          ...(data['preferences'] as Record<string, unknown> || {})
+          ...(data['preferences'] as Record<string, unknown> ?? {})
         },
         metadata: {
           version: data['metadata'] && typeof data['metadata'] === 'object' ? ((data['metadata'] as Record<string, unknown>)['version'] as string) ?? '1.0.0' : '1.0.0',

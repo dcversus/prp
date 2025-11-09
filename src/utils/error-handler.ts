@@ -389,7 +389,7 @@ export class ErrorHandler {
           throw error;
         }
 
-        return result as CommandResult;
+        return result;
       }
     };
   }
@@ -435,7 +435,7 @@ export class ErrorHandler {
     }
 
     if (typeof source === 'object' && source.message) {
-      return new PRPError(String(source.message), String((source as Record<string, unknown>).code || 'UNKNOWN_ERROR'));
+      return new PRPError(String(source.message), String((source).code || 'UNKNOWN_ERROR'));
     }
 
     return new PRPError('Unknown error occurred', 'UNKNOWN_ERROR');

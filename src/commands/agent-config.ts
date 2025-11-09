@@ -7,7 +7,7 @@
 import { Command } from 'commander';
 import { agentConfigManager, AgentConfig, AgentType, AgentRole, ProviderType } from '../config/agent-config';
 import { createLayerLogger, FileUtils } from '../shared';
-import * as inquirer from 'inquirer';
+import inquirer from 'inquirer';
 
 const logger = createLayerLogger('config');
 
@@ -173,32 +173,32 @@ async function listAgents(options: CLIOptions): Promise<void> {
     }
 
     if (agents.length === 0) {
-      console.log('No agents found matching the criteria.');
+      logger.info('config', 'No agents found matching the criteria.');
       return;
     }
 
-    console.log('\n🤖 Agent Configurations:');
-    console.log('─'.repeat(80));
+    logger.info('config', '\n🤖 Agent Configurations:');
+    logger.info('config', '─'.repeat(80));
 
     for (const agent of agents) {
       const status = agent.enabled ? '✅' : '❌';
       const roleBadge = getRoleBadge(agent.role);
       const providerBadge = getProviderBadge(agent.provider);
 
-      console.log(`${status} ${agent.id}`);
-      console.log(`   Name: ${agent.name}`);
-      console.log(`   Type: ${agent.type} | Role: ${roleBadge} | Provider: ${providerBadge}`);
-      console.log(`   Context: ${agent.capabilities.maxContextLength.toLocaleString()} tokens`);
-      console.log(`   Created: ${agent.metadata.createdAt.toLocaleDateString()}`);
-      console.log(`   Tags: ${agent.metadata.tags.join(', ') || 'none'}`);
-      console.log('');
+      logger.info('config', `${status} ${agent.id}`);
+      logger.info('config', `   Name: ${agent.name}`);
+      logger.info('config', `   Type: ${agent.type} | Role: ${roleBadge} | Provider: ${providerBadge}`);
+      logger.info('config', `   Context: ${agent.capabilities.maxContextLength.toLocaleString()} tokens`);
+      logger.info('config', `   Created: ${agent.metadata.createdAt.toLocaleDateString()}`);
+      logger.info('config', `   Tags: ${agent.metadata.tags.join(', ') || 'none'}`);
+      logger.info('config', '');
     }
 
-    console.log(`Total: ${agents.length} agent(s) shown`);
+    logger.info('config', `Total: ${agents.length} agent(s) shown`);
 
   } catch (error) {
     logger.error('listAgents', 'Failed to list agents', error instanceof Error ? error : new Error(String(error)));
-    console.error('❌ Failed to list agents:', error instanceof Error ? error.message : String(error));
+    logger.error('config', '❌ Failed to list agents', error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -211,76 +211,76 @@ async function showAgent(agentId: string, options: CLIOptions): Promise<void> {
 
     const agent = agentConfigManager.getAgentConfig(agentId);
     if (!agent) {
-      console.error(`❌ Agent not found: ${agentId}`);
+      logger.error('showAgent', `Agent not found: ${agentId}`);
       return;
     }
 
     if (options.json) {
-      console.log(JSON.stringify(agent, null, 2));
+      logger.info('config', JSON.stringify(agent, null, 2));
       return;
     }
 
-    console.log(`\n🤖 Agent Configuration: ${agent.name}`);
-    console.log('─'.repeat(80));
+    logger.info('config', `\n🤖 Agent Configuration: ${agent.name}`);
+    logger.info('config', '─'.repeat(80));
 
-    console.log(`ID: ${agent.id}`);
-    console.log(`Status: ${agent.enabled ? '✅ Enabled' : '❌ Disabled'}`);
-    console.log(`Type: ${agent.type}`);
-    console.log(`Role: ${getRoleBadge(agent.role)}`);
-    console.log(`Provider: ${getProviderBadge(agent.provider)}`);
+    logger.info("config", `ID: ${agent.id}`);
+    logger.info("config", `Status: ${agent.enabled ? '✅ Enabled' : '❌ Disabled'}`);
+    logger.info("config", `Type: ${agent.type}`);
+    logger.info("config", `Role: ${getRoleBadge(agent.role)}`);
+    logger.info("config", `Provider: ${getProviderBadge(agent.provider)}`);
 
-    console.log('\n📊 Capabilities:');
-    console.log(`  Max Context: ${agent.capabilities.maxContextLength.toLocaleString()} tokens`);
-    console.log(`  Supports Tools: ${agent.capabilities.supportsTools ? '✅' : '❌'}`);
-    console.log(`  Supports Images: ${agent.capabilities.supportsImages ? '✅' : '❌'}`);
-    console.log(`  Supports Sub-agents: ${agent.capabilities.supportsSubAgents ? '✅' : '❌'}`);
-    console.log(`  Can Execute Commands: ${agent.capabilities.canExecuteCommands ? '✅' : '❌'}`);
+    logger.info("config", '\n📊 Capabilities:');
+    logger.info("config", `  Max Context: ${agent.capabilities.maxContextLength.toLocaleString()} tokens`);
+    logger.info("config", `  Supports Tools: ${agent.capabilities.supportsTools ? '✅' : '❌'}`);
+    logger.info("config", `  Supports Images: ${agent.capabilities.supportsImages ? '✅' : '❌'}`);
+    logger.info("config", `  Supports Sub-agents: ${agent.capabilities.supportsSubAgents ? '✅' : '❌'}`);
+    logger.info("config", `  Can Execute Commands: ${agent.capabilities.canExecuteCommands ? '✅' : '❌'}`);
 
-    console.log('\n⚡ Limits:');
-    console.log(`  Max Tokens/Request: ${agent.limits.maxTokensPerRequest.toLocaleString()}`);
-    console.log(`  Max Requests/Hour: ${agent.limits.maxRequestsPerHour}`);
-    console.log(`  Max Requests/Day: ${agent.limits.maxRequestsPerDay}`);
-    console.log(`  Max Cost/Day: $${agent.limits.maxCostPerDay.toFixed(2)}`);
-    console.log(`  Max Execution Time: ${formatDuration(agent.limits.maxExecutionTime)}`);
+    logger.info("config", '\n⚡ Limits:');
+    logger.info("config", `  Max Tokens/Request: ${agent.limits.maxTokensPerRequest.toLocaleString()}`);
+    logger.info("config", `  Max Requests/Hour: ${agent.limits.maxRequestsPerHour}`);
+    logger.info("config", `  Max Requests/Day: ${agent.limits.maxRequestsPerDay}`);
+    logger.info("config", `  Max Cost/Day: $${agent.limits.maxCostPerDay.toFixed(2)}`);
+    logger.info("config", `  Max Execution Time: ${formatDuration(agent.limits.maxExecutionTime)}`);
 
-    console.log('\n🎨 Personality:');
-    console.log(`  Tone: ${agent.personality.tone}`);
-    console.log(`  Response Style: ${agent.personality.responseStyle}`);
-    console.log(`  Creativity: ${(agent.personality.creativity * 100).toFixed(0)}%`);
-    console.log(`  Strictness: ${(agent.personality.strictness * 100).toFixed(0)}%`);
-    console.log(`  Proactivity: ${(agent.personality.proactivity * 100).toFixed(0)}%`);
+    logger.info("config", '\n🎨 Personality:');
+    logger.info("config", `  Tone: ${agent.personality.tone}`);
+    logger.info("config", `  Response Style: ${agent.personality.responseStyle}`);
+    logger.info("config", `  Creativity: ${(agent.personality.creativity * 100).toFixed(0)}%`);
+    logger.info("config", `  Strictness: ${(agent.personality.strictness * 100).toFixed(0)}%`);
+    logger.info("config", `  Proactivity: ${(agent.personality.proactivity * 100).toFixed(0)}%`);
 
     if (agent.personality.customInstructions) {
-      console.log(`  Custom Instructions: ${agent.personality.customInstructions}`);
+      logger.info("config", `  Custom Instructions: ${agent.personality.customInstructions}`);
     }
 
-    console.log('\n🔧 Tools:');
+    logger.info("config", '\n🔧 Tools:');
     if (agent.tools.length === 0) {
-      console.log('  No tools configured');
+      logger.info("config", '  No tools configured');
     } else {
       for (const tool of agent.tools) {
         const status = tool.enabled ? '✅' : '❌';
-        console.log(`  ${status} ${tool.name} (${tool.type})`);
+        logger.info("config", `  ${status} ${tool.name} (${tool.type})`);
       }
     }
 
-    console.log('\n📁 Environment:');
-    console.log(`  Working Directory: ${agent.environment.workingDirectory}`);
-    console.log(`  Shell: ${agent.environment.shell}`);
-    console.log(`  Node Version: ${agent.environment.nodeVersion}`);
-    console.log(`  File System Access: ${agent.environment.fileSystem.allowWrite ? '✅ Read/Write' : '✅ Read Only'}`);
+    logger.info("config", '\n📁 Environment:');
+    logger.info("config", `  Working Directory: ${agent.environment.workingDirectory}`);
+    logger.info("config", `  Shell: ${agent.environment.shell}`);
+    logger.info("config", `  Node Version: ${agent.environment.nodeVersion}`);
+    logger.info("config", `  File System Access: ${agent.environment.fileSystem.allowWrite ? '✅ Read/Write' : '✅ Read Only'}`);
 
-    console.log('\n📋 Metadata:');
-    console.log(`  Version: ${agent.metadata.version}`);
-    console.log(`  Author: ${agent.metadata.author}`);
-    console.log(`  Category: ${agent.metadata.category}`);
-    console.log(`  Created: ${agent.metadata.createdAt.toLocaleString()}`);
-    console.log(`  Modified: ${agent.metadata.lastModified.toLocaleString()}`);
-    console.log(`  Tags: ${agent.metadata.tags.join(', ') || 'none'}`);
+    logger.info("config", '\n📋 Metadata:');
+    logger.info("config", `  Version: ${agent.metadata.version}`);
+    logger.info("config", `  Author: ${agent.metadata.author}`);
+    logger.info("config", `  Category: ${agent.metadata.category}`);
+    logger.info("config", `  Created: ${agent.metadata.createdAt.toLocaleString()}`);
+    logger.info("config", `  Modified: ${agent.metadata.lastModified.toLocaleString()}`);
+    logger.info("config", `  Tags: ${agent.metadata.tags.join(', ') || 'none'}`);
 
   } catch (error) {
     logger.error('showAgent', 'Failed to show agent', error instanceof Error ? error : new Error(String(error)));
-    console.error('❌ Failed to show agent:', error instanceof Error ? error.message : String(error));
+    logger.error('config', '❌ Failed to show agent:', error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -295,13 +295,13 @@ async function createAgent(options: AgentConfigOptions): Promise<void> {
       // Create from template
       const template = agentConfigManager.getTemplate(options.template);
       if (!template) {
-        console.error(`❌ Template not found: ${options.template}`);
-        console.log('Available templates:');
+        logger.error('config', `❌ Template not found: ${options.template}`);
+        logger.info("config", 'Available templates:');
         await listTemplates();
         return;
       }
 
-      console.log(`\n📝 Creating agent from template: ${template.name}`);
+      logger.info("config", `\n📝 Creating agent from template: ${template.name}`);
 
       const questions = template.variables.map(variable => ({
         type: variable.type === 'secret' ? 'password' :
@@ -324,7 +324,7 @@ async function createAgent(options: AgentConfigOptions): Promise<void> {
       agent = agentConfigManager.createAgentFromTemplate(options.template, answers);
     } else if (options.interactive) {
       // Interactive creation
-      console.log('\n📝 Interactive Agent Creation');
+      logger.info("config", '\n📝 Interactive Agent Creation');
 
       const interactiveQuestions = [
         {
@@ -384,7 +384,10 @@ async function createAgent(options: AgentConfigOptions): Promise<void> {
           type: 'password',
           name: 'apiKey',
           message: 'API Key:',
-          when: (answers: Record<string, string>) => ['anthropic', 'openai', 'google', 'groq'].includes(answers['provider']),
+          when: (answers: Record<string, string>) => {
+            const provider = answers['provider'];
+            return provider ? ['anthropic', 'openai', 'google', 'groq'].includes(provider) : false;
+          },
           validate: (input: string) => input.trim() !== '' || 'API Key is required'
         },
         {
@@ -409,22 +412,22 @@ async function createAgent(options: AgentConfigOptions): Promise<void> {
         }
       }
     } else {
-      console.error('❌ Please specify either --template or --interactive');
+      logger.error('config', '❌ Please specify either --template or --interactive');
       return;
     }
 
     if (!agent) {
-      console.error('❌ Failed to create agent');
+      logger.error('config', '❌ Failed to create agent');
       return;
     }
 
     // Validate and save
     await agentConfigManager.setAgentConfig(agent);
-    console.log(`✅ Agent created: ${agent.name} (${agent.id})`);
+    logger.info("config", `✅ Agent created: ${agent.name} (${agent.id})`);
 
   } catch (error) {
     logger.error('createAgent', 'Failed to create agent', error instanceof Error ? error : new Error(String(error)));
-    console.error('❌ Failed to create agent:', error instanceof Error ? error.message : String(error));
+    logger.error('config', '❌ Failed to create agent:', error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -437,7 +440,7 @@ async function editAgent(agentId: string, options: AgentConfigOptions): Promise<
 
     const agent = agentConfigManager.getAgentConfig(agentId);
     if (!agent) {
-      console.error(`❌ Agent not found: ${agentId}`);
+      logger.error('config', `❌ Agent not found: ${agentId}`);
       return;
     }
 
@@ -446,17 +449,17 @@ async function editAgent(agentId: string, options: AgentConfigOptions): Promise<
       const tempFile = `/tmp/agent-${agentId}.json`;
       await FileUtils.writeTextFile(tempFile, JSON.stringify(agent, null, 2));
 
-      const editor = process.env['EDITOR'] || 'nano';
+      const editor = process.env['EDITOR'] ?? 'nano';
       const { spawn } = await import('child_process');
       spawn(editor, [tempFile], { stdio: 'inherit' }).on('exit', async () => {
         const updatedData = await FileUtils.readTextFile(tempFile);
         const updatedAgent = JSON.parse(updatedData);
         await agentConfigManager.setAgentConfig(updatedAgent);
-        console.log(`✅ Agent ${agentId} updated`);
+        logger.info("config", `✅ Agent ${agentId} updated`);
       });
     } else {
       // Interactive editing
-      console.log(`\n✏️ Editing agent: ${agent.name}`);
+      logger.info("config", `\n✏️ Editing agent: ${agent.name}`);
 
       const editQuestions = [
         {
@@ -503,12 +506,12 @@ async function editAgent(agentId: string, options: AgentConfigOptions): Promise<
       agent.metadata.lastModified = new Date();
 
       await agentConfigManager.setAgentConfig(agent);
-      console.log(`✅ Agent ${agentId} updated`);
+      logger.info("config", `✅ Agent ${agentId} updated`);
     }
 
   } catch (error) {
     logger.error('editAgent', 'Failed to edit agent', error instanceof Error ? error : new Error(String(error)));
-    console.error('❌ Failed to edit agent:', error instanceof Error ? error.message : String(error));
+    logger.error('config', '❌ Failed to edit agent:', error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -521,7 +524,7 @@ async function toggleAgent(agentId: string, options: CLIOptions): Promise<void> 
 
     const agent = agentConfigManager.getAgentConfig(agentId);
     if (!agent) {
-      console.error(`❌ Agent not found: ${agentId}`);
+      logger.error('config', `❌ Agent not found: ${agentId}`);
       return;
     }
 
@@ -545,11 +548,11 @@ async function toggleAgent(agentId: string, options: CLIOptions): Promise<void> 
     }
 
     await agentConfigManager.setAgentEnabled(agentId, enabled);
-    console.log(`✅ Agent ${agentId} ${enabled ? 'enabled' : 'disabled'}`);
+    logger.info("config", `✅ Agent ${agentId} ${enabled ? 'enabled' : 'disabled'}`);
 
   } catch (error) {
     logger.error('toggleAgent', 'Failed to toggle agent', error instanceof Error ? error : new Error(String(error)));
-    console.error('❌ Failed to toggle agent:', error instanceof Error ? error.message : String(error));
+    logger.error('config', '❌ Failed to toggle agent:', error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -562,7 +565,7 @@ async function removeAgent(agentId: string, options: CLIOptions): Promise<void> 
 
     const agent = agentConfigManager.getAgentConfig(agentId);
     if (!agent) {
-      console.error(`❌ Agent not found: ${agentId}`);
+      logger.error('config', `❌ Agent not found: ${agentId}`);
       return;
     }
 
@@ -579,21 +582,21 @@ async function removeAgent(agentId: string, options: CLIOptions): Promise<void> 
       const answers = await inquirer.prompt(removeQuestions);
 
       if (!answers['confirm']) {
-        console.log('Operation cancelled');
+        logger.info("config", 'Operation cancelled');
         return;
       }
     }
 
     const removed = await agentConfigManager.removeAgentConfig(agentId);
     if (removed) {
-      console.log(`✅ Agent ${agentId} removed`);
+      logger.info("config", `✅ Agent ${agentId} removed`);
     } else {
-      console.error(`❌ Failed to remove agent ${agentId}`);
+      logger.error('config', `❌ Failed to remove agent ${agentId}`);
     }
 
   } catch (error) {
     logger.error('removeAgent', 'Failed to remove agent', error instanceof Error ? error : new Error(String(error)));
-    console.error('❌ Failed to remove agent:', error instanceof Error ? error.message : String(error));
+    logger.error('config', '❌ Failed to remove agent:', error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -607,7 +610,7 @@ async function validateConfig(agentId?: string, options?: CLIOptions): Promise<v
     if (options?.all || !agentId) {
       // Validate all agents
       const agents = agentConfigManager.getAllAgentConfigs();
-      console.log(`\n🔍 Validating ${agents.length} agent(s)...`);
+      logger.info("config", `\n🔍 Validating ${agents.length} agent(s)...`);
 
       let validCount = 0;
       let errorCount = 0;
@@ -616,71 +619,71 @@ async function validateConfig(agentId?: string, options?: CLIOptions): Promise<v
         const validation = agentConfigManager.validateAgentConfig(agent);
         const status = validation.valid ? '✅' : '❌';
 
-        console.log(`${status} ${agent.name} (${agent.id})`);
+        logger.info("config", `${status} ${agent.name} (${agent.id})`);
 
         if (!validation.valid) {
           errorCount++;
           for (const error of validation.errors) {
-            console.log(`   ❌ ${error.field}: ${error.message}`);
+            logger.info("config", `   ❌ ${error.field}: ${error.message}`);
           }
         } else {
           validCount++;
         }
 
         for (const warning of validation.warnings) {
-          console.log(`   ⚠️ ${warning.field}: ${warning.message}`);
+          logger.info("config", `   ⚠️ ${warning.field}: ${warning.message}`);
         }
 
         if (validation.suggestions.length > 0) {
-          console.log(`   💡 Suggestions: ${validation.suggestions.join(', ')}`);
+          logger.info("config", `   💡 Suggestions: ${validation.suggestions.join(', ')}`);
         }
       }
 
-      console.log(`\n📊 Validation Summary:`);
-      console.log(`  ✅ Valid: ${validCount}`);
-      console.log(`  ❌ Invalid: ${errorCount}`);
-      console.log(`  📊 Total: ${agents.length}`);
+      logger.info("config", `\n📊 Validation Summary:`);
+      logger.info("config", `  ✅ Valid: ${validCount}`);
+      logger.info("config", `  ❌ Invalid: ${errorCount}`);
+      logger.info("config", `  📊 Total: ${agents.length}`);
 
     } else {
       // Validate specific agent
       const agent = agentConfigManager.getAgentConfig(agentId);
       if (!agent) {
-        console.error(`❌ Agent not found: ${agentId}`);
+        logger.error('config', `❌ Agent not found: ${agentId}`);
         return;
       }
 
       const validation = agentConfigManager.validateAgentConfig(agent);
       const status = validation.valid ? '✅' : '❌';
 
-      console.log(`\n🔍 Validation Results for ${agent.name}:`);
-      console.log(`${status} Overall: ${validation.valid ? 'Valid' : 'Invalid'}`);
+      logger.info("config", `\n🔍 Validation Results for ${agent.name}:`);
+      logger.info("config", `${status} Overall: ${validation.valid ? 'Valid' : 'Invalid'}`);
 
       if (validation.errors.length > 0) {
-        console.log('\n❌ Errors:');
+        logger.info("config", '\n❌ Errors:');
         for (const error of validation.errors) {
-          console.log(`  ${error.field}: ${error.message}`);
+          logger.info("config", `  ${error.field}: ${error.message}`);
         }
       }
 
       if (validation.warnings.length > 0) {
-        console.log('\n⚠️ Warnings:');
+        logger.info("config", '\n⚠️ Warnings:');
         for (const warning of validation.warnings) {
-          console.log(`  ${warning.field}: ${warning.message}`);
-          console.log(`    💡 ${warning.recommendation}`);
+          logger.info("config", `  ${warning.field}: ${warning.message}`);
+          logger.info("config", `    💡 ${warning.recommendation}`);
         }
       }
 
       if (validation.suggestions.length > 0) {
-        console.log('\n💡 Suggestions:');
+        logger.info("config", '\n💡 Suggestions:');
         for (const suggestion of validation.suggestions) {
-          console.log(`  • ${suggestion}`);
+          logger.info("config", `  • ${suggestion}`);
         }
       }
     }
 
   } catch (error) {
     logger.error('validateConfig', 'Failed to validate configuration', error instanceof Error ? error : new Error(String(error)));
-    console.error('❌ Failed to validate configuration:', error instanceof Error ? error.message : String(error));
+    logger.error('config', '❌ Failed to validate configuration:', error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -690,14 +693,14 @@ async function validateConfig(agentId?: string, options?: CLIOptions): Promise<v
 async function importConfig(file: string): Promise<void> {
   try {
     if (!await FileUtils.pathExists(file)) {
-      console.error(`❌ File not found: ${file}`);
+      logger.error('config', `❌ File not found: ${file}`);
       return;
     }
 
     const configData = JSON.parse(await FileUtils.readTextFile(file));
 
     if (!configData.agents || !Array.isArray(configData.agents)) {
-      console.error('❌ Invalid configuration file format');
+      logger.error('config', '❌ Invalid configuration file format');
       return;
     }
 
@@ -709,15 +712,15 @@ async function importConfig(file: string): Promise<void> {
         await agentConfigManager.setAgentConfig(agentData);
         importedCount++;
       } catch (error) {
-        console.error(`❌ Failed to import agent: ${agentData.id || agentData.name}`, error instanceof Error ? error.message : String(error));
+        logger.error('config', `❌ Failed to import agent: ${agentData.id ?? agentData.name}`, error instanceof Error ? error : new Error(String(error)));
       }
     }
 
-    console.log(`✅ Imported ${importedCount} agent(s) from ${file}`);
+    logger.info("config", `✅ Imported ${importedCount} agent(s) from ${file}`);
 
   } catch (error) {
     logger.error('importConfig', 'Failed to import configuration', error instanceof Error ? error : new Error(String(error)));
-    console.error('❌ Failed to import configuration:', error instanceof Error ? error.message : String(error));
+    logger.error('config', '❌ Failed to import configuration:', error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -739,17 +742,17 @@ async function exportConfig(file?: string, options?: CLIOptions): Promise<void> 
       totalAgents: agents.length
     };
 
-    const filename = file || '.prprc.export';
+    const filename = file ?? '.prprc.export';
     const content = options?.format === 'yaml'
       ? await convertToYaml(configData)
       : JSON.stringify(configData, null, 2);
 
     await FileUtils.writeTextFile(filename, content);
-    console.log(`✅ Exported ${agents.length} agent(s) to ${filename}`);
+    logger.info("config", `✅ Exported ${agents.length} agent(s) to ${filename}`);
 
   } catch (error) {
     logger.error('exportConfig', 'Failed to export configuration', error instanceof Error ? error : new Error(String(error)));
-    console.error('❌ Failed to export configuration:', error instanceof Error ? error.message : String(error));
+    logger.error('config', '❌ Failed to export configuration:', error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -761,28 +764,28 @@ async function listTemplates(): Promise<void> {
     const templates = agentConfigManager.getAllTemplates();
 
     if (templates.length === 0) {
-      console.log('No templates available.');
+      logger.info("config", 'No templates available.');
       return;
     }
 
-    console.log('\n📋 Available Templates:');
-    console.log('─'.repeat(80));
+    logger.info("config", '\n📋 Available Templates:');
+    logger.info("config", '─'.repeat(80));
 
     for (const template of templates) {
-      console.log(`📄 ${template.name}`);
-      console.log(`   ID: ${template.id}`);
-      console.log(`   Category: ${template.category}`);
-      console.log(`   Description: ${template.description}`);
-      console.log(`   Variables: ${template.variables.length}`);
-      console.log(`   Required Features: ${template.requiredFeatures.join(', ') || 'none'}`);
-      console.log('');
+      logger.info("config", `📄 ${template.name}`);
+      logger.info("config", `   ID: ${template.id}`);
+      logger.info("config", `   Category: ${template.category}`);
+      logger.info("config", `   Description: ${template.description}`);
+      logger.info("config", `   Variables: ${template.variables.length}`);
+      logger.info("config", `   Required Features: ${template.requiredFeatures.join(', ') || 'none'}`);
+      logger.info("config", '');
     }
 
-    console.log(`Total: ${templates.length} template(s)`);
+    logger.info("config", `Total: ${templates.length} template(s)`);
 
   } catch (error) {
     logger.error('listTemplates', 'Failed to list templates', error instanceof Error ? error : new Error(String(error)));
-    console.error('❌ Failed to list templates:', error instanceof Error ? error.message : String(error));
+    logger.error('config', '❌ Failed to list templates:', error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -803,7 +806,7 @@ function getRoleBadge(role: string): string {
     'robo-devops': '🔧 DevOps',
     'robo-documenter': '📝 Documenter'
   };
-  return badges[role] || role;
+  return badges[role] ?? role;
 }
 
 function getProviderBadge(provider: string): string {
@@ -816,7 +819,7 @@ function getProviderBadge(provider: string): string {
     'github': '🐙 GitHub',
     'custom': '⚙️ Custom'
   };
-  return badges[provider] || provider;
+  return badges[provider] ?? provider;
 }
 
 function formatDuration(ms: number): string {

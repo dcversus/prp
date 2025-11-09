@@ -25,8 +25,8 @@ export function createFeatureRequirement(
     name,
     description,
     required,
-    check: check || (async () => true), // Default to always true if no check provided
-    errorMessage: errorMessage || `Feature "${name}" is not available`
+    check: check ?? (async () => true), // Default to always true if no check provided
+    errorMessage: errorMessage ?? `Feature "${name}" is not available`
   };
 }
 
@@ -45,8 +45,8 @@ export function createServiceRequirement(
     name,
     description,
     required,
-    check: check || (async () => true), // Default to always true if no check provided
-    errorMessage: errorMessage || `Service "${name}" is not available`
+    check: check ?? (async () => true), // Default to always true if no check provided
+    errorMessage: errorMessage ?? `Service "${name}" is not available`
   };
 }
 
@@ -65,8 +65,8 @@ export function createAuthRequirement(
     name,
     description,
     required,
-    check: check || (async () => true), // Default to always true if no check provided
-    errorMessage: errorMessage || `Authentication requirement "${name}" is not met`
+    check: check ?? (async () => true), // Default to always true if no check provided
+    errorMessage: errorMessage ?? `Authentication requirement "${name}" is not met`
   };
 }
 
@@ -85,8 +85,8 @@ export function createConfigRequirement(
     name,
     description,
     required,
-    check: check || (async () => true), // Default to always true if no check provided
-    errorMessage: errorMessage || `Configuration requirement "${name}" is not met`
+    check: check ?? (async () => true), // Default to always true if no check provided
+    errorMessage: errorMessage ?? `Configuration requirement "${name}" is not met`
   };
 }
 
@@ -101,7 +101,7 @@ export function createCommandCheckRequirement(
   required: boolean = true,
   errorMessage?: string
 ): GuidelineRequirement {
-  const errorMessageToUse = errorMessage || `${type} "${name}" check failed: ${checkCommand}`;
+  const errorMessageToUse = errorMessage ?? `${type} "${name}" check failed: ${checkCommand}`;
 
   return {
     type,

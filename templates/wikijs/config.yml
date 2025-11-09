@@ -1,0 +1,174 @@
+# {{PROJECT_NAME}} Wiki.js Configuration
+
+# =================================================================
+# SERVER
+# =================================================================
+# Port on which the application will listen.
+# Must be a number >= 1024 and <= 65535.
+port: 3000
+
+# =================================================================
+# DATABASE
+# =================================================================
+# Supported Database Engines: postgres, mysql, mariadb, mssql, sqlite
+type: postgres
+# PostgreSQL / MySQL / MariaDB / MS SQL Server only:
+host: db
+port: 5432
+username: wikijs
+password: wikijsrocks
+db: wiki
+
+# SQLite only:
+# path: ./database.sqlite
+
+# SSL Configuration (PostgreSQL only):
+# ssl: false
+# sslOptions:
+#   rejectUnauthorized: false
+#   ca: <CA_PATH>
+#   cert: <CERT_PATH>
+#   key: <KEY_PATH>
+#   passphrase: <PASSPHRASE>
+
+# =================================================================
+# LOGGING
+# =================================================================
+# Database related logs
+dbLog: false
+# HTTP Request Logging
+httpLog: true
+# Internal Logger Level: silly, debug, info, warn, error
+logLevel: info
+# Log to Console
+logColorize: true
+# Log to File
+logFile: false
+# =================================================================
+# SECURITY
+# =================================================================
+# Trust Proxy - Set to true if running behind a reverse proxy (nginx, apache, etc.)
+trustProxy: true
+# =================================================================
+# OFFLINE MODE
+# =================================================================
+# If set to true, external assets (CDN) are not used
+offlineMode: false
+
+# =================================================================
+# HIGH AVAILABILITY
+# =================================================================
+# If set to true, will purge local cache on each restart
+haSensitive: false
+
+# =================================================================
+# HEROKU
+# =================================================================
+# If enabled, bind internal port to 0.0.0.0 and listen to PORT env var instead
+heroku: false
+
+# =================================================================
+# PUBLIC PATH
+# =================================================================
+# If set to true, relative paths will be used instead of full paths
+# Useful when running under a subdirectory, e.g. mydomain.com/wiki
+relativePath: false
+
+# =================================================================
+# SITE CONFIGURATION
+# =================================================================
+# Basic Configuration
+title: {{PROJECT_NAME}}
+host: http://localhost
+contentValidation:
+  # Require page approval before publishing
+  pendingChanges: false
+  # Render page diffs in markdown format
+  markdownRenderer: true
+  # Enable linting rules
+  lintMarkdown: true
+
+# =================================================================
+# AUTHENTICATION
+# =================================================================
+authentication:
+  # Default Authentication Method
+  defaultStrategy: local
+  # Social authentication providers
+  strategies:
+    local:
+      # Enable local authentication
+      enabled: true
+      # Minimum username length
+      minUsernameLength: 3
+      # Minimum password length
+      minPasswordLength: 8
+      # Show social login buttons on login page
+      socialDisplay: true
+      # Email field disabled
+      emailDisabled: false
+      # Self-registration
+      selfRegistration: true
+      # Limit to specific email domains
+      emailDomain:
+        enabled: false
+        domains:
+          - example.com
+          - .corp.com
+      # Auto-email verification
+      autoEmailVerify: true
+      # Use Gravatar for user avatars
+      useGravatar: true
+
+# =================================================================
+# FEATURES
+# =================================================================
+features:
+  # Rich Text Editor (WYSIWYG)
+  richEditing: true
+  # Allow HTML markup in pages
+  allowHTML: false
+  # Math / LaTeX support
+  mathMacro: true
+  # Diagrams support
+  diagrams:
+    # Mermaid support
+    mermaid: true
+    # PlantUML support
+    plantuml: false
+    # Sequence Diagrams support
+    sequence: true
+  # Page Ratings
+  ratings: true
+  # Page Comments
+  comments: true
+  # Page Pinning
+  pining: true
+  # Page Side Navigation
+  pageRatings: true
+  # Page History
+  pageHistory: true
+  # Page Sharing
+  sharing: true
+
+# =================================================================
+# SEARCH ENGINE
+# =================================================================
+search:
+  # Supported Engines: postgres, mysql, mariadb, mssql, sqlite, elasticsearch
+  type: postgres
+  # API key (for elasticsearch)
+  apiKey: null
+  # Server URL (for elasticsearch)
+  serverUrl: http://localhost:9200
+
+# =================================================================
+# THEMING
+# =================================================================
+theming:
+  # Set to true to enable Theme management features
+  theme: true
+  # Path to theme directory
+  path: ./themes
+  # Which theme to activate
+  activeTheme: default

@@ -1,4 +1,4 @@
-/* global document, console */
+/* global document */
 
 // @ts-expect-error - React DOM types may not be available in this context
 import { createRoot } from 'react-dom/client';

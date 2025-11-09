@@ -166,7 +166,7 @@ const DEFAULT_CONFIG = {
  * Create TUI configuration with defaults and overrides
  */
 export function createTUIConfig(overrides: Partial<TUIConfig> = {}): TUIConfig {
-  const theme = overrides.theme || DEFAULT_CONFIG.theme;
+  const theme = overrides.theme ?? DEFAULT_CONFIG.theme;
   const colors = COLOR_SCHEMES[theme];
 
   return {
@@ -197,10 +197,13 @@ export function createTUIConfig(overrides: Partial<TUIConfig> = {}): TUIConfig {
  * Get role color configuration
  */
 export function getRoleColors(role: string, colors: ColorScheme) {
-  const roleKey = role.replace(/-/g, '_') as keyof typeof colors;
+  const roleKey = role.replace(/-/g, '_');
   return {
-    active: colors[`${roleKey}` as keyof typeof colors] || colors.orchestrator,
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    active: colors[roleKey as keyof typeof colors] || colors.orchestrator,
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     dim: colors[`${roleKey}_dim` as keyof typeof colors] || colors.orchestrator_dim,
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     bg: colors[`${roleKey}_bg` as keyof typeof colors] || colors.orchestrator_bg
   };
 }
@@ -248,7 +251,7 @@ export function getSignalColor(
       '[dt]': 'robo-ux-ui'
     };
 
-    const role = signalRoleMap[code] || 'orchestrator';
+    const role = signalRoleMap[code] ?? 'orchestrator';
     return getRoleColors(role, colors).active;
   }
 

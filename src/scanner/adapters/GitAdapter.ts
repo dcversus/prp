@@ -7,8 +7,10 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
+import { createLayerLogger } from '../../shared/logger.js';
 
 const execAsync = promisify(exec);
+const logger = createLayerLogger('scanner');
 
 export interface GitSignalEvent {
   type: 'commit' | 'merge' | 'branch' | 'tag' | 'push';
@@ -59,7 +61,17 @@ export class GitAdapter {
       for (const commit of commits) {
         if (!commit) continue;
 
-        const [hash, subject, author, email, date] = commit.split('|');
+        const commitParts = commit.split('|');
+        const hash = commitParts[0];
+        const subject = commitParts[1];
+        const author = commitParts[2];
+        const email = commitParts[3];
+        const date = commitParts[4];
+
+        if (!hash || !subject || !author || !email || !date) {
+          continue;
+        }
+
         const commitHash = hash.substring(0, 7);
 
         // Extract signals from commit message
@@ -86,7 +98,7 @@ export class GitAdapter {
         }
       }
     } catch (error) {
-      console.error('Error detecting Git commit signals:', error);
+      logger.error('GitAdapter', 'Error detecting Git commit signals', error as Error);
     }
 
     return signals;
@@ -109,7 +121,16 @@ export class GitAdapter {
       for (const merge of merges) {
         if (!merge) continue;
 
-        const [hash, subject, author, date] = merge.split('|');
+        const mergeParts = merge.split('|');
+        const hash = mergeParts[0];
+        const subject = mergeParts[1];
+        const author = mergeParts[2];
+        const date = mergeParts[3];
+
+        if (!hash || !subject || !author || !date) {
+          continue;
+        }
+
         const commitHash = hash.substring(0, 7);
 
         // Look for signals in merge message
@@ -129,7 +150,7 @@ export class GitAdapter {
         }
       }
     } catch (error) {
-      console.error('Error detecting Git merge signals:', error);
+      logger.error('GitAdapter', 'Error detecting Git merge signals', error as Error);
     }
 
     return signals;
@@ -152,7 +173,13 @@ export class GitAdapter {
       for (const branch of branches) {
         if (!branch) continue;
 
-        const [branchName, date] = branch.split('|');
+        const branchParts = branch.split('|');
+        const branchName = branchParts[0];
+        const date = branchParts[1];
+
+        if (!branchName || !date) {
+          continue;
+        }
 
         // Look for signals in branch name
         const signalsInName = this.extractSignalsFromText(branchName);
@@ -169,7 +196,7 @@ export class GitAdapter {
         });
       }
     } catch (error) {
-      console.error('Error detecting Git branch signals:', error);
+      logger.error('GitAdapter', 'Error detecting Git branch signals', error as Error);
     }
 
     return signals;
@@ -230,7 +257,7 @@ export class GitAdapter {
         }
       }
     } catch (error) {
-      console.error('Error getting staged files with signals:', error);
+      logger.error('GitAdapter', 'Error getting staged files with signals', error as Error);
     }
 
     return results;
@@ -265,7 +292,9 @@ export class GitAdapter {
     let match;
 
     while ((match = signalPattern.exec(text)) !== null) {
-      signals.push(match[1]);
+      if (match[1]) {
+        signals.push(match[1]);
+      }
     }
 
     // Remove duplicates while preserving order
@@ -297,7 +326,7 @@ export class GitAdapter {
         if (line.length === 0) continue;
 
         const statusCode = line.substring(0, 2);
-        if (statusCode[0] !== ' ' && statusCode[0] !== '?') {
+        if (!statusCode.startsWith(' ') && !statusCode.startsWith('?')) {
           staged++;
         }
         if (statusCode[1] !== ' ' && statusCode[1] !== '?') {
@@ -316,7 +345,7 @@ export class GitAdapter {
         untracked
       };
     } catch (error) {
-      console.error('Error getting Git status:', error);
+      logger.error('GitAdapter', 'Error getting Git status', error as Error);
       return {
         branch: 'unknown',
         clean: false,

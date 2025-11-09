@@ -122,6 +122,8 @@ export class OrchestratorScannerGuidelines {
     let nudgesSent = 0;
     let readStatusUpdated = 0;
     const errors: string[] = [];
+    // TODO: implement source-specific processing
+    logger.debug('OrchestratorScanner', `Processing signals from source: ${source}`);
 
     logger.info('OrchestratorScanner', `Processing ${signals.length} signals for orchestrator patterns`);
 
@@ -184,7 +186,7 @@ export class OrchestratorScannerGuidelines {
     error?: string;
   }> {
     const signalType = signal.type.toLowerCase();
-    const context = signal.data as Record<string, unknown>;
+    const context = signal.data;
 
     if (signalType === '*a') {
       // Admin communication pending - immediate nudge
@@ -377,11 +379,14 @@ export class OrchestratorScannerGuidelines {
     const signalsByPrp = new Map<string, Signal[]>();
 
     allPendingSignals.forEach(signal => {
-      const prpId = typeof signal.data?.prpId === 'string' ? signal.data.prpId : 'unknown';
+      const prpId = typeof signal.data.prpId === 'string' ? signal.data.prpId : 'unknown';
       if (!signalsByPrp.has(prpId)) {
         signalsByPrp.set(prpId, []);
       }
-      signalsByPrp.get(prpId)!.push(signal);
+      const prpSignals = signalsByPrp.get(prpId);
+      if (prpSignals) {
+        prpSignals.push(signal);
+      }
     });
 
     // Process each PRP group
@@ -472,8 +477,8 @@ Aggregated orchestrator coordination items requiring attention.`;
 
     this.pendingNudges.forEach((signals) => {
       signals.forEach(signal => {
-        const prpId = signal.data?.prpId || 'unknown';
-        byPrp[prpId as string] = (byPrp[prpId as string] || 0) + 1;
+        const prpId = signal.data.prpId ?? 'unknown';
+        byPrp[prpId as string] = (byPrp[prpId as string] ?? 0) + 1;
 
         if (!oldestPending || signal.timestamp < oldestPending) {
           oldestPending = signal.timestamp;

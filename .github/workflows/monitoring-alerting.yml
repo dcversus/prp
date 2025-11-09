@@ -1,0 +1,654 @@
+name: Performance Monitoring & Alerting
+
+on:
+  schedule:
+    # Run comprehensive monitoring every 6 hours
+    - cron: '0 */6 * * *'
+    # Daily health check at midnight UTC
+    - cron: '0 0 * * *'
+    # Weekly performance report on Sundays at 10 AM UTC
+    - cron: '0 10 * * 0'
+  workflow_dispatch:
+    inputs:
+      monitor_type:
+        description: 'Monitoring type'
+        required: true
+        default: 'comprehensive'
+        type: choice
+        options:
+          - comprehensive
+          - performance
+          - security
+          - dependency
+          - health
+      alert_threshold:
+        description: 'Alert threshold multiplier'
+        required: false
+        default: '1.0'
+        type: string
+      create_report:
+        description: 'Create detailed report'
+        required: false
+        default: 'true'
+        type: boolean
+
+env:
+  NODE_VERSION: '20'
+  MONITORING_VERSION: 'v1.0'
+  ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  actions: read
+
+jobs:
+  # System health checks
+  health-checks:
+    name: System Health Monitoring
+    runs-on: ubuntu-latest
+    outputs:
+      overall_health: ${{ steps.health.outputs.status }}
+      critical_issues: ${{ steps.health.outputs.critical_count }}
+      warnings: ${{ steps.health.outputs.warning_count }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Perform Comprehensive Health Checks
+        id: health
+        run: |
+          echo "🏥 Performing system health checks..."
+
+          CRITICAL_COUNT=0
+          WARNING_COUNT=0
+
+          # Check build system
+          echo "🔨 Checking build system..."
+          if npm run build; then
+            echo "✅ Build system healthy"
+          else
+            echo "❌ Build system failed"
+            ((CRITICAL_COUNT++))
+          fi
+
+          # Check dependencies
+          echo "📦 Checking dependencies..."
+          if npm ls >/dev/null 2>&1; then
+            echo "✅ Dependencies healthy"
+          else
+            echo "❌ Dependency issues detected"
+            ((CRITICAL_COUNT++))
+          fi
+
+          # Check TypeScript compilation
+          echo "📋 Checking TypeScript compilation..."
+          if npm run typecheck >/dev/null 2>&1; then
+            echo "✅ TypeScript compilation healthy"
+          else
+            echo "⚠️ TypeScript compilation issues"
+            ((WARNING_COUNT++))
+          fi
+
+          # Check linting
+          echo "🔍 Checking linting..."
+          if npm run lint >/dev/null 2>&1; then
+            echo "✅ Linting healthy"
+          else
+            echo "⚠️ Linting issues detected"
+            ((WARNING_COUNT++))
+          fi
+
+          # Check test suite
+          echo "🧪 Checking test suite..."
+          if npm test >/dev/null 2>&1; then
+            echo "✅ Test suite healthy"
+          else
+            echo "❌ Test suite failed"
+            ((CRITICAL_COUNT++))
+          fi
+
+          # Check CLI functionality
+          echo "🛠️ Checking CLI functionality..."
+          if npm run build && node dist/cli.js --version >/dev/null 2>&1; then
+            echo "✅ CLI functionality healthy"
+          else
+            echo "❌ CLI functionality failed"
+            ((CRITICAL_COUNT++))
+          fi
+
+          echo "critical_count=$CRITICAL_COUNT" >> $GITHUB_OUTPUT
+          echo "warning_count=$WARNING_COUNT" >> $GITHUB_OUTPUT
+
+          # Determine overall health status
+          if [[ $CRITICAL_COUNT -eq 0 && $WARNING_COUNT -eq 0 ]]; then
+            HEALTH_STATUS="healthy"
+            echo "status=$HEALTH_STATUS" >> $GITHUB_OUTPUT
+            echo "🟢 Overall system health: HEALTHY"
+          elif [[ $CRITICAL_COUNT -eq 0 ]]; then
+            HEALTH_STATUS="warning"
+            echo "status=$HEALTH_STATUS" >> $GITHUB_OUTPUT
+            echo "🟡 Overall system health: WARNING ($WARNING_COUNT warnings)"
+          else
+            HEALTH_STATUS="critical"
+            echo "status=$HEALTH_STATUS" >> $GITHUB_OUTPUT
+            echo "🔴 Overall system health: CRITICAL ($CRITICAL_COUNT critical, $WARNING_COUNT warnings)"
+          fi
+
+      - name: Generate Health Report
+        run: |
+          echo "## 🏥 System Health Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ steps.health.outputs.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Critical Issues:** ${{ steps.health.outputs.critical_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Warnings:** ${{ steps.health.outputs.warning_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Send Health Alerts
+        if: steps.health.outputs.status != 'healthy'
+        run: |
+          echo "🚨 Sending health alerts..."
+
+          # Create alert message
+          ALERT_MESSAGE="🚨 **PRP CLI Health Alert**\n\n"
+          ALERT_MESSAGE+="**Status:** ${{ steps.health.outputs.status }}\n"
+          ALERT_MESSAGE+="**Critical Issues:** ${{ steps.health.outputs.critical_count }}\n"
+          ALERT_MESSAGE+="**Warnings:** ${{ steps.health.outputs.warning_count }}\n"
+          ALERT_MESSAGE+="**Repository:** ${{ github.repository }}\n"
+          ALERT_MESSAGE+="**Time:** $(date -u +%Y-%m-%dT%H:%M:%SZ)\n"
+
+          # Send to Slack if configured
+          if [[ -n "${{ env.SLACK_WEBHOOK_URL }}" ]]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{\"text\":\"$ALERT_MESSAGE\"}" \
+              "${{ env.SLACK_WEBHOOK_URL }}" || echo "Slack notification failed"
+          fi
+
+          # Create GitHub issue if critical
+          if [[ "${{ steps.health.outputs.status }}" == "critical" ]]; then
+            gh issue create \
+              --title "🚨 Critical Health Alert - $(date +'%Y-%m-%d')" \
+              --body "$ALERT_MESSAGE" \
+              --label "health-alert,urgent" || echo "Issue creation failed"
+          fi
+
+  # Performance monitoring
+  performance-monitoring:
+    name: Performance Monitoring
+    runs-on: ubuntu-latest
+    needs: health-checks
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Build Project
+        run: npm run build
+
+      - name: Performance Benchmarks
+        id: performance
+        run: |
+          echo "⚡ Running performance benchmarks..."
+
+          # CLI startup time
+          STARTUP_START=$(date +%s%N)
+          node dist/cli.js --version >/dev/null
+          STARTUP_END=$(date +%s%N)
+          STARTUP_TIME=$(( (STARTUP_END - STARTUP_START) / 1000000 ))
+          echo "startup_time=$STARTUP_TIME" >> $GITHUB_OUTPUT
+          echo "🚀 CLI startup time: ${STARTUP_TIME}ms"
+
+          # Help command performance
+          HELP_START=$(date +%s%N)
+          node dist/cli.js --help >/dev/null
+          HELP_END=$(date +%s%N)
+          HELP_TIME=$(( (HELP_END - HELP_START) / 1000000 ))
+          echo "help_time=$HELP_TIME" >> $GITHUB_OUTPUT
+          echo "📖 Help command time: ${HELP_TIME}ms"
+
+          # Build performance
+          BUILD_START=$(date +%s%N)
+          npm run build >/dev/null 2>&1
+          BUILD_END=$(date +%s%N)
+          BUILD_TIME=$(( (BUILD_END - BUILD_START) / 1000000 ))
+          echo "build_time=$BUILD_TIME" >> $GITHUB_OUTPUT
+          echo "🏗️ Build time: ${BUILD_TIME}ms"
+
+          # Memory usage analysis
+          MEMORY_ANALYSIS=$(node --expose-gc -e "
+            const start = process.memoryUsage();
+            const cli = require('./dist/cli.js');
+            global.gc();
+            const end = process.memoryUsage();
+            console.log('rss_mb=' + Math.round((end.rss - start.rss) / 1024 / 1024));
+            console.log('heap_mb=' + Math.round((end.heapUsed - start.heapUsed) / 1024 / 1024));
+          ")
+          eval "$MEMORY_ANALYSIS"
+          echo "rss_mb=$rss_mb" >> $GITHUB_OUTPUT
+          echo "heap_mb=$heap_mb" >> $GITHUB_OUTPUT
+          echo "💾 Memory usage - RSS: ${rss_mb}MB, Heap: ${heap_mb}MB"
+
+          # Bundle size analysis
+          if [[ -d "dist" ]]; then
+            BUNDLE_SIZE=$(du -sk dist/ | cut -f1)
+            echo "bundle_size_kb=$BUNDLE_SIZE" >> $GITHUB_OUTPUT
+            echo "📦 Bundle size: ${BUNDLE_SIZE}KB"
+
+            # Individual file analysis
+            find dist/ -name "*.js" -exec ls -lh {} \; | awk '{print $5, $9}' > bundle-analysis.txt
+          fi
+
+      - name: Performance Regression Detection
+        id: regression
+        run: |
+          echo "📊 Checking for performance regressions..."
+
+          # Define performance thresholds (can be adjusted)
+          STARTUP_THRESHOLD=${STARTUP_THRESHOLD:-2000}  # 2 seconds
+          HELP_THRESHOLD=${HELP_THRESHOLD:-1000}        # 1 second
+          BUILD_THRESHOLD=${BUILD_THRESHOLD:-10000}     # 10 seconds
+          MEMORY_THRESHOLD=${MEMORY_THRESHOLD:-50}       # 50MB
+          BUNDLE_THRESHOLD=${BUNDLE_THRESHOLD:-10240}    # 10MB
+
+          REGRESSIONS_DETECTED=0
+
+          # Check startup time
+          if [[ ${{ steps.performance.outputs.startup_time }} -gt $STARTUP_THRESHOLD ]]; then
+            echo "⚠️ Startup time regression: ${{ steps.performance.outputs.startup_time }}ms > ${STARTUP_THRESHOLD}ms"
+            ((REGRESSIONS_DETECTED++))
+          fi
+
+          # Check help command time
+          if [[ ${{ steps.performance.outputs.help_time }} -gt $HELP_THRESHOLD ]]; then
+            echo "⚠️ Help command regression: ${{ steps.performance.outputs.help_time }}ms > ${HELP_THRESHOLD}ms"
+            ((REGRESSIONS_DETECTED++))
+          fi
+
+          # Check build time
+          if [[ ${{ steps.performance.outputs.build_time }} -gt $BUILD_THRESHOLD ]]; then
+            echo "⚠️ Build time regression: ${{ steps.performance.outputs.build_time }}ms > ${BUILD_THRESHOLD}ms"
+            ((REGRESSIONS_DETECTED++))
+          fi
+
+          # Check memory usage
+          if [[ ${{ steps.performance.outputs.rss_mb }} -gt $MEMORY_THRESHOLD ]]; then
+            echo "⚠️ Memory usage regression: ${{ steps.performance.outputs.rss_mb }}MB > ${MEMORY_THRESHOLD}MB"
+            ((REGRESSIONS_DETECTED++))
+          fi
+
+          # Check bundle size
+          if [[ ${{ steps.performance.outputs.bundle_size_kb }} -gt $BUNDLE_THRESHOLD ]]; then
+            echo "⚠️ Bundle size regression: ${{ steps.performance.outputs.bundle_size_kb }}KB > ${BUNDLE_THRESHOLD}KB"
+            ((REGRESSIONS_DETECTED++))
+          fi
+
+          echo "regressions=$REGRESSIONS_DETECTED" >> $GITHUB_OUTPUT
+
+          if [[ $REGRESSIONS_DETECTED -gt 0 ]]; then
+            echo "🔴 Performance regressions detected: $REGRESSIONS_DETECTED"
+          else
+            echo "✅ No performance regressions detected"
+          fi
+
+      - name: Generate Performance Report
+        run: |
+          echo "## ⚡ Performance Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Current | Threshold | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|---------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Startup Time | ${{ steps.performance.outputs.startup_time }}ms | 2000ms | ${{ steps.performance.outputs.startup_time > 2000 && '🔴' || '✅' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Help Command | ${{ steps.performance.outputs.help_time }}ms | 1000ms | ${{ steps.performance.outputs.help_time > 1000 && '🔴' || '✅' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build Time | ${{ steps.performance.outputs.build_time }}ms | 10000ms | ${{ steps.performance.outputs.build_time > 10000 && '🔴' || '✅' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Memory Usage | ${{ steps.performance.outputs.rss_mb }}MB | 50MB | ${{ steps.performance.outputs.rss_mb > 50 && '🔴' || '✅' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Bundle Size | ${{ steps.performance.outputs.bundle_size_kb }}KB | 10240KB | ${{ steps.performance.outputs.bundle_size_kb > 10240 && '🔴' || '✅' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Regressions Detected:** ${{ steps.regression.outputs.regressions }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Performance Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report-${{ github.run_number }}
+          path: |
+            bundle-analysis.txt
+            performance-*.json
+          retention-days: 30
+
+  # Security monitoring
+  security-monitoring:
+    name: Security Monitoring
+    runs-on: ubuntu-latest
+    needs: health-checks
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Security Vulnerability Scan
+        id: security
+        run: |
+          echo "🔒 Running security vulnerability scan..."
+
+          # Run npm audit
+          AUDIT_OUTPUT=$(npm audit --audit-level=moderate --json)
+          CRITICAL_VULNS=$(echo "$AUDIT_OUTPUT" | jq -r '.vulnerabilities | to_entries[] | select(.value.severity == "critical") | .key' | wc -l)
+          HIGH_VULNS=$(echo "$AUDIT_OUTPUT" | jq -r '.vulnerabilities | to_entries[] | select(.value.severity == "high") | .key' | wc -l)
+          MODERATE_VULNS=$(echo "$AUDIT_OUTPUT" | jq -r '.vulnerabilities | to_entries[] | select(.value.severity == "moderate") | .key' | wc -l)
+
+          echo "critical_vulns=$CRITICAL_VULNS" >> $GITHUB_OUTPUT
+          echo "high_vulns=$HIGH_VULNS" >> $GITHUB_OUTPUT
+          echo "moderate_vulns=$MODERATE_VULNS" >> $GITHUB_OUTPUT
+
+          echo "📊 Security scan results:"
+          echo "  Critical: $CRITICAL_VULNS"
+          echo "  High: $HIGH_VULNS"
+          echo "  Moderate: $MODERATE_VULNS"
+
+          # Save detailed audit report
+          echo "$AUDIT_OUTPUT" > security-audit.json
+
+      - name: Code Security Analysis
+        run: |
+          echo "🔍 Running code security analysis..."
+
+          # Check for hardcoded secrets
+          echo "🔑 Checking for hardcoded secrets..."
+          SECRET_PATTERNS=("password" "secret" "token" "api_key" "private_key")
+          SECRETS_FOUND=0
+
+          for pattern in "${SECRET_PATTERNS[@]}"; do
+            if grep -r -i "$pattern" src/ --include="*.ts" --include="*.js" | grep -v "//.*$pattern" | grep -v "console.log" >/dev/null 2>&1; then
+              echo "⚠️ Potential $pattern found in source code"
+              ((SECRETS_FOUND++))
+            fi
+          done
+
+          if [[ $SECRETS_FOUND -eq 0 ]]; then
+            echo "✅ No obvious secrets found in source code"
+          else
+            echo "⚠️ $SECRETS_FOUND potential secret patterns found"
+          fi
+
+          # Check for unsafe imports
+          echo "📦 Checking for unsafe imports..."
+          if grep -r "require.*child_process\|import.*child_process" src/ >/dev/null 2>&1; then
+            echo "⚠️ child_process usage detected - review for security"
+          fi
+
+          if grep -r "require.*fs\|import.*fs" src/ >/dev/null 2>&1; then
+            echo "⚠️ fs usage detected - review for path traversal"
+          fi
+
+      - name: Generate Security Report
+        run: |
+          echo "## 🔒 Security Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Severity | Count | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Critical | ${{ steps.security.outputs.critical_vulns }} | ${{ steps.security.outputs.critical_vulns > 0 && '🔴' || '✅' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| High | ${{ steps.security.outputs.high_vulns }} | ${{ steps.security.outputs.high_vulns > 0 && '🔴' || '✅' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Moderate | ${{ steps.security.outputs.moderate_vulns }} | ${{ steps.security.outputs.moderate_vulns > 0 && '🟡' || '✅' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          TOTAL_VULNS=$((${{ steps.security.outputs.critical_vulns }} + ${{ steps.security.outputs.high_vulns }} + ${{ steps.security.outputs.moderate_vulns }}))
+          echo "**Total Vulnerabilities:** $TOTAL_VULNS" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report-${{ github.run_number }}
+          path: |
+            security-audit.json
+          retention-days: 30
+
+      - name: Security Alerting
+        if: steps.security.outputs.critical_vulns > 0 || steps.security.outputs.high_vulns > 0
+        run: |
+          echo "🚨 Sending security alerts..."
+
+          ALERT_MESSAGE="🔒 **Security Alert**\n\n"
+          ALERT_MESSAGE+="**Critical Vulnerabilities:** ${{ steps.security.outputs.critical_vulns }}\n"
+          ALERT_MESSAGE+="**High Vulnerabilities:** ${{ steps.security.outputs.high_vulns }}\n"
+          ALERT_MESSAGE+="**Repository:** ${{ github.repository }}\n"
+          ALERT_MESSAGE+="**Time:** $(date -u +%Y-%m-%dT%H:%M:%SZ)\n"
+
+          # Send to Slack
+          if [[ -n "${{ env.SLACK_WEBHOOK_URL }}" ]]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{\"text\":\"$ALERT_MESSAGE\"}" \
+              "${{ env.SLACK_WEBHOOK_URL }}" || echo "Slack notification failed"
+          fi
+
+  # Dependency monitoring
+  dependency-monitoring:
+    name: Dependency Monitoring
+    runs-on: ubuntu-latest
+    needs: health-checks
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Dependency Analysis
+        id: dependencies
+        run: |
+          echo "📦 Analyzing dependencies..."
+
+          # Check for outdated packages
+          OUTDATED_OUTPUT=$(npm outdated --json)
+          OUTDATED_COUNT=$(echo "$OUTDATED_OUTPUT" | jq 'keys | length' 2>/dev/null || echo "0")
+          echo "outdated_count=$OUTDATED_COUNT" >> $GITHUB_OUTPUT
+
+          # Count total dependencies
+          TOTAL_DEPS=$(npm ls --depth=0 --json | jq '.dependencies | keys | length' 2>/dev/null || echo "0")
+          echo "total_deps=$TOTAL_DEPS" >> $GITHUB_OUTPUT
+
+          # Check for dev dependencies
+          DEV_DEPS=$(npm ls --depth=0 --json | jq '.devDependencies | keys | length' 2>/dev/null || echo "0")
+          echo "dev_deps=$DEV_DEPS" >> $GITHUB_OUTPUT
+
+          echo "📊 Dependency analysis:"
+          echo "  Total dependencies: $TOTAL_DEPS"
+          echo "  Dev dependencies: $DEV_DEPS"
+          echo "  Outdated packages: $OUTDATED_COUNT"
+
+          # Save detailed report
+          echo "$OUTDATED_OUTPUT" > outdated-report.json
+
+          # Check for major version updates
+          MAJOR_UPDATES=$(echo "$OUTDATED_OUTPUT" | jq -r 'to_entries[] | select(.value.current | test("^[0-9]+\\.")) | select(.value.latest | split(".")[0] != (.value.current | split(".")[0])) | .key' | wc -l)
+          echo "major_updates=$MAJOR_UPDATES" >> $GITHUB_OUTPUT
+
+          echo "  Major version updates available: $MAJOR_UPDATES"
+
+      - name: License Compliance Check
+        run: |
+          echo "📜 Checking license compliance..."
+
+          # Install license checker
+          npm install -g license-checker
+
+          # Generate license report
+          license-checker --json > license-report.json
+
+          # Check for problematic licenses
+          PROBLEMATIC_LICENSES=("GPL" "AGPL" "LGPL" "UNLICENSED")
+          ISSUES_FOUND=0
+
+          for license in "${PROBLEMATIC_LICENSES[@]}"; do
+            if grep -q "\"licenses.*$license" license-report.json; then
+              echo "⚠️ $license license found - review compliance"
+              ((ISSUES_FOUND++))
+            fi
+          done
+
+          if [[ $ISSUES_FOUND -eq 0 ]]; then
+            echo "✅ No license compliance issues found"
+          else
+            echo "⚠️ $ISSUES_FOUND potential license issues found"
+          fi
+
+      - name: Generate Dependency Report
+        run: |
+          echo "## 📦 Dependency Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Total Dependencies | ${{ steps.dependencies.outputs.total_deps }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dev Dependencies | ${{ steps.dependencies.outputs.dev_deps }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Outdated Packages | ${{ steps.dependencies.outputs.outdated_count }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Major Updates Available | ${{ steps.dependencies.outputs.major_updates }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Dependency Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-report-${{ github.run_number }}
+          path: |
+            outdated-report.json
+            license-report.json
+          retention-days: 30
+
+  # Weekly comprehensive report
+  weekly-report:
+    name: Weekly Comprehensive Report
+    runs-on: ubuntu-latest
+    needs: [health-checks, performance-monitoring, security-monitoring, dependency-monitoring]
+    if: github.event.schedule == '0 10 * * 0'  # Only run on weekly schedule
+
+    steps:
+      - name: Download All Reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "*-report-${{ github.run_number }}"
+          merge-multiple: true
+          path: ./reports
+
+      - name: Generate Comprehensive Report
+        run: |
+          echo "📊 Generating weekly comprehensive report..."
+
+          # Create markdown report
+          cat > weekly-report.md << EOF
+          # PRP CLI - Weekly Monitoring Report
+
+          **Report Date:** $(date -u +%Y-%m-%d)
+          **Repository:** ${{ github.repository }}
+          **Run Number:** ${{ github.run_number }}
+
+          ## 🏥 System Health
+
+          - **Overall Status:** ${{ needs.health-checks.outputs.overall_health }}
+          - **Critical Issues:** ${{ needs.health-checks.outputs.critical_issues }}
+          - **Warnings:** ${{ needs.health-checks.outputs.warnings }}
+
+          ## ⚡ Performance Summary
+
+          Performance metrics and regression analysis from the past week.
+
+          ## 🔒 Security Summary
+
+          - Vulnerabilities and security scan results
+          - License compliance status
+
+          ## 📦 Dependency Summary
+
+          - Outdated packages count
+          - Available major updates
+          - License compliance status
+
+          ## 📈 Trends
+
+          Weekly trends and recommendations.
+
+          EOF
+
+      - name: Create Weekly Issue
+        if: needs.health-checks.outputs.critical_issues > 0
+        run: |
+          echo "📝 Creating weekly monitoring issue..."
+
+          gh issue create \
+            --title "📊 Weekly Monitoring Report - $(date +'%Y-%m-%d')" \
+            --body "$(cat weekly-report.md)" \
+            --label "weekly-report,monitoring" \
+            --assignee "${{ github.repository_owner }}" || echo "Issue creation failed"
+
+      - name: Upload Comprehensive Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-report-$(date +%Y%m%d)
+          path: |
+            weekly-report.md
+            reports/
+          retention-days: 90
+
+  # Monitoring pipeline status
+  monitoring-status:
+    name: Monitoring Pipeline Status
+    runs-on: ubuntu-latest
+    needs: [health-checks, performance-monitoring, security-monitoring, dependency-monitoring, weekly-report]
+    if: always()
+
+    steps:
+      - name: Generate Monitoring Summary
+        run: |
+          echo "## 📊 Monitoring Pipeline Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Monitor | Status | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Health Checks | ${{ needs.health-checks.result }} | System health monitoring |" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance | ${{ needs.performance-monitoring.result }} | Performance benchmarks |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security | ${{ needs.security-monitoring.result }} | Vulnerability scanning |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dependencies | ${{ needs.dependency-monitoring.result }} | Dependency analysis |" >> $GITHUB_STEP_SUMMARY
+          echo "| Weekly Report | ${{ needs.weekly-report.result }} | Comprehensive report |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          OVERALL_STATUS="✅ Healthy"
+          if [[ "${{ needs.health-checks.result }}" != "success" || "${{ needs.security-monitoring.result }}" != "success" ]]; then
+            OVERALL_STATUS="🔴 Issues Detected"
+          elif [[ "${{ needs.performance-monitoring.result }}" != "success" || "${{ needs.dependency-monitoring.result }}" != "success" ]]; then
+            OVERALL_STATUS="🟡 Warnings"
+          fi
+
+          echo "**Overall Status:** $OVERALL_STATUS" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Monitoring Run:** #${{ github.run_number }} | **Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY

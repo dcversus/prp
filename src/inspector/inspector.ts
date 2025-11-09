@@ -281,7 +281,7 @@ export class Inspector extends EventEmitter {
       // Step 4: Generate payload
       processing.status = 'generating_payload';
       // Generate payload for orchestrator
-    await this.generatePayload(classification, preparedContext, context);
+    await this.generatePayload(classification, preparedContext);
 
       // Step 5: Generate recommendations
       const recommendations = await this.generateRecommendations(classification, context);
@@ -334,9 +334,9 @@ export class Inspector extends EventEmitter {
         context: inspectorPreparedContext,
         payload: inspectorPayload,
         recommendations: Array.isArray(recommendations) ? recommendations.map((rec: Recommendation) => ({
-          type: rec.type || 'unknown',
-          priority: rec.priority?.toString() || 'medium',
-          description: rec.reasoning || 'No description available',
+          type: rec.type ?? 'unknown',
+          priority: rec.priority?.toString() ?? 'medium',
+          description: rec.reasoning ?? 'No description available',
           estimatedTime: 30,
           prerequisites: []
         })) : [],
@@ -513,7 +513,7 @@ export class Inspector extends EventEmitter {
         id: agent.id,
         name: agent.name,
         status: agent.status,
-        currentTask: agent.currentTask || undefined,
+        currentTask: agent.currentTask ?? undefined,
         lastActivity: agent.lastActivity,
         tokenUsage: {
           used: 0, // Default value since AgentStatusInfo doesn't have this
@@ -546,8 +546,7 @@ export class Inspector extends EventEmitter {
    */
   private async generatePayload(
     classification: SignalClassification,
-    preparedContext: PreparedContext,
-    fullContext: ProcessingContext
+    preparedContext: PreparedContext
   ): Promise<InspectorPayload> {
     const payload: InspectorPayload = {
       id: HashUtils.generateId(),
@@ -608,7 +607,8 @@ export class Inspector extends EventEmitter {
 
     try {
       // This would integrate with the actual model API
-      // For now, simulate a response
+      // For now, simulate a response (options ignored in simulation)
+      void options; // Explicitly mark as used to avoid ESLint warning
       const response = await this.simulateModelCall(prompt);
 
       const modelResponse = response as unknown as InspectorModelResponse;
@@ -623,11 +623,11 @@ export class Inspector extends EventEmitter {
         source: 'inspector'
       },
         usage: {
-          promptTokens: modelResponse?.usage?.promptTokens || 0,
-          completionTokens: modelResponse?.usage?.completionTokens || 0,
-          totalTokens: modelResponse?.usage?.totalTokens || 0
+          promptTokens: modelResponse?.usage?.promptTokens ?? 0,
+          completionTokens: modelResponse?.usage?.completionTokens ?? 0,
+          totalTokens: modelResponse?.usage?.totalTokens ?? 0
         },
-        finishReason: String(modelResponse?.finish_reason || 'unknown'),
+        finishReason: String(modelResponse?.finish_reason ?? 'unknown'),
         timestamp: TimeUtils.now(),
         processingTime: Date.now() - startTime
       };
@@ -722,7 +722,7 @@ export class Inspector extends EventEmitter {
     const tokenState = storageManager.getTokenState();
     return {
       totalUsed: tokenState.accounting.totalUsed,
-      totalLimit: tokenState.limits.globalLimits.daily || 1000000,
+      totalLimit: tokenState.limits.globalLimits.daily ?? 1000000,
       approachingLimit: false,
       criticalLimit: false,
       agentBreakdown: {},
@@ -875,11 +875,11 @@ Focus on accuracy and provide clear reasoning for your classification.`;
       const parsed = JSON.parse(String(response.response));
       return {
         signal,
-        category: parsed.category || 'general',
-        urgency: parsed.urgency || 'medium',
+        category: parsed.category ?? 'general',
+        urgency: parsed.urgency ?? 'medium',
         requiresAction: parsed.requiresAction !== false,
-        suggestedRole: parsed.suggestedRole || 'developer',
-        confidence: parsed.confidence || 0.5,
+        suggestedRole: parsed.suggestedRole ?? 'developer',
+        confidence: parsed.confidence ?? 0.5,
         guideline: parsed.guideline
       };
     } catch (error) {
@@ -920,7 +920,7 @@ Focus on accuracy and provide clear reasoning for your classification.`;
 
   private calculatePayloadPriority(classification: SignalClassification): number {
     const urgencyMap = { low: 1, medium: 5, high: 8, critical: 10 };
-    return urgencyMap[classification.urgency as keyof typeof urgencyMap] || 5;
+    return urgencyMap[classification.urgency] ?? 5;
   }
 
   private compressContext(context: PreparedContext): PreparedContext {

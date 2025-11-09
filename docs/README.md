@@ -1,51 +1,125 @@
-# PRP CLI Documentation
+# 📚 PRP - Autonomous Development Orchestration
 
-Welcome to the comprehensive documentation for the PRP (Project Requirements & Planning) CLI bootstrap system. This powerful tool transforms project initialization, debugging, and CI/CD management into an efficient, automated experience.
+**Transform ideas into deployed software through AI agent coordination. OpenAI orchestrator + Claude agents + signal-based workflow = zero coordination overhead.**
+
+## 🎯 What is PRP?
+
+PRP (Product Requirement Prompts) is a revolutionary methodology that combines living requirement documents with autonomous AI agent orchestration. It eliminates the need for manual project management, sprint planning, and status meetings, enabling continuous autonomous development from idea to deployment.
+
+### Core Innovation
+- **Living Requirements**: PRPs evolve with implementation in real-time
+- **Signal-Driven Communication**: 44-signal taxonomy eliminates meeting overhead
+- **Autonomous Coordination**: AI agents manage dependencies and workflow
+- **Zero-Touch Delivery**: From concept to production without human intervention
 
 ## 🚀 Quick Start
 
+### Installation
 ```bash
-# Install the CLI
-npm install -g @prp/cli
+# Install PRP CLI globally
+npm install -g @dcversus/prp
 
 # Initialize a new project
 prp init my-project
 
-# Initialize in existing directory
-prp init
-
-# Start debug mode
-prp debug
-
-# Show help
-prp --help
+# Start autonomous development
+cd my-project
+npm run dev
 ```
 
-## 📚 Documentation Sections
+### What Happens During Initialization
+1. **Project Analysis**: PRP scans existing files and auto-populates configuration
+2. **Template Setup**: Creates project structure with best-practice configurations
+3. **Agent Configuration**: Sets up AI agents and orchestration system
+4. **Git Integration**: Initializes repository with PRP-specific workflows
+5. **Development Environment**: Launches orchestrator to begin autonomous work
 
-### Core Documentation
-- [CLI Reference](./CLI_REFERENCE.md) - Complete command reference and usage guide
-- [Configuration Guide](./CONFIGURATION_GUIDE.md) - .prprc configuration and customization
-- [Development Workflow](./DEVELOPMENT_WORKFLOW.md) - Complete development lifecycle management
-- [CI/CD Integration](./CICD_GUIDE.md) - Continuous integration and deployment setup
+## 📚 Documentation Structure
 
-### Advanced Topics
-- [Debugging Guide](./DEBUGGING_GUIDE.md) - Debug mode and troubleshooting
-- [API Reference](./API_REFERENCE.md) - CLI API and programmatic usage
-- [Token Accounting](./TOKEN_ACCOUNTING.md) - Cost tracking and management
-- [GitHub Integration](./GITHUB_INTEGRATION.md) - GitHub API and automation
+Our documentation is organized into four main guides:
 
-### Quality & Testing
-- [Quality Gates](./QUALITY_GATES.md) - Automated quality validation
-- [Testing Guide](./TESTING_GUIDE.md) - Testing infrastructure and automation
-- [Security Guide](./SECURITY_GUIDE.md) - Security best practices
+### 📖 **[USER_GUIDE.md](./USER_GUIDE.md) - Complete Interface Documentation**
+*How to work with the PRP application*
 
-### Development & Contribution
-- [Architecture Guide](./ARCHITECTURE.md) - System architecture and design
-- [Contributing Guide](./CONTRIBUTING.md) - Development and contribution guidelines
-- [Release Process](./RELEASE_PROCESS.md) - Release management and deployment
+**Comprehensive guide covering:**
+- CLI interface with all commands and options
+- TUI (Terminal User Interface) with layouts and navigation
+- Agent system and communication patterns
+- Signal system with 44-signal taxonomy
+- Configuration management and customization
+- Advanced features and troubleshooting
 
-## 🎯 Key Features
+**Perfect for**: Daily users and developers working with PRP
+
+---
+
+### 🧠 **[THEORY.md](./THEORY.md) - PRP Methodology**
+*How PRP works as a methodology for autonomous development*
+
+**In-depth exploration of:**
+- PRP methodology foundations and principles
+- Signal system architecture and taxonomy
+- Autonomous agent coordination patterns
+- Development workflow integration
+- Performance and scalability considerations
+- Future evolution and research directions
+
+**Perfect for**: Understanding the why and how behind PRP
+
+---
+
+### 📝 **[PROMPTING_GUIDE.md](./PROMPTING_GUIDE.md) - Mastering Autonomous Communication**
+*How to write effective prompts for AI agents*
+
+**Comprehensive prompting techniques:**
+- Agent-specific prompting strategies
+- Signal-driven communication patterns
+- Advanced coordination and conflict resolution
+- 100+ prompting settings and recommendations
+- Quality validation and best practices
+- Templates and real-world examples
+
+**Perfect for**: PRP authors and anyone working with AI agents
+
+---
+
+### 📋 **[README.md](./README.md)** (this file) - Main Project Documentation
+*Project overview and navigation guide*
+
+**Key sections:**
+- Quick start and installation
+- Core concepts and architecture
+- Configuration and usage examples
+- Community resources and support
+- Development and contribution guidelines
+
+**Perfect for**: New users and project overview
+
+## 🏗️ Core Concepts
+
+### Product Requirement Prompts (PRPs)
+PRPs are both requirement documents and prompt templates that serve as:
+- **Source of Truth**: Absolute authority for requirements and implementation
+- **Context Container**: All relevant information, decisions, and progress
+- **Communication Hub**: Signal-based progress tracking and coordination
+- **Autonomous Executor**: Self-contained instructions for AI agents
+
+### Signal System
+The 44-signal taxonomy enables precise agent coordination:
+- **Planning Signals**: `[gg]`, `[ff]`, `[rp]`, `[vr]` - Requirements analysis
+- **Development Signals**: `[tp]`, `[dp]`, `[bf]`, `[tg]` - Implementation progress
+- **Quality Signals**: `[cq]`, `[tr]`, `[cp]`, `[rv]` - Testing and validation
+- **Release Signals**: `[pc]`, `[ra]`, `[rl]`, `[ps]` - Deployment and monitoring
+
+### Autonomous Agents
+Specialized AI agents with distinct roles:
+- **robo-system-analyst**: Requirements analysis and stakeholder communication
+- **robo-developer**: Code implementation and technical solutions
+- **robo-quality-control**: Testing, validation, and quality assurance
+- **robo-ux-ui-designer**: User experience and interface design
+- **robo-devops-sre**: Infrastructure, deployment, and reliability
+
+## 🎮 Key Features
 
 ### 🏗️ Project Initialization
 - Interactive wizard for new and existing projects
@@ -56,10 +130,10 @@ prp --help
 
 ### 🔍 Debug Mode
 - CI-like console output with verbose logging
-- Debug interface with orchestrator integration (CTRL+D)
+- Debug interface with orchestrator integration
 - Comprehensive error reporting and troubleshooting
 - Performance monitoring and profiling
-- Multi-language debugging support (Node.js, Python)
+- Multi-language debugging support
 
 ### 🚀 CI/CD Pipeline Management
 - Automated workflow validation and setup
@@ -75,13 +149,6 @@ prp --help
 - Token efficiency optimization
 - Comprehensive cost reporting
 
-### 🔧 Quality Gates
-- Automated code scanning and analysis
-- LLM-based code review integration
-- Data preparation for quality assessment
-- Decision-making algorithms for quality validation
-- E2E self-verification workflows
-
 ### 🐙 GitHub Integration
 - GitHub SDK integration for API operations
 - Pull request creation and management
@@ -89,14 +156,7 @@ prp --help
 - Repository management and collaboration
 - Code review automation
 
-### 📊 Shared Context System
-- Cross-PRP context window management
-- Status tracking for all active PRPs
-- Incident logging and resolution tracking
-- Blocker identification and management
-- Progress monitoring and reporting
-
-## 🔧 Configuration
+## ⚙️ Configuration
 
 The CLI uses a `.prprc` configuration file for customization:
 
@@ -133,36 +193,7 @@ Commands:
   status        Show project and PRP status
   config        Manage CLI configuration
   token         Show token usage and costs
-```
-
-## 🆘 Getting Help
-
-```bash
-# General help
-prp --help
-
-# Command-specific help
-prp init --help
-prp debug --help
-
-# Configuration help
-prp config --help
-
-# Show current configuration
-prp config show
-```
-
-## 🔄 Version Management
-
-```bash
-# Check current version
-prp --version
-
-# Update to latest version
-npm update -g @prp/cli
-
-# Check for updates
-prp update check
+  tui           Launch terminal user interface
 ```
 
 ## 📝 Examples
@@ -196,12 +227,42 @@ prp deploy --environment production --with-tests
 5. **Leverage GitHub integration** for automated workflows
 6. **Keep .prprc updated** with project-specific configurations
 
+## 🚀 Performance Targets
+
+PRP is optimized for high-performance autonomous development:
+
+- **CLI Startup Time**: < 2 seconds
+- **Memory Usage**: < 50MB during normal operations
+- **Command Response**: < 100ms for basic commands
+- **File Operations**: < 50ms for small files
+- **Agent Coordination**: < 500ms for cached decisions
+- **Context Loading**: < 50ms for cached contexts
+
+## 🛠️ Architecture
+
+### Scanner-Inspector-Orchestrator (SIO) Pattern
+- **Scanner**: Monitors files, detects changes, identifies signals
+- **Inspector**: Analyzes changes, assesses impact, generates payloads
+- **Orchestrator**: Spawns agents, coordinates work, manages context
+
+### Model Context Protocol (MCP)
+- Real-time context sharing between agents
+- Persistent context across sessions
+- Performance optimization through caching
+- Cross-agent communication and coordination
+
+### Signal Bus Architecture
+- Priority-based message routing (1-10 priority levels)
+- Type-safe signal communication
+- Comprehensive audit trail
+- Conflict resolution and recovery
+
 ## 🤝 Community & Support
 
-- [GitHub Repository](https://github.com/prp/cli)
-- [Issue Tracker](https://github.com/prp/cli/issues)
-- [Discord Community](https://discord.gg/prp)
-- [Documentation Website](https://docs.prp.dev)
+- **GitHub Repository**: https://github.com/dcversus/prp
+- **Issue Tracker**: https://github.com/dcversus/prp/issues
+- **Documentation**: https://docs.prp.theedgestory.org
+- **Discord Community**: https://discord.gg/prp
 
 ## 📄 License
 
@@ -209,4 +270,16 @@ This project is licensed under the MIT License - see the [LICENSE](../LICENSE) f
 
 ---
 
-For detailed information on any topic, please refer to the specific documentation sections listed above.
+## 🎯 Where to Go Next
+
+### **New to PRP?**
+Start with the **[USER_GUIDE.md](./USER_GUIDE.md)** for comprehensive interface documentation and step-by-step instructions.
+
+### **Want to understand the methodology?**
+Read the **[THEORY.md](./THEORY.md)** to understand how PRP works as a methodology for autonomous development.
+
+### **Working with AI agents?**
+Master the art of prompting with the **[PROMPTING_GUIDE.md](./PROMPTING_GUIDE.md)** for effective agent communication.
+
+### **Need help?**
+Check the troubleshooting section in the User Guide or open an issue on GitHub.

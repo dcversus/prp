@@ -9,6 +9,7 @@ import { FileHasher } from './file-hasher';
 import { SignalDetectorImpl } from './signal-detector';
 import { GitStatusMonitor } from './git-monitor';
 import { SignalData, DetectedSignal, FileChangeData } from './types';
+import { logger } from '../utils/logger';
 
 /**
  * High-performance scanner for monitoring worktrees, git state, and PRP changes
@@ -107,7 +108,7 @@ export class ScannerCore extends EventEmitter {
    * Start the scanner
    */
   async start(): Promise<void> {
-    console.log(`🚀 Starting scanner for worktrees: ${this.config.worktreesRoot}`);
+    logger.info(`🚀 Starting scanner for worktrees: ${this.config.worktreesRoot}`);
 
     try {
       // Discover existing worktrees
@@ -122,11 +123,11 @@ export class ScannerCore extends EventEmitter {
       // Initial scan
       await this.performScan();
 
-      console.log(`✅ Scanner started. Monitoring ${this.worktrees.size} worktrees`);
+      logger.success(`✅ Scanner started. Monitoring ${this.worktrees.size} worktrees`);
       this.emit('scanner:started', { worktreeCount: this.worktrees.size });
 
     } catch (error) {
-      console.error('❌ Failed to start scanner:', error);
+      logger.error('❌ Failed to start scanner:', error);
       this.emit('scanner:error', error);
       throw error;
     }
@@ -136,7 +137,7 @@ export class ScannerCore extends EventEmitter {
    * Stop the scanner
    */
   async stop(): Promise<void> {
-    console.log('🛑 Stopping scanner...');
+    logger.info('🛑 Stopping scanner...');
 
     if (this.scanTimer) {
       clearInterval(this.scanTimer);
@@ -149,7 +150,7 @@ export class ScannerCore extends EventEmitter {
     }
 
     this.isScanning = false;
-    console.log('✅ Scanner stopped');
+    logger.success('✅ Scanner stopped');
     this.emit('scanner:stopped');
   }
 
@@ -212,7 +213,7 @@ export class ScannerCore extends EventEmitter {
       this.scanMetrics.peakWorktrees = Math.max(this.scanMetrics.peakWorktrees, this.worktrees.size);
 
     } catch (error) {
-      console.warn('⚠️  Could not discover worktrees:', error);
+      logger.warning('⚠️  Could not discover worktrees:', error);
     }
   }
 
@@ -375,7 +376,7 @@ export class ScannerCore extends EventEmitter {
         });
       }
     } catch (error) {
-      console.error(`❌ Error handling file change for ${filePath}:`, error);
+      logger.error(`❌ Error handling file change for ${filePath}:`, error);
       this.scanMetrics.errors++;
     }
   }
@@ -461,7 +462,7 @@ export class ScannerCore extends EventEmitter {
       this.scanMetrics.totalScans++;
 
     } catch (error) {
-      console.error('❌ Error during scan:', error);
+      logger.error('❌ Error during scan:', error);
       this.scanMetrics.errors++;
       this.emit('scanner:error', error);
     } finally {

@@ -52,6 +52,8 @@ export interface LoggerConfig {
   enableTokenTracking: boolean;
   enablePerformanceTracking: boolean;
   structuredOutput: boolean;
+  ciMode?: boolean; // When true, logger outputs JSON only to stdout
+  tuiMode?: boolean; // When true, logger disables console output to avoid interfering with Ink
 }
 
 /**
@@ -137,6 +139,39 @@ export class Logger {
   }
 
   private async writeLogEntry(entry: LogEntry): Promise<void> {
+    // CI mode: output JSON only, no colors, no formatting
+    if (this.config.ciMode) {
+      const ciJson = {
+        timestamp: entry.timestamp.toISOString(),
+        level: LogLevel[entry.level],
+        layer: entry.layer,
+        component: entry.component,
+        message: entry.message,
+        metadata: entry.metadata,
+        tokenUsage: entry.tokenUsage,
+        performance: entry.performance,
+        error: entry.error ? {
+          name: entry.error.name,
+          message: entry.error.message,
+        } : undefined,
+      };
+      process.stdout.write(JSON.stringify(ciJson) + '\n');
+      return;
+    }
+
+    // TUI mode: disable console output to avoid interfering with Ink interface
+    if (this.config.tuiMode) {
+      // Only write to file, no console output
+      if (this.config.enableFile) {
+        const formatted = this.formatLogEntry(entry);
+        const stream = this.fileStreams.get(entry.layer);
+        if (stream) {
+          stream.write(formatted + '\n');
+        }
+      }
+      return;
+    }
+
     const formatted = this.formatLogEntry(entry);
 
     // Console output
@@ -152,11 +187,11 @@ export class Logger {
         return `${colors[level]}${text}\x1b[0m`;
       };
 
-      console.log(colorize(formatted, entry.level));
+      process.stdout.write(colorize(formatted, entry.level) + '\n');
     }
 
-    // File output
-    if (this.config.enableFile) {
+    // File output (only if not in TUI mode, since TUI mode already handled file output above)
+    if (this.config.enableFile && !this.config.tuiMode) {
       const stream = this.fileStreams.get(entry.layer);
       if (stream) {
         stream.write(formatted + '\n');
@@ -176,7 +211,7 @@ export class Logger {
   private updateTokenMetrics(layer: string, usage: LogEntry['tokenUsage']): void {
     if (!usage) return;
 
-    const current = this.tokenMetrics.get(layer) || { input: 0, output: 0, cost: 0 };
+    const current = this.tokenMetrics.get(layer) ?? { input: 0, output: 0, cost: 0 };
     this.tokenMetrics.set(layer, {
       input: current.input + usage.input,
       output: current.output + usage.output,
@@ -187,7 +222,7 @@ export class Logger {
   private updatePerformanceMetrics(performance: LogEntry['performance']): void {
     if (!performance) return;
 
-    const current = this.performanceMetrics.get(performance.operation) || { count: 0, totalDuration: 0 };
+    const current = this.performanceMetrics.get(performance.operation) ?? { count: 0, totalDuration: 0 };
     this.performanceMetrics.set(performance.operation, {
       count: current.count + 1,
       totalDuration: current.totalDuration + performance.duration,
@@ -402,6 +437,24 @@ export class Logger {
 
 // Global logger instance
 export const logger = new Logger();
+
+// Configure logger for CI mode
+export function setLoggerCIMode(enabled: boolean): void {
+  (logger as any).config.ciMode = enabled;
+  if (enabled) {
+    // In CI mode, disable console output formatting
+    (logger as any).config.enableConsole = false;
+  }
+}
+
+// Configure logger for TUI mode
+export function setLoggerTUIMode(enabled: boolean): void {
+  (logger as any).config.tuiMode = enabled;
+  if (enabled) {
+    // In TUI mode, disable console output to avoid interfering with Ink
+    (logger as any).config.enableConsole = false;
+  }
+}
 
 // Layer-specific convenience methods
 export const createLayerLogger = (layer: LogEntry['layer']) => ({

@@ -304,7 +304,7 @@ export class TuiDebugScreen extends EventEmitter {
    * Export events to file
    */
   async exportEvents(filePath?: string): Promise<void> {
-    const filename = filePath || `debug-export-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    const filename = filePath ?? `debug-export-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
     const exportData = {
       exportedAt: new Date().toISOString(),
       totalEvents: this.events.length,
@@ -387,14 +387,14 @@ export class TuiDebugScreen extends EventEmitter {
     this.systemStatus.inspector = {
       status: 'inspecting',
       lastInspection: new Date(),
-      risk: data.risk || 0
+      risk: data.risk ?? 0
     };
 
     this.addEvent({
       timestamp: new Date(),
       source: 'inspector',
       priority: data.risk && data.risk > 7 ? 'high' : 'medium',
-      type: data.type || 'inspection_event',
+      type: data.type ?? 'inspection_event',
       data,
       raw: this.formatRawLogLine('inspector', data)
     });
@@ -446,13 +446,14 @@ export class TuiDebugScreen extends EventEmitter {
         Object.assign(existingAgent, agentData);
       } else {
         this.systemStatus.agents.push({
-          id: agentData.id || 'unknown',
-          role: agentData.role || 'unknown',
+          id: agentData.id ?? 'unknown',
+          role: agentData.role ?? 'unknown',
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           status: (agentData.status as 'spawning' | 'running' | 'idle' | 'error') || 'idle',
-          task: agentData.task || 'No task',
-          progress: agentData.progress || 0,
-          tokens: agentData.tokens || '0',
-          activeTime: agentData.activeTime || '00:00:00'
+          task: agentData.task ?? 'No task',
+          progress: agentData.progress ?? 0,
+          tokens: agentData.tokens ?? '0',
+          activeTime: agentData.activeTime ?? '00:00:00'
         });
       }
     }
@@ -480,13 +481,13 @@ export class TuiDebugScreen extends EventEmitter {
     return lines;
   }
 
-  private formatRawLogLine(source: string, data: unknown): string {
+  private formatRawLogLine(_source: string, data: unknown): string {
     // Format data like the debug screen examples
     if (data && typeof data === 'object') {
       const record = data as Record<string, unknown>;
 
       if (record.detected && Array.isArray(record.detected)) {
-        return `{ detected: [${(record.detected as string[]).map((d: string) => `"${d}"`).join(', ')}], count: ${record.count || record.detected.length} }`;
+        return `{ detected: [${(record.detected as string[]).map((d: string) => `"${d}"`).join(', ')}], count: ${record.count ?? record.detected.length} }`;
       }
 
       if (record.impact || record.risk) {

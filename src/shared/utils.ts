@@ -37,7 +37,7 @@ export class TokenCounter {
       'claude-3-haiku': 0.00025,
       'gemini-pro': 0.00025,
     };
-    return costs[model] || 0.01;
+    return costs[model] ?? 0.01;
   }
 }
 
@@ -48,7 +48,7 @@ export class SignalParser {
   private static readonly SIGNAL_PATTERN = /\[([A-Z][a-z]?)\]/g;
 
   static extractSignals(text: string): string[] {
-    const matches = text.match(this.SIGNAL_PATTERN) || [];
+    const matches = text.match(this.SIGNAL_PATTERN) ?? [];
     return Array.from(new Set(matches)); // Remove duplicates
   }
 
@@ -79,7 +79,7 @@ export class SignalParser {
       'Vd': 2,  // Validated
       'Co': 1,  // Completed
     };
-    return priorities[code] || 5;
+    return priorities[code] ?? 5;
   }
 
   static isSignal(text: string): boolean {
@@ -133,7 +133,7 @@ export class FileUtils {
   }
 
   static getFileExtension(path: string): string {
-    return path.split('.').pop() || '';
+    return path.split('.').pop() ?? '';
   }
 
   static isMarkdownFile(path: string): boolean {

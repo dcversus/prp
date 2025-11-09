@@ -5,7 +5,6 @@
  * implements the exact format from the PRP specification
  */
 
-import React from 'react';
 import { Box, Text } from 'ink';
 import { FooterProps } from '../types/TUIConfig.js';
 
@@ -26,7 +25,7 @@ export function Footer({
       'token-metrics': '4'
     };
 
-    const label = labels[screen] || screen;
+    const label = labels[screen] ?? screen;
     const color = isActive ? config.colors.accent_orange : config.colors.muted;
     const bold = isActive;
 
@@ -39,7 +38,6 @@ export function Footer({
 
   // Render hotkey hints
   const renderHotkeys = () => {
-    const hotkeys = ['Tab', 'S', 'X', 'D'];
     if (debugMode) {
       return (
         <Text color={config.colors.warn}>
@@ -48,6 +46,7 @@ export function Footer({
       );
     }
 
+    const hotkeys = ['Tab', 'S', 'X', 'D'];
     return (
       <>
         {hotkeys.map((key, index) => (
@@ -110,18 +109,6 @@ export function Footer({
         <Text color={config.colors.muted}>
           {'    '}
         </Text>
-
-        {/* Debug indicator */}
-        {debugMode && (
-          <>
-            <Text color={config.colors.warn}>
-              ⚠️ debug ⚠️
-            </Text>
-            <Text color={config.colors.muted}>
-              {'     '}
-            </Text>
-          </>
-        )}
       </Box>
 
       {/* Middle - Status */}

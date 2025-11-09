@@ -1,4 +1,4 @@
-/* global window, fetch, console */
+/* global window */
 
 import { useState, useEffect } from 'react';
 import MDXContent from '../MDXContent.js';

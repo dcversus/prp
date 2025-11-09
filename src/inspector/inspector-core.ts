@@ -7,6 +7,9 @@ import { GuidelineAdapter } from './guideline-adapter';
 const __dirname = resolve('.');
 import { InspectorConfig, SignalProcessor, InspectorResult } from './types';
 import { Signal } from '../shared/types';
+import { createLayerLogger } from '../shared';
+
+const logger = createLayerLogger('inspector');
 
 /**
  * Extended InspectorConfig with additional properties for core functionality
@@ -64,7 +67,7 @@ export class InspectorCore extends EventEmitter {
       throw new Error('Inspector is already running');
     }
 
-    console.log(`🔍 Starting Inspector with ${this.config.maxWorkers} workers...`);
+    logger.info('InspectorCore', `Starting Inspector with ${this.config.maxWorkers} workers...`);
 
     try {
       // Load guideline adapters
@@ -76,11 +79,11 @@ export class InspectorCore extends EventEmitter {
       this.isRunning = true;
       this.metrics.activeWorkers = this.workers.length;
 
-      console.log(`✅ Inspector started with ${this.workers.length} workers`);
+      logger.info('InspectorCore', `Inspector started with ${this.workers.length} workers`);
       this.emit('inspector:started', { workerCount: this.workers.length });
 
     } catch (error) {
-      console.error('❌ Failed to start inspector:', error);
+      logger.error('InspectorCore', 'Failed to start inspector', error instanceof Error ? error : new Error(String(error)));
       this.emit('inspector:error', error);
       throw error;
     }
@@ -94,7 +97,7 @@ export class InspectorCore extends EventEmitter {
       return;
     }
 
-    console.log('🛑 Stopping Inspector...');
+    logger.info('InspectorCore', 'Stopping Inspector...');
 
     try {
       // Terminate all workers
@@ -106,11 +109,11 @@ export class InspectorCore extends EventEmitter {
       this.isRunning = false;
       this.metrics.activeWorkers = 0;
 
-      console.log('✅ Inspector stopped');
+      logger.info('InspectorCore', 'Inspector stopped');
       this.emit('inspector:stopped');
 
     } catch (error) {
-      console.error('❌ Error stopping inspector:', error);
+      logger.error('InspectorCore', 'Error stopping inspector', error instanceof Error ? error : new Error(String(error)));
       this.emit('inspector:error', error);
     }
   }
@@ -130,7 +133,7 @@ export class InspectorCore extends EventEmitter {
       const guideline = await this.guidelineAdapter.getGuidelineForSignal(signal);
 
       if (!guideline) {
-        console.warn(`⚠️  No guideline found for signal type: ${signal.type}`);
+        logger.warn('InspectorCore', `No guideline found for signal type: ${signal.type}`);
         return null;
       }
 
@@ -139,7 +142,7 @@ export class InspectorCore extends EventEmitter {
         signal,
         guideline,
         context: this.buildContext(signal),
-        priority: signal.priority || 5,
+        priority: signal.priority ?? 5,
         createdAt: new Date()
       };
 
@@ -149,17 +152,15 @@ export class InspectorCore extends EventEmitter {
       const processingTime = Date.now() - startTime;
       this.updateMetrics(processingTime, true);
 
-      if (result) {
-        result.processingTime = processingTime;
-        this.results.push(result);
-        this.emit('inspector:result', result);
-      }
+      result.processingTime = processingTime;
+      this.results.push(result);
+      this.emit('inspector:result', result);
 
       return result;
 
     } catch (error) {
       this.updateMetrics(Date.now() - startTime, false);
-      console.error(`❌ Error processing signal ${signal.type}:`, error);
+      logger.error('InspectorCore', `Error processing signal ${signal.type}`, error instanceof Error ? error : new Error(String(error)));
       this.emit('inspector:error', error);
 
       return {
@@ -248,12 +249,12 @@ export class InspectorCore extends EventEmitter {
       }
 
       const totalTime = Date.now() - startTime;
-      console.log(`📊 Processed ${signals.length} signals in ${totalTime}ms, got ${results.length} results`);
+      logger.info('InspectorCore', `Processed ${signals.length} signals in ${totalTime}ms, got ${results.length} results`);
 
       return results;
 
     } catch (error) {
-      console.error(`❌ Error processing signal batch:`, error);
+      logger.error('InspectorCore', 'Error processing signal batch', error instanceof Error ? error : new Error(String(error)));
       this.emit('inspector:error', error);
       return [];
     }
@@ -324,7 +325,7 @@ export class InspectorCore extends EventEmitter {
       });
 
       worker.on('online', () => {
-        console.log(`🔧 Inspector worker ${workerId} online`);
+        logger.debug('InspectorCore', `Inspector worker ${workerId} online`);
         resolve(worker);
       });
 
@@ -333,14 +334,14 @@ export class InspectorCore extends EventEmitter {
       });
 
       worker.on('error', (error) => {
-        console.error(`❌ Inspector worker ${workerId} error:`, error);
+        logger.error('InspectorCore', `Inspector worker ${workerId} error`, error);
         this.metrics.errors++;
         this.emit('inspector:worker-error', { workerId, error });
         reject(error);
       });
 
       worker.on('exit', (code) => {
-        console.log(`🔧 Inspector worker ${workerId} exited with code ${code}`);
+            logger.debug('InspectorCore', `Inspector worker ${workerId} exited with code ${code}`);
         this.metrics.activeWorkers = Math.max(0, this.metrics.activeWorkers - 1);
         this.emit('inspector:worker-exit', { workerId, code });
       });
@@ -373,17 +374,18 @@ export class InspectorCore extends EventEmitter {
           // Worker is ready for work
           break;
         default:
-          console.warn(`Unknown message type from worker ${workerId}:`, data.type);
+          logger.warn('InspectorCore', `Unknown message type from worker ${workerId}: ${data.type}`);
       }
     } catch (error) {
-      console.error(`Error handling worker ${workerId} message:`, error);
+      const err = error instanceof Error ? error : new Error(String(error));
+      logger.error('InspectorCore', `Error handling worker ${workerId} message`, err);
     }
   }
 
   /**
    * Handle successful worker result
    */
-  private handleWorkerResult(workerId: number, result: unknown): void {
+  private handleWorkerResult(_workerId: number, result: unknown): void {
     const typedResult = result as InspectorResult;
     this.results.push(typedResult);
 
@@ -531,8 +533,8 @@ export class InspectorCore extends EventEmitter {
       oldestSignal: this.processingQueue.length > 0 && this.processingQueue[0]
         ? this.processingQueue[0].signal
         : null,
-      newestSignal: this.processingQueue.length > 0 && this.processingQueue[this.processingQueue.length - 1]
-        ? this.processingQueue[this.processingQueue.length - 1]!.signal
+      newestSignal: this.processingQueue.length > 0
+        ? this.processingQueue[this.processingQueue.length - 1]?.signal ?? null
         : null
     };
   }

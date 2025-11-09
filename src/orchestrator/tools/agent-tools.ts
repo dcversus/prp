@@ -128,13 +128,23 @@ export const spawnAgentTool: Tool = {
       required: false
     }
   },
-  execute: async (params: Record<string, unknown>) => {
+  execute: async (params: unknown) => {
     // spawn, existsSync, mkdirSync, writeFileSync, join, resolve already imported
 
     try {
-      const typedParams = params as SpawnAgentParams;
+      // Type guard to ensure params is the correct type
+      if (!params || typeof params !== 'object') {
+        throw new Error('Invalid parameters: object expected');
+      }
+
+      const typedParams = params as Record<string, unknown>;
+
+      // Validate required parameter
+      if (!typedParams.agentType || typeof typedParams.agentType !== 'string') {
+        throw new Error('Missing or invalid agentType parameter');
+      }
       const agentId = `agent_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const worktree = typedParams.worktree || resolve('/tmp/prp-worktrees', agentId);
+      const worktree = typedParams.worktree as string || resolve('/tmp/prp-worktrees', agentId);
 
       // Create worktree directory if it doesn't exist
       if (!existsSync(worktree)) {
@@ -145,9 +155,9 @@ export const spawnAgentTool: Tool = {
       const agentConfig = {
         id: agentId,
         type: typedParams.agentType,
-        role: typedParams.role,
+        role: typedParams.role as string | undefined,
         config: {
-          ...typedParams.config,
+          ...(typedParams.config && typeof typedParams.config === 'object' ? typedParams.config : {}),
           model: getModelForAgentType(typedParams.agentType),
           tokenLimits: getTokenLimitsForAgentType(typedParams.agentType),
           tools: getToolsForAgentType(typedParams.agentType)
@@ -164,15 +174,16 @@ export const spawnAgentTool: Tool = {
       );
 
       // Set up Claude Code configuration if needed
-      if (typedParams.agentType === 'claude-code' || typedParams.agentType === 'claude-code-glm') {
+      const agentType = typedParams.agentType;
+      if (agentType === 'claude-code' || agentType === 'claude-code-glm') {
         await setupClaudeCodeConfig(worktree, agentConfig);
       }
 
       // Prepare spawn command
-      const spawnCommand = getSpawnCommand(typedParams.agentType);
+      const spawnCommand = getSpawnCommand(agentType);
       const spawnArgs = getSpawnArgs();
 
-      logger.info('spawn_agent', `Spawning ${typedParams.agentType} agent: ${agentId}`);
+      logger.info('spawn_agent', `Spawning ${agentType} agent: ${agentId}`);
 
       const childProcess = spawn(spawnCommand, spawnArgs, {
         cwd: worktree,
@@ -180,18 +191,18 @@ export const spawnAgentTool: Tool = {
         env: {
           ...process.env,
           AGENT_ID: agentId,
-          AGENT_TYPE: typedParams.agentType,
-          AGENT_ROLE: typedParams.role,
+          AGENT_TYPE: agentType,
+          AGENT_ROLE: typedParams.role as string | undefined,
           WORKTREE: worktree
         }
       });
 
       // Handle agent process events
-      childProcess.stdout?.on('data', () => {
+      childProcess.stdout.on('data', () => {
         // Output processing would be implemented here
       });
 
-      childProcess.stderr?.on('data', () => {
+      childProcess.stderr.on('data', () => {
         // Error output processing would be implemented here
       });
 
@@ -329,16 +340,16 @@ export const killAgentTool: Tool = {
       let killed = false;
       let method = 'unknown';
 
-      if (typedParams.graceful && (agent as RunningAgent).process) {
+      if (typedParams.graceful && (agent).process) {
         // Try graceful shutdown first
         try {
-          (agent as RunningAgent).process!.send({ command: 'shutdown' });
+          (agent).process.send({ command: 'shutdown' });
 
           // Wait for graceful shutdown
           await new Promise((resolve) => {
-            const timeout = setTimeout(() => resolve(undefined), typedParams.timeout || 10000);
+            const timeout = setTimeout(() => resolve(undefined), typedParams.timeout ?? 10000);
 
-            (agent as RunningAgent).process!.once('exit', () => {
+            (agent).process?.once('exit', () => {
               clearTimeout(timeout);
               resolve(true);
             });
@@ -351,9 +362,9 @@ export const killAgentTool: Tool = {
         }
       }
 
-      if (!killed && (agent as RunningAgent).process) {
+      if (!killed && (agent).process) {
         // Force kill if graceful didn't work
-        (agent as RunningAgent).process!.kill('SIGTERM');
+        (agent).process.kill('SIGTERM');
         method = 'force';
         killed = true;
       }
@@ -422,7 +433,7 @@ export const sendMessageToAgentTool: Tool = {
         throw new Error(`Agent ${typedParams.agentId} not found`);
       }
 
-      if (!(agent as RunningAgent).process || (agent as RunningAgent).process!.killed) {
+      if (!(agent).process || (agent).process.killed) {
         throw new Error(`Agent ${typedParams.agentId} is not running`);
       }
 
@@ -435,7 +446,7 @@ export const sendMessageToAgentTool: Tool = {
       };
 
       // Send message to agent process
-      (agent as RunningAgent).process!.send(message);
+      (agent).process.send(message);
 
       logger.info('send_message_to_agent', `Sent ${typedParams.messageType} to agent ${typedParams.agentId}`);
 
@@ -468,7 +479,7 @@ function getModelForAgentType(agentType: string): string {
     'amp': 'claude-3-opus-20240229',
     'aider': 'gpt-4'
   };
-  return models[agentType] || 'claude-3-5-sonnet-20241022';
+  return models[agentType] ?? 'claude-3-5-sonnet-20241022';
 }
 
 function getTokenLimitsForAgentType(agentType: string): TokenLimits {
@@ -480,7 +491,7 @@ function getTokenLimitsForAgentType(agentType: string): TokenLimits {
     'amp': { daily: 2000000, weekly: 10000000, monthly: 40000000 },
     'aider': { daily: 500000, weekly: 2500000, monthly: 10000000 }
   };
-  return limits[agentType] || { daily: 1000000, weekly: 5000000, monthly: 20000000 };
+  return limits[agentType] ?? { daily: 1000000, weekly: 5000000, monthly: 20000000 };
 }
 
 function getToolsForAgentType(agentType: string): string[] {
@@ -492,7 +503,7 @@ function getToolsForAgentType(agentType: string): string[] {
     'amp': ['file-edit', 'bash', 'search', 'git', 'web'],
     'aider': ['file-edit', 'bash', 'search', 'git']
   };
-  return tools[agentType] || ['file-edit', 'bash', 'search'];
+  return tools[agentType] ?? ['file-edit', 'bash', 'search'];
 }
 
 function getSpawnCommand(agentType: string): string {
@@ -504,7 +515,7 @@ function getSpawnCommand(agentType: string): string {
     'amp': 'amp',
     'aider': 'aider'
   };
-  return commands[agentType] || 'claude';
+  return commands[agentType] ?? 'claude';
 }
 
 function getSpawnArgs(): string[] {
@@ -523,15 +534,15 @@ async function setupClaudeCodeConfig(worktree: string, agentConfig: Record<strin
   // Create claude config file
   const config = agentConfig as { config?: AgentConfig; type?: string };
   const claudeConfig: ClaudeConfig = {
-    api_key: config?.config?.authentication.credentials?.apiKey || process['env']['ANTHROPIC_API_KEY'],
-    base_url: config?.config?.baseUrl || process['env']['ANTHROPIC_BASE_URL'],
-    default_model: config?.config?.model,
+    api_key: config.config?.authentication.credentials?.apiKey ?? process.env.ANTHROPIC_API_KEY,
+    base_url: config.config?.baseUrl ?? process.env.ANTHROPIC_BASE_URL,
+    default_model: config.config?.model,
     timeout: 300000,
-    max_tokens: config?.config?.maxTokens || 4096
+    max_tokens: config.config?.maxTokens ?? 4096
   };
 
   // Handle GLM configuration if needed
-  if (config?.type === 'claude-code-glm') {
+  if (config.type === 'claude-code-glm') {
     claudeConfig.base_url = 'https://api.z.ai/api/anthropic';
     claudeConfig.default_model = 'glm-4.6';
   }

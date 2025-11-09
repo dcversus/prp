@@ -6,6 +6,8 @@
  */
 
 import { spawn } from 'child_process';
+import { getCliUserAgent } from '../utils/version';
+import { logger } from '../utils/logger.js';
 import {
   KubectlSecretConfig,
   SecretRetrievalResult,
@@ -70,7 +72,7 @@ export class KubectlSecretManager {
     } catch (error) {
       // If we have a cached value, return it even if expired
       if (this.cache) {
-        console.warn('Failed to retrieve fresh secret, using expired cache:', error);
+        logger.warn('Failed to retrieve fresh secret, using expired cache:', error);
         return {
           value: this.cache.value,
           retrievedAt: new Date(this.cache.retrievedAt).toISOString(),
@@ -87,7 +89,7 @@ export class KubectlSecretManager {
    * Validate the retrieved secret
    */
   async validateSecret(secret?: string): Promise<SecretValidationResult> {
-    const secretToValidate = secret || (this.cache?.value);
+    const secretToValidate = secret ?? this.cache?.value;
 
     if (!secretToValidate) {
       return {
@@ -132,13 +134,13 @@ export class KubectlSecretManager {
 
     // Test connectivity with dcmaidbot endpoint if available
     try {
-      const endpoint = process.env.NUDGE_ENDPOINT || 'https://dcmaid.theedgestory.org/nudge';
+      const endpoint = process.env.NUDGE_ENDPOINT ?? 'https://dcmaid.theedgestory.org/nudge';
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${secretToValidate}`,
-          'User-Agent': 'prp-cli/0.5.0'
+          'User-Agent': getCliUserAgent()
         },
         body: JSON.stringify({
           type: 'direct',
@@ -154,7 +156,7 @@ export class KubectlSecretManager {
       }
     } catch (error) {
       // Network errors don't invalidate the secret, but we note them
-      console.warn('Secret validation connectivity test failed:', error);
+      logger.warn('Secret validation connectivity test failed:', error);
     }
 
     this.lastValidation = result;
@@ -182,16 +184,16 @@ export class KubectlSecretManager {
       );
 
       const clusterInfo = JSON.parse(clusterInfoResult.stdout) as KubectlClusterInfo;
-      const currentContext = clusterInfo.contexts?.find((ctx: KubectlContext) =>
+      const currentContext = clusterInfo.contexts.find((ctx: KubectlContext) =>
         ctx.name === clusterInfo['current-context']
       );
 
       if (currentContext) {
         status.connected = true;
         status.clusterInfo = {
-          server: currentContext.context?.cluster || 'unknown',
-          context: currentContext.name || 'unknown',
-          namespace: currentContext.context?.namespace || 'default'
+          server: currentContext.context?.cluster ?? 'unknown',
+          context: currentContext.name,
+          namespace: currentContext.context?.namespace ?? 'default'
         };
       }
 
@@ -306,7 +308,7 @@ export class KubectlSecretManager {
       const commandArgs = args;
 
       if (!silent) {
-        console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
+        logger.info(`Executing: ${command} ${commandArgs.join(' ')}`);
       }
 
       const child = spawn(command, commandArgs, {

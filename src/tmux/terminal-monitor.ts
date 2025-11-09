@@ -317,7 +317,7 @@ export class TerminalMonitor {
     }
 
     const [, activityType, timestampStr, content] = parts;
-    const timestamp = new Date((parseInt(timestampStr || '0') || 0) * 1000);
+    const timestamp = new Date((parseInt(timestampStr || '0', 10) || 0) * 1000);
 
     const activity: TerminalActivity = {
       sessionId,
@@ -404,7 +404,7 @@ export class TerminalMonitor {
         sessionId: '', // Will be filled by caller
         timestamp: new Date(),
         memory: {
-          used: parseInt(rss || '0') / 1024, // MB
+          used: parseInt(rss || '0', 10) / 1024, // MB
           peak: 0,
           average: 0,
           percentage: parseFloat(memPercent || '0')

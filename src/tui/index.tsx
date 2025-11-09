@@ -5,7 +5,6 @@
  * implementing the full specification from PRPs/tui-implementation.md
  */
 
-import React from 'react';
 import { render } from 'ink';
 import { TUIApp } from './components/TUIApp.js';
 import { TUIConfig, createTUIConfig } from './config/TUIConfig.js';
@@ -111,7 +110,7 @@ export class TUIMain {
     process.stdout.write('\x1b[2J\x1b[H');
 
     // Show goodbye message
-    console.log('🎵 ♫ @dcversus/prp TUI stopped. Goodbye! 🎵');
+    logger.info('cleanupTerminal', '🎵 ♫ @dcversus/prp TUI stopped. Goodbye! 🎵');
   }
 }
 

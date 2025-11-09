@@ -14,6 +14,8 @@ import {
   NudgeError,
   isValidNudgeType
 } from './types.js';
+import { getCliUserAgent, getVersion } from '../utils/version.js';
+import { logger } from '../utils/logger.js';
 
 export class NudgeClient {
   private client: AxiosInstance;
@@ -21,7 +23,7 @@ export class NudgeClient {
 
   constructor(options: NudgeClientOptions = {}) {
     this.config = {
-      endpoint: process.env.NUDGE_ENDPOINT || 'https://dcmaid.theedgestory.org/nudge',
+      endpoint: process.env.NUDGE_ENDPOINT ?? 'https://dcmaid.theedgestory.org/nudge',
       secret: process.env.NUDGE_SECRET,
       admin_id: process.env.ADMIN_ID,
       timeout: 10000,
@@ -45,14 +47,14 @@ export class NudgeClient {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.config.secret}`,
-        'User-Agent': options.userAgent || 'prp-cli/0.5.0'
+        'User-Agent': options.userAgent ?? getCliUserAgent()
       }
     });
 
     // Request interceptor for debugging
     if (options.debug) {
       this.client.interceptors.request.use((request) => {
-        console.log('Nudge Request:', {
+        logger.debug('Nudge Request:', {
           method: request.method,
           url: request.url,
           headers: {
@@ -68,7 +70,7 @@ export class NudgeClient {
     // Response interceptor for debugging
     if (options.debug) {
       this.client.interceptors.response.use((response) => {
-        console.log('Nudge Response:', {
+        logger.debug('Nudge Response:', {
           status: response.status,
           headers: response.headers,
           data: response.data
@@ -96,8 +98,8 @@ export class NudgeClient {
           success: true,
           message_id: response.data.message_id,
           sent_to: response.data.sent_to,
-          timestamp: response.data.timestamp || new Date().toISOString(),
-          delivery_type: response.data.delivery_type || (request.type === 'direct' ? 'direct' : 'llm-enhanced')
+          timestamp: response.data.timestamp ?? new Date().toISOString(),
+          delivery_type: response.data.delivery_type ?? (request.type === 'direct' ? 'direct' : 'llm-enhanced')
         };
 
       } catch (error) {
@@ -105,8 +107,8 @@ export class NudgeClient {
 
         // Retry logic for network errors
         if (this.shouldRetry(error, attempt)) {
-          const delay = this.config.retry_delay! * Math.pow(2, attempt - 1);
-          console.warn(`Nudge send failed (attempt ${attempt}/${this.config.retry_attempts}), retrying in ${delay}ms...`);
+          const delay = (this.config.retry_delay ?? 1000) * Math.pow(2, attempt - 1);
+          logger.warn(`Nudge send failed (attempt ${attempt}/${this.config.retry_attempts}), retrying in ${delay}ms...`);
           await this.sleep(delay);
           return attemptSend(attempt + 1);
         }
@@ -129,8 +131,8 @@ export class NudgeClient {
         urgency: 'low',
         metadata: {
           timestamp: new Date().toISOString(),
-          agent_version: '0.5.0',
-          cli_version: '0.5.0'
+          agent_version: getVersion(),
+          cli_version: getVersion()
         }
       };
 
@@ -138,7 +140,7 @@ export class NudgeClient {
       return response.success;
 
     } catch (error) {
-      console.error('Nudge connectivity test failed:', error);
+      logger.error('Nudge connectivity test failed:', error);
       return false;
     }
   }
@@ -158,7 +160,7 @@ export class NudgeClient {
       endpoint: this.config.endpoint,
       hasSecret: !!this.config.secret,
       hasAdminId: !!this.config.admin_id,
-      timeout: this.config.timeout!
+      timeout: this.config.timeout ?? 10000
     };
   }
 
@@ -166,7 +168,7 @@ export class NudgeClient {
    * Validate nudge request structure
    */
   private validateNudgeRequest(request: NudgeRequest): void {
-    if (!request.type || !isValidNudgeType(request.type)) {
+    if (!request.type || !isValidNudgeType(request.type)) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition
       throw new NudgeError(
         'VALIDATION_ERROR',
         'Invalid nudge type. Must be "direct" or "llm-mode"',
@@ -182,7 +184,7 @@ export class NudgeClient {
       );
     }
 
-    if (request.type === 'direct' && !request.urgency) {
+    if (request.type === 'direct' && !request.urgency) { // eslint-disable-line @typescript-eslint/no-unnecessary-condition
       throw new NudgeError(
         'VALIDATION_ERROR',
         'Direct nudge requires urgency level',
@@ -194,7 +196,7 @@ export class NudgeClient {
     if (!request.metadata) {
       request.metadata = {
         timestamp: new Date().toISOString(),
-        cli_version: '0.5.0'
+        cli_version: getVersion()
       };
     } else if (!request.metadata.timestamp) {
       request.metadata.timestamp = new Date().toISOString();
@@ -208,7 +210,7 @@ export class NudgeClient {
     if (axios.isAxiosError(error)) {
       const axiosError = error as AxiosError;
       const status = axiosError.response?.status;
-      const data = axiosError.response?.data as unknown;
+      const data = axiosError.response?.data;
 
       switch (status) {
         case 401:
@@ -267,7 +269,7 @@ export class NudgeClient {
    */
   private shouldRetry(error: Error | AxiosError | unknown, attempt: number): boolean {
     // Don't retry if we've exceeded max attempts
-    if (attempt >= this.config.retry_attempts!) {
+    if (attempt >= (this.config.retry_attempts ?? 3)) {
       return false;
     }
 

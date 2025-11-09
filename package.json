@@ -13,26 +13,37 @@
     "templates"
   ],
   "scripts": {
-    "dev": "tsx src/cli.ts",
-    "build": "tsc && chmod +x dist/cli.js",
-    "build:watch": "tsc --watch",
-    "start": "node dist/cli.js",
-    "test": "jest --passWithNoTests",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage --passWithNoTests",
-    "test:e2e": "jest tests/e2e --passWithNoTests --runInBand",
+    "dev": "tsx src/cli.ts --watch",
+    "fix": "npm run lint:fix && npm run format",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "typecheck:watch": "tsc --noEmit --watch",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage --passWithNoTests",
+    "test:e2e": "jest tests/e2e --passWithNoTests --runInBand",
+    "test:performance": "jest tests/performance --passWithNoTests --runInBand",
+    "test:performance:cli": "jest tests/performance/cli-startup.test.ts --passWithNoTests",
+    "test:performance:templates": "jest tests/performance/template-generation.test.ts --passWithNoTests",
+    "test:performance:memory": "jest tests/performance/memory-usage.test.ts --passWithNoTests",
+    "benchmark": "node scripts/benchmark.js",
+    "benchmark:compare": "node scripts/benchmark.js --compare",
+    "benchmark:verbose": "node scripts/benchmark.js --verbose",
+    "start": "node dist/cli.js",
+    "build": "node scripts/build-cli.js",
+    "build:prod": "node scripts/build-cli.js --prod",
+    "build:min": "node scripts/build-cli.js --minify",
+    "build:docs": "node scripts/build-docs.js",
+    "dev:docs": "node scripts/build-docs.js --dev",
+    "serve:docs": "node scripts/build-docs.js --serve --static",
+    "prepublishOnly": "npm run validate && npm run build:prod",
+    "publish": "npm run build:prod && npm publish",
+    "validate": "npm run typecheck && npm run lint && npm run test",
     "debug:demo": "tsx examples/debug-screen-demo.ts",
     "debug:test": "tsx src/tui/debug-screen.test.ts",
-    "validate": "npm run typecheck && npm run lint && npm run test",
-    "build:docs": "webpack --mode production && node scripts/add-analytics.js",
-    "dev:docs": "webpack serve --mode development",
-    "prepublishOnly": "npm run validate && npm run build",
     "prepare": "husky"
   },
   "keywords": [
@@ -61,8 +72,127 @@
   },
   "homepage": "https://github.com/dcversus/prp#readme",
   "engines": {
-    "node": ">=20.0.0",
+    "node": "20.11.0",
     "npm": ">=10.0.0"
+  },
+  "prettier": {
+    "semi": true,
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "printWidth": 100,
+    "tabWidth": 2,
+    "useTabs": false,
+    "arrowParens": "always",
+    "endOfLine": "lf",
+    "bracketSpacing": true,
+    "jsxSingleQuote": false,
+    "quoteProps": "as-needed"
+  },
+  "jest": {
+    "preset": "ts-jest/presets/default-esm",
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.ts"
+    ],
+    "roots": [
+      "<rootDir>/src",
+      "<rootDir>/tests"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.ts",
+      "**/__tests__/**/*.tsx",
+      "**/?(*.)+(spec|test).ts",
+      "**/?(*.)+(spec|test).tsx"
+    ],
+    "extensionsToTreatAsEsm": [
+      ".ts",
+      ".tsx"
+    ],
+    "transform": {
+      "^.+\\.tsx?$": [
+        "ts-jest",
+        {
+          "tsconfig": {
+            "jsx": "react-jsx",
+            "module": "ESNext",
+            "target": "ES2022",
+            "strict": true,
+            "noUnusedLocals": true,
+            "noUnusedParameters": true,
+            "exactOptionalPropertyTypes": true
+          },
+          "useESM": true
+        }
+      ]
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(axios|ink|ink-testing-library))/"
+    ],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1",
+      "^axios$": "axios/dist/node/axios.cjs",
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^@ui/(.*)$": "<rootDir>/src/ui/$1",
+      "^@generators/(.*)$": "<rootDir>/src/generators/$1",
+      "^@templates/(.*)$": "<rootDir>/src/templates/$1",
+      "^@ai/(.*)$": "<rootDir>/src/ai/$1",
+      "^@utils/(.*)$": "<rootDir>/src/utils/$1"
+    },
+    "collectCoverageFrom": [
+      "src/**/*.{ts,tsx}",
+      "!src/**/*.d.ts",
+      "!src/**/*.test.ts",
+      "!src/**/*.spec.ts"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      }
+    },
+    "maxWorkers": 4,
+    "verbose": true,
+    "errorOnDeprecated": true,
+    "forceExit": true,
+    "detectOpenHandles": true,
+    "clearMocks": true,
+    "resetMocks": true,
+    "restoreMocks": true,
+    "projects": [
+      {
+        "displayName": "Unit Tests",
+        "testMatch": [
+          "<rootDir>/tests/unit/**/*.test.ts",
+          "<rootDir>/tests/integration/**/*.test.ts"
+        ],
+        "testEnvironment": "node"
+      },
+      {
+        "displayName": "Performance Tests",
+        "testMatch": [
+          "<rootDir>/tests/performance/**/*.test.ts"
+        ],
+        "testEnvironment": "node",
+        "maxWorkers": 1,
+        "setupFilesAfterEnv": [
+          "<rootDir>/tests/performance/setup.ts"
+        ]
+      },
+      {
+        "displayName": "E2E Tests",
+        "testMatch": [
+          "<rootDir>/tests/e2e/**/*.test.ts"
+        ],
+        "testEnvironment": "node",
+        "maxWorkers": 1,
+        "setupFilesAfterEnv": [
+          "<rootDir>/tests/setup-e2e-simple.js"
+        ]
+      }
+    ]
   },
   "dependencies": {
     "@types/boxen": "^2.1.0",
@@ -70,61 +200,74 @@
     "@types/figlet": "^1.7.0",
     "@types/jsonschema": "^0.0.5",
     "@types/lru-cache": "^7.10.9",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "axios": "^1.13.1",
     "boxen": "^8.0.1",
     "chalk": "^5.3.0",
-    "chokidar": "^4.0.3",
     "commander": "^12.1.0",
     "execa": "^9.4.0",
     "figlet": "^1.9.3",
     "fs-extra": "^11.2.0",
     "handlebars": "^4.7.8",
     "ink": "^5.0.1",
+    "ink-big-text": "^2.0.0",
+    "ink-divider": "^4.1.1",
+    "ink-gradient": "^3.0.0",
     "ink-select-input": "^6.0.0",
     "ink-spinner": "^5.0.0",
     "ink-text-input": "^6.0.0",
-    "inquirer": "^8.2.7",
+    "inquirer": "^9.2.23",
     "jsonschema": "^1.5.0",
     "lru-cache": "^11.2.2",
     "nanoid": "^5.0.7",
+    "openai": "^6.8.1",
     "ora": "^8.1.0",
     "react": "^18.3.1",
+    "semver": "^7.6.3",
+    "validate-npm-package-name": "^5.0.1",
     "yaml": "^2.6.0"
   },
   "devDependencies": {
     "@babel/core": "^7.28.5",
     "@babel/preset-env": "^7.28.5",
     "@babel/preset-react": "^7.28.5",
-    "@mdx-js/loader": "^3.1.1",
-    "@mdx-js/react": "^3.1.1",
+    "@babel/preset-typescript": "^7.28.5",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/fs-extra": "^11.0.4",
-    "@types/inquirer": "^8.2.12",
+    "@types/inquirer": "^9.0.7",
+    "@types/jest": "^30.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.7.5",
     "@types/react": "^18.3.11",
+    "@types/semver": "^7.5.8",
     "@typescript-eslint/eslint-plugin": "^8.8.1",
     "@typescript-eslint/parser": "^8.8.1",
-    "babel-loader": "^10.0.0",
-    "copy-webpack-plugin": "^13.0.1",
-    "css-loader": "^7.1.2",
+    "browser-sync": "^3.0.4",
+    "chokidar": "^4.0.3",
     "eslint": "^9.12.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-react": "^7.37.1",
     "eslint-plugin-react-hooks": "^5.1.0-rc-fb9a90fa48-20240614",
     "glob": "^11.0.3",
-    "html-webpack-plugin": "^5.6.4",
+    "highlight.js": "^11.11.1",
     "husky": "^9.1.7",
+    "ink-testing-library": "^4.0.0",
     "jest": "^29.7.0",
+    "jest-environment-jsdom": "^30.2.0",
+    "jsonwebtoken": "^9.0.2",
     "lint-staged": "^16.2.6",
+    "marked": "^16.4.1",
     "prettier": "^3.3.3",
     "react-dom": "^18.3.1",
-    "style-loader": "^4.0.0",
     "ts-jest": "^29.2.5",
+    "tsup": "^8.5.0",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3",
-    "typescript-eslint": "^8.46.2",
-    "webpack": "^5.102.1",
-    "webpack-cli": "^6.0.1"
+    "typescript-eslint": "^8.46.2"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -133,6 +276,28 @@
     ],
     "*.{json,md,yml,yaml}": [
       "prettier --write"
+    ]
+  },
+  "tsup": {
+    "entry": {
+      "index": "src/index.ts",
+      "cli": "src/cli.ts"
+    },
+    "format": [
+      "esm"
+    ],
+    "dts": true,
+    "clean": true,
+    "sourcemap": true,
+    "minify": false,
+    "target": "node20",
+    "outDir": "dist",
+    "splitting": false,
+    "treeshake": true,
+    "external": [
+      "react",
+      "react-dom",
+      "ink"
     ]
   }
 }

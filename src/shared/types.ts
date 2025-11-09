@@ -8,13 +8,6 @@
 // AgentConfig is imported from src/config/agent-config.ts to avoid duplication
 export type AgentConfig = import('../config/agent-config.js').AgentConfig;
 
-// Guideline protocol
-export interface GuidelineProtocol {
-  steps: ProtocolStep[];
-  [key: string]: unknown;
-}
-
-
 
 // TUI state
 export interface TUIState {
@@ -56,6 +49,7 @@ export interface PRPFile {
   signals: Signal[];
   lastModified: Date;
   worktree?: string;
+  content?: string; // Raw markdown content of the PRP file
 }
 
 export interface ProgressEntry {

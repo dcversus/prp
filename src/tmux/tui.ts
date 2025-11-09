@@ -18,6 +18,7 @@ import {
 } from './types';
 import { TuiDebugScreen } from '../tui/debug-screen';
 import { createDebugConfig } from '../tui/debug-config';
+import { getVersion } from '../utils/version';
 
 type Timeout = ReturnType<typeof setTimeout>;
 
@@ -678,7 +679,7 @@ export class TabbedTUI extends EventEmitter {
       `   • Uptime: ${process.uptime().toFixed(0)}s`,
       '',
       '🎵 ♫ @dcversus/prp:',
-      `   • Version: 0.5.0`,
+      `   • Version: ${getVersion()}`,
       `   • Architecture: 3-Layer`,
       `   • Active Sessions: ${this.tabs.size}`,
       '',

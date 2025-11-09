@@ -8,7 +8,6 @@ import { readFileSync } from 'fs';
 import { join, resolve } from 'path';
 
 // For now, use a relative path approach
-const __dirname = resolve('.');
 import { GuidelineConfig, Signal } from '../shared/types';
 import { createLayerLogger, HashUtils } from '../shared';
 
@@ -42,7 +41,7 @@ export class GuidelineAdapter {
   private maxCacheSize: number;
 
   constructor(guidelinesPath?: string) {
-    this.guidelinesPath = guidelinesPath || resolve(__dirname, '../guidelines');
+    this.guidelinesPath = guidelinesPath ?? join(resolve('.'), '../guidelines');
     this.cacheEnabled = true;
     this.maxCacheSize = 1000;
   }
@@ -90,7 +89,7 @@ export class GuidelineAdapter {
   async getGuidelineForSignal(signal: Signal): Promise<string | null> {
     try {
       // Check cache first
-      const cacheKey = await HashUtils.hashString(`${signal.type}-${signal.data?.['rawSignal'] || ''}`);
+      const cacheKey = await HashUtils.hashString(`${signal.type}-${signal.data?.['rawSignal'] ?? ''}`);
       if (this.cacheEnabled && this.guidelineCache.has(cacheKey)) {
         const cached = this.guidelineCache.get(cacheKey);
         if (cached && Date.now() - cached.timestamp < 300000) { // 5 minutes TTL
@@ -131,7 +130,7 @@ export class GuidelineAdapter {
    * Get guideline by ID
    */
   getGuidelineById(id: string): ExtendedGuidelineConfig | null {
-    return this.guidelines.get(id) || null;
+    return this.guidelines.get(id) ?? null;
   }
 
   /**
@@ -214,25 +213,25 @@ export class GuidelineAdapter {
   private async loadGuidelineFile(filePath: string): Promise<ExtendedGuidelineConfig | null> {
     try {
       const content = readFileSync(filePath, 'utf8');
-      const fileName = filePath.split('/').pop()?.replace('.md', '') || '';
+      const fileName = filePath.split('/').pop()?.replace('.md', '') ?? '';
 
       // Parse guideline metadata from content
       const metadata = this.parseGuidelineMetadata(content, fileName);
 
       const guideline: ExtendedGuidelineConfig = {
-        id: (metadata['id'] as string) || HashUtils.generateId(),
-        name: (metadata['name'] as string) || this.formatGuidelineName(fileName),
+        id: (metadata['id'] as string) ?? HashUtils.generateId(),
+        name: (metadata['name'] as string) ?? this.formatGuidelineName(fileName),
         enabled: (metadata['enabled'] as boolean) !== false,
         protocol: {
-          id: `protocol-${(metadata['id'] as string) || HashUtils.generateId()}`,
-          description: (metadata['description'] as string) || '',
+          id: `protocol-${(metadata['id'] as string) ?? HashUtils.generateId()}`,
+          description: (metadata['description'] as string) ?? '',
           steps: [],
           decisionPoints: [],
           successCriteria: [],
           fallbackActions: []
         },
         requirements: [], // Parse proper GuidelineRequirement objects from metadata if needed
-        tools: (metadata['tools'] as string[]) || [],
+        tools: (metadata['tools'] as string[]) ?? [],
         prompts: {
           inspector: content,
           orchestrator: content
@@ -242,8 +241,8 @@ export class GuidelineAdapter {
           orchestrator: 8000
         },
         // Extended properties
-        signalPatterns: (metadata['signalPatterns'] as Array<{ code: string; description: string }>) || [],
-        priority: (metadata['priority'] as number) || 5,
+        signalPatterns: (metadata['signalPatterns'] as Array<{ code: string; description: string }>) ?? [],
+        priority: (metadata['priority'] as number) ?? 5,
         content: content,
         lastModified: new Date()
       };
@@ -337,32 +336,32 @@ export class GuidelineAdapter {
    * Parse YAML value (basic implementation)
    */
   private parseYamlValue(value: string): unknown {
-    value = value.trim();
+    const trimmedValue = value.trim();
 
     // Handle booleans
-    if (value === 'true') return true;
-    if (value === 'false') return false;
+    if (trimmedValue === 'true') return true;
+    if (trimmedValue === 'false') return false;
 
     // Handle numbers
-    if (/^\d+$/.test(value)) return parseInt(value, 10);
-    if (/^\d+\.\d+$/.test(value)) return parseFloat(value);
+    if (/^\d+$/.test(trimmedValue)) return parseInt(trimmedValue, 10);
+    if (/^\d+\.\d+$/.test(trimmedValue)) return parseFloat(trimmedValue);
 
     // Handle arrays
-    if (value.startsWith('[') && value.endsWith(']')) {
+    if (trimmedValue.startsWith('[') && trimmedValue.endsWith(']')) {
       try {
-        return JSON.parse(value);
+        return JSON.parse(trimmedValue);
       } catch {
-        return value;
+        return trimmedValue;
       }
     }
 
     // Handle quoted strings
-    if ((value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))) {
-      return value.slice(1, -1);
+    if ((trimmedValue.startsWith('"') && trimmedValue.endsWith('"')) ||
+        (trimmedValue.startsWith("'") && trimmedValue.endsWith("'"))) {
+      return trimmedValue.slice(1, -1);
     }
 
-    return value;
+    return trimmedValue;
   }
 
   /**
@@ -443,7 +442,7 @@ export class GuidelineAdapter {
    * Adapt guideline for specific signal with enhanced context and LLM optimization
    */
   private async adaptGuidelineForSignal(guideline: ExtendedGuidelineConfig, signal: Signal): Promise<string> {
-    let adaptedContent = guideline.content || '';
+    let adaptedContent = guideline.content ?? '';
 
     // Replace signal placeholders
     adaptedContent = adaptedContent.replace(/\{\{signal\.type\}\}/g, signal.type);
@@ -454,11 +453,11 @@ export class GuidelineAdapter {
     // Replace signal data placeholders
     if (signal.data) {
       adaptedContent = adaptedContent.replace(/\{\{signal\.data\.rawSignal\}\}/g,
-        (signal.data['rawSignal'] as string) || '');
+        (signal.data['rawSignal'] as string) ?? '');
       adaptedContent = adaptedContent.replace(/\{\{signal\.data\.patternName\}\}/g,
-        (signal.data['patternName'] as string) || '');
+        (signal.data['patternName'] as string) ?? '');
       adaptedContent = adaptedContent.replace(/\{\{signal\.data\.description\}\}/g,
-        (signal.data['description'] as string) || '');
+        (signal.data['description'] as string) ?? '');
     }
 
     // Replace timestamp placeholders
@@ -661,7 +660,7 @@ export class GuidelineAdapter {
    */
   private async getProcessingRecommendations(signal: Signal): Promise<string[]> {
     const recommendations = [];
-    const priority = signal.priority || 5;
+    const priority = signal.priority ?? 5;
 
     // Priority-based recommendations
     if (priority >= 9) {
@@ -736,7 +735,7 @@ export class GuidelineAdapter {
       3: '<!-- PRIORITY: LOW - Can be deferred -->'
     };
 
-    const marker = priorityMarkers[signal.priority as keyof typeof priorityMarkers] || '';
+    const marker = priorityMarkers[signal.priority as keyof typeof priorityMarkers] ?? '';
     if (marker && !optimizedContent.includes(marker)) {
       optimizedContent = marker + '\n\n' + optimizedContent;
     }

@@ -75,7 +75,7 @@ export const getTokenCapsTool: Tool = {
     const typedParams = params as GetTokenCapsParams;
 
     try {
-      logger.info('get_token_caps', `Retrieving token caps for ${typedParams.agentType || 'all'}`);
+      logger.info('get_token_caps', `Retrieving token caps for ${typedParams.agentType ?? 'all'}`);
 
       // Get token caps data based on PRP-007 specifications
       const tokenCapsData = getTokenCapsData(typedParams.agentType);

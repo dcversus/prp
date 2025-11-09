@@ -966,8 +966,8 @@ export class GuidelinesExecutor extends EventEmitter {
       // Extract from URL
       const prUrl = signal.data['prUrl'] as string;
       const match = prUrl.match(/\/pull\/(\d+)/);
-      if (match && match[1]) {
-        return parseInt(match[1]);
+      if (match?.[1]) {
+        return parseInt(match[1], 10);
       }
     }
 

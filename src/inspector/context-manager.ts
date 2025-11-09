@@ -87,7 +87,7 @@ export class ContextManager extends EventEmitter {
   private config: ContextWindowConfig;
   private entries: Map<string, ContextEntry> = new Map();
   private summaries: Map<string, SemanticSummary> = new Map();
-  private lastCompression: Date = new Date();
+  // private _lastCompression!: Date; // Unused - removed for strict compliance
   private lastSummary: Date = new Date();
   private totalTokens: number = 0;
 
@@ -249,8 +249,8 @@ export class ContextManager extends EventEmitter {
    */
   async getContextSummary(timeRange?: { start: Date; end: Date }): Promise<SemanticSummary | null> {
     const now = new Date();
-    const start = timeRange?.start || new Date(now.getTime() - this.config.windowSize);
-    const end = timeRange?.end || now;
+    const start = timeRange?.start ?? new Date(now.getTime() - this.config.windowSize);
+    const end = timeRange?.end ?? now;
 
     // Check if we have a recent summary for this range
     const existingSummary = Array.from(this.summaries.values())
@@ -304,7 +304,8 @@ export class ContextManager extends EventEmitter {
       processingTime
     };
 
-    this.lastCompression = new Date();
+    // Track last compression time (commented for strict compliance)
+    // this._lastCompression = new Date();
 
     logger.info('ContextManager', 'Context compression completed', {
       originalSize: result.originalSize,
@@ -341,9 +342,9 @@ export class ContextManager extends EventEmitter {
     const entriesByPriority: Record<string, number> = {};
 
     entries.forEach(entry => {
-      entriesByType[entry.type] = (entriesByType[entry.type] || 0) + 1;
+      entriesByType[entry.type] = (entriesByType[entry.type] ?? 0) + 1;
       const priorityRange = this.getPriorityRange(entry.priority);
-      entriesByPriority[priorityRange] = (entriesByPriority[priorityRange] || 0) + 1;
+      entriesByPriority[priorityRange] = (entriesByPriority[priorityRange] ?? 0) + 1;
     });
 
     const timestamps = entries.map(e => e.timestamp);

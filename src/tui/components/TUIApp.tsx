@@ -4,11 +4,11 @@
  * Main application component handling screen routing and global state
  */
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useApp } from 'ink';
 import { TUIConfig, TUIState, TerminalResizeEvent, SignalUpdateEvent, AgentUpdateEvent, HistoryUpdateEvent, IntroCompleteEvent, ScreenType, AgentCard, PRPItem, HistoryItem } from '../types/TUIConfig.js';
 import { EventBus } from '../../shared/events.js';
-import { IntroSequence } from './IntroSequence.js';
+import { VideoIntro } from './VideoIntro.js';
 import { OrchestratorScreen } from './screens/OrchestratorScreen.js';
 import { PRPContextScreen } from './screens/PRPContextScreen.js';
 import { AgentScreen } from './screens/AgentScreen.js';
@@ -21,6 +21,62 @@ import { createLayerLogger } from '../../shared/logger.js';
 
 const logger = createLayerLogger('tui');
 
+// Helper functions for real-time data conversion
+function getRoleForSignal(signal: any): string {
+  const category = signal.category;
+  const roleMap: Record<string, string> = {
+    'system': 'robo-system-analyst',
+    'development': 'robo-developer',
+    'analysis': 'robo-system-analyst',
+    'incident': 'robo-devops-sre',
+    'coordination': 'orchestrator',
+    'testing': 'robo-aqa',
+    'release': 'robo-devops-sre',
+    'design': 'robo-ux-ui-designer'
+  };
+  return roleMap[category] || 'robo-developer';
+}
+
+function getStatusForSignals(signals: any[]): string {
+  const activeSignals = signals.filter(s => s.state === 'active' || s.state === 'progress');
+  const highPrioritySignals = signals.filter(s => s.code === '[FF]' || s.code === '[bb]' || s.code === '[ff]');
+
+  if (highPrioritySignals.length > 0) return 'RUNNING';
+  if (activeSignals.length > 0) return 'SPAWNING';
+  return 'IDLE';
+}
+
+function getStatusIcon(status: string): string {
+  switch (status?.toUpperCase()) {
+    case 'SPAWNING': return '♪';
+    case 'RUNNING': return '♬';
+    case 'IDLE': return '♫';
+    case 'ERROR': return '♫';
+    default: return '♫';
+  }
+}
+
+function formatTimeLeft(activeTime?: number): string {
+  if (!activeTime) return 'T--:--';
+  const minutes = Math.floor(activeTime / 60);
+  const seconds = Math.floor(activeTime % 60);
+  return `T-${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function formatActiveTime(activeTime?: number): string {
+  if (!activeTime) return '00:00:00';
+  const hours = Math.floor(activeTime / 3600);
+  const minutes = Math.floor((activeTime % 3600) / 60);
+  const seconds = Math.floor(activeTime % 60);
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function formatTokenCount(tokens?: number): string {
+  if (!tokens) return '0';
+  if (tokens >= 1000) return `${(tokens / 1000).toFixed(1)}k`;
+  return tokens.toString();
+}
+
 interface TUIAppProps {
   config: TUIConfig;
   eventBus: EventBus;
@@ -29,6 +85,11 @@ interface TUIAppProps {
 export function TUIApp({ config, eventBus }: TUIAppProps) {
   const { exit } = useApp();
   const [introComplete, setIntroComplete] = useState(false);
+
+  // Refs for debouncing and race condition prevention
+  const updateTimeoutRef = useRef<NodeJS.Timeout>();
+  const lastUpdateRef = useRef<number>(0);
+
   const [state, setState] = useState<TUIState>(() => ({
     currentScreen: 'orchestrator',
     debugMode: false,
@@ -44,12 +105,28 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
     terminalLayout: getTerminalLayout(config)
   }));
 
+  // Debounced state update to prevent excessive re-renders
+  const debouncedSetState = useCallback((updater: (prev: TUIState) => TUIState) => {
+    const now = Date.now();
+
+    // Clear existing timeout
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+
+    // Debounce updates to 100ms for <100ms latency requirement
+    updateTimeoutRef.current = setTimeout(() => {
+      setState(updater);
+      lastUpdateRef.current = Date.now();
+    }, 100);
+  }, []);
+
   // Calculate terminal layout
   const terminalLayout = useMemo(() => {
     return getTerminalLayout(config);
-  }, [config, state.terminalLayout.columns, state.terminalLayout.rows]);
+  }, [config]);
 
-  // Setup event listeners
+  // Setup real-time EventBus integration
   useEffect(() => {
     const handleTerminalResize = (...args: unknown[]) => {
       const event = args[0] as TerminalResizeEvent;
@@ -60,47 +137,189 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
       logger.debug('resize', 'Terminal resized', event as unknown as Record<string, unknown>);
     };
 
-    const handleSignalUpdate = (...args: unknown[]) => {
-      const event = args[0] as SignalUpdateEvent;
-      setState(prev => {
-        const prp = prev.prps.get(event.prpName);
-        if (!prp) return prev;
+    // Handle real-time signal events from scanner with error handling
+    const handleSignalEvent = (event: any) => {
+      try {
+        if (event?.type === 'signal' && event?.data) {
+          const signal = event.data;
 
-        const updatedSignals = [...prp.signals];
-        const existingIndex = updatedSignals.findIndex(s => s.code === event.signal.code);
+          // Validate signal data
+          if (!signal || typeof signal !== 'object') {
+            logger.warn('tui', 'Invalid signal data received', event);
+            return;
+          }
 
-        if (existingIndex >= 0) {
-          updatedSignals[existingIndex] = event.signal;
-        } else {
-          updatedSignals.push(event.signal);
+          debouncedSetState(prev => {
+            // Extract PRP name from signal source or create default
+            const prpName = signal.source?.prpName || 'unknown-prp';
+
+            // Convert signal to TUI signal format
+            const tuiSignal = {
+              code: `[${signal.id || 'XX'}]`,
+              state: signal.priority >= 8 ? 'active' : 'resolved',
+              role: getRoleForSignal(signal),
+              latest: true
+            };
+
+            const existingPRP = prev.prps.get(prpName);
+            const signals = existingPRP?.signals || [];
+
+            // Update or add signal with race condition prevention
+            const updatedSignals = signals.filter(s => s.code !== tuiSignal.code);
+            updatedSignals.push(tuiSignal);
+
+            const updatedPRP = {
+              name: prpName,
+              status: getStatusForSignals(updatedSignals),
+              role: tuiSignal.role || 'robo-developer',
+              signals: updatedSignals.slice(-7), // Keep last 7 signals
+              lastUpdate: new Date()
+            };
+
+            const newPRPs = new Map(prev.prps);
+            newPRPs.set(prpName, updatedPRP);
+
+            return { ...prev, prps: newPRPs };
+          });
         }
-
-        const updatedPRP = { ...prp, signals: updatedSignals, lastUpdate: new Date() };
-        const newPRPs = new Map(prev.prps);
-        newPRPs.set(event.prpName, updatedPRP);
-
-        return { ...prev, prps: newPRPs };
-      });
+      } catch (error) {
+        logger.error('tui', 'Error in handleSignalEvent:', error);
+      }
     };
 
-    const handleAgentUpdate = (...args: unknown[]) => {
-      const event = args[0] as AgentUpdateEvent;
-      setState(prev => {
-        const existingAgent = prev.agents.get(event.agentId);
-        const updatedAgent = { ...existingAgent, ...event.update, lastUpdate: new Date() } as AgentCard;
-        const newAgents = new Map(prev.agents);
-        newAgents.set(event.agentId, updatedAgent);
+    // Handle real-time agent events from orchestrator with error handling
+    const handleAgentEvent = (event: any) => {
+      try {
+        if (event?.type?.startsWith('agent_') && event?.data) {
+          const agentData = event.data;
 
-        return { ...prev, agents: newAgents };
-      });
+          // Validate agent data
+          if (!agentData || typeof agentData !== 'object') {
+            logger.warn('tui', 'Invalid agent data received', event);
+            return;
+          }
+
+          debouncedSetState(prev => {
+            const agentId = agentData.agentId || `agent-${Date.now()}`;
+            const existingAgent = prev.agents.get(agentId);
+
+            // Race condition prevention: only update if newer
+            const eventTime = new Date(agentData.lastUpdate || Date.now());
+            const existingTime = existingAgent?.lastUpdate;
+
+            if (existingTime && eventTime <= existingTime) {
+              return prev; // Skip outdated event
+            }
+
+            // Convert agent event to TUI agent format
+            const tuiAgent: AgentCard = {
+              id: agentId,
+              statusIcon: getStatusIcon(agentData.status),
+              status: agentData.status?.toUpperCase() || 'RUNNING',
+              prp: agentData.prpName || 'unknown-prp',
+              role: agentData.role || 'robo-developer',
+              task: agentData.task || agentData.description || 'Processing...',
+              timeLeft: agentData.timeLeft || formatTimeLeft(agentData.activeTime),
+              progress: agentData.progress || 0,
+              output: agentData.output ?
+                [agentData.output].slice(-3) : // Keep only last 3 output lines
+                existingAgent?.output || ['Initializing...'],
+              tokens: formatTokenCount(agentData.tokensUsed),
+              active: formatActiveTime(agentData.activeTime),
+              lastUpdate: eventTime
+            };
+
+            const newAgents = new Map(prev.agents);
+            newAgents.set(agentId, tuiAgent);
+
+            return { ...prev, agents: newAgents };
+          });
+        }
+      } catch (error) {
+        logger.error('tui', 'Error in handleAgentEvent:', error);
+      }
     };
 
-    const handleHistoryUpdate = (...args: unknown[]) => {
-      const event = args[0] as HistoryUpdateEvent;
-      setState(prev => ({
-        ...prev,
-        history: [...prev.history.slice(-50), event.item] // Keep last 50 items
-      }));
+    // Handle real-time scanner events with error handling
+    const handleScannerEvent = (event: any) => {
+      try {
+        if (event?.type?.startsWith('scanner_') && event?.data) {
+          // Validate scanner event data
+          if (!event.data || typeof event.data !== 'object') {
+            logger.warn('tui', 'Invalid scanner event data received', event);
+            return;
+          }
+
+          const historyItem: HistoryItem = {
+            source: 'scanner',
+            timestamp: new Date().toISOString().replace('T', ' ').substr(0, 19),
+            data: event.data
+          };
+
+          // Use immediate setState for history (no debouncing needed for real-time logs)
+          setState(prev => ({
+            ...prev,
+            history: [...prev.history.slice(-50), historyItem]
+          }));
+        }
+      } catch (error) {
+        logger.error('tui', 'Error in handleScannerEvent:', error);
+      }
+    };
+
+    // Handle real-time inspector events with error handling
+    const handleInspectorEvent = (event: any) => {
+      try {
+        if (event?.type?.startsWith('inspector_') && event?.data) {
+          // Validate inspector event data
+          if (!event.data || typeof event.data !== 'object') {
+            logger.warn('tui', 'Invalid inspector event data received', event);
+            return;
+          }
+
+          const historyItem: HistoryItem = {
+            source: 'inspector',
+            timestamp: new Date().toISOString().replace('T', ' ').substr(0, 19),
+            data: event.data
+          };
+
+          // Use immediate setState for history (no debouncing needed for real-time logs)
+          setState(prev => ({
+            ...prev,
+            history: [...prev.history.slice(-50), historyItem]
+          }));
+        }
+      } catch (error) {
+        logger.error('tui', 'Error in handleInspectorEvent:', error);
+      }
+    };
+
+    // Handle orchestrator events with error handling and debouncing
+    const handleOrchestratorEvent = (event: any) => {
+      try {
+        if (event?.type?.startsWith('orchestrator_') && event?.data) {
+          // Validate orchestrator event data
+          if (!event.data || typeof event.data !== 'object') {
+            logger.warn('tui', 'Invalid orchestrator event data received', event);
+            return;
+          }
+
+          debouncedSetState(prev => ({
+            ...prev,
+            orchestrator: {
+              status: event.data.status || 'RUNNING',
+              prp: event.data.currentPRP || 'unknown-prp',
+              signals: prev.orchestrator?.signals || [],
+              latestSignalIndex: 0,
+              cotLines: event.data.cotLines || ['Processing...'],
+              toolCall: event.data.currentTool || '',
+              lastUpdate: new Date()
+            }
+          }));
+        }
+      } catch (error) {
+        logger.error('tui', 'Error in handleOrchestratorEvent:', error);
+      }
     };
 
     const handleIntroComplete = (...args: unknown[]) => {
@@ -110,21 +329,33 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
       logger.info('intro', 'Intro sequence completed', { success: event.success });
     };
 
-    // Subscribe to events
+    // Subscribe to real-time EventBus channels
+    const unsubscribeSignal = eventBus.subscribeToChannel('signals', handleSignalEvent);
+    const unsubscribeAgent = eventBus.subscribeToChannel('agents', handleAgentEvent);
+    const unsubscribeScanner = eventBus.subscribeToChannel('scanner', handleScannerEvent);
+    const unsubscribeInspector = eventBus.subscribeToChannel('inspector', handleInspectorEvent);
+    const unsubscribeOrchestrator = eventBus.subscribeToChannel('orchestrator', handleOrchestratorEvent);
+
+    // Keep keyboard events
     eventBus.on('terminal.resize', handleTerminalResize);
-    eventBus.on('signal.update', handleSignalUpdate);
-    eventBus.on('agent.update', handleAgentUpdate);
-    eventBus.on('history.update', handleHistoryUpdate);
     eventBus.on('intro.complete', handleIntroComplete);
 
     return () => {
+      // Cleanup all subscriptions
+      unsubscribeSignal();
+      unsubscribeAgent();
+      unsubscribeScanner();
+      unsubscribeInspector();
+      unsubscribeOrchestrator();
       eventBus.off('terminal.resize', handleTerminalResize);
-      eventBus.off('signal.update', handleSignalUpdate);
-      eventBus.off('agent.update', handleAgentUpdate);
-      eventBus.off('history.update', handleHistoryUpdate);
       eventBus.off('intro.complete', handleIntroComplete);
+
+      // Cleanup debounced updates
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
     };
-  }, [config, eventBus]);
+  }, [config, eventBus, debouncedSetState]);
 
   // Setup keyboard input handling
   useEffect(() => {
@@ -135,9 +366,10 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
         case '\t': // Tab
           setState(prev => {
             const screens: ScreenType[] = ['orchestrator', 'prp-context', 'agent', 'token-metrics'];
-            const currentIndex = screens.indexOf(prev.currentScreen);
+            const currentScreen = prev.currentScreen;
+            const currentIndex = screens.indexOf(currentScreen);
             const nextScreen = screens[(currentIndex + 1) % screens.length];
-            return { ...prev, currentScreen: nextScreen };
+            return { ...prev, currentScreen: nextScreen as ScreenType };
           });
           break;
 
@@ -189,115 +421,41 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
     }));
   }, []);
 
-  // Simulate some initial data for demonstration
+  // Initialize with system startup message
   useEffect(() => {
     if (introComplete) {
-      // Add some sample agents
-      const sampleAgents: AgentCard[] = [
-        {
-          id: 'agent-1',
-          statusIcon: '♬',
-          status: 'RUNNING',
-          prp: 'prp-agents-v05',
-          role: 'robo-aqa',
-          task: 'audit PRP links',
-          timeLeft: 'T–00:09',
-          progress: 35,
-          output: ['integrating cross-links...', 'commit staged: 3 files'],
-          tokens: '18.2k',
-          active: '00:01:43',
-          lastUpdate: new Date()
-        },
-        {
-          id: 'agent-2',
-          statusIcon: '♪',
-          status: 'SPAWNING',
-          prp: 'prp-landing',
-          role: 'robo-developer',
-          task: 'extract sections',
-          timeLeft: 'T–00:25',
-          progress: 12,
-          output: ['npm run build: ok', 'parsing md toc...'],
-          tokens: '4.3k',
-          active: '00:00:28',
-          lastUpdate: new Date()
-        }
-      ];
-
-      const samplePRPs: PRPItem[] = [
-        {
-          name: 'prp-agents-v05',
-          status: 'RUNNING',
-          role: 'robo-aqa',
-          signals: [
-            { code: '[  ]', state: 'placeholder' },
-            { code: '[aA]', state: 'active', role: 'robo-aqa' },
-            { code: '[pr]', state: 'active', role: 'robo-developer' },
-            { code: '[PR]', state: 'active', role: 'robo-aqa', latest: true },
-            { code: '[FF]', state: 'progress' },
-            { code: '[ob]', state: 'active', role: 'robo-developer' }
-          ],
-          lastUpdate: new Date()
-        },
-        {
-          name: 'prp-landing',
-          status: 'SPAWNING',
-          role: 'robo-developer',
-          signals: [
-            { code: '[  ]', state: 'placeholder' },
-            { code: '[  ]', state: 'placeholder' },
-            { code: '[  ]', state: 'placeholder' },
-            { code: '[FF]', state: 'progress' },
-            { code: '[  ]', state: 'placeholder' },
-            { code: '[  ]', state: 'placeholder' }
-          ],
-          lastUpdate: new Date()
-        }
-      ];
-
-      const sampleHistory: HistoryItem[] = [
-        {
-          source: 'system',
-          timestamp: '2025-11-02 13:22:01',
-          data: { startup: true, prpCount: 7, readyToSpawn: true }
-        },
-        {
-          source: 'scanner',
-          timestamp: '2025-11-02 13:22:04',
-          data: { detected: ['fs-change', 'new-branch', 'secrets-ref'], count: 3 }
-        },
-        {
-          source: 'inspector',
-          timestamp: '2025-11-02 13:22:08',
-          data: { impact: 'high', risk: 8, files: ['PRPs/agents-v05.md', 'PRPs/…'], why: 'cross-links missing' }
-        }
-      ];
+      // Add initial system startup message
+      const startupHistory: HistoryItem = {
+        source: 'system',
+        timestamp: new Date().toISOString().replace('T', ' ').substr(0, 19),
+        data: { startup: true, prpCount: 0, readyToSpawn: true }
+      };
 
       setState(prev => ({
         ...prev,
-        agents: new Map(sampleAgents.map(a => [a.id, a])),
-        prps: new Map(samplePRPs.map(p => [p.name, p])),
-        history: sampleHistory,
+        history: [startupHistory],
         orchestrator: {
-          status: 'RUNNING',
-          prp: 'prp-agents-v05',
-          signals: samplePRPs[0].signals,
-          latestSignalIndex: 3,
-          cotLines: [
-            '◇ Δ from scanner → pick role → budget',
-            '⇢ diff.read → { "changed": 6, "hot": ["PRPs/agents-v05.md","…"] }',
-            '✦ next: AQA first, then DEV'
-          ],
-          toolCall: 'diff.read → { "changed": 6, "hot": ["PRPs/agents-v05.md","…"] }',
+          status: 'IDLE',
+          prp: 'none',
+          signals: [],
+          latestSignalIndex: 0,
+          cotLines: ['System initialized, waiting for PRP data...'],
+          toolCall: '',
           lastUpdate: new Date()
         }
       }));
+
+      // Emit TUI ready event for other components
+      eventBus.emit('tui.ready', {
+        timestamp: new Date(),
+        config: config
+      });
     }
-  }, [introComplete]);
+  }, [introComplete, config, eventBus]);
 
   // Render intro sequence if enabled and not complete
   if (config.animations.intro.enabled && !introComplete) {
-    return <IntroSequence config={config} onComplete={() => setIntroComplete(true)} />;
+    return <VideoIntro config={config} onComplete={(success) => setIntroComplete(success)} />;
   }
 
   // Render main TUI

@@ -36,20 +36,20 @@ export class SignalParser {
 
     while ((match = this.signalPattern.exec(content)) !== null) {
       const signal = match[1];
-      const position = this.getPosition(content, match.index);
+      const position = this.getPosition(content, match.index ?? 0);
       const lineIndex = position.line;
       const lineContent = lines[lineIndex] || '';
 
       // Extract context (50 chars before and after)
       const startContext = Math.max(0, position.column - 50);
-      const endContext = Math.min(lineContent.length, position.column + signal.length + 50);
+      const endContext = Math.min(lineContent.length, position.column + (signal?.length || 0) + 50);
       const context = lineContent.substring(startContext, endContext);
 
       // Determine signal type
-      const type = this.determineSignalType(signal, lineContent);
+      const type = signal ? this.determineSignalType(signal, lineContent) : 'unknown';
 
       signals.push({
-        signal,
+        signal: signal || '',
         context: context.trim(),
         line: lineIndex + 1,
         column: position.column,
@@ -116,7 +116,8 @@ export class SignalParser {
     const beforeIndex = content.substring(0, index);
     const lines = beforeIndex.split('\n');
     const line = lines.length - 1;
-    const column = lines[lines.length - 1].length;
+    const lastLine = lines[lines.length - 1];
+    const column = lastLine ? lastLine.length : 0;
     return { line, column };
   }
 
@@ -158,7 +159,9 @@ export class SignalParser {
 
     this.signalPattern.lastIndex = 0;
     while ((match = this.signalPattern.exec(content)) !== null) {
-      signals.add(match[1]);
+      if (match[1]) {
+        signals.add(match[1]);
+      }
     }
 
     return Array.from(signals);
@@ -174,7 +177,9 @@ export class SignalParser {
     this.signalPattern.lastIndex = 0;
     while ((match = this.signalPattern.exec(content)) !== null) {
       const signal = match[1];
-      counts[signal] = (counts[signal] || 0) + 1;
+      if (signal) { // Ensure signal is not undefined
+        counts[signal] = (counts[signal] || 0) + 1;
+      }
     }
 
     return counts;

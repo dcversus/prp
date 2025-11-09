@@ -1,112 +1,92 @@
 /**
- * Simple Nudge Test
+ * Simple Nudge Test Functions
  *
- * Basic test script for nudge functionality without complex imports
+ * Basic test utilities for nudge system connectivity and functionality.
  */
 
-export async function testNudgeConnectivity(): Promise<boolean> {
-  const secret = process.env.NUDGE_SECRET;
-  const endpoint = process.env.NUDGE_ENDPOINT || 'https://dcmaid.theedgestory.org/nudge';
+import { createNudgeClient } from './client.js';
+import { logger } from '../utils/logger.js';
 
-  if (!secret) {
-    console.error('❌ NUDGE_SECRET not found in environment variables');
-    return false;
-  }
-
-  console.log(`🧪 Testing nudge connectivity to: ${endpoint}`);
+/**
+ * Run comprehensive nudge system test
+ */
+export async function runNudgeTest(): Promise<boolean> {
+  logger.info('nudge', '🧪 Starting Nudge System Test...');
 
   try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${secret}`,
-        'User-Agent': 'prp-cli/0.5.0'
-      },
-      body: JSON.stringify({
-        type: 'direct',
-        message: 'PRP CLI Connectivity Test',
-        urgency: 'low'
-      }),
-      signal: AbortSignal.timeout(10000)
-    });
+    // Test 1: Configuration validation
+    logger.info('nudge', 'Test 1: Configuration validation');
+    const client = createNudgeClient();
+    const configStatus = client.getConfigStatus();
 
-    if (response.ok) {
-      const data = await response.json();
-      console.log('✅ Nudge connectivity test PASSED');
-      console.log('📊 Response:', data);
-      return true;
-    } else {
-      console.error(`❌ Nudge connectivity test FAILED: ${response.status} ${response.statusText}`);
-      const errorText = await response.text();
-      console.error('Error details:', errorText);
+    if (!configStatus.hasSecret) {
+      logger.error('nudge', '❌ NUDGE_SECRET not configured');
       return false;
     }
 
+    logger.info('nudge', '✅ Configuration validation passed');
+    logger.info('nudge', `   Endpoint: ${configStatus.endpoint}`);
+    logger.info('nudge', `   Timeout: ${configStatus.timeout}ms`);
+
+    // Test 2: Connectivity test
+    logger.info('nudge', 'Test 2: Connectivity test');
+    const connectivityResult = await testNudgeConnectivity();
+
+    if (!connectivityResult) {
+      logger.error('nudge', '❌ Connectivity test failed');
+      return false;
+    }
+
+    logger.info('nudge', '✅ Connectivity test passed');
+
+    // Test 3: Message sending
+    logger.info('nudge', 'Test 3: Message sending test');
+    try {
+      const response = await client.sendNudge({
+        type: 'direct',
+        message: 'PRP CLI Nudge System Test - Successful!',
+        urgency: 'low',
+        metadata: {
+          timestamp: new Date().toISOString(),
+          test_mode: true,
+          source: 'prp-cli-test'
+        }
+      });
+
+      if (response.success) {
+        logger.info('nudge', '✅ Message sending test passed');
+        logger.info('nudge', `   Message ID: ${response.message_id}`);
+        logger.info('nudge', `   Delivery Type: ${response.delivery_type}`);
+        if (response.sent_to) {
+          logger.info('nudge', `   Sent To: ${response.sent_to.join(', ')}`);
+        }
+      } else {
+        logger.error('nudge', '❌ Message sending test failed');
+        return false;
+      }
+    } catch (error) {
+      logger.error('nudge', '❌ Message sending test failed', error instanceof Error ? error : new Error(String(error)));
+      return false;
+    }
+
+    logger.info('nudge', '🎉 All nudge system tests passed!');
+    return true;
+
   } catch (error) {
-    console.error('❌ Nudge connectivity test FAILED:', error);
+    logger.error('nudge', '❌ Nudge system test failed', error instanceof Error ? error : new Error(String(error)));
     return false;
   }
 }
 
-export async function testSecretRetrieval(): Promise<boolean> {
-  const secret = process.env.NUDGE_SECRET;
-  const adminId = process.env.ADMIN_ID;
-
-  if (!secret) {
-    console.error('❌ NUDGE_SECRET not found in environment variables');
+/**
+ * Test nudge connectivity only
+ */
+export async function testNudgeConnectivity(): Promise<boolean> {
+  try {
+    const client = createNudgeClient();
+    return await client.testConnectivity();
+  } catch (error) {
+    logger.error('nudge', 'Nudge connectivity test failed', error instanceof Error ? error : new Error(String(error)));
     return false;
   }
-
-  if (!adminId) {
-    console.warn('⚠️  ADMIN_ID not found in environment variables');
-  }
-
-  console.log('🔑 Secret Configuration:');
-  console.log(`   Secret: ${secret.substring(0, 10)}...${secret.substring(secret.length - 10)}`);
-  console.log(`   Length: ${secret.length} characters`);
-  if (adminId) {
-    console.log(`   Admin ID: ${adminId}`);
-  }
-
-  return true;
-}
-
-export function printNudgeStatus() {
-  const secret = process.env.NUDGE_SECRET;
-  const adminId = process.env.ADMIN_ID;
-  const endpoint = process.env.NUDGE_ENDPOINT || 'https://dcmaid.theedgestory.org/nudge';
-
-  console.log('📊 Nudge System Status:');
-  console.log(`   Endpoint: ${endpoint}`);
-  console.log(`   Secret Configured: ${secret ? '✅ Yes' : '❌ No'}`);
-  console.log(`   Admin ID Configured: ${adminId ? '✅ Yes' : '⚠️  No'}`);
-
-  if (secret) {
-    console.log(`   Secret Length: ${secret.length} characters`);
-  }
-}
-
-// Main test function
-export async function runNudgeTest() {
-  console.log('🚀 Starting Nudge System Test...\n');
-
-  printNudgeStatus();
-  console.log('');
-
-  const secretOk = await testSecretRetrieval();
-  if (!secretOk) {
-    console.log('\n❌ Nudge system test FAILED: Secret configuration issue');
-    return false;
-  }
-
-  console.log('');
-  const connectivityOk = await testNudgeConnectivity();
-  if (!connectivityOk) {
-    console.log('\n❌ Nudge system test FAILED: Connectivity issue');
-    return false;
-  }
-
-  console.log('\n🎉 Nudge system test PASSED! System is ready to use.');
-  return true;
 }

@@ -5,7 +5,6 @@
  * implements the exact format from the PRP specification
  */
 
-import React from 'react';
 import { Box, Text } from 'ink';
 import { AgentCard as AgentCardType, TUIConfig } from '../types/TUIConfig.js';
 import { MusicIcon } from './MusicIcon.js';

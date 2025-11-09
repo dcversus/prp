@@ -103,7 +103,11 @@ async function handleCICommand(options: CIOptions): Promise<void> {
     }
 
     if (options.setup) {
-      const result = await ciManager.setupPipeline(options.provider!, options.force, options.dryRun);
+      if (!options.provider) {
+        logger.error('ci', 'Provider is required for setup');
+        process.exit(1);
+      }
+      const result = await ciManager.setupPipeline(options.provider, options.force, options.dryRun);
       if (result.success) {
         logger.success('✅ CI/CD pipeline setup completed successfully');
       } else {
@@ -343,11 +347,11 @@ class CIManager {
     logger.info('📊 CI/CD Status');
 
     const config = this.config.settings.ci;
-    logger.info(`Provider: ${config?.provider || 'Not configured'}`);
+    logger.info(`Provider: ${config?.provider ?? 'Not configured'}`);
     logger.info(`Status: ${config?.enabled ? '✅ Enabled' : '❌ Disabled'}`);
 
     if (config?.enabled) {
-      logger.info(`Workflows: ${Object.keys(config.workflows || {}).length} configured`);
+      logger.info(`Workflows: ${Object.keys(config.workflows ?? {}).length} configured`);
 
       // Check GitHub Actions status if configured
       if (config.provider === 'github') {
@@ -623,22 +627,29 @@ class CIManager {
       const trimmed = line.trim();
 
       if (trimmed.startsWith('name:')) {
-        workflow.name = trimmed.split(':')[1].trim().toLowerCase().replace(/\s+/g, '-');
-        workflow.description = trimmed.split(':')[1].trim();
+        const nameParts = trimmed.split(':');
+        if (nameParts.length > 1 && nameParts[1]) {
+          const name = nameParts[1].trim();
+          workflow.name = name.toLowerCase().replace(/\s+/g, '-');
+          workflow.description = name;
+        }
       } else if (trimmed.startsWith('on:')) {
         // Parse triggers
         continue;
       } else if (trimmed.startsWith('push:') || trimmed.startsWith('pull_request:')) {
-        const trigger = trimmed.split(':')[0];
-        if (!workflow.triggers!.includes(trigger)) {
-          workflow.triggers!.push(trigger);
+        const triggerParts = trimmed.split(':');
+        if (triggerParts.length > 0 && triggerParts[0]) {
+          const trigger = triggerParts[0];
+          if (workflow.triggers && !workflow.triggers.includes(trigger)) {
+            workflow.triggers.push(trigger);
+          }
         }
       } else if (trimmed.startsWith('jobs:')) {
         continue;
       } else if (trimmed.match(/^\s+[a-zA-Z0-9_-]+:$/)) {
         // New job
-        if (currentJob) {
-          workflow.jobs!.push(currentJob as CIJob);
+        if (currentJob && workflow.jobs) {
+          workflow.jobs.push(currentJob as CIJob);
         }
         currentJob = {
           name: trimmed.trim().replace(':', ''),
@@ -646,36 +657,57 @@ class CIManager {
           steps: []
         };
       } else if (trimmed.includes('runs-on:') && currentJob) {
-        const runsOn = trimmed.split(':')[1].trim();
-        currentJob.runsOn = [runsOn];
+        const runsOnParts = trimmed.split(':');
+        if (runsOnParts.length > 1 && runsOnParts[1]) {
+          const runsOn = runsOnParts[1].trim();
+          currentJob.runsOn = [runsOn];
+        }
       } else if (trimmed.includes('timeout-minutes:') && currentJob) {
-        const timeout = parseInt(trimmed.split(':')[1].trim());
-        currentJob.timeout = timeout;
+        const timeoutParts = trimmed.split(':');
+        if (timeoutParts.length > 1 && timeoutParts[1]) {
+          const timeout = parseInt(timeoutParts[1].trim(), 10);
+          if (!isNaN(timeout)) {
+            currentJob.timeout = timeout;
+          }
+        }
       } else if (trimmed.includes('environment:') && currentJob) {
-        currentJob.environment = trimmed.split(':')[1].trim();
+        const envParts = trimmed.split(':');
+        if (envParts.length > 1 && envParts[1]) {
+          currentJob.environment = envParts[1].trim();
+        }
       } else if (trimmed.includes('steps:') && currentJob) {
         continue;
       } else if (trimmed.includes('- name:') && currentJob) {
-        if (currentStep) {
-          currentJob.steps!.push(currentStep as CIStep);
+        if (currentStep && currentJob.steps) {
+          currentJob.steps.push(currentStep as CIStep);
         }
-        currentStep = {
-          name: trimmed.split(':')[1].trim().replace(/['"]/g, ''),
-          action: ''
-        };
+        const stepNameParts = trimmed.split(':');
+        if (stepNameParts.length > 1 && stepNameParts[1]) {
+          currentStep = {
+            name: stepNameParts[1].trim().replace(/['"]/g, ''),
+            action: ''
+          };
+        }
       } else if (trimmed.includes('uses:') && currentStep) {
-        currentStep.uses = trimmed.split(':')[1].trim();
-        currentStep.action = trimmed.split(':')[1].split('@')[0];
+        const usesParts = trimmed.split(':');
+        if (usesParts.length > 1 && usesParts[1]) {
+          const usesValue = usesParts[1].trim();
+          currentStep.uses = usesValue;
+          currentStep.action = usesValue.split('@')[0];
+        }
       } else if (trimmed.includes('run:') && currentStep) {
-        currentStep.run = trimmed.split(':')[1].trim().replace(/['"]/g, '');
-        currentStep.action = 'run';
+        const runParts = trimmed.split(':');
+        if (runParts.length > 1 && runParts[1]) {
+          currentStep.run = runParts[1].trim().replace(/['"]/g, '');
+          currentStep.action = 'run';
+        }
       }
     }
 
     // Add final job and step
-    if (currentJob && currentStep) {
-      currentJob.steps!.push(currentStep as CIStep);
-      workflow.jobs!.push(currentJob as CIJob);
+    if (currentJob && currentStep && currentJob.steps && workflow.jobs) {
+      currentJob.steps.push(currentStep as CIStep);
+      workflow.jobs.push(currentJob as CIJob);
     }
 
     return workflow.name ? workflow as CIWorkflow : null;
@@ -691,30 +723,34 @@ class CIManager {
       result.valid = false;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!workflow.triggers || workflow.triggers.length === 0) {
-      result.errors.push(`Workflow ${workflow.name} has no triggers`);
+      result.errors.push(`Workflow ${workflow.name || 'unnamed'} has no triggers`);
       result.valid = false;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!workflow.jobs || workflow.jobs.length === 0) {
-      result.errors.push(`Workflow ${workflow.name} has no jobs`);
+      result.errors.push(`Workflow ${workflow.name || 'unnamed'} has no jobs`);
       result.valid = false;
     }
 
     // Validate jobs
     for (const job of workflow.jobs) {
       if (!job.name) {
-        result.errors.push(`Workflow ${workflow.name} has job without name`);
+        result.errors.push(`Workflow ${workflow.name || 'unnamed'} has job without name`);
         result.valid = false;
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!job.runsOn || job.runsOn.length === 0) {
-        result.errors.push(`Workflow ${workflow.name} job ${job.name} has no runs-on configuration`);
+        result.errors.push(`Workflow ${workflow.name || 'unnamed'} job ${job.name || 'unnamed'} has no runs-on configuration`);
         result.valid = false;
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!job.steps || job.steps.length === 0) {
-        result.warnings.push(`Workflow ${workflow.name} job ${job.name} has no steps`);
+        result.warnings.push(`Workflow ${workflow.name || 'unnamed'} job ${job.name || 'unnamed'} has no steps`);
       }
 
       // Validate steps

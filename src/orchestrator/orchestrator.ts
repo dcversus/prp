@@ -624,8 +624,8 @@ export class Orchestrator extends EventEmitter {
 
       logger.debug('orchestrator', 'Chain of thought completed', {
         decisionId,
-        depth: chainOfThoughtResult.steps?.length || 0,
-        confidence: chainOfThoughtResult.confidence || 0
+        depth: chainOfThoughtResult.steps.length,
+        confidence: chainOfThoughtResult.confidence
       });
 
       return chainOfThoughtResult;
@@ -689,7 +689,7 @@ export class Orchestrator extends EventEmitter {
       plan.steps.push(step);
 
       // Add dependencies
-      if (action.dependencies && action.dependencies.length > 0) {
+      if (action.dependencies.length) {
         plan.dependencies.set(step.id, action.dependencies);
       }
     }
@@ -746,9 +746,9 @@ export class Orchestrator extends EventEmitter {
         summary: this.generateOutcomeSummary(results),
         achievedGoals: results.filter(r => r.status === 'completed').map(r => {
           const result = r.result as { goal?: string } | undefined;
-          return result?.goal || 'Task completed';
+          return result?.goal ?? 'Task completed';
         }),
-        blockedItems: results.filter(r => r.status === 'failed').map(r => r.error || 'Task failed'),
+        blockedItems: results.filter(r => r.status === 'failed').map(r => r.error ?? 'Task failed'),
         nextActions: this.getNextActions(results),
         recommendations: this.generateRecommendations(results),
         lessons: this.extractLessons(results),
@@ -829,7 +829,7 @@ export class Orchestrator extends EventEmitter {
       agentSession.performance.tasksCompleted++;
       if (result.success) {
         // Calculate average task time
-        const totalTime = agentSession.performance.averageTaskTime * (agentSession.performance.tasksCompleted - 1) + (result.duration || 0);
+        const totalTime = agentSession.performance.averageTaskTime * (agentSession.performance.tasksCompleted - 1) + (result.duration ?? 0);
         agentSession.performance.averageTaskTime = totalTime / agentSession.performance.tasksCompleted;
       } else {
         agentSession.performance.errorCount++;
@@ -904,7 +904,7 @@ export class Orchestrator extends EventEmitter {
   private async simulateModelCall(prompt: string, options: unknown): Promise<unknown> {
     // Extract options for simulation
     const optionsObj = options as Record<string, unknown>;
-    const delay = (optionsObj?.delay as number) || (200 + Math.random() * 300);
+    const delay = (optionsObj.delay as number) || (200 + Math.random() * 300);
 
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, delay));
@@ -1017,13 +1017,13 @@ export class Orchestrator extends EventEmitter {
       const content = (response as ModelResponse).content || '{}';
       const parsed = JSON.parse(content);
       return {
-        reasoning: parsed.reasoning || 'Chain of thought analysis completed',
-        steps: parsed.steps || [],
-        decision: parsed.decision || 'analyze',
-        confidence: parsed.confidence || 0.5,
-        alternatives: parsed.alternatives || [],
-        risks: parsed.risks || [],
-        nextSteps: parsed.nextSteps || []
+        reasoning: parsed.reasoning ?? 'Chain of thought analysis completed',
+        steps: parsed.steps ?? [],
+        decision: parsed.decision ?? 'analyze',
+        confidence: parsed.confidence ?? 0.5,
+        alternatives: parsed.alternatives ?? [],
+        risks: parsed.risks ?? [],
+        nextSteps: parsed.nextSteps ?? []
       };
     } catch (error) {
       logger.warn('orchestrator', 'Failed to parse chain of thought response', { error: error instanceof Error ? error.message : String(error) });
@@ -1048,16 +1048,16 @@ export class Orchestrator extends EventEmitter {
       const parsed = JSON.parse(content);
       return {
         id: HashUtils.generateId(),
-        type: parsed.type || 'coordinate',
-        priority: parsed.priority || 5,
-        reasoning: parsed.reasoning || 'Default reasoning',
-        confidence: parsed.confidence || 0.5,
-        actions: parsed.actions || [],
-        agents: parsed.agents || [],
-        tools: parsed.tools || [],
-        checkpoints: parsed.checkpoints || [],
-        estimatedDuration: parsed.estimatedDuration || 30000,
-        tokenEstimate: parsed.tokenEstimate || 20000
+        type: parsed.type ?? 'coordinate',
+        priority: parsed.priority ?? 5,
+        reasoning: parsed.reasoning ?? 'Default reasoning',
+        confidence: parsed.confidence ?? 0.5,
+        actions: parsed.actions ?? [],
+        agents: parsed.agents ?? [],
+        tools: parsed.tools ?? [],
+        checkpoints: parsed.checkpoints ?? [],
+        estimatedDuration: parsed.estimatedDuration ?? 30000,
+        tokenEstimate: parsed.tokenEstimate ?? 20000
       };
     } catch (error) {
       logger.warn('orchestrator', 'Failed to parse decision response', { error: error instanceof Error ? error.message : String(error) });
@@ -1130,7 +1130,7 @@ export class Orchestrator extends EventEmitter {
       'wait': 'wait',
       'escalate': 'decision'
     };
-    return typeMap[type] || 'tool_call';
+    return typeMap[type] ?? 'tool_call';
   }
 
   /**
@@ -1138,10 +1138,10 @@ export class Orchestrator extends EventEmitter {
    */
   private getStepAssignee(action: DecisionAction): string | undefined {
     const payload = action.payload as Record<string, unknown>;
-    if (action.type === 'spawn_agent' && payload?.agentId) {
+    if (action.type === 'spawn_agent' && payload.agentId) {
       return payload.agentId as string;
     }
-    if (action.type === 'call_tool' && payload?.toolName) {
+    if (action.type === 'call_tool' && payload.toolName) {
       return payload.toolName as string;
     }
     return undefined;
@@ -1159,7 +1159,7 @@ export class Orchestrator extends EventEmitter {
       if (visited.has(stepId)) return;
       visited.add(stepId);
 
-      const dependencies = plan.dependencies.get(stepId) || [];
+      const dependencies = plan.dependencies.get(stepId) ?? [];
       for (const dep of dependencies) {
         visit(dep);
       }
@@ -1184,10 +1184,10 @@ export class Orchestrator extends EventEmitter {
   private canExecuteStep(step: ExecutionStep, plan: ExecutionPlan): boolean {
     if (step.status !== 'pending') return false;
 
-    const dependencies = plan.dependencies.get(step.id) || [];
+    const dependencies = plan.dependencies.get(step.id) ?? [];
     for (const depId of dependencies) {
       const depStep = plan.steps.find(s => s.id === depId);
-      if (!depStep || depStep.status !== 'completed') {
+      if (depStep?.status !== 'completed') {
         return false;
       }
     }
@@ -1400,7 +1400,7 @@ export class Orchestrator extends EventEmitter {
    * Calculate token usage
    */
   private calculateTokenUsage(results: ActionResult[]): number {
-    return results.reduce((total, r) => total + (r.tokenUsage || 0), 0);
+    return results.reduce((total, r) => total + (r.tokenUsage ?? 0), 0);
   }
 
   /**
@@ -1483,7 +1483,7 @@ export class Orchestrator extends EventEmitter {
       activeDecisions: this.activeDecisions.size,
       agentCount: this.agents.size,
       queueLength: this.decisions.size,
-      memoryUsage: process['memoryUsage']?.() || {},
+      memoryUsage: process.memoryUsage(),
       uptime: Date.now() - this.state.metrics.startTime.getTime()
     };
   }
@@ -1496,7 +1496,7 @@ export class Orchestrator extends EventEmitter {
 
     // Token budget constraint
     const tokenState = storageManager.getTokenState();
-    if (tokenState.limits.globalLimits?.daily && tokenState.accounting.totalUsed > tokenState.limits.globalLimits.daily * 0.9) {
+    if (tokenState.limits.globalLimits.daily && tokenState.accounting.totalUsed > tokenState.limits.globalLimits.daily * 0.9) {
       constraints.push({
         id: 'token-budget-warning',
         type: 'resource',
@@ -1552,7 +1552,7 @@ export class Orchestrator extends EventEmitter {
       category: def.category,
       description: def.description,
       enabled: def.enabled,
-      priority: typeof def.priority === 'string' ? parseInt(def.priority, 10) : (def.priority || 5),
+      priority: typeof def.priority === 'string' ? parseInt(def.priority, 10) : def.priority,
       conditions: [],
       applicable: def.enabled
     }));
@@ -1563,7 +1563,7 @@ export class Orchestrator extends EventEmitter {
    */
   private calculateTokenBudget(): number {
     const tokenState = storageManager.getTokenState();
-    return Math.max(0, (tokenState.limits.globalLimits?.daily || 0) - tokenState.accounting.totalUsed);
+    return Math.max(0, (tokenState.limits.globalLimits.daily ?? 0) - tokenState.accounting.totalUsed);
   }
 
   /**
@@ -1910,12 +1910,12 @@ Format your response as JSON:
         supportsCodeExecution: agentConfig.capabilities.supportsCodeExecution || false,
         maxContextLength: agentConfig.capabilities.maxContextLength,
         supportedModels: agentConfig.capabilities.supportedModels,
-        supportedFileTypes: agentConfig.capabilities.supportedFileTypes || [],
-        canAccessInternet: agentConfig.capabilities.canAccessInternet || false,
-        canAccessFileSystem: agentConfig.capabilities.canAccessFileSystem || true,
-        canExecuteCommands: agentConfig.capabilities.canExecuteCommands || false,
-        availableTools: agentConfig.capabilities.availableTools || [],
-        specializations: agentConfig.roles || []
+        supportedFileTypes: agentConfig.capabilities.supportedFileTypes,
+        canAccessInternet: agentConfig.capabilities.canAccessInternet,
+        canAccessFileSystem: agentConfig.capabilities.canAccessFileSystem,
+        canExecuteCommands: agentConfig.capabilities.canExecuteCommands,
+        availableTools: agentConfig.capabilities.availableTools,
+        specializations: agentConfig.roles
       }
     };
 
@@ -1978,7 +1978,7 @@ Format your response as JSON:
 
     if (updates.notes) {
       updates.notes.forEach(note => {
-        this.contextMemory.sharedNotes.set((note as { id?: string }).id || 'unknown', note as SharedNote);
+        this.contextMemory.sharedNotes.set((note as { id?: string }).id ?? 'unknown', note as SharedNote);
       });
     }
 
@@ -2024,15 +2024,13 @@ Format your response as JSON:
     logger.info('shutdown', 'Shutting down orchestrator');
 
     // Cancel active decisions
-    Array.from(this.activeDecisions.entries()).forEach(([id, promise]) => {
+    Array.from(this.activeDecisions.entries()).forEach(([id]) => {
       try {
         // Cancel the promise - note: actual promise cancellation would require AbortController
         logger.info('shutdown', 'Cancelling active decision', { decisionId: id });
         // In a real implementation, we would use AbortController or similar to cancel the promise
-        if (promise && typeof promise === 'object') {
-          // Attempt to cancel if the promise supports cancellation
-          logger.debug('shutdown', `Attempting to cancel promise for decision ${id}`);
-        }
+        // Attempt to cancel if the promise supports cancellation
+        logger.debug('shutdown', `Attempting to cancel promise for decision ${id}`);
       } catch (error) {
         logger.warn('shutdown', 'Failed to cancel decision', { decisionId: id, error: error instanceof Error ? error.message : String(error) });
       }
@@ -2086,7 +2084,7 @@ class ToolImplementationClass {
     // Mock implementation
     const params = parameters as { path?: string };
     return {
-      content: `File content from ${params.path || 'unknown'}`,
+      content: `File content from ${params.path ?? 'unknown'}`,
       size: 1024,
       lines: 10
     };
@@ -2096,7 +2094,7 @@ class ToolImplementationClass {
     // Mock implementation
     const params = parameters as { command?: string };
     return {
-      output: `Git command executed: ${params.command || 'unknown'}`,
+      output: `Git command executed: ${params.command ?? 'unknown'}`,
       status: 'success'
     };
   }
@@ -2105,7 +2103,7 @@ class ToolImplementationClass {
     // Mock implementation
     const params = parameters as { command?: string };
     return {
-      output: `Command executed: ${params.command || 'unknown'}`,
+      output: `Command executed: ${params.command ?? 'unknown'}`,
       exitCode: 0,
       duration: 1000
     };
@@ -2116,7 +2114,7 @@ class ToolImplementationClass {
     const params = parameters as { url?: string };
     return {
       status: 200,
-      body: `Response from ${params.url || 'unknown'}`,
+      body: `Response from ${params.url ?? 'unknown'}`,
       headers: {}
     };
   }

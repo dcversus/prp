@@ -90,12 +90,12 @@ export class ContextManager {
   
   constructor(contextLimits: Partial<ContextLimits> = {}) {
     this.contextLimits = {
-      prp: contextLimits.prp || 30000,
-      shared: contextLimits.shared || 10000,
-      agents: contextLimits.agents || 20000,
-      tools: contextLimits.tools || 5000,
-      system: contextLimits.system || 5000,
-      total: contextLimits.total || 200000
+      prp: contextLimits.prp ?? 30000,
+      shared: contextLimits.shared ?? 10000,
+      agents: contextLimits.agents ?? 20000,
+      tools: contextLimits.tools ?? 5000,
+      system: contextLimits.system ?? 5000,
+      total: contextLimits.total ?? 200000
     };
 
     this.sharedContext = {
@@ -393,14 +393,16 @@ Always think step-by-step and explain your reasoning clearly.`),
   /**
    * Create relevant PRP context sections
    */
-  private async createRelevantPRPSections(signal: Signal): Promise<ContextSection[]> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private async createRelevantPRPSections(_signal: Signal): Promise<ContextSection[]> {
     const sections: ContextSection[] = [];
+    // TODO: implement signal relevance logic
 
     // Find PRPs relevant to this signal
     const relevantPRPs = this.findRelevantPRPs();
 
     for (const prp of relevantPRPs) {
-      const prpSections = this.prpContexts.get(prp.name) || await this.createPRPSections(prp);
+      const prpSections = this.prpContexts.get(prp.name) ?? await this.createPRPSections(prp);
 
       for (const section of prpSections) {
         if (this.isSectionRelevantToSignal()) {
@@ -457,8 +459,10 @@ Always think step-by-step and explain your reasoning clearly.`),
   /**
    * Create relevant notes sections
    */
-  private async createRelevantNotes(signal: Signal): Promise<ContextSection[]> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private async createRelevantNotes(_signal: Signal): Promise<ContextSection[]> {
     const sections: ContextSection[] = [];
+    // TODO: implement signal relevance logic
 
     // Find notes relevant to this signal
     const relevantNotes = this.findRelevantNotes();
@@ -491,7 +495,7 @@ Always think step-by-step and explain your reasoning clearly.`),
 
     for (const section of sections) {
       total += section.tokens;
-      byCategory[section.name] = (byCategory[section.name] || 0) + section.tokens;
+      byCategory[section.name] = (byCategory[section.name] ?? 0) + section.tokens;
     }
 
     return { total, byCategory };
@@ -670,7 +674,7 @@ Always think step-by-step and explain your reasoning clearly.`),
   private formatAgentStatuses(activeAgents: unknown[]): string {
     return `Active Agents (${activeAgents.length}):\n${activeAgents.map(agent => {
       const agentObj = agent as { name: string; status: string; currentTask?: string };
-      return `- ${agentObj.name}: ${agentObj.status} (Task: ${agentObj.currentTask || 'None'})`;
+      return `- ${agentObj.name}: ${agentObj.status} (Task: ${agentObj.currentTask ?? 'None'})`;
     }).join('\n')}`;
   }
 
@@ -765,7 +769,8 @@ Always think step-by-step and explain your reasoning clearly.`),
     }
 
     // Progress log (recent entries)
-    if (prp.progressLog && prp.progressLog.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (prp.progressLog?.length > 0) {
       const recentProgress = prp.progressLog.slice(-5);
       const progressContent = recentProgress.map(entry =>
         `[${entry.timestamp.toISOString()}] ${entry.message}`
@@ -789,8 +794,8 @@ Always think step-by-step and explain your reasoning clearly.`),
     const sections: ContextSection[] = [];
 
     // Agent status and capabilities
-    const statusContent = `Agent ${agentId} Status: ${context.status || 'Unknown'}
-Capabilities: ${JSON.stringify(context.capabilities || {}, null, 2)}`;
+    const statusContent = `Agent ${agentId} Status: ${context.status ?? 'Unknown'}
+Capabilities: ${JSON.stringify(context.capabilities ?? {}, null, 2)}`;
 
     sections.push({
       name: `agent_status_${agentId}`,

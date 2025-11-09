@@ -270,7 +270,7 @@ export class EnhancedPRPParser {
    */
   async getPRPByVersion(filePath: string, version: number): Promise<PRPVersion | null> {
     const history = await this.getVersionHistory(filePath);
-    return history.find(v => v.version === version) || null;
+    return history.find(v => v.version === version) ?? null;
   }
 
   /**
@@ -337,7 +337,7 @@ export class EnhancedPRPParser {
       // Get cached files
       const cachedFiles = Array.from(this.cache.keys())
         .map(key => this.cache.get(key)?.file.path)
-        .filter((path): path is string => path !== undefined && path.startsWith(worktreePath));
+        .filter((path): path is string => path?.startsWith(worktreePath) ?? false);
 
       const cachedFileSet = new Set(cachedFiles);
 
@@ -575,7 +575,7 @@ export class EnhancedPRPParser {
    */
   private extractPRPName(filePath: string): string {
     const parts = filePath.split('/');
-    const fileName = parts[parts.length - 1] || '';
+    const fileName = parts.at(-1) ?? '';
     return fileName.replace('.md', '');
   }
 
@@ -602,13 +602,13 @@ export class EnhancedPRPParser {
       id: signal.id,
       code: signal.type,
       priority: this.mapSignalPriority(signal.priority),
-      category: (signal.data?.category as string) || 'general',
-      content: (signal.data?.rawSignal as string) || '',
+      category: (signal.data.category as string | undefined) ?? 'general',
+      content: (signal.data.rawSignal as string | undefined) ?? '',
       line: 0, // Would need line number from parsing
       column: 0,
       context: '',
       timestamp: signal.timestamp,
-      agent: signal.metadata?.agent,
+      agent: signal.metadata.agent,
       resolved: false
     }));
 
@@ -696,7 +696,7 @@ export class EnhancedPRPParser {
     const content = lines.join(' ');
 
     const match = content.match(/assigned agent[:\s]+([^\n\r]+)/i);
-    return match ? match[1].trim() : undefined;
+    return match?.[1] ? match[1].trim() : undefined;
   }
 
   /**
@@ -707,7 +707,7 @@ export class EnhancedPRPParser {
     let currentSection = '';
 
     for (let i = 0; i < lines.length; i++) {
-      const line = (lines[i] || '').trim();
+      const line = lines[i]?.trim() ?? '';
 
       if (line.startsWith('##')) {
         currentSection = line.toLowerCase();
@@ -719,10 +719,10 @@ export class EnhancedPRPParser {
         if (reqMatch) {
           requirements.push({
             id: `REQ-${requirements.length + 1}`,
-            title: (reqMatch[1] || '').trim(),
-            description: (reqMatch[1] || '').trim(),
+            title: reqMatch[1]?.trim() ?? '',
+            description: reqMatch[1]?.trim() ?? '',
             status: 'pending',
-            estimatedTokens: Math.ceil((reqMatch[1] || '').length / 4),
+            estimatedTokens: Math.ceil((reqMatch[1]?.length ?? 0) / 4),
             dependencies: [],
             acceptanceCriteria: [],
             progress: 0
@@ -742,7 +742,7 @@ export class EnhancedPRPParser {
     let currentSection = '';
 
     for (let i = 0; i < lines.length; i++) {
-      const line = (lines[i] || '').trim();
+      const line = lines[i]?.trim() ?? '';
 
       if (line.startsWith('##')) {
         currentSection = line.toLowerCase();
@@ -771,7 +771,7 @@ export class EnhancedPRPParser {
 
     // Extract tags from various formats
     const tagMatch = content.match(/tags?[:\s]+([^\n\r]+)/i);
-    if (tagMatch) {
+    if (tagMatch?.[1]) {
       const tagString = tagMatch[1];
       const tagList = tagString.split(/[,;\s]+/).map(tag => tag.trim().replace('#', ''));
       tags.push(...tagList.filter(tag => tag.length > 0));
@@ -788,7 +788,7 @@ export class EnhancedPRPParser {
     const dependencies: string[] = [];
 
     const depMatch = content.match(/dependencies?[:\s]+([^\n\r]+)/i);
-    if (depMatch) {
+    if (depMatch?.[1]) {
       const depString = depMatch[1];
       const depList = depString.split(/[,;\s]+/).map(dep => dep.trim());
       dependencies.push(...depList.filter(dep => dep.length > 0));
@@ -805,7 +805,7 @@ export class EnhancedPRPParser {
     const blockers: string[] = [];
 
     const blockMatch = content.match(/blockers?[:\s]+([^\n\r]+)/i);
-    if (blockMatch) {
+    if (blockMatch?.[1]) {
       const blockString = blockMatch[1];
       const blockList = blockString.split(/[,;\s]+/).map(block => block.trim());
       blockers.push(...blockList.filter(block => block.length > 0));

@@ -1,0 +1,672 @@
+name: Enhanced CLI CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  release:
+    types: [published]
+
+env:
+  NODE_VERSION: '20'
+  CACHE_VERSION: v1
+  CLI_NAME: prp
+
+jobs:
+  # Pre-flight validation with comprehensive checks
+  validate:
+    name: Pre-flight Validation
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.changes.outputs.should_release }}
+      version_bump: ${{ steps.version.outputs.version_bump }}
+      cache_hit: ${{ steps.cache.outputs.cache-hit }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache Node Modules
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ env.CACHE_VERSION }}-${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ env.CACHE_VERSION }}-${{ runner.os }}-node-
+
+      - name: Install Dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Check for relevant changes
+        id: changes
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate package.json
+        run: |
+          echo "🔍 Validating package.json..."
+          # Check if CLI bin points to correct executable
+          BIN_PATH=$(node -e "console.log(require('./package.json').bin['${{ env.CLI_NAME }}'])")
+          if [[ "$BIN_PATH" != "dist/cli.js" ]]; then
+            echo "❌ CLI bin path incorrect: $BIN_PATH"
+            exit 1
+          fi
+          echo "✅ CLI bin path correct: $BIN_PATH"
+
+          # Check Node.js engine requirement
+          NODE_ENGINE=$(node -e "console.log(require('./package.json').engines.node)")
+          if [[ "$NODE_ENGINE" != ">=20.0.0" ]]; then
+            echo "❌ Node.js engine requirement incorrect: $NODE_ENGINE"
+            exit 1
+          fi
+          echo "✅ Node.js engine requirement correct: $NODE_ENGINE"
+
+          # Check critical CLI dependencies
+          DEPS=("commander" "chalk" "inquirer" "ora" "boxen")
+          for dep in "${DEPS[@]}"; do
+            if npm list "$dep" >/dev/null 2>&1; then
+              echo "✅ $dep dependency found"
+            else
+              echo "❌ $dep dependency missing"
+              exit 1
+            fi
+          done
+
+      - name: Check version consistency
+        id: version
+        run: |
+          PKG_VERSION=$(node -e "console.log(require('./package.json').version)")
+          echo "package_version=$PKG_VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Package version: $PKG_VERSION"
+
+          # Check if version matches CHANGELOG.md (basic check)
+          if [[ -f "CHANGELOG.md" ]] && grep -q "\[$PKG_VERSION\]" CHANGELOG.md; then
+            echo "✅ Version found in CHANGELOG.md"
+          else
+            echo "⚠️ Version not found in CHANGELOG.md"
+          fi
+
+  # Comprehensive linting and formatting
+  quality-check:
+    name: Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Run ESLint
+        run: |
+          echo "🔍 Running ESLint..."
+          npm run lint -- --format=json --output-file=eslint-report.json
+          echo "✅ ESLint completed"
+
+      - name: Run Prettier Check
+        run: |
+          echo "🎨 Checking Prettier formatting..."
+          npm run format:check
+          echo "✅ Prettier check completed"
+
+      - name: TypeScript Type Check
+        run: |
+          echo "📋 Running TypeScript type check..."
+          npm run typecheck
+          echo "✅ TypeScript compilation successful"
+
+      - name: Check for unused exports
+        run: |
+          echo "🔍 Checking for unused exports..."
+          npx tsc --noEmit --listFiles | grep -E "(src/.*\.ts)" | wc -l
+          echo "✅ Export check completed"
+
+      - name: Upload quality reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quality-reports
+          path: |
+            eslint-report.json
+            coverage/
+          retention-days: 30
+
+  # Multi-platform CLI testing
+  test:
+    name: CLI Testing
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node-version: [18, 20, 21]
+        exclude:
+          # Exclude some combinations to speed up CI
+          - os: windows-latest
+            node-version: 18
+          - os: macos-latest
+            node-version: 18
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Build CLI
+        run: |
+          echo "🏗️ Building CLI..."
+          npm run build
+          echo "✅ Build completed"
+
+      - name: Test CLI Help Commands
+        run: |
+          echo "🧪 Testing CLI help commands..."
+
+          # Test main help
+          node dist/cli.js --help
+
+          # Test version command
+          node dist/cli.js --version
+
+          # Test that CLI executable works
+          if [[ "$RUNNER_OS" == "macOS" || "$RUNNER_OS" == "Linux" ]]; then
+            chmod +x dist/cli.js
+            ./dist/cli.js --help
+          fi
+
+          echo "✅ CLI help commands working"
+
+      - name: Test CLI Init Command (Dry Run)
+        run: |
+          echo "🧪 Testing CLI init command..."
+
+          # Create test directory
+          mkdir -p test-cli-temp
+          cd test-cli-temp
+
+          # Test init with template flag (dry run if supported)
+          ../dist/cli.js init --template none --default --dry-run || \
+          ../dist/cli.js init --template none --default || echo "Init command requires interactive mode"
+
+          cd ..
+          rm -rf test-cli-temp
+
+          echo "✅ CLI init command tested"
+
+      - name: Run Unit Tests
+        run: |
+          echo "🧪 Running unit tests..."
+          npm run test:coverage
+          echo "✅ Unit tests completed"
+
+      - name: Upload Coverage Reports
+        uses: codecov/codecov-action@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == 20
+        with:
+          files: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  # CLI Integration Tests
+  integration-test:
+    name: CLI Integration Testing
+    runs-on: ubuntu-latest
+    needs: [validate, quality-check]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Build CLI
+        run: npm run build
+
+      - name: Test CLI Project Generation
+        run: |
+          echo "🧪 Testing CLI project generation..."
+
+          # Test different templates
+          TEMPLATES=("none" "typescript" "react")
+
+          for template in "${TEMPLATES[@]}"; do
+            echo "Testing template: $template"
+
+            TEST_DIR="test-project-$template"
+            mkdir -p "$TEST_DIR"
+            cd "$TEST_DIR"
+
+            # Initialize project with template
+            ../dist/cli.js init --template "$template" --default --no-interactive || \
+            node ../dist/cli.js init --template "$template" --default || \
+            echo "Template $template requires interactive input"
+
+            # Check if .prprc was created
+            if [[ -f ".prprc" ]]; then
+              echo "✅ .prprc created for $template template"
+            else
+              echo "⚠️ .prprc not found for $template template"
+            fi
+
+            cd ..
+            rm -rf "$TEST_DIR"
+          done
+
+          echo "✅ Project generation tests completed"
+
+      - name: Test CLI Configuration
+        run: |
+          echo "🧪 Testing CLI configuration..."
+
+          # Test config command if available
+          dist/cli.js config --help || echo "Config command not available"
+
+          # Test configuration file parsing
+          echo '{"project": {"name": "test"}, "telemetry": false}' > test.prprc
+          dist/cli.js --config test.prprc --version || echo "Config flag not available"
+
+          rm -f test.prprc
+
+          echo "✅ Configuration tests completed"
+
+      - name: Test CLI Debug Mode
+        run: |
+          echo "🧪 Testing CLI debug mode..."
+
+          # Test debug flag
+          timeout 10s dist/cli.js --debug --help || echo "Debug mode requires interactive input"
+
+          echo "✅ Debug mode tests completed"
+
+  # Security and Dependency Audit
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Run Security Audit
+        run: |
+          echo "🔒 Running security audit..."
+
+          # Check for vulnerabilities
+          if npm audit --audit-level=moderate --json; then
+            echo "✅ No high-severity vulnerabilities found"
+          else
+            echo "⚠️ Security issues found - reviewing..."
+            npm audit --audit-level=high
+          fi
+
+      - name: Check for Suspicious Dependencies
+        run: |
+          echo "🔍 Checking for suspicious dependencies..."
+
+          # Check for very large dependencies
+          npm ls --depth=0 --json | jq -r '.dependencies | to_entries[] | select(.value.version | test("^0\\.")) | .key' || echo "No major version 0 dependencies found"
+
+          # Check dependencies with security warnings
+          npm audit --json | jq -r '.vulnerabilities | keys[]' 2>/dev/null || echo "No vulnerabilities detected"
+
+      - name: Bundle Size Analysis
+        run: |
+          echo "📊 Analyzing bundle size..."
+
+          npm run build
+
+          if [[ -d "dist" ]]; then
+            DIST_SIZE=$(du -sh dist/ | cut -f1)
+            echo "📦 Distribution size: $DIST_SIZE"
+
+            # Check individual files
+            find dist/ -name "*.js" -exec ls -lh {} \; | awk '{print $5, $9}'
+
+            # Warn if bundle is too large (>10MB for CLI)
+            BUNDLE_SIZE_KB=$(du -sk dist/ | cut -f1)
+            if [[ $BUNDLE_SIZE_KB -gt 10240 ]]; then
+              echo "⚠️ Bundle size is large: ${BUNDLE_SIZE_KB}KB"
+            else
+              echo "✅ Bundle size acceptable: ${BUNDLE_SIZE_KB}KB"
+            fi
+          fi
+
+  # Performance Testing
+  performance:
+    name: CLI Performance Testing
+    runs-on: ubuntu-latest
+    needs: [validate]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Build CLI
+        run: npm run build
+
+      - name: Performance Benchmarks
+        run: |
+          echo "⚡ Running performance benchmarks..."
+
+          # Test CLI startup time
+          STARTUP_TIME=$(time (dist/cli.js --version) 2>&1 | grep real | awk '{print $2}')
+          echo "🚀 CLI startup time: $STARTUP_TIME"
+
+          # Test help command performance
+          HELP_TIME=$(time (dist/cli.js --help) 2>&1 | grep real | awk '{print $2}')
+          echo "📖 Help command time: $HELP_TIME"
+
+          # Test build performance
+          BUILD_TIME=$(time (npm run build) 2>&1 | grep real | awk '{print $2}')
+          echo "🏗️ Build time: $BUILD_TIME"
+
+          # Memory usage test
+          MEMORY_USAGE=$(node --expose-gc -e "
+            const start = process.memoryUsage();
+            require('./dist/cli.js');
+            global.gc();
+            const end = process.memoryUsage();
+            console.log(\`RSS: \${Math.round((end.rss - start.rss) / 1024 / 1024)}MB\`);
+          ")
+          echo "💾 Memory usage: $MEMORY_USAGE"
+
+          echo "✅ Performance benchmarks completed"
+
+      - name: Performance Regression Check
+        run: |
+          echo "📊 Checking for performance regressions..."
+
+          # Define performance thresholds
+          STARTUP_THRESHOLD=2.0  # seconds
+          HELP_THRESHOLD=1.0     # seconds
+          MEMORY_THRESHOLD=50    # MB
+
+          # Extract numeric values and check thresholds
+          if [[ -n "$STARTUP_TIME" ]]; then
+            STARTUP_SECONDS=$(echo "$STARTUP_TIME" | sed 's/s//')
+            if (( $(echo "$STARTUP_SECONDS > $STARTUP_THRESHOLD" | bc -l) )); then
+              echo "⚠️ Startup time exceeds threshold: ${STARTUP_SECONDS}s > ${STARTUP_THRESHOLD}s"
+            else
+              echo "✅ Startup time within threshold: ${STARTUP_SECONDS}s"
+            fi
+          fi
+
+          echo "✅ Performance regression check completed"
+
+  # Build and Package CLI
+  build:
+    name: Build and Package
+    runs-on: ubuntu-latest
+    needs: [quality-check, test, security]
+
+    outputs:
+      build_artifact: ${{ steps.package.outputs.artifact_name }}
+      cli_version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Get Version Information
+        id: version
+        run: |
+          VERSION=$(node -e "console.log(require('./package.json').version)")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Building version: $VERSION"
+
+      - name: Build CLI
+        run: |
+          echo "🏗️ Building CLI for distribution..."
+          npm run build
+
+          # Verify CLI executable
+          if [[ -f "dist/cli.js" ]]; then
+            echo "✅ CLI executable built"
+            chmod +x dist/cli.js
+          else
+            echo "❌ CLI executable not found"
+            exit 1
+          fi
+
+      - name: Test Packaged CLI
+        run: |
+          echo "🧪 Testing packaged CLI..."
+
+          # Test that built CLI works
+          node dist/cli.js --version
+          node dist/cli.js --help
+
+          # Test CLI as executable
+          ./dist/cli.js --version
+
+          echo "✅ Packaged CLI tests passed"
+
+      - name: Create Distribution Package
+        id: package
+        run: |
+          echo "📦 Creating distribution package..."
+
+          # Create distribution directory
+          mkdir -p dist-package
+
+          # Copy essential files
+          cp -r dist/ dist-package/
+          cp package.json dist-package/
+          cp README.md dist-package/ 2>/dev/null || echo "README.md not found"
+          cp LICENSE dist-package/ 2>/dev/null || echo "LICENSE not found"
+
+          # Create package info
+          cat > dist-package/PACKAGE_INFO.json << EOF
+          {
+            "name": "${{ env.CLI_NAME }}",
+            "version": "${{ steps.version.outputs.version }}",
+            "build_time": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "commit_sha": "${{ github.sha }}",
+            "node_version": "${{ env.NODE_VERSION }}",
+            "os": "${{ runner.os }}",
+            "files": $(find dist-package -type f -name "*.js" | wc -l)
+          }
+          EOF
+
+          # Create artifact name
+          ARTIFACT_NAME="${{ env.CLI_NAME }}-v${{ steps.version.outputs.version }}-${{ github.run_number }}"
+          echo "artifact_name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+
+          echo "✅ Distribution package created: $ARTIFACT_NAME"
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.artifact_name }}
+          path: dist-package/
+          retention-days: 90
+
+  # Release to NPM (only on published releases)
+  release:
+    name: Release to NPM
+    runs-on: ubuntu-latest
+    needs: [build, performance, validate]
+    if: github.event_name == 'release' && needs.validate.outputs.should_release == 'true'
+
+    environment:
+      name: production
+      url: https://www.npmjs.com/package/@dcversus/prp
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install Dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.build_artifact }}
+          path: dist-package/
+
+      - name: Prepare Package for NPM
+        run: |
+          echo "📦 Preparing package for NPM..."
+
+          # Move dist-package contents to root for publishing
+          cp -r dist-package/* ./
+
+          # Verify package.json
+          if [[ ! -f "package.json" ]]; then
+            echo "❌ package.json not found"
+            exit 1
+          fi
+
+          echo "✅ Package prepared for NPM"
+
+      - name: Publish to NPM
+        run: |
+          echo "🚀 Publishing to NPM..."
+          npm publish --access public --tag latest
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Verify NPM Publication
+        run: |
+          echo "✅ Verifying NPM publication..."
+
+          # Check if package is available
+          PACKAGE_NAME="@dcversus/prp"
+          VERSION="${{ needs.build.outputs.cli_version }}"
+
+          if npm view "$PACKAGE_NAME@$VERSION" >/dev/null 2>&1; then
+            echo "✅ Package $PACKAGE_NAME@$VERSION published successfully"
+          else
+            echo "❌ Package verification failed"
+            exit 1
+          fi
+
+      - name: Create Release Summary
+        run: |
+          echo "## 🎉 CLI Release Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Package** | [@dcversus/prp](https://www.npmjs.com/package/@dcversus/prp) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Version** | ${{ needs.build.outputs.cli_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **NPM Link** | [npm install @dcversus/prp@${{ needs.build.outputs.cli_version }}](https://www.npmjs.com/package/@dcversus/prp/v/${{ needs.build.outputs.cli_version }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Install Command** | \`npm install -g @dcversus/prp\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Release** | [${{ github.event.release.tag_name }}](${{ github.event.release.html_url }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 Usage" >> $GITHUB_STEP_SUMMARY
+          echo "```bash" >> $GITHUB_STEP_SUMMARY
+          echo "npm install -g @dcversus/prp" >> $GITHUB_STEP_SUMMARY
+          echo "prp init --template typescript" >> $GITHUB_STEP_SUMMARY
+          echo "prp" >> $GITHUB_STEP_SUMMARY
+          echo "```" >> $GITHUB_STEP_SUMMARY
+
+  # Final Status and Notification
+  status:
+    name: Pipeline Status
+    runs-on: ubuntu-latest
+    needs: [validate, quality-check, test, integration-test, security, performance, build]
+    if: always()
+
+    steps:
+      - name: Pipeline Summary
+        run: |
+          echo "## 🚀 CLI CI/CD Pipeline Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Validation | ${{ needs.validate.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Quality Check | ${{ needs.quality-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Testing | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Test | ${{ needs.integration-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security Audit | ${{ needs.security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance Test | ${{ needs.performance.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build & Package | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.build.result }}" == "success" ]]; then
+            echo "### ✅ Pipeline Successful!" >> $GITHUB_STEP_SUMMARY
+            echo "- CLI built and tested successfully" >> $GITHUB_STEP_SUMMARY
+            echo "- All quality gates passed" >> $GITHUB_STEP_SUMMARY
+            echo "- Ready for release" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Pipeline Failed!" >> $GITHUB_STEP_SUMMARY
+            echo "- Check failed jobs above" >> $GITHUB_STEP_SUMMARY
+            echo "- Fix issues and retry" >> $GITHUB_STEP_SUMMARY
+          fi

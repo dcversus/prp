@@ -1,0 +1,301 @@
+{
+  "version": "1.0.0",
+  "name": "testing-project",
+  "description": "Testing-focused PRP configuration with comprehensive test setup",
+  "author": "QA Team",
+  "license": "MIT",
+  "type": "cli",
+  "storage": {
+    "dataDir": ".prp",
+    "cacheDir": "/tmp/prp-cache",
+    "worktreesDir": "/tmp/prp-worktrees",
+    "notesDir": ".prp/notes",
+    "logsDir": "/tmp/prp-logs",
+    "keychainFile": ".prp/keychain.json",
+    "persistFile": ".prp/state.json",
+    "maxCacheSize": 104857600,
+    "retentionPeriod": 86400000
+  },
+  "agents": [
+    {
+      "id": "claude-code-anthropic-test",
+      "name": "Claude Code Testing",
+      "type": "claude-code-anthropic",
+      "role": "robo-aqa",
+      "provider": "anthropic",
+      "enabled": true,
+      "capabilities": {
+        "supportsTools": true,
+        "supportsImages": false,
+        "supportsSubAgents": false,
+        "supportsParallel": false,
+        "supportsCodeExecution": false,
+        "maxContextLength": 150000,
+        "supportedModels": ["claude-3-5-sonnet-20241022"],
+        "supportedFileTypes": ["ts", "js", "json", "md"],
+        "canAccessInternet": false,
+        "canAccessFileSystem": true,
+        "canExecuteCommands": false
+      },
+      "limits": {
+        "maxTokensPerRequest": 75000,
+        "maxRequestsPerHour": 30,
+        "maxRequestsPerDay": 300,
+        "maxCostPerDay": 30,
+        "maxExecutionTime": 450000,
+        "maxMemoryUsage": 1536,
+        "maxConcurrentTasks": 2,
+        "cooldownPeriod": 3000
+      },
+      "authentication": {
+        "type": "api-key",
+        "credentials": {
+          "apiKey": "${ANTHROPIC_API_KEY:-}"
+        },
+        "encrypted": true
+      },
+      "personality": {
+        "tone": "professional",
+        "language": "en",
+        "responseStyle": "analytical",
+        "verbosity": "detailed",
+        "creativity": 0.2,
+        "strictness": 0.9,
+        "proactivity": 0.3,
+        "customInstructions": "You are a QA-focused assistant. Prioritize test coverage, test quality, and bug identification. Provide comprehensive test strategies.",
+        "communicationStyle": {
+          "useEmojis": false,
+          "useFormatting": true,
+          "includeCodeBlocks": true,
+          "includeExplanations": true
+        }
+      },
+      "tools": [],
+      "environment": {
+        "workingDirectory": "${WORKING_DIRECTORY:-$(pwd)}",
+        "shell": "/bin/bash",
+        "envVars": {
+          "NODE_ENV": "test",
+          "TEST_TIMEOUT": "30000"
+        },
+        "nodeVersion": "20",
+        "pythonVersion": "3.11",
+        "allowedCommands": ["git", "npm", "node", "jest", "mocha", "cypress", "playwright"],
+        "blockedCommands": ["rm -rf /", "sudo", "docker"],
+        "networkAccess": {
+          "allowedDomains": [],
+          "blockedDomains": [],
+          "allowExternalRequests": false
+        },
+        "fileSystem": {
+          "allowedPaths": ["${WORKING_DIRECTORY:-$(pwd)}"],
+          "blockedPaths": ["/etc", "/usr/bin", "/root"],
+          "maxFileSize": 52428800,
+          "allowWrite": true,
+          "allowDelete": false
+        }
+      },
+      "preferences": {
+        "autoSave": false,
+        "autoCommit": false,
+        "preferAsync": true,
+        "useCache": true,
+        "debugMode": true,
+        "logLevel": "info",
+        "notifications": {
+          "enabled": true,
+          "types": ["error", "warning", "info"],
+          "channels": ["console", "file"]
+        },
+        "git": {
+          "autoStage": false,
+          "commitMessageFormat": "test: {description}",
+          "branchNaming": "test/{name}"
+        }
+      },
+      "metadata": {
+        "version": "1.0.0",
+        "author": "system",
+        "createdAt": "2025-11-05T00:00:00.000Z",
+        "lastModified": "2025-11-05T00:00:00.000Z",
+        "tags": ["testing", "anthropic", "claude", "qa", "quality"],
+        "category": "ai-assistant",
+        "description": "Testing-focused Claude agent specialized in QA and quality assurance",
+        "documentation": "Optimized for testing workflows with comprehensive test strategies and bug identification.",
+        "examples": [],
+        "dependencies": [],
+        "compatibility": {
+          "platforms": ["linux", "macos", "windows"],
+          "nodeVersions": ["18", "20"],
+          "pythonVersions": ["3.11"]
+        }
+      }
+    }
+  ],
+  "guidelines": [],
+  "signals": {},
+  "orchestrator": {},
+  "scanner": {},
+  "inspector": {},
+  "tui": {
+    "mode": "cli",
+    "activeScreen": "logs",
+    "followEvents": true,
+    "autoRefresh": true,
+    "refreshInterval": 1000
+  },
+  "features": {
+    "scanner": true,
+    "inspector": true,
+    "orchestrator": true,
+    "tui": true,
+    "mcp": false,
+    "worktrees": false
+  },
+  "limits": {
+    "maxConcurrentAgents": 3,
+    "maxWorktrees": 10,
+    "maxPRPsPerWorktree": 5,
+    "tokenAlertThreshold": 0.75,
+    "tokenCriticalThreshold": 0.9
+  },
+  "logging": {
+    "level": "info",
+    "enableFileLogging": true,
+    "enableTokenTracking": true,
+    "enablePerformanceTracking": true,
+    "logRetentionDays": 7
+  },
+  "security": {
+    "enablePinProtection": false,
+    "encryptSecrets": true,
+    "sessionTimeout": 1800
+  },
+  "settings": {
+    "debug": {
+      "enabled": true,
+      "level": "info",
+      "console": true,
+      "file": true,
+      "timestamp": true,
+      "colors": true,
+      "profiling": false
+    },
+    "quality": {
+      "linting": {
+        "enabled": true,
+        "rules": {
+          "no-console": "warn"
+        },
+        "fixOnSave": true
+      },
+      "testing": {
+        "enabled": true,
+        "coverage": 100,
+        "frameworks": ["jest", "cypress", "playwright"]
+      },
+      "security": {
+        "enabled": true,
+        "tools": ["npm-audit", "eslint-security"],
+        "rules": {}
+      },
+      "performance": {
+        "enabled": true,
+        "thresholds": {
+          "loadTime": 5000,
+          "bundleSize": 2000000
+        }
+      }
+    },
+    "build": {
+      "tool": "tsc",
+      "optimization": false,
+      "minification": false,
+      "sourceMap": true,
+      "target": ["es2020"],
+      "output": {
+        "directory": "dist",
+        "filename": "index.js",
+        "format": ["cjs"]
+      }
+    },
+    "test": {
+      "framework": "jest",
+      "coverage": {
+        "enabled": true,
+        "threshold": 100,
+        "reporters": ["text", "lcov", "html", "json", "cobertura"]
+      },
+      "environment": "node",
+      "setupFiles": ["./tests/setup.ts", "./tests/mocks.ts"],
+      "testMatch": [
+        "**/__tests__/**/*.ts",
+        "**/?(*.)+(spec|test).ts",
+        "**/*.e2e.ts",
+        "**/*.integration.ts"
+      ]
+    },
+    "ci": {
+      "platform": "github",
+      "workflows": {
+        "build": false,
+        "test": true,
+        "deploy": false,
+        "security": true
+      },
+      "triggers": {
+        "onPush": true,
+        "onPR": true,
+        "onSchedule": false
+      },
+      "environment": {
+        "NODE_ENV": "test",
+        "CI": "true",
+        "TEST_PARALLEL": "true",
+        "MAX_WORKERS": "4"
+      }
+    },
+    "development": {
+      "watch": true,
+      "hotReload": false,
+      "port": 3001,
+      "host": "localhost",
+      "proxy": {},
+      "server": "jest"
+    },
+    "packageManager": {
+      "manager": "npm",
+      "autoInstall": true,
+      "scripts": {
+        "test": "prp test",
+        "test:watch": "prp test --watch",
+        "test:coverage": "prp test --coverage",
+        "test:e2e": "prp test --testPathPattern=e2e",
+        "test:integration": "prp test --testPathPattern=integration",
+        "test:unit": "prp test --testPathPattern=unit",
+        "lint": "prp lint",
+        "lint:fix": "prp lint --fix",
+        "test:ci": "prp test --ci --coverage --watchAll=false"
+      },
+      "dependencies": {},
+      "devDependencies": {
+        "jest": "^29.0.0",
+        "@types/jest": "^29.0.0",
+        "cypress": "^13.0.0",
+        "playwright": "^1.40.0"
+      }
+    }
+  },
+  "scripts": {
+    "test": "prp test",
+    "test:watch": "prp test --watch",
+    "test:coverage": "prp test --coverage",
+    "test:e2e": "prp test --testPathPattern=e2e",
+    "test:integration": "prp test --testPathPattern=integration",
+    "test:unit": "prp test --testPathPattern=unit",
+    "test:ci": "prp test --ci --coverage --watchAll=false",
+    "lint": "prp lint",
+    "lint:fix": "prp lint --fix",
+    "coverage:report": "prp test --coverage && open coverage/lcov-report/index.html"
+  }
+}

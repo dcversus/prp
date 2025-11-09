@@ -8,6 +8,7 @@ import { ScannerEvent } from './event-bus/EventBus';
 import { GitAdapter } from './adapters/GitAdapter';
 import { TmuxAdapter } from './adapters/TmuxAdapter';
 import * as path from 'path';
+import { logger } from '../utils/logger';
 
 export interface InspectorPayload {
   signal: string;
@@ -71,7 +72,7 @@ export class ScannerIntegration {
 
     // Initialize adapters
     this.gitAdapter = new GitAdapter(
-      this.options.gitRepoPath || options.watchPaths[0] || process.cwd()
+      this.options.gitRepoPath ?? options.watchPaths[0] ?? process.cwd()
     );
     this.tmuxAdapter = new TmuxAdapter(this.options.tmuxLogPath);
 
@@ -83,37 +84,37 @@ export class ScannerIntegration {
    * Start the integrated scanner system
    */
   async start(): Promise<void> {
-    console.log('🚀 Starting Scanner Integration...');
+    logger.info('🚀 Starting Scanner Integration...');
 
     // Start core scanner
     await this.scanner.start();
 
     // Start adapter watchers if enabled
     if (this.options.enableGitAdapter) {
-      console.log('📦 Starting Git adapter...');
+      logger.info('📦 Starting Git adapter...');
       this.gitAdapter.watchGitActivity((event) => {
         this.handleGitSignal(event as unknown as Record<string, unknown>);
       });
     }
 
     if (this.options.enableTmuxAdapter) {
-      console.log('📺 Starting Tmux adapter...');
+      logger.info('📺 Starting Tmux adapter...');
       await this.tmuxAdapter.watchSessions((event) => {
         this.handleTmuxSignal(event as unknown as Record<string, unknown>);
       });
     }
 
-    console.log('✅ Scanner Integration started successfully');
+    logger.success('✅ Scanner Integration started successfully');
   }
 
   /**
    * Stop the integrated scanner system
    */
   stop(): void {
-    console.log('🛑 Stopping Scanner Integration...');
+    logger.info('🛑 Stopping Scanner Integration...');
     this.scanner.stop();
     this.tmuxAdapter.stopWatching();
-    console.log('✅ Scanner Integration stopped');
+    logger.success('✅ Scanner Integration stopped');
   }
 
   /**
@@ -193,7 +194,7 @@ export class ScannerIntegration {
    */
   private async sendToInspector(payload: InspectorPayload): Promise<void> {
     // Create deduplication key
-    const dedupeKey = `${payload.source}-${payload.signal}-${payload.context.filePath || payload.context.gitInfo?.commitHash || payload.context.tmuxInfo?.sessionId}`;
+    const dedupeKey = `${payload.source}-${payload.signal}-${payload.context.filePath ?? payload.context.gitInfo?.commitHash ?? payload.context.tmuxInfo?.sessionId}`;
 
     // Check for duplicates
     if (this.signalDeduplication.has(dedupeKey)) {
@@ -212,12 +213,12 @@ export class ScannerIntegration {
     // Calculate payload size
     const payloadSize = JSON.stringify(payload).length;
 
-    if (payloadSize > this.options.maxPayloadSize!) {
-      console.warn(`Payload size (${payloadSize}) exceeds limit (${this.options.maxPayloadSize}), truncating...`);
+    if (payloadSize > (this.options.maxPayloadSize ?? 40960)) {
+      logger.warning(`Payload size (${payloadSize}) exceeds limit (${this.options.maxPayloadSize}), truncating...`);
 
       // Truncate context if too large
       if (payload.context.surroundingText) {
-        const maxContextLength = this.options.maxPayloadSize! - payloadSize + payload.context.surroundingText!.length;
+        const maxContextLength = (this.options.maxPayloadSize ?? 40960) - payloadSize + payload.context.surroundingText.length;
         payload.context.surroundingText = payload.context.surroundingText.substring(0, maxContextLength) + '...';
       }
     }
@@ -227,11 +228,11 @@ export class ScannerIntegration {
 
     // Emit event for processing would go here
     // Note: emitEvent is private in ScannerCore, so we'll add a public method in the future
-    console.log(`📤 Ready to emit event: inspector_payload_ready with payload size: ${JSON.stringify(payload).length}`);
+    logger.info(`📤 Ready to emit event: inspector_payload_ready with payload size: ${JSON.stringify(payload).length}`);
 
     // In a real implementation, this would send to the Inspector service
     // For now, we'll just log it
-    console.log(`📤 Sending to Inspector: [${payload.signal}] from ${payload.source}`);
+    logger.info(`📤 Sending to Inspector: [${payload.signal}] from ${payload.source}`);
   }
 
   /**
@@ -264,7 +265,7 @@ export class ScannerIntegration {
 
     // Clear retrieved signals
     signals.forEach(payload => {
-      const dedupeKey = `${payload.source}-${payload.signal}-${payload.context.filePath || payload.context.gitInfo?.commitHash || payload.context.tmuxInfo?.sessionId}`;
+      const dedupeKey = `${payload.source}-${payload.signal}-${payload.context.filePath ?? payload.context.gitInfo?.commitHash ?? payload.context.tmuxInfo?.sessionId}`;
       this.pendingSignals.delete(dedupeKey);
     });
 
@@ -308,7 +309,7 @@ export class ScannerIntegration {
       enableGitAdapter: true,
       enableTmuxAdapter: true,
       gitRepoPath: repoPath,
-      tmuxLogPath: path.join(process.env.HOME || '', '.tmux/logs'),
+      tmuxLogPath: path.join(process.env.HOME ?? '', '.tmux/logs'),
       maxPayloadSize: 40960,
       ...overrides
     };

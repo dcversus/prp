@@ -142,7 +142,7 @@ export class NudgeWrapper {
 
       // If LLM-mode failed, try direct nudge as fallback
       if (request.type === 'llm-mode') {
-        console.warn('LLM-mode nudge failed, attempting direct nudge fallback...');
+        logger.warn('nudge', 'LLM-mode nudge failed, attempting direct nudge fallback...');
 
         const fallbackRequest: DirectNudgeRequest = {
           type: 'direct',
@@ -157,13 +157,13 @@ export class NudgeWrapper {
 
         try {
           const response = await this.client.sendNudge(fallbackRequest);
-          console.info('Direct nudge fallback successful');
+          logger.info('nudge', 'Direct nudge fallback successful');
           return {
             ...response,
             delivery_type: 'direct'
           };
         } catch (fallbackError) {
-          console.error('Direct nudge fallback also failed:', fallbackError);
+          logger.error('nudge', 'Direct nudge fallback also failed', fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError)));
           throw new NudgeError(
             'FALLBACK_FAILED',
             'Both LLM-mode and direct nudge delivery failed',

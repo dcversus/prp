@@ -1,0 +1,158 @@
+{
+  "version": "1.0.0",
+  "name": "minimal-project",
+  "description": "Minimal PRP configuration for testing",
+  "storage": {
+    "dataDir": ".prp",
+    "cacheDir": "/tmp/prp-cache",
+    "worktreesDir": "/tmp/prp-worktrees",
+    "notesDir": ".prp/notes",
+    "logsDir": "/tmp/prp-logs",
+    "keychainFile": ".prp/keychain.json",
+    "persistFile": ".prp/state.json",
+    "maxCacheSize": 104857600,
+    "retentionPeriod": 2592000000
+  },
+  "agents": [],
+  "guidelines": [],
+  "signals": {},
+  "orchestrator": {},
+  "scanner": {},
+  "inspector": {},
+  "tui": {
+    "mode": "cli",
+    "activeScreen": "main",
+    "followEvents": true,
+    "autoRefresh": true,
+    "refreshInterval": 5000
+  },
+  "features": {
+    "scanner": true,
+    "inspector": true,
+    "orchestrator": true,
+    "tui": true,
+    "mcp": true,
+    "worktrees": true
+  },
+  "limits": {
+    "maxConcurrentAgents": 3,
+    "maxWorktrees": 10,
+    "maxPRPsPerWorktree": 5,
+    "tokenAlertThreshold": 0.8,
+    "tokenCriticalThreshold": 0.95
+  },
+  "logging": {
+    "level": "info",
+    "enableFileLogging": true,
+    "enableTokenTracking": true,
+    "enablePerformanceTracking": true,
+    "logRetentionDays": 7
+  },
+  "security": {
+    "enablePinProtection": false,
+    "encryptSecrets": true,
+    "sessionTimeout": 3600
+  },
+  "settings": {
+    "debug": {
+      "enabled": false,
+      "level": "info",
+      "console": true,
+      "file": false,
+      "timestamp": true,
+      "colors": true,
+      "profiling": false
+    },
+    "quality": {
+      "linting": {
+        "enabled": true,
+        "rules": {},
+        "fixOnSave": true
+      },
+      "testing": {
+        "enabled": true,
+        "coverage": 80,
+        "frameworks": ["jest"]
+      },
+      "security": {
+        "enabled": true,
+        "tools": ["npm-audit"],
+        "rules": {}
+      },
+      "performance": {
+        "enabled": true,
+        "thresholds": {
+          "loadTime": 3000,
+          "bundleSize": 1000000
+        }
+      }
+    },
+    "build": {
+      "tool": "tsc",
+      "optimization": true,
+      "minification": true,
+      "sourceMap": true,
+      "target": ["es2020"],
+      "output": {
+        "directory": "dist",
+        "filename": "index.js",
+        "format": ["cjs"]
+      }
+    },
+    "test": {
+      "framework": "jest",
+      "coverage": {
+        "enabled": true,
+        "threshold": 80,
+        "reporters": ["text"]
+      },
+      "environment": "node",
+      "setupFiles": [],
+      "testMatch": ["**/__tests__/**/*.ts", "**/?(*.)+(spec|test).ts"]
+    },
+    "ci": {
+      "platform": "github",
+      "workflows": {
+        "build": true,
+        "test": true,
+        "deploy": false,
+        "security": true
+      },
+      "triggers": {
+        "onPush": true,
+        "onPR": true,
+        "onSchedule": false
+      },
+      "environment": {
+        "NODE_ENV": "test"
+      }
+    },
+    "development": {
+      "watch": true,
+      "hotReload": true,
+      "port": 3000,
+      "host": "localhost",
+      "proxy": {},
+      "server": "webpack-dev-server"
+    },
+    "packageManager": {
+      "manager": "npm",
+      "autoInstall": true,
+      "scripts": {
+        "dev": "prp dev",
+        "build": "prp build",
+        "test": "prp test",
+        "lint": "prp lint"
+      },
+      "dependencies": {},
+      "devDependencies": {}
+    }
+  },
+  "scripts": {
+    "dev": "prp dev",
+    "build": "prp build",
+    "test": "prp test",
+    "lint": "prp lint",
+    "quality": "prp quality"
+  }
+}

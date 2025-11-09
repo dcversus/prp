@@ -447,6 +447,7 @@ export class SignalAggregationSystem {
 
       // Find applicable rule for this buffer
       const sampleSignal = buffer[0];
+      if (!sampleSignal) continue;
       const rule = this.findApplicableRule(sampleSignal);
 
       if (!rule) {
@@ -469,6 +470,7 @@ export class SignalAggregationSystem {
       const buffer = this.aggregationBuffers.get(bufferKey);
       if (buffer && buffer.length > 0) {
         const sampleSignal = buffer[0];
+        if (!sampleSignal) continue;
         const rule = this.findApplicableRule(sampleSignal);
 
         if (rule) {
@@ -502,7 +504,11 @@ export class SignalAggregationSystem {
       return null;
     }
 
-    const batchId = this.createBatchId(rule.strategy, buffer[0]);
+    const sampleSignal = buffer[0];
+    if (!sampleSignal) {
+      return null;
+    }
+    const batchId = this.createBatchId(rule.strategy, sampleSignal);
     const batch: SignalBatch = {
       id: batchId,
       strategy: rule.strategy,
@@ -609,7 +615,7 @@ export class SignalAggregationSystem {
 
       logger.info('SignalAggregation', 'Batch delivered successfully', {
         batchId: batch.id,
-        deliveryTime: Date.now() - batch.delivery.lastAttempt!.getTime()
+        deliveryTime: Date.now() - batch.delivery.lastAttempt.getTime()
       });
 
     } catch (error) {

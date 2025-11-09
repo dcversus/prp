@@ -5,7 +5,6 @@
  * and split view for Claude Code integration
  */
 
-import React from 'react';
 import { Box, Text } from 'ink';
 import { TUIState, TUIConfig, TerminalLayout } from '../../types/TUIConfig.js';
 

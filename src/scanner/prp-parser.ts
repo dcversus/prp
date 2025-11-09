@@ -1,5 +1,8 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'fs';
 import { join } from 'path';
+import { createLayerLogger } from '../shared/logger.js';
+
+const logger = createLayerLogger('scanner');
 
 /**
  * PRP Parser - handles discovery and parsing of Product Requirement Prompts
@@ -74,7 +77,7 @@ export class PRPParser {
     try {
       this.scanDirectory(rootDir, prpFiles);
     } catch (error) {
-      console.error(`❌ Error scanning directory ${rootDir}:`, error);
+      logger.error('PRPParser', `Error scanning directory ${rootDir}`, error as Error);
     }
 
     return prpFiles;
@@ -101,7 +104,7 @@ export class PRPParser {
         metadata: this.extractMetadata(content)
       };
     } catch (error) {
-      console.error(`❌ Error parsing PRP file ${filePath}:`, error);
+      logger.error('PRPParser', `Error parsing PRP file ${filePath}`, error as Error);
       return null;
     }
   }
@@ -127,12 +130,12 @@ export class PRPParser {
 
         signals.push({
           pattern: match[0],
-          type: signalType || '',
-          content: (signalContent || '').trim(),
+          type: signalType ?? '',
+          content: (signalContent ?? '').trim(),
           line: index + 1,
           column: 0,
           context: this.getContext(lines, index),
-          priority: this.determineSignalPriority(signalType || '')
+          priority: this.determineSignalPriority(signalType ?? '')
         });
       }
     });
@@ -168,7 +171,7 @@ export class PRPParser {
   private extractPRPName(filePath: string): string {
     const parts = filePath.split('/');
     const fileName = parts[parts.length - 1];
-    return (fileName || '').replace('.md', '');
+    return (fileName ?? '').replace('.md', '');
   }
 
   /**
@@ -252,7 +255,7 @@ export class PRPParser {
     let currentSection = '';
 
     for (let i = 0; i < lines.length; i++) {
-      const line = (lines[i] || '').trim();
+      const line = (lines[i] ?? '').trim();
 
       if (line.startsWith('##')) {
         currentSection = line.toLowerCase();
@@ -264,10 +267,10 @@ export class PRPParser {
         if (reqMatch) {
           requirements.push({
             id: `REQ-${requirements.length + 1}`,
-            title: (reqMatch[1] || '').trim(),
-            description: (reqMatch[1] || '').trim(),
+            title: (reqMatch[1] ?? '').trim(),
+            description: (reqMatch[1] ?? '').trim(),
             status: 'pending',
-            estimatedTokens: Math.ceil((reqMatch[1] || '').length / 4)
+            estimatedTokens: Math.ceil((reqMatch[1] ?? '').length / 4)
           });
         }
       }
@@ -284,7 +287,7 @@ export class PRPParser {
     let currentSection = '';
 
     for (let i = 0; i < lines.length; i++) {
-      const line = (lines[i] || '').trim();
+      const line = (lines[i] ?? '').trim();
 
       if (line.startsWith('##')) {
         currentSection = line.toLowerCase();

@@ -812,7 +812,7 @@ export class SharedScheduler {
   private startHealthMonitoring(): void {
     const healthInterval = setInterval(() => {
       const healthTask = this.tasks.get('health-check');
-      if (healthTask && healthTask.metadata.enabled) {
+      if (healthTask?.metadata.enabled) {
         this.executeTask(healthTask);
       }
     }, this.config.healthCheckInterval);
@@ -826,7 +826,7 @@ export class SharedScheduler {
   private startPingMonitoring(): void {
     const pingInterval = setInterval(() => {
       const pingTask = this.tasks.get('agent-ping-coordination');
-      if (pingTask && pingTask.metadata.enabled) {
+      if (pingTask?.metadata.enabled) {
         this.executeTask(pingTask);
       }
     }, this.config.pingInterval);
@@ -840,7 +840,7 @@ export class SharedScheduler {
   private startCleanupProcess(): void {
     const cleanupInterval = setInterval(() => {
       const cleanupTask = this.tasks.get('cleanup');
-      if (cleanupTask && cleanupTask.metadata.enabled) {
+      if (cleanupTask?.metadata.enabled) {
         this.executeTask(cleanupTask);
       }
     }, this.config.cleanupInterval);
@@ -970,7 +970,7 @@ export class SharedScheduler {
    */
   async forceExecuteTask(taskId: string): Promise<boolean> {
     const task = this.tasks.get(taskId);
-    if (!task || !task.metadata.enabled) {
+    if (!task?.metadata.enabled) {
       return false;
     }
 

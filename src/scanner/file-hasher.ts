@@ -92,7 +92,7 @@ export class FileHasher {
    */
   getCachedHash(filePath: string, algorithm: 'md5' | 'sha1' | 'sha256' = 'sha256'): FileHash | null {
     const cacheKey = `${filePath}:${algorithm}`;
-    return this.cache.get(cacheKey) || null;
+    return this.cache.get(cacheKey) ?? null;
   }
 
   /**

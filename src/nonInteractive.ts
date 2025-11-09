@@ -6,6 +6,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import ora from 'ora';
 import chalk from 'chalk';
+import { logger } from './utils/logger.js';
 import { CLIOptions, ProjectOptions, Template, LicenseType } from './types.js';
 import { generateProject } from './generators/index.js';
 import { validationUtils } from './utils/validation.js';
@@ -17,19 +18,19 @@ const __dirname = path.dirname(__filename);
 export async function runNonInteractive(cliOptions: CLIOptions): Promise<void> {
   // Validate required options
   if (!cliOptions.name) {
-    console.error(chalk.red('Error: --name is required in non-interactive mode'));
+    logger.error(chalk.red('Error: --name is required in non-interactive mode'));
     process.exit(1);
   }
 
   if (!cliOptions.template) {
-    console.error(chalk.red('Error: --template is required in non-interactive mode'));
+    logger.error(chalk.red('Error: --template is required in non-interactive mode'));
     process.exit(1);
   }
 
   // Validate project name
   const nameValidation = validationUtils.validateProjectName(cliOptions.name);
   if (!nameValidation.valid) {
-    console.error(chalk.red(`Error: Invalid project name - ${nameValidation.error}`));
+    logger.error(chalk.red(`Error: Invalid project name - ${nameValidation.error}`));
     process.exit(1);
   }
 
@@ -37,22 +38,24 @@ export async function runNonInteractive(cliOptions: CLIOptions): Promise<void> {
   if (cliOptions.email) {
     const emailValidation = validationUtils.validateEmail(cliOptions.email);
     if (!emailValidation.valid) {
-      console.error(chalk.red(`Error: Invalid email - ${emailValidation.error}`));
+      logger.error(chalk.red(`Error: Invalid email - ${emailValidation.error}`));
       process.exit(1);
     }
   }
 
   // Validate template
   const validTemplates: Template[] = [
+    'express',
     'fastapi',
     'nestjs',
     'react',
     'typescript-lib',
+    'vue',
     'wikijs',
     'none',
   ];
   if (!validTemplates.includes(cliOptions.template as Template)) {
-    console.error(
+    logger.error(
       chalk.red(
         `Error: Invalid template "${cliOptions.template}". Valid options: ${validTemplates.join(', ')}`
       )
@@ -63,11 +66,11 @@ export async function runNonInteractive(cliOptions: CLIOptions): Promise<void> {
   // Build project options with defaults
   const projectOptions: ProjectOptions = {
     name: cliOptions.name,
-    description: cliOptions.description || `A ${cliOptions.template} project`,
-    author: cliOptions.author || 'Anonymous',
-    email: cliOptions.email || 'email@example.com',
+    description: cliOptions.description ?? `A ${cliOptions.template} project`,
+    author: cliOptions.author ?? 'Anonymous',
+    email: cliOptions.email ?? 'email@example.com',
     template: cliOptions.template as Template,
-    license: (cliOptions.license as LicenseType) || 'MIT',
+    license: (cliOptions.license as LicenseType) || 'MIT', // eslint-disable-line @typescript-eslint/no-unnecessary-condition
     includeCodeOfConduct: true,
     includeContributing: true,
     includeCLA: false,
@@ -88,7 +91,7 @@ export async function runNonInteractive(cliOptions: CLIOptions): Promise<void> {
   const templatePath = path.join(__dirname, 'templates');
 
   // Start generation
-  console.log(
+  logger.info(
     chalk.bold.cyan(`\n🚀 Generating ${cliOptions.template} project: ${cliOptions.name}\n`)
   );
 
@@ -132,17 +135,17 @@ export async function runNonInteractive(cliOptions: CLIOptions): Promise<void> {
     }
 
     // Success message
-    console.log(chalk.bold.green(`\n✅ Project "${cliOptions.name}" created successfully!\n`));
-    console.log(chalk.cyan('Next steps:'));
-    console.log(chalk.white(`  cd ${cliOptions.name}`));
+    logger.info(chalk.bold.green(`\n✅ Project "${cliOptions.name}" created successfully!\n`));
+    logger.info(chalk.cyan('Next steps:'));
+    logger.info(chalk.white(`  cd ${cliOptions.name}`));
     if (!projectOptions.installDependencies) {
       const packageManager = await detectPackageManager();
-      console.log(chalk.white(`  ${packageManager} install`));
+      logger.info(chalk.white(`  ${packageManager} install`));
     }
-    console.log(chalk.white(`  Start developing! 🎉\n`));
+    logger.info(chalk.white(`  Start developing! 🎉\n`));
   } catch (error) {
     spinner.fail('Project generation failed');
-    console.error(
+    logger.error(
       chalk.red(`\nError: ${error instanceof Error ? error.message : 'Unknown error'}`)
     );
     process.exit(1);

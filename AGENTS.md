@@ -338,6 +338,465 @@ signal | comment | time | role-name (model name)
 - **WHEN**: Comprehensive report, analysis, or review ready for admin preview with how-to guide
 - **WHAT**: Provide preview package with summary, guide, and admin instructions for review
 
+---
+
+## 🧪 COMPREHENSIVE TESTING FRAMEWORK
+
+### **Robo-AQA Testing Infrastructure Crisis Analysis (Updated 2025-11-05)**
+
+**Current State**: CRITICAL INFRASTRUCTURE FAILURE 🚨
+- **Overall Coverage**: 0.12% Statements (16/13,270 lines) - CATASTROPHIC
+- **Test Files**: 35 test files, 8 major suites failing
+- **Source Files**: 147 TypeScript files, 0.1% function coverage
+- **Core Issue**: Systemic test infrastructure breakdown preventing meaningful quality assurance
+
+### **Critical Infrastructure Failures Identified**
+
+#### 1. **Jest ES Module Configuration Breakdown** 🔥🔥🔥
+- **Signal**: `[tr]` Tests Red - Complete configuration failure
+- **Root Cause**: `__filename` declared multiple times across multiple files
+- **Affected Files**: `src/utils/version.ts`, `src/nonInteractive.ts`, `src/config/schema-validator.ts`, `src/inspector/parallel-executor.ts`
+- **Impact**: Complete test execution failure, entire wizard test suite blocked
+- **Error Pattern**: `SyntaxError: Identifier '__filename' has already been declared`
+- **Jest Status**: Cannot parse TypeScript files with ESM imports
+
+#### 2. **Signal Detection RegExp Implementation Bug** 🔥🔥🔥
+- **Signal**: `[tr]` Tests Red - Core algorithm failure
+- **Location**: `src/scanner/signal-detector.ts:1026`
+- **Root Cause**: `RegExp.exec()` returns array, code expects string
+- **Error**: `TypeError: match.substring is not a function`
+- **Impact**: 10+ test methods failing, entire signal detection system broken
+- **Affected Tests**: enhanced-signal-detector.test.ts, scanner integration tests
+
+#### 3. **Test Infrastructure Systemic Issues** 🔥🔥
+- **DynamicContextManager**: Token distribution calculations completely wrong
+- **Scanner Reactive**: Console spam flooding test output (14,000+ lines)
+- **TokenAccountant**: Invalid JSON handling causing initialization failures
+- **Scanner Full System**: Missing `subscribe` method causing interface mismatches
+- **Signal Detection Logic**: Expecting strings, receiving complex objects
+
+#### 4. **CLI Testing Infrastructure Nonexistent** 🔥🔥🔥
+- **CLI Entry Points**: 0% coverage, no tests for `src/cli.ts`
+- **Template Engine**: 0% coverage, `src/templateEngine.ts` completely untested
+- **Non-Interactive Mode**: 0% coverage, `src/nonInteractive.ts` no test infrastructure
+- **Command Handlers**: <1% coverage across entire `src/commands/` directory
+- **Error Handling**: No testing for CLI error conditions or user interactions
+
+### **Test Infrastructure Analysis**
+
+#### **Coverage Breakdown**:
+- **Statements**: 0.12% (16/13,270) - CATASTROPHIC FAILURE
+- **Branches**: 0.17% (11/6,341) - CATASTROPHIC FAILURE
+- **Functions**: 0.1% (3/2,854) - CATASTROPHIC FAILURE
+- **Lines**: 0.12% (16/12,806) - CATASTROPHIC FAILURE
+
+#### **Critical Components with 0% Coverage**:
+1. **CLI Entry Points** (`src/cli.ts`) - 0% coverage, completely untested
+2. **Template Engine** (`src/templateEngine.ts`) - 0% coverage, core functionality missing
+3. **Non-Interactive Mode** (`src/nonInteractive.ts`) - 0% coverage, production workflows untested
+4. **Command Handlers** (`src/commands/`) - <1% coverage, entire command system broken
+5. **Scanner Core** - Partial coverage with 14,000+ lines of console spam
+6. **Signal Processing** - Broken due to RegExp implementation bug
+7. **Error Handling** - 0% coverage across entire codebase
+8. **User Interactions** - No testing for interactive CLI components
+
+#### **Root Cause Analysis**:
+- **Configuration Crisis**: Jest cannot handle ES modules with multiple `__filename` declarations
+- **Implementation Bugs**: Core signal detection algorithm fundamentally broken
+- **Test Design**: Tests expecting wrong data types and incorrect business logic
+- **Infrastructure**: No CLI testing framework or mock systems in place
+- **Quality Gates**: No functional test infrastructure preventing broken deployments
+
+### **Comprehensive Testing Strategy**
+
+#### **Emergency CLI Testing Framework**:
+```typescript
+// Critical CLI command testing infrastructure
+import { execAsync } from 'child_process';
+import { createMockStdin, createMockStdout } from './helpers/cli-mocks';
+
+describe('CLI Command Execution', () => {
+  beforeEach(async () => {
+    testDir = await createTempDirectory();
+  });
+
+  afterEach(async () => {
+    await cleanupDirectory(testDir);
+  });
+
+  it('should handle prp create command with validation', async () => {
+    const result = await execAsync(`node dist/cli.js prp create ${testDir}/test-project`);
+    expect(result.stdout).toContain('PRP created successfully');
+    expect(fs.existsSync(`${testDir}/test-project/PRP-001.md`)).toBe(true);
+  });
+
+  it('should handle invalid commands with proper error messages', async () => {
+    await expect(execAsync('node dist/cli.js invalid-command'))
+      .rejects.toThrow('Unknown command: invalid-command');
+  });
+
+  it('should handle missing required arguments', async () => {
+    await expect(execAsync('node dist/cli.js prp create'))
+      .rejects.toThrow('Required: --name argument');
+  });
+});
+
+// Interactive mode testing with proper mocking
+describe('Interactive CLI Mode', () => {
+  it('should handle user input prompts correctly', async () => {
+    const mockInput = createMockStdin(['test-project\n', 'fastapi\n', 'y\n']);
+    const mockOutput = createMockStdout();
+
+    const result = await runInteractiveCLI(mockInput, mockOutput);
+    expect(result.exitCode).toBe(0);
+    expect(mockOutput.getOutput()).toContain('Project created: test-project');
+  });
+
+  it('should handle user cancellation gracefully', async () => {
+    const mockInput = createMockStdin(['test-project\n', '\x03']); // Ctrl+C
+    const result = await runInteractiveCLI(mockInput);
+    expect(result.exitCode).toBe(130); // SIGINT exit code
+  });
+});
+
+// Template engine testing
+describe('Template Engine Operations', () => {
+  it('should generate FastAPI project correctly', async () => {
+    const project = await generateTemplate('fastapi', testDir, options);
+    expect(fs.existsSync(`${testDir}/main.py`)).toBe(true);
+    expect(fs.existsSync(`${testDir}/requirements.txt`)).toBe(true);
+    expect(fs.existsSync(`${testDir}/README.md`)).toBe(true);
+  });
+
+  it('should handle template errors gracefully', async () => {
+    await expect(generateTemplate('invalid-template', testDir, options))
+      .rejects.toThrow('Unknown template: invalid-template');
+  });
+});
+```
+
+#### **ES Module Configuration Fixes**:
+```javascript
+// Fixed jest.config.js for ES modules
+export default {
+  preset: 'ts-jest/presets/default-esm',
+  testEnvironment: 'node',
+  extensionsToTreatAsEsm: ['.ts', '.tsx'],
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^axios$': 'axios/dist/node/axios.cjs'
+  },
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', {
+      useESM: true,
+      tsconfig: {
+        module: 'ESNext',
+        target: 'ES2022'
+      }
+    }]
+  },
+  transformIgnorePatterns: [
+    'node_modules/(?!(axios)/)'
+  ],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+  globals: {
+    'ts-jest': {
+      useESM: true
+    }
+  }
+};
+```
+
+#### **Signal Detection Bug Fix**:
+```typescript
+// Fixed signal detection in signal-detector.ts
+private extractSignalInfo(match: RegExpExecArray, content: string, lineNum: number): SignalInfo | null {
+  if (!match || !match[0]) return null;
+
+  const signalText = match[0]; // FIX: Use match[0] instead of match directly
+  const signalMatch = signalText.match(/^\[([a-zA-Z]{1,4})\]/);
+
+  if (!signalMatch) return null;
+
+  return {
+    signal: signalMatch[1],
+    context: content.substring(match.index, match.index + 100),
+    line: lineNum,
+    column: match.index,
+    type: this.classifySignal(signalMatch[1]),
+    timestamp: new Date()
+  };
+}
+```
+
+### **Test Automation Improvements**
+
+#### **Parallel Test Execution**:
+```json
+// jest.config.js
+{
+  "maxWorkers": 4,
+  "testTimeout": 30000,
+  "collectCoverageFrom": [
+    "src/**/*.{ts,tsx}",
+    "!src/**/*.d.ts",
+    "!src/**/*.test.ts"
+  ],
+  "coverageThreshold": {
+    "global": {
+      "branches": 80,
+      "functions": 80,
+      "lines": 80,
+      "statements": 80
+    }
+  }
+}
+```
+
+#### **CI/CD Pipeline Integration**:
+```yaml
+# .github/workflows/test.yml
+name: Test Suite
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm test -- --coverage
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+```
+
+### **Emergency Test Infrastructure Recovery Roadmap**
+
+#### **Phase 1: Critical Infrastructure Stabilization (Week 1)**
+**IMMEDIATE ACTIONS REQUIRED - BLOCKING ALL DEVELOPMENT**
+
+1. **Fix Jest ES Module Configuration** 🔥🔥🔥
+   - `[tr]` → `[cq]` Resolve `__filename` declaration conflicts across 5 files
+   - `[tr]` → `[cq]` Update Jest config for proper ES module handling
+   - `[tr]` → `[cq]` Add Node.js `--experimental-vm-modules` support
+   - **Success Criteria**: All test files can be parsed and loaded
+
+2. **Fix Signal Detection RegExp Bug** 🔥🔥🔥
+   - `[tr]` → `[cq]` Fix `match.substring is not a function` in signal-detector.ts:1026
+   - `[tr]` → `[cq]` Update all signal detection methods to handle RegExp arrays properly
+   - `[tr]` → `[cq]` Add proper null checking and error handling
+   - **Success Criteria**: Signal detection tests pass without TypeError
+
+3. **Correct Test Assertion Logic** 🔥🔥
+   - `[tr]` → `[cq]` Fix DynamicContextManager token distribution calculations
+   - `[tr]` → `[cq]` Update scanner behavior tests to expect objects instead of strings
+   - `[tr]` → `[cq]` Correct TokenAccountant alert type and percentage expectations
+   - **Success Criteria**: All existing test suites run without assertion errors
+
+4. **Eliminate Console Spam** 🔥
+   - `[tr]` → `[cq]` Fix TokenAccountant invalid JSON handling
+   - `[tr]` → `[cq]` Add proper test environment isolation
+   - `[tr]` → `[cq]` Implement mock logger for test execution
+   - **Success Criteria**: Test output under 100 lines, no console warnings
+
+**TARGET BY END OF WEEK 1**: 20% coverage, all critical infrastructure bugs resolved
+
+#### **Phase 2: Core CLI Testing Infrastructure (Week 2-3)**
+**BUILDING FOUNDATIONAL TEST COVERAGE**
+
+1. **CLI Command Testing Framework** 🎯
+   - `[cq]` Implement CLI process spawning and execution testing
+   - `[cq]` Create mock stdin/stdout for interactive testing
+   - `[cq]` Add command validation and error handling tests
+   - **Success Criteria**: All CLI commands have basic coverage
+
+2. **Template Engine Test Suite** 🎯
+   - `[cq]` Create template generation and validation tests
+   - `[cq]` Add template error handling and edge case testing
+   - `[cq]` Implement template file structure verification
+   - **Success Criteria**: All templates tested, 90% template engine coverage
+
+3. **File System Operations Testing** 🎯
+   - `[cq]` Create temp directory management for test isolation
+   - `[cq]` Add project creation and cleanup testing
+   - `[cq]` Implement file permission and validation tests
+   - **Success Criteria**: All file operations have comprehensive coverage
+
+4. **Non-Interactive Mode Testing** 🎯
+   - `[cq]` Create non-interactive CLI execution tests
+   - `[cq]` Add argument validation and error handling tests
+   - `[cq]` Implement project generation workflow testing
+   - **Success Criteria**: Non-interactive mode 80% coverage
+
+**TARGET BY END OF WEEK 3**: 50% coverage, core functionality fully tested
+
+#### **Phase 3: Advanced Testing Capabilities (Week 4-6)**
+**COMPREHENSIVE QUALITY ASSURANCE**
+
+1. **E2E Workflow Testing** 🎯
+   - `[tg]` Create end-to-end project generation scenarios
+   - `[tg]` Add user journey testing for all template types
+   - `[tg]` Implement integration testing with real file systems
+   - **Success Criteria**: 10+ E2E scenarios, all user paths tested
+
+2. **Performance Testing Suite** 🎯
+   - `[tg]` Add CLI startup time benchmarks (< 2 seconds)
+   - `[tg]` Implement memory usage monitoring (< 50MB)
+   - `[tg]` Create template generation performance tests
+   - **Success Criteria**: Performance regression detection, benchmark tracking
+
+3. **Signal System Integration Testing** 🎯
+   - `[tg]` Create comprehensive signal detection and processing tests
+   - `[tg]` Add scanner-reactive integration testing
+   - `[tg]` Implement signal workflow validation
+   - **Success Criteria**: Signal system 95% coverage, all workflows tested
+
+4. **Error Handling and Edge Cases** 🎯
+   - `[tg]` Add comprehensive error condition testing
+   - `[tg]` Create network failure and file system error scenarios
+   - `[tg]` Implement graceful degradation testing
+   - **Success Criteria**: All error paths tested, proper error messages
+
+**TARGET BY END OF WEEK 6**: 80% coverage, production-ready test suite
+
+#### **Phase 4: CI/CD Pipeline Integration (Week 7-8)**
+**AUTOMATED QUALITY GATES**
+
+1. **Automated Testing Pipeline** 🎯
+   - `[cp]` Configure GitHub Actions test workflows
+   - `[cp]` Add multi-node version testing (Node 18, 20, 22)
+   - `[cp]` Implement parallel test execution optimization
+   - **Success Criteria**: All tests run on every PR, < 5 minute execution time
+
+2. **Coverage Reporting and Quality Gates** 🎯
+   - `[cp]` Set up Codecov integration for coverage tracking
+   - `[cp]` Implement minimum coverage requirements (80% new code)
+   - `[cp]` Add critical path coverage validation (100% required)
+   - **Success Criteria**: Coverage trend tracking, quality gate enforcement
+
+3. **Test Performance Monitoring** 🎯
+   - `[cp]` Add test execution time monitoring
+   - `[cp]` Implement flaky test detection and alerting
+   - `[cp]` Create test stability metrics dashboard
+   - **Success Criteria**: < 2% flaky test rate, performance regression alerts
+
+4. **Release Readiness Validation** 🎯
+   - `[pc]` Create comprehensive pre-release test checklist
+   - `[pc]` Add automated smoke testing for releases
+   - `[pc]` Implement post-deployment validation testing
+   - **Success Criteria**: Zero critical bugs in production, automated release validation
+
+**TARGET BY END OF WEEK 8**: 90% coverage, fully automated quality pipeline
+
+### **Quality Gates and Success Metrics**
+
+#### **Coverage Targets**:
+- **Week 1**: 20% statement coverage (fix critical failures)
+- **Week 3**: 50% statement coverage (basic functionality)
+- **Week 6**: 80% statement coverage (comprehensive testing)
+- **Week 8**: 90% statement coverage (production ready)
+
+#### **Quality Requirements**:
+- All tests must pass before merge (`[tg]` signal)
+- Minimum 80% coverage for new code
+- Critical paths must have 100% coverage
+- Performance tests must meet baseline benchmarks
+- CLI workflows must have E2E test coverage
+
+### **Test File Organization**
+
+#### **Recommended Test Structure**:
+```
+tests/
+├── unit/                    # 70% - Fast, isolated tests
+│   ├── commands/
+│   ├── scanner/
+│   ├── utils/
+│   └── templates/
+├── integration/             # 20% - Component interactions
+│   ├── cli-workflows/
+│   ├── file-operations/
+│   └── scanner-system/
+├── e2e/                     # 10% - Complete user journeys
+│   ├── scenarios/
+│   ├── user-flows/
+│   └── regression/
+├── fixtures/                # Test data and templates
+├── helpers/                 # Test utilities and mocks
+└── coverage/                # Coverage reports
+```
+
+### **Testing Signals Integration**
+
+#### **Quality Assurance Workflow**:
+1. **Pre-flight**: `[cq]` Code quality validation
+2. **Testing**: `[tr]` → `[tg]` Test execution and results
+3. **CI/CD**: `[cf]` → `[cp]` Pipeline validation
+4. **Release**: `[pc]` Pre-release checklist completion
+5. **Deployment**: `[rl]` Release and post-validation
+
+#### **Parallel Testing Coordination**:
+- Use `[oa]` signal for orchestrator coordination during parallel test execution
+- Coordinate with Robo-QC for visual testing handoff using QC agent signals
+- Apply `[bb]` signal when test dependencies block progress
+- Use `[br]` signal when testing blockers are resolved
+
+### **Current Test Infrastructure Crisis Summary**
+
+**🚨 CRITICAL INFRASTRUCTURE BREAKDOWN - PRODUCTION AT RISK**:
+- **Coverage**: 0.12% statements (16/13,270 lines) - COMPLETE FAILURE
+- **Test Status**: 8/35 test suites failing with critical infrastructure bugs
+- **CLI Coverage**: 0% - All core functionality completely untested
+- **Signal System**: Broken - RegExp implementation bug blocking all signal detection
+- **Quality Gates**: Non-existent - No functional test infrastructure
+
+**🔥 IMMEDIATE BLOCKERS REQUIRING EMERGENCY INTERVENTION**:
+1. **Jest Configuration Crisis**: Cannot parse TypeScript files with ES modules
+2. **Signal Detection Bug**: TypeError preventing core system functionality
+3. **Console Spam Flood**: 14,000+ lines of output blocking test execution
+4. **Assertion Logic Errors**: Tests expecting wrong data types and calculations
+
+**📊 ROOT CAUSE ANALYSIS**:
+- **Technical Debt**: Accumulated without proper test infrastructure
+- **Configuration Drift**: Jest config incompatible with ES modules
+- **Implementation Bugs**: Core algorithms fundamentally broken
+- **Quality Process Failure**: No validation preventing broken deployments
+
+**⚡ IMMEDIATE ACTIONS REQUIRED (Next 24 Hours)**:
+1. **EMERGENCY**: Fix Jest ES module configuration for basic test parsing
+2. **EMERGENCY**: Resolve RegExp bug in signal-detector.ts:1026
+3. **URGENT**: Correct DynamicContextManager token distribution logic
+4. **URGENT**: Implement test environment isolation to eliminate console spam
+
+**📈 RECOVERY PROJECTIONS**:
+- **Week 1**: Stabilize infrastructure, achieve 20% coverage
+- **Week 3**: Core functionality testing, achieve 50% coverage
+- **Week 6**: Comprehensive testing, achieve 80% coverage
+- **Week 8**: Production-ready pipeline, achieve 90% coverage
+
+**🚨 RISK ASSESSMENT**:
+- **Deployment Risk**: CRITICAL - No functional test coverage
+- **Regression Risk**: CRITICAL - Cannot detect breaking changes
+- **Production Stability**: AT RISK - Core functionality unvalidated
+- **User Experience**: DEGRADED - CLI errors not caught before release
+
+**📋 COMPREHENSIVE ANALYSIS DOCUMENTATION**:
+- Detailed test failure analysis available in project issue tracker
+- Performance benchmarks and quality metrics dashboard
+- CI/CD pipeline integration specifications
+- Emergency response procedures for test infrastructure failures
+
+**Status**: CRITICAL INFRASTRUCTURE FAILURE - IMMEDIATE ACTION REQUIRED
+**Priority**: BLOCKING ALL DEVELOPMENT UNTIL RESOLVED
+**Escalation**: PROJECT MANAGEMENT AWARE - QUALITY GATES FAILED
+*Comprehensive analysis completed by Robo-AQA on 2025-11-05T04:50:00Z*
+
 #### [cc] Cleanup Complete
 - **WHO**: robo-developer
 - **WHEN**: All cleanup tasks completed before final commit (temp files, logs, artifacts removed)
@@ -624,6 +1083,252 @@ TBD
 ### landing gh-pages deploy
 TBD
 
+## 🚀 PERFORMANCE REQUIREMENTS & GUIDELINES
+
+### **Performance Standards**
+All agents and components MUST adhere to the following performance requirements:
+
+#### **CLI Performance Requirements**
+- **Startup Time**: < 2 seconds (target: 1.5 seconds)
+- **Memory Usage**: < 50MB during normal operations (target: 30MB)
+- **Command Response**: < 100ms for basic commands, < 5 seconds for complex operations
+- **File Operations**: < 50ms for small files, < 1s for large files (>1MB)
+- **Cache Hit Rate**: > 80% for repeated operations
+
+#### **Scanner Performance Requirements**
+- **File Watching**: < 100ms latency from file change to event emission
+- **Signal Parsing**: < 10ms per file for typical PRP files
+- **Batch Processing**: Handle 100+ files in < 2 seconds
+- **Memory Efficiency**: < 100MB for projects with 1000+ files
+- **Cache Performance**: > 90% hit rate for unchanged files
+
+#### **Orchestrator Performance Requirements**
+- **Decision Making**: < 500ms for cached decisions, < 5s for new decisions
+- **Agent Spawning**: < 2 seconds to spawn and initialize agents
+- **Context Management**: < 50ms to load cached contexts
+- **Memory Usage**: < 200MB for full orchestrator with agents
+- **Concurrent Operations**: Support 10+ concurrent agent sessions
+
+### **Performance Monitoring & Metrics**
+
+#### **Required Performance Signals**
+Agents must emit these performance-related signals when thresholds are exceeded:
+
+**[pm] Performance Monitoring** - General performance issue detected
+- **WHO**: Any agent
+- **WHEN**: Performance metrics exceed acceptable thresholds
+- **WHAT**: Document performance metrics, identify bottlenecks, request optimization
+
+**[po] Performance Optimized** - Performance improvement implemented
+- **WHO**: robo-developer
+- **WHEN**: Performance optimizations implemented and verified
+- **WHAT**: Document improvements, before/after metrics, optimization techniques used
+
+**[ps] Performance Regression** - Performance degradation detected
+- **WHO**: Any agent
+- **WHEN**: Performance metrics show degradation from baseline
+- **WHAT**: Document regression, identify cause, request investigation
+
+### **Performance Optimization Techniques**
+
+#### **Lazy Loading Implementation**
+```typescript
+// ✅ GOOD: Use lazy loading for heavy dependencies
+const heavyDependency = new LazyLoader(() => import('./heavy-module'));
+
+// ❌ BAD: Load everything at startup
+import { HeavyModule } from './heavy-module';
+```
+
+#### **Caching Strategies**
+```typescript
+// ✅ GOOD: Implement intelligent caching
+const cached = await performanceManager.cached(key, () => expensiveOperation());
+
+// ❌ BAD: Repeated expensive operations without caching
+const result = expensiveOperation(); // Called every time
+```
+
+#### **Memory Management**
+```typescript
+// ✅ GOOD: Clean up resources properly
+class Resource {
+  private cleanup = new Set<() => void>();
+
+  addCleanup(fn: () => void) {
+    this.cleanup.add(fn);
+  }
+
+  dispose() {
+    this.cleanup.forEach(fn => fn());
+    this.cleanup.clear();
+  }
+}
+
+// ❌ BAD: Memory leaks from event emitters
+const emitter = new EventEmitter();
+// Never removing listeners causes memory leaks
+```
+
+#### **Batch Processing**
+```typescript
+// ✅ GOOD: Process items in batches
+for (const batch of chunkArray(items, batchSize)) {
+  await processBatch(batch);
+  await new Promise(resolve => setImmediate(resolve)); // Allow event loop
+}
+
+// ❌ BAD: Process all items at once
+items.forEach(item => processItem(item)); // Blocks event loop
+```
+
+### **Performance Testing Requirements**
+
+#### **Mandatory Performance Tests**
+All PRPs MUST include performance tests for:
+
+1. **CLI Operations**: Startup time, command execution, memory usage
+2. **File Operations**: Reading, writing, watching, parsing
+3. **Agent Operations**: Spawning, communication, cleanup
+4. **Cache Operations**: Hit rates, eviction policies, memory usage
+5. **Memory Management**: Leak detection, cleanup verification
+
+#### **Performance Test Execution**
+```bash
+# Run performance test suite
+npm run test:performance
+
+# Run specific performance tests
+npm run test:performance:cli
+npm run test:performance:scanner
+npm run test:performance:orchestrator
+
+# Generate performance report
+npm run perf:report
+```
+
+#### **Performance Benchmarking**
+- Baseline metrics established for each component
+- Regression testing for performance changes
+- Automated performance gates in CI/CD pipeline
+- Performance monitoring in production environments
+
+### **Performance Optimization Workflow**
+
+#### **Performance Issue Detection**
+1. **Monitor metrics** - Real-time performance monitoring
+2. **Identify bottlenecks** - Profile and analyze slow operations
+3. **Document findings** - Use `[pm]` signal with detailed metrics
+4. **Prioritize optimizations** - Focus on high-impact improvements
+
+#### **Optimization Implementation**
+1. **Research solutions** - Identify proven optimization techniques
+2. **Implement changes** - Apply optimizations with proper testing
+3. **Measure impact** - Verify improvements with before/after metrics
+4. **Document results** - Use `[po]` signal with performance gains
+
+#### **Performance Validation**
+1. **Run test suite** - Execute comprehensive performance tests
+2. **Verify benchmarks** - Ensure all performance requirements met
+3. **Update baselines** - Adjust target metrics if needed
+4. **Monitor production** - Continuously track performance in production
+
+### **Performance Signals in PRPs**
+
+#### **Required Performance Documentation**
+Every PRP MUST include performance requirements in the DoD section:
+
+```markdown
+## dod - Performance Requirements
+- [ ] CLI startup time < 2 seconds
+- [ ] Memory usage < 50MB during normal operations
+- [ ] File watching latency < 100ms
+- [ ] Signal parsing < 10ms per file
+- [ ] All performance tests passing
+- [ ] Performance benchmarks met
+```
+
+#### **Performance Progress Tracking**
+Use performance signals to track optimization progress:
+
+```markdown
+## progress
+[pm] Performance issue identified: CLI startup taking 3.5 seconds, exceeding 2 second target | robo-developer | 2025-01-01-10:00
+[po] Performance optimized: CLI startup reduced to 1.2 seconds through lazy loading and caching | robo-developer | 2025-01-01-12:00
+```
+
+### **Performance Monitoring Tools**
+
+#### **Built-in Performance Manager**
+```typescript
+import { performanceManager } from '../performance/index.js';
+
+// Start timing an operation
+performanceManager.startOperation('my-operation');
+
+// End timing and record metrics
+performanceManager.endOperation('my-operation');
+
+// Get performance report
+const report = performanceManager.getReport();
+```
+
+#### **Memory Monitoring**
+```typescript
+import { MemoryMonitor } from '../performance/index.js';
+
+const monitor = new MemoryMonitor();
+monitor.startMonitoring(5000); // Check every 5 seconds
+
+const trend = monitor.getTrend();
+if (trend.increasing) {
+  console.warn(`Memory increasing at ${trend.rate}MB/s`);
+}
+```
+
+### **Performance Best Practices**
+
+#### **DO ✅**
+- Use lazy loading for heavy dependencies
+- Implement intelligent caching with TTL
+- Clean up resources and event listeners
+- Process items in batches to avoid blocking
+- Monitor memory usage and implement cleanup
+- Profile before optimizing
+- Use performance decorators for measurement
+- Implement proper error handling to avoid crashes
+
+#### **DON'T ❌**
+- Load all modules at startup
+- Ignore memory leaks
+- Block the event loop with long operations
+- Skip performance testing
+- Use synchronous I/O operations
+- Forget to clean up event listeners
+- Ignore performance warnings
+- Optimize without measuring first
+
+### **Performance Emergency Procedures**
+
+#### **When Performance Issues Occur**
+1. **Immediate Response**: Document issue with `[pm]` signal
+2. **Assessment**: Determine impact on user experience
+3. **Temporary Measures**: Implement workarounds if needed
+4. **Investigation**: Profile and identify root cause
+5. **Resolution**: Implement and test optimizations
+6. **Verification**: Confirm fix and update documentation
+
+#### **Performance Regression Response**
+1. **Detection**: Automated alerts or user reports
+2. **Documentation**: Use `[ps]` signal with regression details
+3. **Analysis**: Compare with baseline performance
+4. **Rollback**: Consider rollback if regression is severe
+5. **Fix**: Address root cause of performance degradation
+6. **Validation**: Ensure performance restored to acceptable levels
+
+---
+
 ### mondatory project rules!
 - NEVER git stash or play with git branch or history! NEVER! i need you always ask confirmation
 - ALWAYS update ONLY related to prp files, before start work leave list of files you will work on, then work only with related files! ALL CODE REVIEW MAXIMUM ALERT IF ANYTHING OUTSIDE PRP SCOPE EDITED WITHOUT REASON AND NOTICE!
+- **PERFORMANCE REQUIREMENT**: ALL code changes MUST meet performance standards. Use performance monitoring and optimization techniques to ensure CLI starts < 2s, memory usage < 50MB, and responsive user interaction.

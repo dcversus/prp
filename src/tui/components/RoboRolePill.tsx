@@ -5,7 +5,6 @@
  * where text matches background color for visual "cutout" effect
  */
 
-import React from 'react';
 import { Text } from 'ink';
 import { RoboRolePillProps, ColorScheme } from '../types/TUIConfig.js';
 import { getRoleColors } from '../config/TUIConfig.js';
@@ -64,26 +63,12 @@ export function RoboRolePill({ role, state = 'idle', size = 'normal' }: RoboRole
   const colors = getRoleColors(role, defaultColors);
 
   // Determine colors based on state
-  let textColor: string;
-  let backgroundColor: string;
-
-  switch (state) {
-    case 'active':
-      textColor = colors.active;
-      backgroundColor = colors.bg;
-      break;
-    case 'resolved':
-      textColor = colors.dim;
-      backgroundColor = colors.bg;
-      break;
-    default: // idle
-      textColor = colors.dim;
-      backgroundColor = colors.bg;
-  }
+  const textColor = state === 'active' ? colors.active : colors.dim;
+  const backgroundColor = colors.bg;
 
   // Size variations
   const padding = size === 'small' ? ' ' : '  ';
-  const content = role.toUpperCase().replace(/-/g, '-');
+  const content = role.toUpperCase();
 
   return (
     <Text backgroundColor={backgroundColor} color={textColor}>

@@ -5,9 +5,8 @@
  * implementing the exact layout from the PRP specification
  */
 
-import React from 'react';
 import { Box, Text, useInput } from 'ink';
-import { TUIState, TUIConfig, TerminalLayout } from '../../types/TUIConfig.js';
+import { TUIState, TUIConfig, TerminalLayout, ColorScheme } from '../../types/TUIConfig.js';
 import { SignalBar } from '../SignalBar.js';
 import { AgentCard } from '../AgentCard.js';
 import { HistoryItem } from '../HistoryItem.js';
@@ -131,7 +130,7 @@ export function OrchestratorScreen({ state, config, terminalLayout }: Orchestrat
           <Text color={config.colors.base_fg}>
             {' '}{orchestrator.prp} [end]{' '}
           </Text>
-          <SignalBar signals={orchestrator.signals} config={config} />
+          <SignalBar signals={orchestrator.signals} config={config as TUIConfig & ColorScheme} />
         </Box>
 
         {orchestrator.cotLines.map((line, index) => (
@@ -201,7 +200,7 @@ export function OrchestratorScreen({ state, config, terminalLayout }: Orchestrat
 
               {/* Signals line */}
               <Box justifyContent="flex-end">
-                <SignalBar signals={prp.signals} config={config} />
+                <SignalBar signals={prp.signals} config={config as TUIConfig & ColorScheme} />
               </Box>
             </Box>
           );

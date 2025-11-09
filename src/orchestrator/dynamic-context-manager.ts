@@ -149,7 +149,7 @@ export class DynamicContextManager extends EventEmitter {
     modelType: string,
     signalComplexity: 'low' | 'medium' | 'high' = 'medium'
   ): DynamicTokenLimits {
-    const modelLimit = this.modelTokenLimits.get(modelType) || 200000;
+    const modelLimit = this.modelTokenLimits.get(modelType) ?? 200000;
     const activeAgentCount = activeAgents.filter(a => a.status === 'active').length;
 
     // Base allocation according to agents05.md specifications

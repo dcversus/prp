@@ -5,7 +5,7 @@
  * and agent coordination capabilities.
  */
 
-import { AgentConfig, AgentRole, Signal } from '../shared/types';
+import { AgentConfig, AgentRole, Signal, PRPFile } from '../shared/types';
 import { InspectorPayload, Recommendation } from '../shared/types';
 
 export interface OrchestratorConfig {
@@ -534,4 +534,177 @@ export interface OrchestratorContextUpdateEvent {
     notes?: SharedNote[];
   };
   timestamp: Date;
+}
+
+// ===== ENHANCED CONTEXT SYSTEM TYPES =====
+
+// Context aggregation strategies
+export enum AggregationStrategy {
+  MERGE = 'merge',
+  PRIORITY_BASED = 'priority_based',
+  TOKEN_OPTIMIZED = 'token_optimized',
+  RELEVANCE_SCORED = 'relevance_scored'
+}
+
+// PRP section types for extraction
+export enum PRPSectionType {
+  GOAL = 'goal',
+  PROGRESS = 'progress',
+  PLAN = 'plan',
+  DOR = 'dor',
+  DOD = 'dod',
+  SIGNALS = 'signals',
+  RESEARCH = 'research',
+  IMPLEMENTATION = 'implementation'
+}
+
+// Context types for sharing
+export enum ContextType {
+  PRP_CONTEXT = 'prp_context',
+  AGENT_STATUS = 'agent_status',
+  SHARED_MEMORY = 'shared_memory',
+  SIGNAL_HISTORY = 'signal_history',
+  TOOL_CONTEXT = 'tool_context'
+}
+
+// Enhanced context section with metadata
+export interface EnhancedContextSection {
+  id: string;
+  name: string;
+  content: string;
+  tokens: number;
+  priority: number;
+  required: boolean;
+  compressible: boolean;
+  lastUpdated: Date;
+  source: string;
+  version: number;
+  tags: string[];
+  permissions: string[];
+  dependencies: string[];
+  relevanceScore?: number;
+  lastAccessed: Date;
+  accessCount: number;
+}
+
+// Aggregated context from multiple PRPs
+export interface AggregatedContext {
+  id: string;
+  sourcePRPs: string[];
+  sections: EnhancedContextSection[];
+  metadata: {
+    aggregatedAt: Date;
+    strategy: AggregationStrategy;
+    totalTokens: number;
+    compressionRatio: number;
+  };
+}
+
+// Context conflict resolution
+export interface ContextConflict {
+  sectionId: string;
+  conflictType: 'content' | 'priority' | 'permissions';
+  conflictingSections: EnhancedContextSection[];
+  resolution?: ConflictResolution;
+}
+
+export interface ConflictResolution {
+  strategy: 'merge' | 'priority' | 'timestamp' | 'manual';
+  resolvedSection: EnhancedContextSection;
+  resolvedAt: Date;
+}
+
+// Agent context sharing
+export interface ContextSession {
+  id: string;
+  participants: string[];
+  sharedContexts: Map<string, EnhancedContextSection>;
+  createdAt: Date;
+  lastActivity: Date;
+}
+
+// Dynamic context updates
+export interface ContextUpdate {
+  contextId: string;
+  updateType: 'create' | 'update' | 'delete';
+  section: EnhancedContextSection;
+  timestamp: Date;
+  source: string;
+}
+
+export interface UpdateCallback {
+  (update: ContextUpdate): Promise<void>;
+}
+
+export interface Subscription {
+  id: string;
+  contextId: string;
+  callback: UpdateCallback;
+  createdAt: Date;
+  active: boolean;
+}
+
+export interface SyncResult {
+  success: boolean;
+  syncedContexts: string[];
+  conflicts: ContextConflict[];
+  errors: string[];
+}
+
+// PRP parsing results
+export interface ParsedPRP {
+  id: string;
+  sections: Map<PRPSectionType, string>;
+  metadata: {
+    parsedAt: Date;
+    sectionCount: number;
+    totalTokens: number;
+  };
+}
+
+export interface SignalEntry {
+  signal: Signal;
+  timestamp: Date;
+  context: string;
+  agent?: string;
+}
+
+// Context aggregation interfaces
+export interface ContextAggregator {
+  aggregateContexts(prpIds: string[], strategy: AggregationStrategy): Promise<AggregatedContext>;
+  mergeContexts(contexts: EnhancedContextSection[]): EnhancedContextSection[];
+  resolveConflicts(conflicts: ContextConflict[]): Promise<ConflictResolution[]>;
+  calculateRelevanceScore(section: EnhancedContextSection, signal: Signal): number;
+}
+
+// PRP section extraction interfaces
+export interface PRPSectionExtractor {
+  extractSection(prp: PRPFile, sectionType: PRPSectionType): Promise<EnhancedContextSection>;
+  parsePRPStructure(content: string): Promise<ParsedPRP>;
+  extractSignalHistory(prp: PRPFile): Promise<SignalEntry[]>;
+  extractRelevantSections(prp: PRPFile, signal: Signal): Promise<EnhancedContextSection[]>;
+}
+
+// Dynamic context update interfaces
+export interface DynamicContextUpdater {
+  updateContext(contextId: string, updates: ContextUpdate): Promise<void>;
+  subscribeToContextUpdates(contextId: string, callback: UpdateCallback): Promise<Subscription>;
+  synchronizeContexts(contextIds: string[]): Promise<SyncResult>;
+  broadcastUpdate(update: ContextUpdate): Promise<void>;
+}
+
+// Agent context broker interfaces
+// Enhanced context manager interface
+export interface EnhancedContextManager {
+  getContext(signalId: string): Promise<EnhancedContextSection | null>;
+  updateContext(signalId: string, context: EnhancedContextSection): Promise<void>;
+  deleteContext(signalId: string): Promise<void>;
+  optimizeContexts(contextIds: string[]): Promise<EnhancedContextSection[]>;
+  mergeContexts(contexts: EnhancedContextSection[]): Promise<EnhancedContextSection>;
+}
+
+export interface AgentContextBroker {
+  shareContext(fromAgent: string, toAgent: string, context: EnhancedContextSection): Promise<void>;
+  requestContext(agent: string, contextType: ContextType): Promise<EnhancedContextSection>;
+  establishContextSession(participants: string[]): Promise<ContextSession>;
 }

@@ -4,10 +4,14 @@
  * Provides command-line interface for nudge system operations.
  */
 
+/* eslint-disable no-console */
+
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
-import { runNudgeTest, testNudgeConnectivity } from '../nudge/simple-test.js';
+import { runNudgeTest, testNudgeConnectivity } from '../nudge/simple-test';
+import { getCliUserAgent, getVersion } from '../utils/version.js';
+import { logger } from '../utils/logger.js';
 
 interface NudgeResponse {
   success: boolean;
@@ -30,7 +34,7 @@ export function createNudgeCommand(): Command {
     .command('test')
     .description('Test nudge system connectivity and configuration')
     .action(async () => {
-      console.log(chalk.blue('🧪 Testing Nudge System...\n'));
+      logger.info('nudge', '🧪 Testing Nudge System...\n');
 
       try {
         const success = await runNudgeTest();
@@ -38,7 +42,7 @@ export function createNudgeCommand(): Command {
           process.exit(1);
         }
       } catch (error) {
-        console.error(chalk.red('❌ Test failed:'), error);
+        logger.error('nudge-test', '❌ Test failed', error instanceof Error ? error : new Error(String(error)));
         process.exit(1);
       }
     });
@@ -50,13 +54,13 @@ export function createNudgeCommand(): Command {
     .argument('<message>', 'Message to send')
     .option('-u, --urgency <urgency>', 'Urgency level: high, medium, low', 'medium')
     .action(async (message, options) => {
-      console.log(chalk.blue('📤 Sending Nudge Message...\n'));
+      logger.info('nudge', '📤 Sending Nudge Message...\n');
 
       try {
         const spinner = ora('Sending nudge...').start();
 
         const secret = process.env['NUDGE_SECRET'];
-        const endpoint = process.env['NUDGE_ENDPOINT'] || 'https://dcmaid.theedgestory.org/nudge';
+        const endpoint = process.env['NUDGE_ENDPOINT'] ?? 'https://dcmaid.theedgestory.org/nudge';
 
         if (!secret) {
           spinner.fail('NUDGE_SECRET not configured');
@@ -68,15 +72,15 @@ export function createNudgeCommand(): Command {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${secret}`,
-            'User-Agent': 'prp-cli/0.5.0'
+            'User-Agent': getCliUserAgent()
           },
           body: JSON.stringify({
             type: 'direct',
             message: message,
-            urgency: options.urgency || 'medium',
+            urgency: options.urgency ?? 'medium',
             metadata: {
               timestamp: new Date().toISOString(),
-              cli_version: '0.5.0'
+              cli_version: getVersion()
             }
           }),
           signal: AbortSignal.timeout(10000)
@@ -86,25 +90,25 @@ export function createNudgeCommand(): Command {
           const data: NudgeResponse = await response.json();
           spinner.succeed('Nudge sent successfully!');
 
-          console.log(chalk.green('\n📊 Response Details:'));
-          console.log(`Success: ${data.success ? 'Yes' : 'No'}`);
-          console.log(`Message ID: ${data.message_id || 'N/A'}`);
-          console.log(`Sent To: ${data.sent_to?.join(', ') || 'N/A'}`);
-          console.log(`Delivery Type: ${data.delivery_type || 'N/A'}`);
-          console.log(`Timestamp: ${data.timestamp || 'N/A'}`);
+          logger.info('nudge', chalk.green('\n📊 Response Details:'));
+          logger.info('nudge', `Success: ${data.success ? 'Yes' : 'No'}`);
+          logger.info('nudge', `Message ID: ${data.message_id ?? 'N/A'}`);
+          logger.info('nudge', `Sent To: ${data.sent_to?.join(', ') ?? 'N/A'}`);
+          logger.info('nudge', `Delivery Type: ${data.delivery_type ?? 'N/A'}`);
+          logger.info('nudge', `Timestamp: ${data.timestamp ?? 'N/A'}`);
 
           if (data.error) {
-            console.log(chalk.red(`\n⚠️  Error: ${data.error}`));
+            logger.warn('nudge', chalk.red(`\n⚠️  Error: ${data.error}`));
           }
         } else {
           spinner.fail(`Failed to send nudge: ${response.status} ${response.statusText}`);
           const errorText = await response.text();
-          console.error('Error details:', errorText);
+          logger.error('nudge', 'Error details:', errorText);
           process.exit(1);
         }
 
       } catch (error) {
-        console.error(chalk.red('❌ Failed to send nudge:'), error);
+        logger.error('nudge', 'Failed to send nudge:', error);
         process.exit(1);
       }
     });
@@ -118,7 +122,7 @@ export function createNudgeCommand(): Command {
 
       const secret = process.env['NUDGE_SECRET'];
       const adminId = process.env['ADMIN_ID'];
-      const endpoint = process.env['NUDGE_ENDPOINT'] || 'https://dcmaid.theedgestory.org/nudge';
+      const endpoint = process.env['NUDGE_ENDPOINT'] ?? 'https://dcmaid.theedgestory.org/nudge';
 
       console.log('Configuration:');
       console.log(`   Endpoint: ${endpoint}`);

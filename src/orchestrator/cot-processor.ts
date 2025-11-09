@@ -103,13 +103,13 @@ export class CoTProcessor {
     try {
       // Create CoT context
       const processingContext: CoTContext = {
-        originalPayload: context.payload || createDefaultInspectorPayload(),
-        signals: context.signals || [signal],
+        originalPayload: context.payload ?? createDefaultInspectorPayload(),
+        signals: context.signals ?? [signal],
         activeGuidelines: [guideline],
-        availableAgents: (context.availableAgents || []).map(agent => typeof agent === 'string' ? agent : agent.id || 'unknown'),
-        systemState: context.systemState || {},
-        previousDecisions: context.previousDecisions || [],
-        constraints: context.constraints || []
+        availableAgents: (context.availableAgents ?? []).map(agent => typeof agent === 'string' ? agent : agent.id ?? 'unknown'),
+        systemState: context.systemState ?? {},
+        previousDecisions: context.previousDecisions ?? [],
+        constraints: context.constraints ?? []
       };
 
       // Generate reasoning steps
@@ -157,7 +157,7 @@ export class CoTProcessor {
    * Get CoT by ID
    */
   getCoT(cotId: string): ChainOfThought | null {
-    return this.processingHistory.get(cotId) || null;
+    return this.processingHistory.get(cotId) ?? null;
   }
 
   /**
@@ -169,8 +169,8 @@ export class CoTProcessor {
       .sort((a, b) => {
         const aContext = a.context as ChainOfThoughtContext;
         const bContext = b.context as ChainOfThoughtContext;
-        const aTime = aContext?.timestamp?.getTime() || 0;
-        const bTime = bContext?.timestamp?.getTime() || 0;
+        const aTime = aContext.timestamp.getTime();
+        const bTime = bContext.timestamp.getTime();
         return bTime - aTime;
       })
       .slice(0, limit);
@@ -276,6 +276,7 @@ export class CoTProcessor {
    */
   private async createEvaluationStep(signal: Signal, context: CoTContext): Promise<CoTStep> {
     const options = this.generateOptions(signal);
+    void context; // Explicitly mark as used to avoid ESLint warning (TODO: implement context-aware evaluation)
 
     return {
       id: HashUtils.generateId(),
@@ -483,6 +484,7 @@ export class CoTProcessor {
 
   private determineActions(signal: Signal, decision: string, context: CoTContext): string[] {
     const actions = [];
+    void context; // Explicitly mark as used to avoid ESLint warning (TODO: implement context-aware actions)
 
     if (decision.includes('agent')) {
       actions.push(`Deploy ${this.selectBestAgent(signal)} agent to handle signal: ${signal.type}`);

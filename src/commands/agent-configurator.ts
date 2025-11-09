@@ -7,8 +7,9 @@
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { createLayerLogger } from '../shared';
-import { AgentConfig, AgentConfigConfig } from './types';
+import { AgentConfig } from './types';
 import { AgentCapabilities } from '../config/agent-config';
+import { getVersionBanner } from '../utils/version';
 
 const logger = createLayerLogger('config');
 
@@ -38,15 +39,15 @@ function createCompleteAgentConfig(partial: Partial<AgentConfig>): AgentConfig {
   const now = new Date();
   return {
     // Required properties
-    id: partial.id || `agent-${Date.now()}`,
-    name: partial.name || 'Unknown Agent',
-    type: partial.type || 'claude-code-anthropic',
-    role: partial.role || 'orchestrator-agent',
-    provider: partial.provider || 'anthropic',
+    id: partial.id ?? `agent-${Date.now()}`,
+    name: partial.name ?? 'Unknown Agent',
+    type: partial.type ?? 'claude-code-anthropic',
+    role: partial.role ?? 'orchestrator-agent',
+    provider: partial.provider ?? 'anthropic',
     enabled: partial.enabled ?? true,
-    capabilities: partial.capabilities || createAgentCapabilities([]),
+    capabilities: partial.capabilities ?? createAgentCapabilities([]),
     limits: {
-      maxTokensPerRequest: partial.defaultMaxTokens || 4000,
+      maxTokensPerRequest: partial.defaultMaxTokens ?? 4000,
       maxRequestsPerHour: 100,
       maxRequestsPerDay: 1000,
       maxCostPerDay: 10.0,
@@ -121,7 +122,7 @@ function createCompleteAgentConfig(partial: Partial<AgentConfig>): AgentConfig {
       lastModified: now,
       tags: [],
       category: 'ai-assistant',
-      description: partial.description || '',
+      description: partial.description ?? '',
       documentation: '',
       examples: [],
       dependencies: [],
@@ -155,15 +156,13 @@ interface AgentRegistry {
 export class AgentConfigurator {
   private registry: AgentRegistry;
   private cache: Map<string, AgentConfig> = new Map();
-
-  constructor(config: AgentConfigConfig) {
+  constructor() {
     this.registry = {
       agents: {},
       categories: {},
       lastUpdated: new Date()
     };
     // Store config for potential future use
-    void config;
   }
 
   /**
@@ -501,11 +500,8 @@ export class AgentConfigurator {
     this.registry.categories = {};
 
     for (const config of Object.values(this.registry.agents)) {
-      if (!config) continue;
-      const category = config.category || 'uncategorized';
-      if (!this.registry.categories[category]) {
-        this.registry.categories[category] = [];
-      }
+      const category = config.category ?? 'uncategorized';
+      this.registry.categories[category] ??= [];
       this.registry.categories[category].push(config.id);
     }
 
@@ -533,35 +529,35 @@ export class AgentConfigurator {
    * Merge configurations
    */
   private mergeConfigurations(existing: Record<string, unknown>, newData: Record<string, unknown>): Record<string, unknown> {
-    const existingAgents = existing['agents'] as Record<string, unknown> || {};
-    const newAgents = newData['agents'] as string[] || [];
-    const agentConfigs = newData['agentConfigs'] as Record<string, unknown> || {};
+    const existingAgents = existing['agents'] as Record<string, unknown>;
+    const newAgents = newData['agents'] as string[];
+    const agentConfigs = newData['agentConfigs'] as Record<string, unknown>;
 
     return {
       ...existing,
       version: '1.0.0',
-      'projectId': newData['projectId'] || existing['projectId'],
+      'projectId': newData['projectId'] ?? existing['projectId'],
       'agents': {
         ...existingAgents,
-        'enabled': newAgents || (existingAgents['enabled'] as string[] || []),
+        'enabled': newAgents.length > 0 ? newAgents : (existingAgents['enabled'] as string[]),
         'configurations': {
-          ...(existingAgents['configurations'] as Record<string, unknown> || {}),
+          ...(existingAgents['configurations'] as Record<string, unknown>),
           ...agentConfigs
         }
       },
       'templates': {
-        ...(existing['templates'] as Record<string, unknown> || {}),
-        'default': newData['template'] || (existing['templates'] as Record<string, unknown>)?.['default'] || 'fast'
+        ...(existing['templates'] as Record<string, unknown>),
+        'default': newData['template'] ?? (existing['templates'] as Record<string, unknown>)['default'] ?? 'fast'
       },
       'features': {
-        ...(existing['features'] as Record<string, unknown> || {}),
+        ...(existing['features'] as Record<string, unknown>),
         'git': true,
         'npm': true,
         'testing': newAgents.includes('robo-aqa'),
         'design': newAgents.includes('robo-ux-ui-designer'),
         'devops': newAgents.includes('robo-devops-sre')
       },
-      'createdAt': existing['createdAt'] || new Date().toISOString(),
+      'createdAt': existing['createdAt'] ?? new Date().toISOString(),
       'updatedAt': new Date().toISOString()
     };
   }
@@ -605,7 +601,7 @@ ${Object.keys(this.registry.agents).map(agentId => {
 
 ---
 
-*Generated by PRP CLI v0.5.0*
+*${getVersionBanner()}*
 *Last Updated: ${new Date().toISOString()}*
 `;
 
@@ -627,14 +623,14 @@ ${Object.keys(this.registry.agents).map(agentId => {
     }
 
     const agents = config['agents'] as Record<string, unknown>;
-    const enabledAgents = agents?.['enabled'] as string[];
+    const enabledAgents = agents['enabled'] as string[];
 
-    if (!agents || !Array.isArray(enabledAgents)) {
+    if (!Array.isArray(enabledAgents)) {
       errors.push('Invalid or missing agents.enabled field');
     }
 
     // Validate agent IDs
-    if (agents && Array.isArray(enabledAgents)) {
+    if (Array.isArray(enabledAgents)) {
       for (const agentId of enabledAgents) {
         if (!this.registry.agents[agentId]) {
           errors.push(`Unknown agent ID: ${agentId}`);
@@ -643,7 +639,7 @@ ${Object.keys(this.registry.agents).map(agentId => {
     }
 
     // Check for duplicate agents
-    if (agents && Array.isArray(enabledAgents)) {
+    if (Array.isArray(enabledAgents)) {
       const uniqueAgents = new Set(enabledAgents);
       if (uniqueAgents.size !== enabledAgents.length) {
         errors.push('Duplicate agent IDs found');
@@ -670,7 +666,7 @@ ${Object.keys(this.registry.agents).map(agentId => {
       'enterprise': ['robo-developer', 'robo-aqa', 'robo-system-analyst', 'robo-devops-sre', 'robo-orchestrator']
     };
 
-    return recommendations[projectType] || ['robo-developer', 'robo-aqa'];
+    return recommendations[projectType] ?? ['robo-developer', 'robo-aqa'];
   }
 
   /**

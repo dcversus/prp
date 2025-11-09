@@ -197,7 +197,7 @@ export class RealTimeEventEmitter {
       type,
       timestamp: TimeUtils.now(),
       worktree,
-      scanId: metadata.scanId || HashUtils.generateId(),
+      scanId: metadata.scanId ?? HashUtils.generateId(),
       metadata
     };
 

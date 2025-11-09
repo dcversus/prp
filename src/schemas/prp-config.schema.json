@@ -1,0 +1,513 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://prp.dev/schemas/prp-config.schema.json",
+  "title": "PRP Configuration Schema",
+  "description": "Configuration schema for PRP (Project Requirements and Planning) system",
+  "type": "object",
+  "properties": {
+    "telemetry": {
+      "type": "boolean",
+      "default": true,
+      "description": "Enable telemetry data collection"
+    },
+    "config_path": {
+      "type": "string",
+      "default": ".prp/.prprc",
+      "description": "Path for config with secrets or personal settings"
+    },
+    "limit": {
+      "type": "string",
+      "description": "Token limit format (e.g., '1k', '2k#robo-role', '100usd10k#agent-name')"
+    },
+    "instructions_path": {
+      "type": "string",
+      "default": "AGENTS.md",
+      "description": "Path to instructions file"
+    },
+    "log_level": {
+      "type": "string",
+      "enum": ["error", "warn", "info", "debug", "verbose"],
+      "default": "info",
+      "description": "Logging level"
+    },
+    "no_color": {
+      "type": "string",
+      "description": "Disable colored output"
+    },
+    "log_file": {
+      "type": "string",
+      "description": "Path to log file"
+    },
+    "mcp_port": {
+      "type": "number",
+      "description": "MCP server port"
+    },
+    "debug": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enable debug mode"
+    },
+    "ci": {
+      "type": "boolean",
+      "default": false,
+      "description": "Run in CI mode"
+    },
+    "project": {
+      "type": "object",
+      "description": "Project configuration",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name from package.json-like format"
+        },
+        "description": {
+          "type": "string",
+          "description": "Project description from prompt"
+        },
+        "template": {
+          "type": "string",
+          "enum": ["none", "typescript", "react", "fastapi", "wikijs", "nestjs"],
+          "default": "none",
+          "description": "Project template"
+        }
+      },
+      "required": ["name"]
+    },
+    "providers": {
+      "type": "array",
+      "description": "AI provider configurations",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique provider identifier"
+          },
+          "limit": {
+            "type": "string",
+            "description": "Token limit format for this provider"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["openai", "anthropic", "glm"],
+            "description": "Provider type"
+          },
+          "temperature": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2,
+            "description": "Sampling temperature"
+          },
+          "instructions_path": {
+            "type": "string",
+            "default": "AGENTS.md",
+            "description": "Path to provider-specific instructions"
+          },
+          "base_url": {
+            "type": "string",
+            "description": "Provider API base URL"
+          },
+          "seed": {
+            "type": "string",
+            "description": "Random seed for reproducibility"
+          },
+          "extra_args": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Additional provider arguments"
+          },
+          "auth": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["api_key", "oauth"],
+                "description": "Authentication type"
+              },
+              "value": {
+                "type": "string",
+                "description": "Authentication value (not stored in main .prprc)"
+              },
+              "encrypted": {
+                "type": "boolean",
+                "description": "Whether the value is encrypted"
+              },
+              "scopes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "OAuth scopes"
+              }
+            },
+            "required": ["type", "value"]
+          },
+          "config": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Provider-specific configuration (top_p, max_tokens, etc.)"
+          }
+        },
+        "required": ["id", "type"]
+      }
+    },
+    "connections": {
+      "type": "object",
+      "description": "External service connections",
+      "properties": {
+        "github": {
+          "type": "object",
+          "properties": {
+            "api_url": {
+              "type": "string",
+              "description": "GitHub API URL"
+            },
+            "token": {
+              "type": "string",
+              "description": "GitHub token (only stored in .prp/.prprc)"
+            }
+          },
+          "required": ["api_url", "token"]
+        },
+        "npm": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "string",
+              "description": "NPM token (only stored in .prp/.prprc)"
+            },
+            "registry": {
+              "type": "string",
+              "description": "NPM registry URL"
+            }
+          },
+          "required": ["token", "registry"]
+        }
+      }
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Environment variables set for all agents"
+    },
+    "agents": {
+      "type": "array",
+      "description": "Agent configurations (order preserved for priority)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique agent identifier"
+          },
+          "cv": {
+            "type": "string",
+            "description": "Short description of agent capabilities"
+          },
+          "limit": {
+            "type": "string",
+            "description": "Token limit format for this agent"
+          },
+          "warning_limit": {
+            "type": "string",
+            "description": "Warning threshold for token usage"
+          },
+          "provider": {
+            "type": "string",
+            "description": "Provider ID to use"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["claude", "codex", "custom"],
+            "description": "Agent type"
+          },
+          "yolo": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable --yolo mode (skip permissions)"
+          },
+          "instructions_path": {
+            "type": "string",
+            "default": "AGENTS.md",
+            "description": "Path to agent instructions"
+          },
+          "permissions": {
+            "type": "string",
+            "description": "Agent permissions"
+          },
+          "sub_agents": {
+            "oneOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ],
+            "description": "Enable sub-agents or specify array of paths"
+          },
+          "sub_agent_paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Paths to role instruction files"
+          },
+          "max_parallel": {
+            "type": "number",
+            "minimum": 1,
+            "description": "Maximum parallel agents"
+          },
+          "mcp": {
+            "oneOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "description": "Enable MCP or path to MCP config file"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Tool name"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Tool description"
+                },
+                "parameters": {
+                  "description": "Tool parameters schema"
+                }
+              },
+              "required": ["name", "description"]
+            }
+          },
+          "compact_prediction": {
+            "type": "object",
+            "properties": {
+              "percent_threshold": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "default": 75,
+                "description": "Warning threshold percentage"
+              },
+              "cap": {
+                "type": "number",
+                "description": "Token cap"
+              },
+              "auto_adjust": {
+                "type": "boolean",
+                "description": "Auto-adjust based on history"
+              }
+            }
+          },
+          "env": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Environment variables for this agent"
+          }
+        },
+        "required": ["id", "provider"]
+      }
+    },
+    "orchestrator": {
+      "type": "object",
+      "description": "Orchestrator configuration",
+      "properties": {
+        "limit": {
+          "type": "string",
+          "description": "Token limit format"
+        },
+        "instructions_path": {
+          "type": "string",
+          "default": "AGENTS.md",
+          "description": "Path to orchestrator instructions"
+        },
+        "provider": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Provider ID or array of providers for fallback chain"
+        },
+        "cap": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "type": "number",
+              "default": 200000,
+              "description": "Total token cap"
+            },
+            "base_prompt": {
+              "type": "number",
+              "default": 20000,
+              "description": "Base prompt token allocation"
+            },
+            "guideline_prompt": {
+              "type": "number",
+              "default": 20000,
+              "description": "Guideline prompt token allocation"
+            },
+            "agentsmd": {
+              "type": "number",
+              "default": 10000,
+              "description": "AGENTS.md token allocation"
+            },
+            "notes_prompt": {
+              "type": "number",
+              "default": 20000,
+              "description": "Notes prompt token allocation"
+            },
+            "inspector_payload": {
+              "type": "number",
+              "default": 40000,
+              "description": "Inspector payload token allocation"
+            },
+            "prp": {
+              "type": "number",
+              "default": 20000,
+              "description": "PRP token allocation"
+            },
+            "shared_context": {
+              "type": "number",
+              "default": 10000,
+              "description": "Shared context token allocation"
+            },
+            "prp_context": {
+              "type": "number",
+              "default": 70000,
+              "description": "PRP context token allocation"
+            }
+          }
+        }
+      }
+    },
+    "inspector": {
+      "type": "object",
+      "description": "Inspector configuration",
+      "properties": {
+        "cap": {
+          "type": "object",
+          "properties": {
+            "total": {
+              "type": "number",
+              "default": 1000000,
+              "description": "Total token cap"
+            },
+            "base_prompt": {
+              "type": "number",
+              "default": 20000,
+              "description": "Base prompt token allocation"
+            },
+            "guideline_prompt": {
+              "type": "number",
+              "default": 20000,
+              "description": "Guideline prompt token allocation"
+            },
+            "context": {
+              "type": "string",
+              "enum": ["remainder"],
+              "description": "Context allocation strategy"
+            }
+          }
+        }
+      }
+    },
+    "scanner": {
+      "type": "object",
+      "description": "Scanner configuration",
+      "properties": {
+        "disabled_signals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of disabled signal types"
+        },
+        "git_change_detection": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable git change detection"
+            },
+            "watch_paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Paths to watch for git changes"
+            },
+            "ignore_patterns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Git ignore patterns"
+            }
+          }
+        },
+        "prp_change_detection": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable PRP change detection"
+            },
+            "watch_paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": ["PRPs/*.md"],
+              "description": "PRP paths to watch"
+            },
+            "cache_versions": {
+              "type": "boolean",
+              "description": "Cache PRP versions"
+            }
+          }
+        },
+        "file_system_events": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable file system events"
+            },
+            "debounce_ms": {
+              "type": "number",
+              "default": 500,
+              "description": "Debounce time in milliseconds"
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": ["limit", "instructions_path"]
+}

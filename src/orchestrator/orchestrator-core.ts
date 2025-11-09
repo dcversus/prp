@@ -12,6 +12,8 @@ import { ToolRegistry } from './tool-registry';
 import { ContextManager } from './context-manager';
 import { CoTProcessor, ProcessingContext } from './cot-processor';
 import { AgentManager } from './agent-manager';
+import { SignalResolutionEngine } from './signal-resolution-engine';
+import { TokenMonitoringTools } from './tools/token-monitoring-tools';
 import { createLayerLogger, HashUtils } from '../shared';
 
 const logger = createLayerLogger('orchestrator');
@@ -25,6 +27,7 @@ export class OrchestratorCore extends EventEmitter {
   private contextManager: ContextManager;
   private cotProcessor: CoTProcessor;
   private agentManager: AgentManager;
+  private signalResolutionEngine: SignalResolutionEngine;
   private isRunning = false;
   private activePRPs: Map<string, PRPFile> = new Map();
   private signalQueue: Signal[] = [];
@@ -107,6 +110,14 @@ export class OrchestratorCore extends EventEmitter {
     this.contextManager = new ContextManager({ total: 100000 });
     this.cotProcessor = new CoTProcessor();
     this.agentManager = new AgentManager(_config);
+    this.signalResolutionEngine = new SignalResolutionEngine(this);
+
+    // Register token monitoring tools
+    const tokenMonitoring = new TokenMonitoringTools();
+    this.toolRegistry.registerTool(tokenMonitoring.get_current_token_caps());
+    this.toolRegistry.registerTool(tokenMonitoring.get_latest_scanner_metrics());
+    this.toolRegistry.registerTool(tokenMonitoring.track_token_distribution());
+    this.toolRegistry.registerTool(tokenMonitoring.real_time_token_monitoring());
   }
 
   /**
@@ -213,12 +224,12 @@ export class OrchestratorCore extends EventEmitter {
         signal,
         action: 'processed',
         result,
-        tokenUsage: resultWithTokenUsage.tokenUsage || 0
+        tokenUsage: resultWithTokenUsage.tokenUsage ?? 0
       });
 
       // Update token usage
       if (this.state.sharedContext?.systemMetrics) {
-        this.state.sharedContext.systemMetrics.tokensUsed += resultWithTokenUsage.tokenUsage || 0;
+        this.state.sharedContext.systemMetrics.tokensUsed += resultWithTokenUsage.tokenUsage ?? 0;
       }
 
       this.emit('orchestrator:signal_processed', { signal, result });
@@ -232,20 +243,32 @@ export class OrchestratorCore extends EventEmitter {
   }
 
   /**
-   * Execute signal processing with CoT and tools
+   * Execute signal processing with resolution engine
    */
   private async executeSignalProcessing(signal: Signal): Promise<unknown> {
     const startTime = Date.now();
 
     try {
-      // 1. Build context for the signal
+      // 1. Get the PRP context for this signal if available
+      const prpId = typeof signal.data === 'object' && 'prpId' in signal.data
+        ? (signal.data as { prpId: string }).prpId
+        : undefined;
+      const prp = prpId ? this.activePRPs.get(prpId) :
+                 Array.from(this.activePRPs.values()).find(p =>
+                   p.content?.includes(`[${signal.type}]`)
+                 );
+
+      // 2. Use signal resolution engine for comprehensive processing
+      const resolutionResult = await this.signalResolutionEngine.processSignal(signal, prp);
+
+      // 3. Build context for the signal
       const context = await this.contextManager.buildContext(signal, this.state);
 
-      // 2. Determine appropriate guideline and tools
+      // 4. Determine appropriate guideline and tools (fallback for complex scenarios)
       await this.determineGuideline(signal);
       const requiredTools = await this.determineRequiredTools(signal);
 
-      // 3. Generate Chain of Thought
+      // 5. Generate Chain of Thought for complex decisions
       const processingContext: ProcessingContext = {
         signals: [signal],
         availableAgents: Array.from(this.state.activeAgents.values()).map(agent => ({
@@ -254,10 +277,11 @@ export class OrchestratorCore extends EventEmitter {
           type: agent.agentConfig.type,
           status: agent.status,
           capabilities: agent.capabilities.availableTools
-        })) || [],
+        })) ?? [],
         systemState: {
           status: this.state.status,
-          metrics: this.state.metrics
+          metrics: this.state.metrics,
+          resolutionResult // Include resolution result in systemState
         },
         previousDecisions: [],
         constraints: []
@@ -265,16 +289,16 @@ export class OrchestratorCore extends EventEmitter {
 
       const cot = await this.cotProcessor.generateCoT(signal, processingContext, 'general-guideline');
 
-      // 4. Execute tool calls based on CoT
+      // 6. Execute tool calls based on CoT (for additional processing)
       const toolResults = await this.executeToolCalls(cot, requiredTools);
 
-      // 5. Update shared context based on results
+      // 7. Update shared context based on results
       await this.updateSharedContext(signal, cot);
 
-      // 6. Determine next actions
+      // 8. Determine next actions (from both resolution engine and CoT)
       const nextActions = await this.determineNextActions(signal, cot);
 
-      // 7. Execute agent tasks if needed
+      // 9. Execute agent tasks if needed
       if (nextActions.agentTasks.length > 0) {
         await this.executeAgentTasks(nextActions.agentTasks);
       }
@@ -282,20 +306,28 @@ export class OrchestratorCore extends EventEmitter {
       const processingTime = Date.now() - startTime;
 
       return {
-        success: true,
+        success: resolutionResult.success,
         processingTime,
-        tokenUsage: cot.tokenUsage + toolResults.tokenUsage,
+        tokenUsage: (cot.tokenUsage || 0) + (toolResults.tokenUsage || 0),
+        resolutionResult,
         chainOfThought: cot,
         toolResults,
         nextActions,
-        context: context
+        context: context,
+        actions: resolutionResult.actions,
+        escalation: resolutionResult.escalation
       };
 
     } catch (error) {
       const processingTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      logger.error('executeSignalProcessing', 'Signal processing failed');
+      logger.error('executeSignalProcessing', 'Signal processing failed',
+        error instanceof Error ? error : new Error(errorMessage),
+        {
+          signalType: signal.type
+        }
+      );
 
       return {
         success: false,
@@ -321,7 +353,7 @@ export class OrchestratorCore extends EventEmitter {
       'Bb': 'blocker-guideline'
     };
 
-    return signalGuidelines[_signal.type] || 'general-guideline';
+    return signalGuidelines[_signal.type] ?? 'general-guideline';
   }
 
   /**
@@ -337,11 +369,11 @@ export class OrchestratorCore extends EventEmitter {
       'af': ['web_search', 'documentation_reader']
     };
 
-    const toolNames = [...baseTools, ...(signalSpecificTools[_signal.type] || [])];
+    const toolNames = [...baseTools, ...(signalSpecificTools[_signal.type] ?? [])];
 
     return toolNames
       .map(name => this.toolRegistry.getTool(name))
-      .filter(tool => tool !== null) as Tool[];
+      .filter(tool => tool !== null);
   }
 
   /**
@@ -356,12 +388,12 @@ export class OrchestratorCore extends EventEmitter {
 
     for (const step of cot.steps) {
       if (step.toolCall) {
-        const tool = tools.find(t => t.name === step.toolCall!.toolName);
+        const tool = tools.find(t => t.name === step.toolCall?.toolName);
         if (tool) {
           try {
             const result = await this.toolRegistry.executeTool(
               tool.name,
-              step.toolCall!.parameters
+              step.toolCall.parameters
             );
 
             results.push({
@@ -371,7 +403,7 @@ export class OrchestratorCore extends EventEmitter {
               success: true
             });
 
-            totalTokenUsage += result.tokenUsage || 0;
+            totalTokenUsage += result.tokenUsage ?? 0;
 
           } catch (error) {
               logger.error('executeToolCalls', 'Tool execution failed');
@@ -461,27 +493,27 @@ export class OrchestratorCore extends EventEmitter {
       for (const action of cot.decision.actions) {
         if (action.type === 'agent_task') {
           agentTasks.push({
-            agentType: action.agentType || 'unknown',
-            task: action.task || 'unknown',
-            priority: action.priority || 5,
-            context: action.context || {} as Record<string, unknown>
+            agentType: action.agentType ?? 'unknown',
+            task: action.task ?? 'unknown',
+            priority: action.priority ?? 5,
+            context: action.context ?? {} as Record<string, unknown>
           });
         } else if (action.type === 'signal') {
-          const signalType = action.signalType || 'default';
+          const signalType = action.signalType ?? 'default';
           followUpSignals.push({
             id: HashUtils.generateId(),
             type: signalType,
-            priority: action.priority || 5,
+            priority: action.priority ?? 5,
             source: 'orchestrator',
             timestamp: new Date(),
-            data: (action.data || {}) as Record<string, unknown>,
+            data: (action.data ?? {}) as Record<string, unknown>,
             metadata: {} as Record<string, unknown>
           });
         } else if (action.type === 'notification') {
           userNotifications.push({
-            message: action.message || 'unknown',
-            priority: String(action.priority || 'medium'),
-            channel: action.channel || 'default'
+            message: action.message ?? 'unknown',
+            priority: String(action.priority ?? 'medium'),
+            channel: action.channel ?? 'default'
           });
         }
       }
@@ -641,5 +673,63 @@ export class OrchestratorCore extends EventEmitter {
    */
   getAgentStatuses(): Map<string, AgentStatus> {
     return this.agentManager.getAllStatuses();
+  }
+
+  /**
+   * Get signal resolution engine
+   */
+  getSignalResolutionEngine(): SignalResolutionEngine {
+    return this.signalResolutionEngine;
+  }
+
+  /**
+   * Get active signal workflows
+   */
+  getActiveWorkflows() {
+    return this.signalResolutionEngine.getActiveWorkflows();
+  }
+
+  /**
+   * Get all available signal resolutions
+   */
+  getAllSignalResolutions() {
+    return this.signalResolutionEngine.getAllResolutions();
+  }
+
+  /**
+   * Add custom signal resolution
+   */
+  addSignalResolution(resolution: {
+    signal: string;
+    agent: string;
+    action: string;
+    context: string;
+    priority: number;
+    requirements: string[];
+    expectedOutcome: string;
+    successCriteria: string[];
+  }): void {
+    // Convert to SignalResolution format
+    const signalResolution = {
+      signalType: resolution.signal,
+      category: 'custom',
+      priority: resolution.priority,
+      actions: [{
+        type: 'agent_task' as const,
+        priority: resolution.priority,
+        description: resolution.action,
+        agentType: resolution.agent,
+        context: { customContext: resolution.context, requirements: resolution.requirements }
+      }],
+      successCriteria: resolution.successCriteria
+    };
+    this.signalResolutionEngine.addResolution(signalResolution);
+  }
+
+  /**
+   * Get token monitoring status
+   */
+  getTokenMonitoringStatus() {
+    return this.toolRegistry.executeTool('get_current_token_caps', { component: 'all' });
   }
 }

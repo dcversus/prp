@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import { logger } from '../utils/logger';
 
 /**
  * Git Status Monitor - tracks git repository status and changes
@@ -62,8 +63,8 @@ export class GitStatusMonitor {
 
         if (divergenceOutput) {
           const [behindStr, aheadStr] = divergenceOutput.split('\t');
-          behind = parseInt(behindStr || '') || 0;
-          ahead = parseInt(aheadStr || '') || 0;
+          behind = parseInt(behindStr ?? '', 10) || 0;
+          ahead = parseInt(aheadStr ?? '', 10) || 0;
         }
       } catch {
         // No upstream or tracking information
@@ -182,13 +183,13 @@ export class GitStatusMonitor {
 
       const commits = logOutput.split('\n').map(line => {
         const [commit, ...parts] = line.split('|');
-        const message = parts[0] || '';
-        const author = parts[1] || '';
-        const dateString = parts[2] || '';
-        const changesCount = parseInt(parts[3] || '0') || 0;
+        const message = parts[0] ?? '';
+        const author = parts[1] ?? '';
+        const dateString = parts[2] ?? '';
+        const changesCount = parseInt(parts[3] ?? '0', 10) || 0;
 
         return {
-          commit: commit || '',
+          commit: commit ?? '',
           message,
           author,
           date: new Date(dateString),
@@ -198,7 +199,7 @@ export class GitStatusMonitor {
 
       return commits;
     } catch (error) {
-      console.error(`❌ Error getting commit history for ${repoPath}:`, error);
+      logger.error(`❌ Error getting commit history for ${repoPath}:`, error);
       return [];
     }
   }
@@ -239,8 +240,8 @@ export class GitStatusMonitor {
       }).trim();
 
       return {
-        name: name || '',
-        url: url || '',
+        name: name ?? '',
+        url: url ?? '',
         branch: trackingBranch
       };
     } catch {

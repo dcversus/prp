@@ -180,7 +180,7 @@ export class AgentManager extends EventEmitter {
         lastActivity: agentProcess.session.lastActivity,
         tokenUsage: {
           used: agentProcess.session.tokenUsage.total,
-          limit: agentProcess.session.agentConfig.limits?.maxCostPerDay || 100000
+          limit: agentProcess.session.agentConfig.limits.maxCostPerDay || 100000
         },
         capabilities: {
           supportsTools: agentProcess.session.capabilities.supportsTools,
@@ -192,7 +192,7 @@ export class AgentManager extends EventEmitter {
           availableTools: agentProcess.session.capabilities.availableTools,
           specializations: agentProcess.session.capabilities.specializations,
           supportsCodeExecution: agentProcess.session.capabilities.supportsCodeExecution || false,
-          supportedFileTypes: agentProcess.session.capabilities.supportedFileTypes || [],
+          supportedFileTypes: agentProcess.session.capabilities.supportedFileTypes,
           canAccessInternet: agentProcess.session.capabilities.canAccessInternet || false,
           canAccessFileSystem: agentProcess.session.capabilities.canAccessFileSystem || true,
           canExecuteCommands: agentProcess.session.capabilities.canExecuteCommands || true
@@ -214,7 +214,7 @@ export class AgentManager extends EventEmitter {
    * Get task by ID
    */
   getTask(taskId: string): AgentTask | null {
-    return this.taskHistory.get(taskId) || null;
+    return this.taskHistory.get(taskId) ?? null;
   }
 
   /**
@@ -223,7 +223,7 @@ export class AgentManager extends EventEmitter {
   getTaskHistory(limit: number = 50): AgentTask[] {
     const tasks = Array.from(this.taskHistory.values());
     return tasks
-      .sort((a, b) => (b.completedAt?.getTime() || 0) - (a.completedAt?.getTime() || 0))
+      .sort((a, b) => (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0))
       .slice(0, limit);
   }
 
@@ -239,9 +239,9 @@ export class AgentManager extends EventEmitter {
       this.agents.set(config.id, {
         ...config,
         // Add default values for required properties if they don't exist
-        roles: config.roles || [config.role],
-        bestRole: config.bestRole || config.role,
-        runCommands: config.runCommands || []
+        roles: config.roles ?? [config.role],
+        bestRole: config.bestRole ?? config.role,
+        runCommands: config.runCommands ?? []
       } as AgentConfig);
     }
 
@@ -258,7 +258,7 @@ export class AgentManager extends EventEmitter {
       let score = 0;
 
       // Check if agent can handle the task type
-      if (agent.roles && agent.roles.includes(task.type as AgentRole)) {
+      if (agent.roles?.includes(task.type as AgentRole)) {
         score += 10;
       }
 
@@ -289,7 +289,7 @@ export class AgentManager extends EventEmitter {
 
     // Return agent with highest score
     candidates.sort((a, b) => b.score - a.score);
-    return candidates[0]?.agent || null;
+    return candidates[0]?.agent ?? null;
   }
 
   /**
@@ -297,7 +297,7 @@ export class AgentManager extends EventEmitter {
    */
   private checkTokenLimits(agent: AgentConfig): boolean {
     // Simple check - in production would be more sophisticated
-    return (agent.limits?.maxCostPerDay || 0) > 1000; // Minimum tokens available
+    return agent.limits.maxCostPerDay > 1000; // Minimum tokens available
   }
 
   /**
@@ -306,7 +306,7 @@ export class AgentManager extends EventEmitter {
   private async getOrCreateSession(agentConfig: AgentConfig): Promise<AgentProcess | null> {
     // Check if session already exists
     const existingSession = this.findSessionByAgent(agentConfig.id);
-    if (existingSession && existingSession.isAlive) {
+    if (existingSession?.isAlive) {
       return existingSession;
     }
 
@@ -334,11 +334,11 @@ export class AgentManager extends EventEmitter {
 
     try {
       // Spawn agent process
-      const runCommands = agentConfig.runCommands || [];
+      const runCommands = agentConfig.runCommands ?? [];
       if (runCommands.length === 0) {
         throw new Error(`No run commands configured for agent ${agentConfig.id}`);
       }
-      const childProcess = spawn(runCommands[0] as string, runCommands.slice(1) as string[]);
+      const childProcess = spawn(runCommands[0] as string, runCommands.slice(1));
 
       const sessionId = HashUtils.generateId();
       const session: AgentSession = {
@@ -371,7 +371,7 @@ export class AgentManager extends EventEmitter {
           canAccessFileSystem: true,
           canExecuteCommands: true,
           availableTools: ['read_file', 'write_file', 'execute_command'],
-          specializations: agentConfig.roles || []
+          specializations: agentConfig.roles ?? []
         }
       };
 
@@ -582,9 +582,7 @@ export class AgentManager extends EventEmitter {
         agentProcess.process.kill('SIGTERM');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        if (agentProcess.isAlive) {
-          agentProcess.process.kill('SIGKILL');
-        }
+        agentProcess.process.kill('SIGKILL');
       }
 
       this.activeSessions.delete(sessionId);
@@ -649,7 +647,7 @@ export class AgentManager extends EventEmitter {
     performance.tasksCompleted++;
 
     // Update average task time
-    const taskTime = (task.completedAt?.getTime() || 0) - (task.startedAt?.getTime() || 0);
+    const taskTime = (task.completedAt?.getTime() ?? 0) - (task.startedAt?.getTime() ?? 0);
     if (taskTime > 0) {
       performance.averageTaskTime =
         (performance.averageTaskTime * (performance.tasksCompleted - 1) + taskTime) /
@@ -670,8 +668,8 @@ export class AgentManager extends EventEmitter {
 
     // Update token usage
     if (result.tokenUsage) {
-      session.tokenUsage.total += result.tokenUsage.total || 0;
-      session.tokenUsage.cost += result.tokenUsage.cost || 0;
+      session.tokenUsage.total += result.tokenUsage.total;
+      session.tokenUsage.cost += result.tokenUsage.cost ?? 0;
       session.tokenUsage.lastUpdated = new Date();
     }
   }

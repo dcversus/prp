@@ -8,6 +8,9 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
 import { createSecretManager, createKubectlSecretManager } from '../kubectl/secret-manager.js';
+import { createLayerLogger } from '../shared/index.js';
+
+const logger = createLayerLogger('config');
 
 const secretManager = createSecretManager();
 
@@ -28,7 +31,7 @@ export function createSecretCommand(): Command {
     .option('--no-cache', 'Bypass cache')
     .option('--show', 'Show full secret value (use with caution)')
     .action(async (options) => {
-      console.log(chalk.blue('🔑 Retrieving NUDGE_SECRET from Kubernetes...\n'));
+      logger.info('get', 'Retrieving NUDGE_SECRET from Kubernetes');
 
       try {
         const result = await secretManager.getNudgeSecret({
@@ -46,7 +49,7 @@ export function createSecretCommand(): Command {
         }
 
       } catch (error) {
-        console.error(chalk.red('❌ Failed to retrieve secret:'), error);
+        logger.error('get', 'Failed to retrieve secret', error instanceof Error ? error : new Error(String(error)));
         process.exit(1);
       }
     });
@@ -56,7 +59,7 @@ export function createSecretCommand(): Command {
     .command('test')
     .description('Test secret retrieval and validation')
     .action(async () => {
-      console.log(chalk.blue('🧪 Testing Secret Management...\n'));
+      logger.info('test', 'Testing Secret Management');
 
       try {
         const status = await secretManager.getStatus();
@@ -82,7 +85,7 @@ export function createSecretCommand(): Command {
         }
 
       } catch (error) {
-        console.error(chalk.red('❌ Secret test failed:'), error);
+        logger.error('test', 'Secret test failed', error instanceof Error ? error : new Error(String(error)));
         process.exit(1);
       }
     });
@@ -92,7 +95,7 @@ export function createSecretCommand(): Command {
     .command('status')
     .description('Check secret manager status')
     .action(async () => {
-      console.log(chalk.blue('📊 Secret Manager Status\n'));
+      logger.info('status', 'Getting Secret Manager Status');
 
       try {
         const status = await secretManager.getStatus();
@@ -121,7 +124,7 @@ export function createSecretCommand(): Command {
         }
 
       } catch (error) {
-        console.error(chalk.red('❌ Failed to get status:'), error);
+        logger.error('status', 'Failed to get status', error instanceof Error ? error : new Error(String(error)));
         process.exit(1);
       }
     });
@@ -138,7 +141,7 @@ export function createSecretCommand(): Command {
     .option('-s, --secret <secret>', 'Clear only specific secret')
     .action(async (options) => {
       try {
-        if (options.namespace || options.secret) {
+        if (options.namespace ?? options.secret) {
           secretManager.clearCacheFiltered({
             namespace: options.namespace,
             name: options.secret,
@@ -150,7 +153,7 @@ export function createSecretCommand(): Command {
           console.log(chalk.green('✅ All cache cleared'));
         }
       } catch (error) {
-        console.error(chalk.red('❌ Failed to clear cache:'), error);
+        logger.error('cache clear', 'Failed to clear cache', error instanceof Error ? error : new Error(String(error)));
         process.exit(1);
       }
     });
@@ -159,7 +162,7 @@ export function createSecretCommand(): Command {
     .command('info')
     .description('Show cache information')
     .action(async () => {
-      console.log(chalk.blue('📋 Cache Information\n'));
+      logger.info('cache info', 'Getting cache information');
 
       try {
         const cacheInfo = secretManager.getCacheInfo();
@@ -178,7 +181,7 @@ export function createSecretCommand(): Command {
         });
 
       } catch (error) {
-        console.error(chalk.red('❌ Failed to get cache info:'), error);
+        logger.error('cache info', 'Failed to get cache info', error instanceof Error ? error : new Error(String(error)));
         process.exit(1);
       }
     });
@@ -191,7 +194,7 @@ export function createSecretCommand(): Command {
         const cleaned = secretManager.cleanExpiredCache();
         console.log(chalk.green(`✅ Cleaned ${cleaned} expired cache entries`));
       } catch (error) {
-        console.error(chalk.red('❌ Failed to clean cache:'), error);
+        logger.error('cache clean', 'Failed to clean cache', error instanceof Error ? error : new Error(String(error)));
         process.exit(1);
       }
     });
@@ -205,7 +208,7 @@ export function createSecretCommand(): Command {
     .option('-s, --secret-name <name>', 'Secret name', 'dcmaidbot-secrets')
     .option('-k, --secret-key <key>', 'Secret key', 'NUDGE_SECRET')
     .action(async (options) => {
-      console.log(chalk.blue('🔑 Enhanced Kubernetes Secret Management\n'));
+      logger.info('kubectl', 'Enhanced Kubernetes Secret Management');
 
       try {
         const manager = createKubectlSecretManager({
@@ -292,7 +295,7 @@ export function createSecretCommand(): Command {
         console.log(chalk.green('\n🎉 Enhanced secret retrieval completed successfully!'));
 
       } catch (error) {
-        console.error(chalk.red('\n❌ Failed to retrieve secret:'), error instanceof Error ? error.message : error);
+        logger.error('kubectl', 'Failed to retrieve secret', error instanceof Error ? error : new Error(String(error)));
         process.exit(1);
       }
     });

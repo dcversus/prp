@@ -7,6 +7,9 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
+import { createLayerLogger } from '../../shared';
+
+const logger = createLayerLogger('scanner');
 
 const execAsync = promisify(exec);
 
@@ -46,7 +49,7 @@ export class TmuxAdapter {
 
   constructor(logPath?: string) {
     // Default tmux log locations
-    this.logPath = logPath || path.join(process.env.HOME || '', '.tmux/logs');
+    this.logPath = logPath ?? path.join(process.env.HOME ?? '', '.tmux/logs');
   }
 
   /**
@@ -74,7 +77,12 @@ export class TmuxAdapter {
       for (const line of lines) {
         if (!line) continue;
 
-        const [id, name, createdStr, attachedStr] = line.split('|');
+        const parts = line.split('|');
+        if (parts.length < 4) continue;
+
+        const [id, name, createdStr, attachedStr] = parts;
+        if (!id || !name || !createdStr || attachedStr === undefined) continue;
+
         const created = new Date(createdStr);
         const attached = attachedStr === '1';
 
@@ -90,7 +98,7 @@ export class TmuxAdapter {
         });
       }
     } catch (error) {
-      console.error('Error getting tmux sessions:', error);
+      logger.error('TmuxAdapter', 'Error getting tmux sessions', error instanceof Error ? error : new Error(String(error)));
     }
 
     return sessions;
@@ -113,17 +121,22 @@ export class TmuxAdapter {
       for (const line of lines) {
         if (!line) continue;
 
-        const [idStr, name, flags, currentPaneStr] = line.split('|');
-        const id = parseInt(idStr);
+        const parts = line.split('|');
+        if (parts.length < 4) continue;
+
+        const [idStr, name, flags, currentPaneStr] = parts;
+        if (!idStr || name === undefined || flags === undefined || currentPaneStr === undefined) continue;
+
+        const id = parseInt(idStr, 10);
         const active = flags.includes('*');
-        const currentPane = parseInt(currentPaneStr);
+        const currentPane = parseInt(currentPaneStr, 10);
 
         // Count panes
         const { stdout: paneCountStr } = await execAsync(
           `tmux list-panes -t "${sessionId}:${id}" | wc -l`,
           { env: { ...process.env, TMUX: '' } }
         );
-        const paneCount = parseInt(paneCountStr.trim());
+        const paneCount = parseInt(paneCountStr.trim(), 10);
 
         windows.push({
           id,
@@ -134,7 +147,7 @@ export class TmuxAdapter {
         });
       }
     } catch (error) {
-      console.error(`Error getting windows for session ${sessionId}:`, error);
+      logger.error('TmuxAdapter', `Error getting windows for session ${sessionId}`, error instanceof Error ? error : new Error(String(error)));
     }
 
     return windows;
@@ -153,7 +166,7 @@ export class TmuxAdapter {
     try {
       const logFiles = await fs.promises.readdir(this.logPath);
       const today = new Date().toISOString().split('T')[0];
-      const todayLogFile = logFiles.find(f => f.includes(today));
+      const todayLogFile = logFiles.find(f => f.includes(today ?? ''));
 
       if (!todayLogFile) {
         return events;
@@ -170,16 +183,18 @@ export class TmuxAdapter {
       for (const line of lines) {
         if (!line) continue;
 
-        const signals = [];
+        const signals: string[] = [];
         let match;
         while ((match = signalPattern.exec(line)) !== null) {
-          signals.push(match[1]);
+          if (match[1]) {
+            signals.push(match[1]);
+          }
         }
 
         if (signals.length > 0) {
           // Try to parse tmux session info from line
           const tmuxMatch = line.match(/\[tmux (\d+)\]/);
-          const sessionId = tmuxMatch ? tmuxMatch[1] : 'unknown';
+          const sessionId = tmuxMatch?.[1] ?? 'unknown';
 
           for (const signal of signals) {
             events.push({
@@ -194,7 +209,7 @@ export class TmuxAdapter {
         }
       }
     } catch (error) {
-      console.error('Error parsing tmux log files:', error);
+      logger.error('TmuxAdapter', 'Error parsing tmux log files', error instanceof Error ? error : new Error(String(error)));
     }
 
     return events;
@@ -212,7 +227,7 @@ export class TmuxAdapter {
       );
       return stdout;
     } catch (error) {
-      console.error(`Error capturing tmux output for ${sessionId}:`, error);
+      logger.error('TmuxAdapter', `Error capturing tmux output for ${sessionId}`, error instanceof Error ? error : new Error(String(error)));
       return '';
     }
   }
@@ -222,12 +237,12 @@ export class TmuxAdapter {
    */
   async watchSessions(callback: (event: TmuxSignalEvent) => void): Promise<void> {
     if (this.watching) {
-      console.warn('Tmux adapter is already watching');
+      logger.warn('TmuxAdapter', 'Tmux adapter is already watching');
       return;
     }
 
     this.watching = true;
-    console.log('📺 Starting tmux session monitoring...');
+    logger.info('TmuxAdapter', '📺 Starting tmux session monitoring...');
 
     // Initial scan
     const currentSessions = await this.getActiveSessions();
@@ -272,7 +287,7 @@ export class TmuxAdapter {
           callback({
             type: 'session_closed',
             sessionId: oldSessionId,
-            sessionName: this.sessions.get(oldSessionId)?.name || 'unknown',
+            sessionName: this.sessions.get(oldSessionId)?.name ?? 'unknown',
             timestamp: new Date()
           });
         }
@@ -295,7 +310,7 @@ export class TmuxAdapter {
       this.watchInterval = undefined;
     }
     this.watching = false;
-    console.log('📺 Stopped tmux session monitoring');
+    logger.info('TmuxAdapter', '📺 Stopped tmux session monitoring');
   }
 
   /**
@@ -319,7 +334,9 @@ export class TmuxAdapter {
     let match;
 
     while ((match = signalPattern.exec(text)) !== null) {
-      signals.push(match[1]);
+      if (match[1]) {
+        signals.push(match[1]);
+      }
     }
 
     return Array.from(new Set(signals)); // Remove duplicates
@@ -332,7 +349,7 @@ export class TmuxAdapter {
     try {
       await execAsync(`tmux send-keys -t "${sessionId}" "${command}"`);
     } catch (error) {
-      console.error(`Error sending command to tmux session ${sessionId}:`, error);
+      logger.error('TmuxAdapter', `Error sending command to tmux session ${sessionId}`, error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -344,9 +361,9 @@ export class TmuxAdapter {
       const { stdout } = await execAsync(`tmux new-session -d -s "${sessionName}"`);
       // Extract session ID from output
       const match = stdout.match(/session (\d+): created/);
-      return match ? match[1] : sessionName;
+      return match?.[1] ?? sessionName;
     } catch (error) {
-      console.error(`Error creating tmux session ${sessionName}:`, error);
+      logger.error('TmuxAdapter', `Error creating tmux session ${sessionName}`, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -371,17 +388,29 @@ export class TmuxAdapter {
 
       for (const line of lines) {
         if (line.includes('version')) {
-          info.version = line.split(':')[1].trim();
+          const parts = line.split(':');
+          if (parts.length > 1 && parts[1]) {
+            info.version = parts[1].trim();
+          }
         } else if (line.includes('socket_path')) {
-          info.socketPath = line.split(':')[1].trim();
+          const parts = line.split(':');
+          if (parts.length > 1 && parts[1]) {
+            info.socketPath = parts[1].trim();
+          }
         } else if (line.includes('pid')) {
-          info.pid = parseInt(line.split(':')[1].trim());
+          const parts = line.split(':');
+          if (parts.length > 1 && parts[1]) {
+            const pidStr = parts[1].trim();
+            if (pidStr) {
+              info.pid = parseInt(pidStr, 10);
+            }
+          }
         }
       }
 
       return info;
     } catch (error) {
-      console.error('Error getting tmux server info:', error);
+      logger.error('TmuxAdapter', 'Error getting tmux server info', error instanceof Error ? error : new Error(String(error)));
       return { version: '', socketPath: '' };
     }
   }

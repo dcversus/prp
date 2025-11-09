@@ -55,6 +55,20 @@ export interface SignalClassification {
   confidence: number;
 }
 
+export interface EnhancedSignalClassification extends SignalClassification {
+  signalId: string;
+  complexity: 'low' | 'medium' | 'high' | 'critical';
+  urgency: 'low' | 'medium' | 'high' | 'urgent';
+  primary: AgentRole;
+  context?: string;
+  metadata?: Record<string, unknown>;
+  historicalMatches?: Array<{
+    id: string;
+    confidence: number;
+    timestamp: Date;
+  }>;
+}
+
 export interface Recommendation {
   type: string;
   priority: string;
@@ -209,6 +223,7 @@ export interface InspectorError {
   retryCount: number;
   recoverable: boolean;
 }
+
 
 export interface ProcessingContext {
   signalId: string;
@@ -392,6 +407,7 @@ export interface PayloadSection {
   maxSize: number; // tokens
   priority: number;
   content?: ContextData;
+  metadata?: Record<string, unknown>;
 }
 
 export interface InspectorMetrics {
@@ -541,4 +557,61 @@ export interface InspectorBatchCompletedEvent {
   batchId: string;
   results: DetailedInspectorResult[];
   summary: EventData;
+}
+
+// Missing types that are being imported
+export interface ConfidenceCalibration {
+  baseline: number;
+  adjustment: number;
+  confidence: number;
+  timestamp: Date;
+}
+
+export interface ClassificationFeatures {
+  category: string;
+  urgency: string;
+  complexity: string;
+  agentRole: string;
+  priority: number;
+  context: string;
+}
+
+export interface EnsembleResult {
+  classifications: SignalClassification[];
+  confidence: number;
+  consensus: number;
+  timestamp: Date;
+}
+
+export interface TokenAnalysis {
+  input: number;
+  output: number;
+  total: number;
+  estimated: number;
+  efficiency: number;
+}
+
+// Additional types for enhanced signal classification
+export interface SignalFeatures {
+  type: string;
+  priority: number;
+  source: string;
+  timestamp: Date;
+  data: unknown;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ProcessingContext {
+  signalId: string;
+  worktree?: string;
+  agent?: string;
+  relatedSignals: Signal[];
+  activePRPs: string[];
+  recentActivity: ActivityEntry[];
+  tokenStatus: TokenStatusInfo;
+  agentStatus: AgentStatusInfo[];
+  sharedNotes: SharedNoteInfo[];
+  environment: EnvironmentInfo | Record<string, string | number | boolean>;
+  guidelineContext: GuidelineContext;
+  historicalData: HistoricalData;
 }

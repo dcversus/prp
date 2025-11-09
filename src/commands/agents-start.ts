@@ -7,6 +7,7 @@ import { ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
 import * as path from 'path';
 import fs from 'fs-extra';
+import { logger } from '../utils/logger.js';
 // Import the actual components we built
 import { ScannerCore } from '../scanner/scanner-core.js';
 import { InspectorCore } from '../inspector/inspector-core.js';
@@ -84,8 +85,8 @@ class AgentManager extends EventEmitter {
   }
 
   async startAgents(projectPath: string): Promise<void> {
-    console.log(chalk.blue.bold('\n🚀 Starting PRP Agent System'));
-    console.log(chalk.gray('═'.repeat(50)));
+    logger.info(chalk.blue.bold('\n🚀 Starting PRP Agent System'));
+    logger.info(chalk.gray('═'.repeat(50)));
 
     try {
       // Verify project structure
@@ -103,14 +104,14 @@ class AgentManager extends EventEmitter {
       this._isRunning = true;
       this.startEventMonitoring();
 
-      console.log(chalk.green('\n✅ All agents started successfully!'));
-      console.log(chalk.cyan('📡 Agents are now monitoring and processing signals...\n'));
+      logger.info(chalk.green('\n✅ All agents started successfully!'));
+      logger.info(chalk.cyan('📡 Agents are now monitoring and processing signals...\n'));
 
       // Keep the process running and show real-time activity
       await this.runInteractiveMode();
 
     } catch (error) {
-      console.error(chalk.red('\n❌ Failed to start agents:'), error instanceof Error ? error.message : String(error));
+      logger.error(chalk.red('\n❌ Failed to start agents:'), error instanceof Error ? error.message : String(error));
       await this.stopAllAgents();
       process.exit(1);
     }
@@ -409,7 +410,7 @@ class AgentManager extends EventEmitter {
         decisionId: decision.timestamp.getTime(),
         action: 'create-task',
         target: 'developer',
-        description: `Implement ${processedSignal.originalSignal?.type || 'unknown'} requirement`,
+        description: `Implement ${processedSignal.originalSignal?.type ?? 'unknown'} requirement`,
         status: 'completed',
         result: 'Task created and assigned to developer',
         timestamp: new Date()
@@ -428,7 +429,7 @@ class AgentManager extends EventEmitter {
       '[af]': 'question',
       '[Cc]': 'completion'
     };
-    return categories[signal.type] || 'general';
+    return categories[signal.type] ?? 'general';
   }
 
   private calculateUrgency(signal: Signal): number {
@@ -439,7 +440,7 @@ class AgentManager extends EventEmitter {
       '[oa]': 0.8,
       '[op]': 0.5
     };
-    return urgencyMap[signal.type] || 0.3;
+    return urgencyMap[signal.type] ?? 0.3;
   }
 
   private recommendAction(signal: Signal): string {
@@ -450,32 +451,32 @@ class AgentManager extends EventEmitter {
       '[op]': 'log-progress',
       '[oa]': 'analyze-and-coordinate'
     };
-    return actions[signal.type] || 'standard-processing';
+    return actions[signal.type] ?? 'standard-processing';
   }
 
   private displaySignalDetection(signal: Signal): void {
-    console.log(chalk.yellow('🔍 Scanner detected signal:'), chalk.cyan(signal.type));
-    console.log(chalk.gray(`   Source: ${signal.source} | Data: ${JSON.stringify(signal.data)?.substring(0, 50)}...`));
+    logger.info(chalk.yellow('🔍 Scanner detected signal:'), chalk.cyan(signal.type));
+    logger.info(chalk.gray(`   Source: ${signal.source} | Data: ${JSON.stringify(signal.data).substring(0, 50)}...`));
   }
 
   private displaySignalProcessing(result: InspectorResult): void {
-    console.log(chalk.magenta('⚡ Inspector processed signal:'));
+    logger.info(chalk.magenta('⚡ Inspector processed signal:'));
     if (result.processingResult) {
-      console.log(chalk.gray(`   Category: ${result.processingResult.category} | Urgency: ${(result.processingResult.urgency * 100).toFixed(0)}%`));
-      console.log(chalk.gray(`   Action: ${result.processingResult.recommendedAction}`));
+      logger.info(chalk.gray(`   Category: ${result.processingResult.category} | Urgency: ${(result.processingResult.urgency * 100).toFixed(0)}%`));
+      logger.info(chalk.gray(`   Action: ${result.processingResult.recommendedAction}`));
     }
   }
 
   private displayDecision(decision: OrchestratorDecision): void {
-    console.log(chalk.green('🧠 Orchestrator decision:'));
-    console.log(chalk.gray(`   Decision: ${decision.decision || 'unknown'} | Target: ${decision.targetAgent || 'unknown'}`));
-    console.log(chalk.gray(`   Confidence: ${decision.confidence ? (decision.confidence * 100).toFixed(0) : 'unknown'}% | Tools: ${decision.tools?.join(', ') || 'none'}`));
+    logger.info(chalk.green('🧠 Orchestrator decision:'));
+    logger.info(chalk.gray(`   Decision: ${decision.decision} | Target: ${decision.targetAgent ?? 'unknown'}`));
+    logger.info(chalk.gray(`   Confidence: ${decision.confidence ? (decision.confidence * 100).toFixed(0) : 'unknown'}% | Tools: ${decision.tools?.join(', ') ?? 'none'}`));
   }
 
   private displayAction(action: OrchestratorAction): void {
-    console.log(chalk.cyan('⚡ Action executed:'));
-    console.log(chalk.gray(`   Action: ${action.action || 'unknown'} | Status: ${action.status || 'unknown'}`));
-    console.log(chalk.gray(`   Result: ${action.result || 'unknown'}`));
+    logger.info(chalk.cyan('⚡ Action executed:'));
+    logger.info(chalk.gray(`   Action: ${action.action} | Status: ${action.status ?? 'unknown'}`));
+    logger.info(chalk.gray(`   Result: ${action.result ?? 'unknown'}`));
   }
 
   private logEvent(event: AgentEvent): void {
@@ -488,15 +489,15 @@ class AgentManager extends EventEmitter {
   }
 
   private async runInteractiveMode(): Promise<void> {
-    console.log(chalk.cyan('🎯 Agent System is running!'));
-    console.log(chalk.gray('Press Ctrl+C to stop agents\n'));
+    logger.info(chalk.cyan('🎯 Agent System is running!'));
+    logger.info(chalk.gray('Press Ctrl+C to stop agents\n'));
 
     // Create demo signals to show the system working
     this.createDemoSignals();
 
     // Handle graceful shutdown
     process.on('SIGINT', async () => {
-      console.log(chalk.yellow('\n\n🛑 Stopping agents...'));
+      logger.info(chalk.yellow('\n\n🛑 Stopping agents...'));
       await this.stopAllAgents();
       process.exit(0);
     });
@@ -507,7 +508,7 @@ class AgentManager extends EventEmitter {
 
   private createDemoSignals(): void {
     setTimeout(() => {
-      console.log(chalk.cyan('\n🎭 Creating demo signals to showcase agent communication...\n'));
+      logger.info(chalk.cyan('\n🎭 Creating demo signals to showcase agent communication...\n'));
 
       // Demo signal 1: Work progress
       setTimeout(() => {
@@ -554,41 +555,41 @@ class AgentManager extends EventEmitter {
         agent.process.kill();
         agent.status = 'stopped';
       } catch (error) {
-        console.error(chalk.red(`Failed to stop ${agent.name}:`), error instanceof Error ? error.message : String(error));
+        logger.error(chalk.red(`Failed to stop ${agent.name}:`), error instanceof Error ? error.message : String(error));
       }
     });
 
     await Promise.all(stopPromises);
     this._isRunning = false;
 
-    console.log(chalk.green('✅ All agents stopped'));
+    logger.info(chalk.green('✅ All agents stopped'));
 
     // Display summary
     this.displaySessionSummary();
   }
 
   private displaySessionSummary(): void {
-    console.log(chalk.blue.bold('\n📊 Session Summary'));
-    console.log(chalk.gray('═'.repeat(50)));
+    logger.info(chalk.blue.bold('\n📊 Session Summary'));
+    logger.info(chalk.gray('═'.repeat(50)));
 
-    console.log(`\n🤖 Agents Launched: ${this.agents.size}`);
+    logger.info(`\n🤖 Agents Launched: ${this.agents.size}`);
     this.agents.forEach(agent => {
       const duration = agent.startTime ?
         Math.round((Date.now() - agent.startTime.getTime()) / 1000) : 0;
-      console.log(`   ✅ ${agent.name} (${duration}s)`);
+      logger.info(`   ✅ ${agent.name} (${duration}s)`);
     });
 
-    console.log(`\n📡 Events Processed: ${this.eventLog.length}`);
+    logger.info(`\n📡 Events Processed: ${this.eventLog.length}`);
     const signalEvents = this.eventLog.filter(e => e.type === 'signal').length;
     const decisions = this.eventLog.filter(e => e.type === 'decision').length;
     const actions = this.eventLog.filter(e => e.type === 'action').length;
 
-    console.log(`   🔍 Signals Detected: ${signalEvents}`);
-    console.log(`   🧠 Decisions Made: ${decisions}`);
-    console.log(`   ⚡ Actions Taken: ${actions}`);
+    logger.info(`   🔍 Signals Detected: ${signalEvents}`);
+    logger.info(`   🧠 Decisions Made: ${decisions}`);
+    logger.info(`   ⚡ Actions Taken: ${actions}`);
 
-    console.log(chalk.green('\n🎯 Agent system demonstrated successfully!'));
-    console.log(chalk.gray('All components are operational and communicating.'));
+    logger.info(chalk.green('\n🎯 Agent system demonstrated successfully!'));
+    logger.info(chalk.gray('All components are operational and communicating.'));
   }
 }
 

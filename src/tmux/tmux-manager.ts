@@ -571,7 +571,7 @@ export class TmuxManager {
 
           // Update session status
           const session = this.sessions.get(sessionId);
-          if (session && session.status === 'running') {
+          if (session?.status === 'running') {
             session.status = 'idle';
             session.lastActivity = now;
           }
@@ -593,20 +593,20 @@ export class TmuxManager {
 
   private async captureResourceMetrics(sessionId: string): Promise<void> {
     const session = this.sessions.get(sessionId);
-    if (!session || !session.pid) {
+    if (!session?.pid) {
       return;
     }
 
     try {
       // Get process resource usage
-      const statsCommand = `ps -p ${session.pid!} -o pid,pcpu,pmem,rss,vsz --no-headers`;
+      const statsCommand = `ps -p ${session.pid} -o pid,pcpu,pmem,rss,vsz --no-headers`;
       const { stdout } = await execAsync(statsCommand);
 
       if (stdout.trim()) {
         const parts = stdout.trim().split(/\s+/);
         const rss = parts[3];
         const cpu = parts[1];
-        const memoryMB = parseInt(rss || '0') / 1024;
+        const memoryMB = parseInt(rss || '0', 10) / 1024;
         const cpuUsage = parseFloat(cpu || '0');
 
         // Update session metadata

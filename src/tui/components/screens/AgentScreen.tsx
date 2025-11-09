@@ -5,7 +5,6 @@
  * showing detailed agent output and tool calls
  */
 
-import React from 'react';
 import { Box, Text } from 'ink';
 import { TUIState, TUIConfig, TerminalLayout } from '../../types/TUIConfig.js';
 

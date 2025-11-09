@@ -1,4 +1,4 @@
-/* global window, document, fetch, console, setTimeout, clearTimeout */
+/* global window, document */
 
 import { useState, useEffect, useRef } from 'react';
 

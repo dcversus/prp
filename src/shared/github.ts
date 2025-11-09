@@ -481,20 +481,20 @@ export class GitHubClient {
   private extractPRNumber(input: string): number {
     // Handle GitHub URLs
     const urlMatch = input.match(/github\.com\/.*\/.*\/pull\/(\d+)/);
-    if (urlMatch && urlMatch[1]) {
-      return parseInt(urlMatch[1]);
+    if (urlMatch?.[1]) {
+      return parseInt(urlMatch[1], 10);
     }
 
     // Handle #123 format
     const hashMatch = input.match(/#(\d+)/);
-    if (hashMatch && hashMatch[1]) {
-      return parseInt(hashMatch[1]);
+    if (hashMatch?.[1]) {
+      return parseInt(hashMatch[1], 10);
     }
 
     // Handle plain number
     const numMatch = input.match(/(\d+)/);
-    if (numMatch && numMatch[1]) {
-      return parseInt(numMatch[1]);
+    if (numMatch?.[1]) {
+      return parseInt(numMatch[1], 10);
     }
 
     throw new Error('Could not extract PR number from: ' + input);

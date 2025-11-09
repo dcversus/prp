@@ -3,6 +3,10 @@
  * Part of PRP-007-F: Signal Sensor Inspector Implementation
  */
 
+import { createLayerLogger } from '../../shared/logger.js';
+
+const logger = createLayerLogger('scanner');
+
 export interface ScannerEvent {
   type: string;
   signal?: string;
@@ -28,10 +32,7 @@ export class ScannerEventBus {
    * Emit an event to the bus
    */
   emit(event: ScannerEvent): void {
-    // Add timestamp if not provided
-    if (!event.timestamp) {
-      event.timestamp = new Date();
-    }
+    // Note: timestamp is required in ScannerEvent interface
 
     // Store in history
     this.eventHistory.push(event);
@@ -40,14 +41,14 @@ export class ScannerEventBus {
     }
 
     // Notify subscribers
-    const subscribers = this.subscriptions.get(event.type) || [];
-    const allSubscribers = this.subscriptions.get('*') || [];
+    const subscribers = this.subscriptions.get(event.type) ?? [];
+    const allSubscribers = this.subscriptions.get('*') ?? [];
 
     [...subscribers, ...allSubscribers].forEach(sub => {
       try {
         sub.handler(event);
       } catch (error) {
-        console.error(`Error in event handler for ${event.type}:`, error);
+        logger.error('EventBus', `Error in event handler for ${event.type}`, error as Error);
       }
     });
   }
@@ -63,7 +64,7 @@ export class ScannerEventBus {
       this.subscriptions.set(eventType, []);
     }
 
-    this.subscriptions.get(eventType)!.push(subscription);
+    this.subscriptions.get(eventType)?.push(subscription);
     return id;
   }
 

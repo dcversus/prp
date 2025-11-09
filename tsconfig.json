@@ -2,7 +2,7 @@
   "compilerOptions": {
     /* Language and Environment */
     "target": "ES2020",
-    "lib": ["ES2020", "ES2015", "DOM"],
+    "lib": ["ES2020", "ES2015", "DOM", "DOM.Iterable"],
     "downlevelIteration": true,
     "jsx": "react-jsx",
     "module": "ESNext",
@@ -35,16 +35,24 @@
     "strictPropertyInitialization": true,
     "noImplicitThis": true,
     "alwaysStrict": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": false,
+    "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": false,
+    "exactOptionalPropertyTypes": false,
+
+    /* Type Definitions */
+    "types": ["node", "jest", "@testing-library/jest-dom"],
 
     /* Completeness */
     "skipLibCheck": true,
+
+    /* Experimental */
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
 
     /* Path Aliases */
     "baseUrl": ".",
@@ -57,6 +65,6 @@
       "@utils/*": ["./src/utils/*"]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests", "**/__tests__/**/*", "**/*.test.ts", "**/*.spec.ts"]
+  "include": ["src/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

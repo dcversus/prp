@@ -1,0 +1,593 @@
+/**
+ * ♫ ConfigIntegration - .prprc Configuration System Integration
+ *
+ * Converts wizard state to .prprc configuration format and vice versa,
+ * handles template-specific settings, agent configuration mapping,
+ * and integration with existing PRP configuration system
+ */
+
+import type { InitState, AgentConfig } from './InitFlow.js';
+import type { TUIConfig } from '../../types/TUIConfig.js';
+
+// .prprc configuration interface
+export interface PRPConfig {
+  version: string;
+  name: string;
+  description: string;
+  storage: {
+    dataDir: string;
+    cacheDir: string;
+    worktreesDir: string;
+    notesDir: string;
+    logsDir: string;
+    keychainFile: string;
+    persistFile: string;
+    maxCacheSize: number;
+    retentionPeriod: number;
+  };
+  agents: PRPAgentConfig[];
+  guidelines: any[];
+  signals: Record<string, any>;
+  orchestrator: Record<string, any>;
+  scanner: Record<string, any>;
+  inspector: Record<string, any>;
+  tui: {
+    mode: string;
+    activeScreen: string;
+    followEvents: boolean;
+    autoRefresh: boolean;
+    refreshInterval: number;
+  };
+  features: {
+    scanner: boolean;
+    inspector: boolean;
+    orchestrator: boolean;
+    tui: boolean;
+    mcp: boolean;
+    worktrees: boolean;
+  };
+  limits: {
+    maxConcurrentAgents: number;
+    maxWorktrees: number;
+    maxPRPsPerWorktree: number;
+    tokenAlertThreshold: number;
+    tokenCriticalThreshold: number;
+  };
+  logging: {
+    level: string;
+    enableFileLogging: boolean;
+    enableTokenTracking: boolean;
+    enablePerformanceTracking: boolean;
+    logRetentionDays: number;
+  };
+  security: {
+    enablePinProtection: boolean;
+    encryptSecrets: boolean;
+    sessionTimeout: number;
+  };
+  settings: Record<string, any>;
+  scripts: Record<string, string>;
+}
+
+export interface PRPAgentConfig {
+  id: string;
+  type: string;
+  name: string;
+  description?: string;
+  provider: string;
+  model?: string;
+  limits: {
+    budget: string;
+    warning?: string;
+    tokens?: number;
+    requests?: number;
+  };
+  capabilities: string[];
+  instructions: string;
+  instructionsPath?: string;
+  config: {
+    yolo?: boolean;
+    subAgents?: boolean;
+    maxParallel?: number;
+    mcp?: string;
+    compactPrediction?: {
+      percentThreshold?: number;
+      autoAdjust?: boolean;
+      cap?: number;
+    };
+  };
+}
+
+// Template-specific configuration generators
+const TEMPLATE_CONFIGS = {
+  typescript: {
+    name: (projectName: string) => `${projectName}-cli`,
+    description: (projectPrompt: string) => `TypeScript CLI tool: ${projectPrompt}`,
+    build: {
+      tool: "tsc",
+      optimization: true,
+      minification: true,
+      sourceMap: true,
+      target: ["es2020"],
+      output: {
+        directory: "dist",
+        filename: "index.js",
+        format: ["cjs"]
+      }
+    },
+    test: {
+      framework: "jest",
+      coverage: { enabled: true, threshold: 80, reporters: ["text"] },
+      environment: "node",
+      setupFiles: [],
+      testMatch: ["**/__tests__/**/*.ts", "**/?(*.)+(spec|test).ts"]
+    },
+    packageManager: {
+      manager: "npm",
+      scripts: {
+        dev: "prp dev",
+        build: "prp build",
+        test: "prp test",
+        lint: "prp lint"
+      }
+    }
+  },
+  react: {
+    name: (projectName: string) => `${projectName}-app`,
+    description: (projectPrompt: string) => `React application: ${projectPrompt}`,
+    build: {
+      tool: "vite",
+      optimization: true,
+      minification: true,
+      sourceMap: true,
+      target: ["es2020", "dom"],
+      output: {
+        directory: "dist",
+        filename: "index.html",
+        format: ["es"]
+      }
+    },
+    test: {
+      framework: "vitest",
+      coverage: { enabled: true, threshold: 80, reporters: ["text"] },
+      environment: "jsdom",
+      setupFiles: [],
+      testMatch: ["**/__tests__/**/*.test.tsx", "**/?(*.)+(spec|test).tsx"]
+    }
+  },
+  nestjs: {
+    name: (projectName: string) => `${projectName}-api`,
+    description: (projectPrompt: string) => `NestJS API: ${projectPrompt}`,
+    build: {
+      tool: "nest",
+      optimization: true,
+      minification: false,
+      sourceMap: true,
+      target: ["es2020"],
+      output: {
+        directory: "dist",
+        filename: "main.js",
+        format: ["cjs"]
+      }
+    }
+  },
+  fastapi: {
+    name: (projectName: string) => `${projectName}-api`,
+    description: (projectPrompt: string) => `FastAPI service: ${projectPrompt}`,
+    build: {
+      tool: "python",
+      optimization: false,
+      minification: false,
+      target: ["python3.9"],
+      output: {
+        directory: ".",
+        filename: "main.py",
+        format: ["py"]
+      }
+    }
+  },
+  wikijs: {
+    name: (projectName: string) => `${projectName}-wiki`,
+    description: (projectPrompt: string) => `Wiki.js documentation: ${projectPrompt}`,
+    build: {
+      tool: "wikijs",
+      optimization: false,
+      minification: false,
+      target: ["node"],
+      output: {
+        directory: ".",
+        filename: "index.js",
+        format: ["cjs"]
+      }
+    }
+  },
+  none: {
+    name: (projectName: string) => projectName,
+    description: (projectPrompt: string) => projectPrompt,
+    build: {
+      tool: "custom",
+      optimization: false,
+      minification: false,
+      target: [],
+      output: {
+        directory: ".",
+        filename: "",
+        format: []
+      }
+    }
+  }
+};
+
+// Convert init flow agent config to PRP agent config
+export const convertAgentConfig = (agent: AgentConfig): PRPAgentConfig => {
+  return {
+    id: agent.id,
+    type: agent.type,
+    name: agent.id.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    description: agent.cv,
+    provider: agent.provider || 'anthropic',
+    limits: {
+      budget: agent.limit,
+      warning: agent.warning_limit
+    },
+    capabilities: determineAgentCapabilities(agent.type),
+    instructions: agent.cv,
+    instructionsPath: agent.instructions_path,
+    config: {
+      yolo: agent.yolo,
+      subAgents: agent.sub_agents,
+      maxParallel: agent.max_parallel,
+      mcp: agent.mcp,
+      compactPrediction: agent.compact_prediction
+    }
+  };
+};
+
+// Determine agent capabilities based on type
+const determineAgentCapabilities = (type: string): string[] => {
+  const capabilityMap: Record<string, string[]> = {
+    'system-analyst': ['analysis', 'requirements', 'planning', 'documentation'],
+    'developer': ['coding', 'testing', 'debugging', 'refactoring'],
+    'quality-control': ['testing', 'code-review', 'quality-assurance', 'metrics'],
+    'ux-ui-designer': ['design', 'user-experience', 'accessibility', 'prototyping'],
+    'devops-sre': ['deployment', 'monitoring', 'infrastructure', 'security']
+  };
+
+  return capabilityMap[type] || ['general'];
+};
+
+// Generate .prprc configuration from init flow state
+export const generatePRPConfig = (
+  state: InitState,
+  tuiConfig?: TUIConfig
+): PRPConfig => {
+  const templateConfig = TEMPLATE_CONFIGS[state.template];
+
+  return {
+    version: "1.0.0",
+    name: templateConfig.name(state.projectName),
+    description: templateConfig.description(state.projectPrompt),
+    storage: {
+      dataDir: ".prp",
+      cacheDir: "/tmp/prp-cache",
+      worktreesDir: "/tmp/prp-worktrees",
+      notesDir: ".prp/notes",
+      logsDir: "/tmp/prp-logs",
+      keychainFile: ".prp/keychain.json",
+      persistFile: ".prp/state.json",
+      maxCacheSize: 104857600, // 100MB
+      retentionPeriod: 2592000000 // 30 days
+    },
+    agents: state.agents.map(convertAgentConfig),
+    guidelines: [],
+    signals: {},
+    orchestrator: {
+      provider: state.provider,
+      authType: state.authType,
+      apiKey: state.apiKey,
+      customProvider: state.customProvider
+    },
+    scanner: {
+      enabled: true,
+      watchPatterns: ["**/*.md", "PRPs/*", ".prprc"],
+      ignorePatterns: ["node_modules/**", "dist/**", ".git/**"]
+    },
+    inspector: {
+      enabled: true,
+      autoReview: true,
+      rules: ["signal-detection", "prp-validation", "agent-coordination"]
+    },
+    tui: {
+      mode: "init-flow",
+      activeScreen: "orchestrator",
+      followEvents: true,
+      autoRefresh: true,
+      refreshInterval: tuiConfig?.animations?.status?.fps ? 1000 / tuiConfig.animations.status.fps : 5000
+    },
+    features: {
+      scanner: true,
+      inspector: true,
+      orchestrator: true,
+      tui: true,
+      mcp: state.agents.some(agent => agent.mcp),
+      worktrees: true
+    },
+    limits: {
+      maxConcurrentAgents: Math.max(...state.agents.map(agent => agent.max_parallel || 5)),
+      maxWorktrees: 10,
+      maxPRPsPerWorktree: 5,
+      tokenAlertThreshold: 0.8,
+      tokenCriticalThreshold: 0.95
+    },
+    logging: {
+      level: "info",
+      enableFileLogging: true,
+      enableTokenTracking: true,
+      enablePerformanceTracking: true,
+      logRetentionDays: 7
+    },
+    security: {
+      enablePinProtection: false,
+      encryptSecrets: true,
+      sessionTimeout: 3600
+    },
+    settings: {
+      debug: {
+        enabled: false,
+        level: "info",
+        console: true,
+        file: false,
+        timestamp: true,
+        colors: true,
+        profiling: false
+      },
+      quality: {
+        linting: {
+          enabled: state.template !== 'none',
+          rules: state.template === 'typescript' ? {
+            "@typescript-eslint/no-unused-vars": "error",
+            "@typescript-eslint/explicit-function-return-type": "warn"
+          } : {},
+          fixOnSave: true
+        },
+        testing: {
+          enabled: state.template !== 'none',
+          coverage: 80,
+          frameworks: state.template === 'typescript' ? ["jest"] :
+                     state.template === 'react' ? ["vitest"] : []
+        },
+        security: {
+          enabled: true,
+          tools: ["npm-audit"],
+          rules: {}
+        },
+        performance: {
+          enabled: true,
+          thresholds: {
+            loadTime: 3000,
+            bundleSize: 1000000
+          }
+        }
+      },
+      build: templateConfig.build,
+      test: templateConfig.test || {},
+      ci: {
+        platform: state.integrations.github ? "github" : "none",
+        workflows: {
+          build: true,
+          test: true,
+          deploy: false,
+          security: true
+        },
+        triggers: {
+          onPush: true,
+          onPR: true,
+          onSchedule: false
+        },
+        environment: {
+          NODE_ENV: "test"
+        }
+      },
+      development: {
+        watch: true,
+        hotReload: state.template === 'react',
+        port: state.template === 'react' ? 3000 : 8000,
+        host: "localhost",
+        proxy: {},
+        server: state.template === 'react' ? "webpack-dev-server" : "node"
+      },
+      packageManager: {
+        manager: "npm",
+        autoInstall: true,
+        scripts: templateConfig.packageManager?.scripts || {
+          dev: "prp dev",
+          build: "prp build",
+          test: "prp test",
+          lint: "prp lint"
+        },
+        dependencies: {},
+        devDependencies: {}
+      }
+    },
+    scripts: {
+      dev: "prp dev",
+      build: "prp build",
+      test: "prp test",
+      lint: "prp lint",
+      quality: "prp quality",
+      "init": "prp init"
+    }
+  };
+};
+
+// Generate AGENTS.md content from init flow state
+export const generateAgentsMD = (state: InitState): string => {
+  const timestamp = new Date().toISOString().split('T')[0];
+
+  let content = `# AGENTS.md - Agent Configuration
+
+> Generated by PRP Init Flow on ${timestamp}
+
+## Overview
+
+This project contains ${state.agents.length} configured agents for autonomous development workflow:
+
+`;
+
+  state.agents.forEach((agent, index) => {
+    content += `### ${index + 1}. ${agent.name}
+
+- **Type**: ${agent.type}
+- **Provider**: ${agent.provider}
+- **Limit**: ${agent.limit}
+- **Max Parallel**: ${agent.max_parallel || 5}
+- **YOLO Mode**: ${agent.yolo ? 'Enabled' : 'Disabled'}
+
+**Capabilities**: ${determineAgentCapabilities(agent.type).join(', ')}
+
+**Description**:
+${agent.cv}
+
+---
+
+`;
+  });
+
+  content += `## Usage
+
+Agents are automatically managed by the PRP orchestrator. Each agent:
+- Responds to signals in PRPs following the signal-driven workflow
+- Works within defined limits and budgets
+- Coordinates with other agents through the orchestrator
+- Provides real-time progress updates
+
+## Agent Roles
+
+- **System Analyst**: Analyzes requirements, creates PRPs, defines project scope
+- **Developer**: Implements features, writes code, handles technical tasks
+- **Quality Control**: Reviews code, runs tests, ensures quality standards
+- **UX/UI Designer**: Creates user interfaces, ensures accessibility
+- **DevOps/SRE**: Handles deployment, monitoring, infrastructure
+
+## Configuration
+
+Agent configuration is stored in \`.prprc\` under the \`agents\` section. Each agent can be customized with:
+- Provider and model settings
+- Budget and warning limits
+- Capabilities and instructions
+- Parallel execution settings
+- MCP (Model Context Protocol) configuration
+
+## Signal-Driven Workflow
+
+All agents follow the PRP signal system:
+- **[gg]** Goal clarification requests
+- **[ip]** Implementation planning
+- **[dp]** Development progress updates
+- **[cq]** Code quality validations
+- **[bb]** Blocker notifications
+
+For complete signal reference, see CLAUDE.md.
+
+---
+
+*This file is automatically generated. Edit with care to maintain agent functionality.*`;
+
+  return content;
+};
+
+// Generate initial PRP content
+export const generateInitialPRP = (state: InitState): string => {
+  const timestamp = new Date().toISOString().split('T')[0];
+  const prpNumber = "001";
+
+  return `# PRP-${prpNumber}: Project Bootstrap Complete
+
+> "${state.projectPrompt}"
+
+## progress
+[aa] Project successfully initialized with PRP workspace and agent configuration | robo-system-analyst | ${timestamp}
+
+## description
+Project bootstrap completed with workspace setup, agent configuration, and initial project structure created using the PRP Init Flow.
+
+## dor
+- [x] Run PRP Init Flow
+- [x] Configure project settings
+- [x] Set up agent configuration
+- [x] Generate .prprc configuration
+- [x] Create initial project structure
+
+## dod
+- [x] Project workspace initialized
+- [x] Agent configuration created
+- [x] Development environment set up
+- [x] Documentation generated
+- [x] Quality gates configured
+
+## pre-release checklist
+- [x] All agents properly configured
+- [x] Template files generated
+- [x] Documentation complete
+- [x] Quality gates enabled
+- [x] CI/CD pipeline configured
+
+## post-release checklist
+- [x] Agents ready for tasks
+- [x] Workspace fully functional
+- [x] Signal system operational
+- [x] Quality assurance active
+
+## plan
+- [x] Initialize workspace with prp init
+- [x] Configure project: ${state.projectName}
+- [x] Set up ${state.agents.length} agents for development workflow
+- [x] Configure ${state.provider} provider for LLM integration
+- [x] Generate initial project structure
+- [x] Set up quality gates and validation
+- [ ] Create first feature PRP for development
+- [ ] Begin autonomous development workflow
+
+### Details
+
+**Project Configuration:**
+- Name: ${state.projectName}
+- Template: ${state.template}
+- Provider: ${state.provider}
+- Agents: ${state.agents.length}
+
+**Next Steps:**
+1. Run \`prp dev\` to start the orchestrator
+2. Create your first feature PRP
+3. Let agents begin autonomous development
+4. Monitor progress via TUI dashboard
+
+## research materials
+
+### ${timestamp}
+> Project bootstrap completed using PRP Init Flow with comprehensive agent configuration and workspace setup.
+
+The init flow generated:
+- Complete .prprc configuration with ${state.agents.length} agents
+- Agent documentation (AGENTS.md)
+- Project structure for ${state.template} template
+- Quality gates and CI/CD pipeline
+- Development environment configuration
+
+All systems are ready for autonomous development workflow following PRP signal-driven methodology.
+
+---
+
+This project is now ready for autonomous development using the PRP agent system.
+`;
+
+  return content;
+};
+
+export default {
+  generatePRPConfig,
+  generateAgentsMD,
+  generateInitialPRP,
+  convertAgentConfig,
+  TEMPLATE_CONFIGS
+};

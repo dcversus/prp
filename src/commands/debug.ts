@@ -82,7 +82,7 @@ class DebugModeSession {
   constructor(cli: PRPCli, options: DebugOptions) {
     this.cli = cli;
     this.options = options;
-    this.maxSignalHistory = parseInt(options.signalHistory || '50', 10);
+    this.maxSignalHistory = parseInt(options.signalHistory ?? '50', 10);
   }
 
   /**
@@ -108,9 +108,19 @@ class DebugModeSession {
    * Setup keyboard input handlers
    */
   private setupKeyboardHandlers(): void {
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.setEncoding('utf8');
+    try {
+      // Check if setRawMode is available (not available in all environments)
+      if (typeof process.stdin.setRawMode === 'function') {
+        process.stdin.setRawMode(true);
+      } else {
+        this.logSignal('[SYSTEM]', 'Raw mode not available, using alternative input handling', 'warn');
+      }
+      process.stdin.resume();
+      process.stdin.setEncoding('utf8');
+    } catch (error) {
+      this.logSignal('[SYSTEM]', `Failed to setup keyboard handlers: ${error instanceof Error ? error.message : String(error)}`, 'warn');
+      this.logSignal('[SYSTEM]', 'Debug mode will continue without interactive keyboard controls', 'info');
+    }
 
     process.stdin.on('data', (key) => {
       const keyStr = key.toString();
@@ -237,7 +247,9 @@ class DebugModeSession {
 
     try {
       // Restore stdin
-      process.stdin.setRawMode(false);
+      if (typeof process.stdin.setRawMode === 'function') {
+        process.stdin.setRawMode(false);
+      }
       process.stdin.pause();
       process.stdin.removeAllListeners();
 

@@ -334,40 +334,7 @@ export class OrchestratorMessageHandlingGuidelines {
     }
   }
 
-  /**
-   * Format message for nudge delivery
-   */
-  private formatMessageForNudge(message: AdminMessage): string {
-    let content = `📋 ${message.subject}\n\n`;
-    content += `PRP: ${message.prpId}\n`;
-    content += `Agent: ${message.agentType}\n`;
-    content += `Priority: ${message.priority.toUpperCase()}\n\n`;
-    content += `${message.content}\n\n`;
-
-    if (message.actionRequired) {
-      content += `🎯 Action Required: ${message.actionRequired}\n\n`;
-    }
-
-    if (message.context.options && message.context.options.length > 0) {
-      content += `💡 Options:\n`;
-      message.context.options.forEach((option, i) => {
-        content += `${i + 1}. ${option}\n`;
-      });
-      content += '\n';
-    }
-
-    if (message.context.recommendation) {
-      content += `🔗 Recommendation: ${message.context.recommendation}\n\n`;
-    }
-
-    content += `📅 Created: ${message.metadata.createdAt.toISOString()}`;
-    if (message.metadata.expiresAt) {
-      content += `\n⏰ Expires: ${message.metadata.expiresAt.toISOString()}`;
-    }
-
-    return content;
-  }
-
+  
   /**
    * Handle message delivery failure
    */

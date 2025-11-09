@@ -183,8 +183,8 @@ export class EnhancedGitMonitor {
 
         if (divergenceOutput) {
           const [behindStr, aheadStr] = divergenceOutput.split('\t');
-          behind = parseInt(behindStr || '') || 0;
-          ahead = parseInt(aheadStr || '') || 0;
+          behind = parseInt(behindStr ?? '', 10) || 0;
+          ahead = parseInt(aheadStr ?? '', 10) || 0;
         }
       } catch {
         // No upstream or tracking information
@@ -379,9 +379,13 @@ export class EnhancedGitMonitor {
       const commits = logOutput.split('\n');
 
       for (const commitLine of commits) {
-        const [commit, message, author, dateStr] = commitLine.split('|');
+        const commitParts = commitLine.split('|');
+        const commit = commitParts[0];
+        const message = commitParts[1];
+        const author = commitParts[2];
+        const dateStr = commitParts[3];
 
-        if (!commit || !message) continue;
+        if (!commit || !message || !author || !dateStr) continue;
 
         // Detect signals in commit message
         const signals = await this.signalDetector.detectSignals(message, `commit:${commit}`);
@@ -502,7 +506,7 @@ export class EnhancedGitMonitor {
                 ...signal.metadata,
                 worktree: repoPath,
                 prNumber: pr.number,
-                prAuthor: pr.author?.login || 'unknown',
+                prAuthor: pr.author?.login ?? 'unknown',
                 prState: pr.state
               };
             });
@@ -546,7 +550,43 @@ export class EnhancedGitMonitor {
       );
 
       const lines = showOutput.split('\n');
-      const [commit, message, author, email, dateStr] = lines[0].split('|');
+      const line = lines[0];
+      if (!line) {
+        return {
+          commit: commitHash,
+          message: '',
+          author: '',
+          email: '',
+          date: new Date(),
+          changes: 0,
+          additions: 0,
+          deletions: 0,
+          files: [],
+          signals: []
+        };
+      }
+
+      const commitParts = line.split('|');
+      const commit = commitParts[0] ?? '';
+      const message = commitParts[1] ?? '';
+      const author = commitParts[2] ?? '';
+      const email = commitParts[3] ?? '';
+      const dateStr = commitParts[4] ?? '';
+
+      if (!commit || !message || !author || !email || !dateStr) {
+        return {
+          commit: commitHash,
+          message: '',
+          author: '',
+          email: '',
+          date: new Date(),
+          changes: 0,
+          additions: 0,
+          deletions: 0,
+          files: [],
+          signals: []
+        };
+      }
 
       // Parse file changes
       const files: string[] = [];
@@ -555,13 +595,13 @@ export class EnhancedGitMonitor {
 
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i];
-        if (!line.trim()) continue;
+        if (!line?.trim()) continue;
 
         const parts = line.split('\t');
         if (parts.length >= 3) {
-          const add = parseInt(parts[0]) || 0;
-          const del = parseInt(parts[1]) || 0;
-          const file = parts[2];
+          const add = parseInt(parts[0] ?? '', 10) || 0;
+          const del = parseInt(parts[1] ?? '', 10) || 0;
+          const file = parts[2] ?? '';
 
           additions += add;
           deletions += del;
@@ -636,8 +676,8 @@ export class EnhancedGitMonitor {
 
             if (divergenceOutput) {
               const [behindStr, aheadStr] = divergenceOutput.split('\t');
-              behind = parseInt(behindStr || '') || 0;
-              ahead = parseInt(aheadStr || '') || 0;
+              behind = parseInt(behindStr ?? '', 10) || 0;
+              ahead = parseInt(aheadStr ?? '', 10) || 0;
             }
           } catch {
             // No tracking branch or other error
@@ -651,7 +691,7 @@ export class EnhancedGitMonitor {
           name: branchName,
           commit,
           isRemote,
-          trackingBranch: trackingBranch || undefined,
+          trackingBranch: trackingBranch ?? undefined,
           signals,
           ahead,
           behind

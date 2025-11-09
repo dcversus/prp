@@ -8,6 +8,7 @@ import { ScannerEventBus, ScannerEvent } from './event-bus/EventBus';
 import { SignalParser, ParsedSignal } from './signal-parser/SignalParser';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '../utils/logger';
 
 export interface ScannerOptions {
   watchPaths: string[];
@@ -45,11 +46,11 @@ export class ScannerCore {
    */
   async start(): Promise<void> {
     if (this.isRunning) {
-      console.warn('Scanner is already running');
+      logger.warning('Scanner is already running');
       return;
     }
 
-    console.log('🔍 Starting Scanner...');
+    logger.info('🔍 Starting Scanner...');
     this.isRunning = true;
 
     // Initial scan
@@ -58,7 +59,7 @@ export class ScannerCore {
     // Start periodic scanning
     this.scanInterval = setInterval(() => {
       this.scanAllFiles().catch(error => {
-        console.error('Scanner error:', error);
+        logger.error('Scanner error:', error);
       });
     }, this.options.pollInterval);
 
@@ -79,7 +80,7 @@ export class ScannerCore {
       return;
     }
 
-    console.log('🛑 Stopping Scanner...');
+    logger.info('🛑 Stopping Scanner...');
     this.isRunning = false;
 
     if (this.scanInterval) {
@@ -165,7 +166,7 @@ export class ScannerCore {
 
       return result;
     } catch (error) {
-      console.error(`Error scanning file ${filePath}:`, error);
+      logger.error(`Error scanning file ${filePath}:`, error);
       return null;
     }
   }
@@ -219,7 +220,7 @@ export class ScannerCore {
         files.push(watchPath);
       }
     } catch (error) {
-      console.error(`Error accessing ${watchPath}:`, error);
+      logger.error(`Error accessing ${watchPath}:`, error);
     }
 
     return files;

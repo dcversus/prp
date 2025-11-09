@@ -454,23 +454,23 @@ Respond in structured JSON format with all required fields.`;
 
       // Extract classification
       const classification: SignalClassification = {
-        category: responseData.category || 'unknown',
-        subcategory: responseData.subcategory || 'general',
-        priority: responseData.priority || signal.priority || 5,
-        agentRole: responseData.agentRole || 'developer',
-        escalationLevel: responseData.escalationLevel || 1,
+        category: responseData.category ?? 'unknown',
+        subcategory: responseData.subcategory ?? 'general',
+        priority: responseData.priority ?? signal.priority ?? 5,
+        agentRole: responseData.agentRole ?? 'developer',
+        escalationLevel: responseData.escalationLevel ?? 1,
         deadline: responseData.deadline ? new Date(responseData.deadline) : new Date(Date.now() + 86400000), // 24h default
-        dependencies: responseData.dependencies || [],
-        confidence: responseData.confidence || 50
+        dependencies: responseData.dependencies ?? [],
+        confidence: responseData.confidence ?? 50
       };
 
       // Extract recommendations
-      const recommendations: Recommendation[] = (responseData.recommendations || []).map((rec: RecommendationData) => ({
-        type: rec.type || 'action',
-        priority: rec.priority || 'medium',
-        description: rec.description || 'No description provided',
-        estimatedTime: rec.estimatedTime || 30, // minutes
-        prerequisites: rec.prerequisites || []
+      const recommendations: Recommendation[] = (responseData.recommendations ?? []).map((rec: RecommendationData) => ({
+        type: rec.type ?? 'action',
+        priority: rec.priority ?? 'medium',
+        description: rec.description ?? 'No description provided',
+        estimatedTime: rec.estimatedTime ?? 30, // minutes
+        prerequisites: rec.prerequisites ?? []
       }));
 
       // Calculate cost

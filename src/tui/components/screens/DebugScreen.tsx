@@ -5,7 +5,6 @@
  * with syntax highlighting and detailed event information
  */
 
-import React from 'react';
 import { Box, Text } from 'ink';
 import { TUIState, TUIConfig, TerminalLayout } from '../../types/TUIConfig.js';
 
@@ -13,6 +12,16 @@ interface DebugScreenProps {
   state: TUIState;
   config: TUIConfig;
   terminalLayout: TerminalLayout;
+}
+
+function getEventColor(source: string, config: TUIConfig): string {
+  switch (source) {
+    case 'system': return config.colors.accent_orange;
+    case 'scanner': return config.colors.robo_devops_sre;
+    case 'inspector': return config.colors.robo_system_analyst;
+    case 'orchestrator': return config.colors.orchestrator;
+    default: return config.colors.base_fg;
+  }
 }
 
 export function DebugScreen({ state, config, terminalLayout }: DebugScreenProps) {
@@ -33,7 +42,7 @@ export function DebugScreen({ state, config, terminalLayout }: DebugScreenProps)
         </Text>
         {history.slice(-10).map((item, index) => (
           <Box key={index} flexDirection="column">
-            <Text color={getEventColor(item.source)}>
+            <Text color={getEventColor(item.source, config)}>
               {item.timestamp} :: {item.source.toUpperCase()}
             </Text>
             <Text color={config.colors.base_fg}>
@@ -50,14 +59,4 @@ export function DebugScreen({ state, config, terminalLayout }: DebugScreenProps)
       </Box>
     </Box>
   );
-
-  function getEventColor(source: string): string {
-    switch (source) {
-      case 'system': return config.colors.accent_orange;
-      case 'scanner': return config.colors.robo_devops_sre;
-      case 'inspector': return config.colors.robo_system_analyst;
-      case 'orchestrator': return config.colors.orchestrator;
-      default: return config.colors.base_fg;
-    }
-  }
 }

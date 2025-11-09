@@ -1,0 +1,38 @@
+{
+  "name": "{{PROJECT_NAME_KEBAB}}",
+  "version": "1.0.0",
+  "description": "{{DESCRIPTION}} - Wiki.js collaborative documentation platform",
+  "author": "{{AUTHOR}}",
+  "private": true,
+  "scripts": {
+    "start": "docker-compose up -d",
+    "stop": "docker-compose down",
+    "restart": "docker-compose restart",
+    "logs": "docker-compose logs -f",
+    "ps": "docker-compose ps",
+    "status": "docker-compose ps",
+    "backup": "docker-compose exec db pg_dump -U wikijs wiki > backup-$(date +%Y%m%d-%H%M%S).sql",
+    "restore": "docker-compose exec -T db psql -U wikijs wiki <",
+    "clean": "docker-compose down -v --remove-orphans",
+    "update": "docker-compose pull && docker-compose up -d",
+    "shell-db": "docker-compose exec db psql -U wikijs wiki",
+    "shell-wiki": "docker-compose exec wiki sh"
+  },
+  "keywords": [
+    "wiki",
+    "documentation",
+    "knowledge-base",
+    "collaboration"
+  ],
+  "engines": {
+    "node": ">=16.0.0",
+    "docker": ">=20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "."
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {},
+  "dependencies": {}
+}

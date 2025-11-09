@@ -6,6 +6,7 @@
 
 import { Tool, ToolResult } from '../types';
 import { createLayerLogger } from '../../shared';
+import { getOrchestratorUserAgent } from '../../utils/version';
 import * as https from 'https';
 import * as http from 'http';
 import { URL } from 'url';
@@ -152,15 +153,15 @@ export const httpRequestTool: Tool = {
 
         const options = {
           hostname: url.hostname,
-          port: url.port || (isHttps ? 443 : 80),
+          port: url.port ? parseInt(url.port, 10) : (isHttps ? 443 : 80),
           path: url.pathname + url.search,
-          method: typedParams.method || 'GET',
+          method: typedParams.method ?? 'GET',
           headers: {
-            'User-Agent': '@dcversus/prp-orchestrator/0.5.0',
+            'User-Agent': getOrchestratorUserAgent(),
             'Accept': 'application/json, text/plain, */*',
             ...typedParams.headers
           },
-          timeout: typedParams.timeout || 30000
+          timeout: typedParams.timeout ?? 30000
         };
 
         // Set up the request
@@ -181,7 +182,7 @@ export const httpRequestTool: Tool = {
                 data: data,
                 dataSize: data.length,
                 url: typedParams.url,
-                method: typedParams.method || 'GET',
+                method: typedParams.method ?? 'GET',
                 responseTime: Date.now()
               },
               executionTime: 0
@@ -189,7 +190,7 @@ export const httpRequestTool: Tool = {
 
             // Try to parse JSON responses
             try {
-              const contentType = res.headers['content-type'] || '';
+              const contentType = res.headers['content-type'] ?? '';
               if (contentType.includes('application/json')) {
                 (result.data as HttpResponse).jsonData = JSON.parse(data);
               }
@@ -197,7 +198,7 @@ export const httpRequestTool: Tool = {
               // Keep as raw data if JSON parsing fails
             }
 
-            logger.info('http_request', `HTTP ${typedParams.method || 'GET'} ${typedParams.url} → ${res.statusCode}`);
+            logger.info('http_request', `HTTP ${typedParams.method ?? 'GET'} ${typedParams.url} → ${res.statusCode}`);
             resolve(result);
           });
         });
@@ -209,7 +210,7 @@ export const httpRequestTool: Tool = {
 
         req.on('timeout', () => {
           req.destroy();
-          reject(new Error(`HTTP request timeout: ${typedParams.timeout}ms`));
+          reject(new Error(`HTTP request timeout: ${typedParams.timeout ?? 30000}ms`));
         });
 
         // Send request body if provided
@@ -288,16 +289,16 @@ export const webSearchTool: Tool = {
       let match;
 
       let count = 0;
-      while ((match = resultRegex.exec(html)) && count < (typedParams.limit || 10)) {
+      while ((match = resultRegex.exec(html)) && count < (typedParams.limit ?? 10)) {
         const url = match[1];
-        const title = match[2]?.replace(/<[^>]*>/g, '').trim() || '';
+        const title = match[2]?.replace(/<[^>]*>/g, '').trim() ?? '';
 
         if (url && title && !url.startsWith('/')) {
           results.push({
             title,
             url,
             snippet: 'Search result from DuckDuckGo',
-            engine: typedParams.engine || 'duckduckgo'
+            engine: typedParams.engine ?? 'duckduckgo'
           });
           count++;
         }
@@ -309,7 +310,7 @@ export const webSearchTool: Tool = {
         success: true,
         data: {
           query: typedParams.query,
-          engine: typedParams.engine || 'duckduckgo',
+          engine: typedParams.engine ?? 'duckduckgo',
           results,
           totalResults: results.length,
           responseTime: Date.now()
@@ -379,7 +380,7 @@ export const githubApiTool: Tool = {
       url = url.replace('{repo}', typedParams.repo);
     }
 
-    const token = typedParams.token || process.env['GITHUB_TOKEN'];
+    const token = typedParams.token ?? process.env.GITHUB_TOKEN;
 
     if (!token && typedParams.method !== 'GET') {
       throw new Error('GitHub token required for non-GET requests');
@@ -387,7 +388,7 @@ export const githubApiTool: Tool = {
 
     const headers: Record<string, string> = {
       'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': '@dcversus/prp-orchestrator/0.5.0',
+      'User-Agent': getOrchestratorUserAgent(),
       'X-GitHub-Api-Version': '2022-11-28'
     };
 
@@ -398,21 +399,21 @@ export const githubApiTool: Tool = {
     try {
       const response = await httpRequestTool.execute({
         url,
-        method: typedParams.method || 'GET',
+        method: typedParams.method ?? 'GET',
         headers,
         body: typedParams.body,
         timeout: 30000
       });
 
       const responseData = response.data as HttpResponse;
-      logger.info('github_api', `GitHub API ${typedParams.method || 'GET'} ${typedParams.endpoint} → ${responseData.statusCode}`);
+      logger.info('github_api', `GitHub API ${typedParams.method ?? 'GET'} ${typedParams.endpoint} → ${responseData.statusCode}`);
 
       return {
         success: response.success,
         data: {
           endpoint: typedParams.endpoint,
-          method: typedParams.method || 'GET',
-          data: responseData.jsonData || responseData.data,
+          method: typedParams.method ?? 'GET',
+          data: responseData.jsonData ?? responseData.data,
           status: responseData.statusCode,
           rateLimit: {
             remaining: responseData.headers['x-ratelimit-remaining'],
@@ -468,8 +469,8 @@ export const urlValidationTool: Tool = {
 
       const response = await httpRequestTool.execute({
         url: typedParams.url,
-        method: typedParams.method || 'HEAD',
-        timeout: typedParams.timeout || 10000
+        method: typedParams.method ?? 'HEAD',
+        timeout: typedParams.timeout ?? 10000
       });
 
       const responseData = response.data as HttpResponse;
@@ -482,7 +483,7 @@ export const urlValidationTool: Tool = {
         contentType: responseData.headers['content-type'],
         contentLength: responseData.headers['content-length'],
         responseTime: Date.now(),
-        finalUrl: responseData.headers['location'] || typedParams.url // Handle redirects
+        finalUrl: responseData.headers['location'] ?? typedParams.url // Handle redirects
       };
 
       logger.info('validate_url', `URL validation: ${typedParams.url} → ${responseData.statusCode}`);
