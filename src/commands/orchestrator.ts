@@ -16,7 +16,6 @@ class ConfigurationError extends Error {
 
 interface OrchestratorOptions {
   prompt?: string;
-  run?: string;
   config?: string;
   limit?: string;
   screen?: 'o' | 'i' | 'a' | '1' | 'n';
@@ -36,20 +35,11 @@ interface LimitItem {
   target?: string;
 }
 
-interface TaskItem {
-  prp: string;
-  role?: string;
-  agent?: string;
-}
 
 export function createOrchestratorCommand(): Command {
   const orchestratorCmd = new Command('orchestrator')
     .description('Start PRP orchestrator with agent management and signal processing')
     .option('-p, --prompt <string>', 'Orchestrator start command')
-    .option(
-      '--run <tasks>',
-      'Run specific tasks: prp-name#robo-role,second-prp-with-auto-role,third-prp#with-agent-name'
-    )
     .option('--config <path>', 'Config file path or JSON object')
     .option('--limit <format>', 'Token limits format (e.g., 1k,2k#robo-role,100usd10k#agent-name)')
     .option(
@@ -285,43 +275,6 @@ export function parseLimitOption(limitOption: string): LimitItem[] {
   }
 }
 
-export function parseRunOption(runOption: string): TaskItem[] {
-  if (!runOption || runOption.trim() === '') {
-    throw new ConfigurationError(
-      'Invalid --run format. Expected: prp-name#robo-role,second-prp-with-auto-role,third-prp#with-agent-name'
-    );
-  }
-
-  try {
-    const items = runOption.split(',');
-    return items.map((item) => {
-      const trimmedItem = item.trim();
-      if (!trimmedItem) {
-        throw new Error('Empty run item found');
-      }
-
-      const parts = trimmedItem.split('#');
-      const prpName = parts[0]?.trim();
-      const role = parts[1]?.trim();
-
-      if (!prpName) {
-        throw new Error(`PRP name is required: ${trimmedItem}`);
-      }
-
-      return {
-        prp: prpName,
-        role: role ?? undefined, // Auto-detect role if not specified
-        agent: undefined // Can be extended to specify agent name
-      };
-    });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    throw new ConfigurationError(
-      `Invalid --run format: ${errorMessage}. Expected: prp-name#robo-role,second-prp-with-auto-role,third-prp#with-agent-name`
-    );
-  }
-}
-
-export type { OrchestratorOptions, LimitItem, TaskItem };
+export type { OrchestratorOptions, LimitItem };
 
 export { createOrchestratorCommand as default, handleOrchestratorCommand };

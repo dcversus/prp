@@ -53,7 +53,6 @@
     "useUnknownInCatchVariables": true,
     "noImplicitUseStrict": false,
     "noStrictGenericChecks": false,
-    "noImplicitAny": true,
 
     /* Type Definitions */
     "types": ["node", "jest", "@testing-library/jest-dom"],

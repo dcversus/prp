@@ -18,7 +18,7 @@ const program = new Command();
 program
   .name('prp')
   .description('♫ @dcversus/prp - Autonomous Development Orchestration')
-  .version('0.5.0')
+  .version('0.4.9')
   .configureOutput({
     writeErr: (str) => process.stderr.write(str),
     writeOut: (str) => process.stdout.write(str)
@@ -29,10 +29,6 @@ program
   .option('--log-level <level>', 'Set logging level (error|warn|info|debug|verbose)', 'info')
   .option('--log-file <path>', 'Write logs to specified file')
   .option('--no-color', 'Disable colored output')
-  .option('--dry-run', 'Show what would be done without executing')
-  .option('--verbose', 'Enable verbose output')
-  .option('--quiet', 'Suppress non-error output')
-  .option('--no-interactive', 'Disable interactive prompts')
   .option('--mcp-port <port>', 'Start MCP server on specified port');
 
 // Add version as explicit command
@@ -40,7 +36,7 @@ program
   .command('version')
   .description('Show version number')
   .action(() => {
-    logger.info('cli', 'CLI', `Version: ${program.version()}`);
+    process.stdout.write(`${program.version()}\n`);
     process.exit(0);
   });
 
@@ -111,10 +107,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       );
 
       // Keep the process alive
-      process.on('SIGINT', async () => {
-        logger.info('cli', 'CLI', 'Shutting down MCP Server...', {});
-        await mcpServer.stop();
-        process.exit(0);
+      process.on('SIGINT', () => {
+        void (async () => {
+          logger.info('cli', 'CLI', 'Shutting down MCP Server...', {});
+          await mcpServer.stop();
+          process.exit(0);
+        })();
       });
     }
   } catch (error) {

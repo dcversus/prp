@@ -17,8 +17,6 @@ export interface InitOptions {
   logLevel?: string;
   noColor?: boolean;
   logFile?: string;
-  noInteractive?: boolean;
-  interactive?: boolean; // Commander passes --no-interactive as interactive:false
 }
 
 export function createInitCommand(): Command {
@@ -83,27 +81,15 @@ async function handleInitCommand(options: InitOptions, projectName?: string): Pr
       process.exit(1);
     }
 
-    if (options.ci || options.default || options.noInteractive || options.interactive === false) {
-      // For CI, default, or non-interactive mode, use basic scaffolding
-      if (options.template && options.template !== 'none') {
-        logger.info('shared', 'InitCommand', `Creating ${options.template} project in ${targetDir}`, {});
-        // TODO: Implement basic scaffolding service for non-interactive mode
-        logger.info('shared', 'InitCommand', 'Non-interactive scaffolding not yet implemented', {});
-      } else {
-        logger.info('shared', 'InitCommand', 'No template specified or using none, creating basic project structure', {});
-        // Create basic project structure
-        await createBasicProjectStructure(targetDir, options.template);
-      }
-    } else {
-      await runTUIInit({
-        projectName: projectName ?? options.projectName,
-        template: options.template,
-        prompt: options.prompt,
-        force: options.force ?? false,
-        ci: options.ci ?? false,
-        debug: options.debug ?? false
-      });
-    }
+    // Always use TUI init - it handles both TUI and CI modes properly
+    await runTUIInit({
+      projectName: projectName ?? options.projectName,
+      template: options.template,
+      prompt: options.prompt,
+      force: options.force ?? false,
+      ci: options.ci ?? false,
+      debug: options.debug ?? false
+    });
   } catch (error) {
     logger.error(
       'shared',
@@ -115,29 +101,5 @@ async function handleInitCommand(options: InitOptions, projectName?: string): Pr
   }
 }
 
-async function createBasicProjectStructure(targetDir: string, template?: string): Promise<void> {
-  try {
-    // Ensure target directory exists
-    await fs.mkdir(targetDir, { recursive: true });
-
-    // Create basic .prprc file
-    const prprcContent = {
-      name: path.basename(targetDir),
-      template: template || 'none',
-      created: new Date().toISOString(),
-      version: '0.5.0'
-    };
-
-    await fs.writeFile(
-      path.join(targetDir, '.prprc'),
-      JSON.stringify(prprcContent, null, 2),
-      'utf8'
-    );
-
-    logger.info('shared', 'InitCommand', `Basic project structure created in ${targetDir}`, {});
-  } catch (error) {
-    throw new Error(`Failed to create project structure: ${error instanceof Error ? error.message : String(error)}`);
-  }
-}
 
 export { handleInitCommand };
