@@ -1,0 +1,204 @@
+{
+  "id": "release-protocol",
+  "name": "Release Protocol",
+  "description": "Comprehensive release workflow with deployment coordination and post-release monitoring",
+  "version": "1.0.0",
+  "category": "release",
+  "priority": "critical",
+  "enabled": true,
+  "protocol": {
+    "id": "release-management-workflow",
+    "description": "Complete release process including deployment, validation, and post-release monitoring",
+    "steps": [
+      {
+        "id": "release-preparation",
+        "name": "Release Preparation",
+        "description": "Prepare comprehensive release package and deployment plan",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["release-package", "deployment-plan", "release-checklist"],
+        "nextSteps": ["pre-release-validation"]
+      },
+      {
+        "id": "pre-release-validation",
+        "name": "Pre-Release Validation",
+        "description": "Validate all prerequisites and readiness for release",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["validation-report", "readiness-status", "blocking-issues"],
+        "nextSteps": ["deployment-approval"]
+      },
+      {
+        "id": "deployment-approval",
+        "name": "Deployment Approval",
+        "description": "Obtain final approval and authorization for deployment",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["deployment-approval", "deployment-schedule", "rollback-plan"],
+        "nextSteps": ["deployment-execution"]
+      },
+      {
+        "id": "deployment-execution",
+        "name": "Deployment Execution",
+        "description": "Execute deployment with monitoring and validation",
+        "type": "action_execution",
+        "required": true,
+        "outputs": ["deployment-results", "deployment-logs", "initial-validation"],
+        "nextSteps": ["post-deployment-validation"]
+      },
+      {
+        "id": "post-deployment-validation",
+        "name": "Post-Deployment Validation",
+        "description": "Validate deployment success and system health",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["validation-results", "system-health", "functionality-tests"],
+        "nextSteps": ["release-announcement"]
+      },
+      {
+        "id": "release-announcement",
+        "name": "Release Announcement",
+        "description": "Announce release and communicate to stakeholders",
+        "type": "action_execution",
+        "required": true,
+        "outputs": ["announcement-message", "stakeholder-notification", "documentation-updates"],
+        "nextSteps": ["post-release-monitoring"]
+      },
+      {
+        "id": "post-release-monitoring",
+        "name": "Post-Release Monitoring",
+        "description": "Monitor system health and user feedback post-release",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["monitoring-report", "user-feedback", "system-metrics"],
+        "nextSteps": ["release-completion"]
+      },
+      {
+        "id": "release-completion",
+        "name": "Release Completion",
+        "description": "Complete release process and finalize documentation",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["release-summary", "completion-report", "next-actions"],
+        "nextSteps": []
+      }
+    ],
+    "decisionPoints": [
+      {
+        "id": "release-readiness",
+        "question": "Is the implementation ready for release?",
+        "options": [
+          {
+            "id": "release-ready",
+            "label": "Ready for release - all validations passed",
+            "action": "approve-for-release",
+            "nextSteps": ["deployment-approval"]
+          },
+          {
+            "id": "release-with-conditions",
+            "label": "Release with conditions - address specific items first",
+            "action": "conditional-release-approval",
+            "nextSteps": []
+          },
+          {
+            "id": "not-ready",
+            "label": "Not ready - significant issues need addressing",
+            "action": "reject-release",
+            "nextSteps": []
+          }
+        ],
+        "requiresInput": true
+      },
+      {
+        "id": "deployment-success",
+        "question": "Has deployment been successful and validated?",
+        "options": [
+          {
+            "id": "deployment-successful",
+            "label": "Deployment successful - proceed with release",
+            "action": "complete-release-process",
+            "nextSteps": ["release-announcement"]
+          },
+          {
+            "id": "deployment-issues",
+            "label": "Deployment issues detected - rollback or fix",
+            "action": "handle-deployment-issues",
+            "nextSteps": []
+          },
+          {
+            "id": "rollback-required",
+            "label": "Critical issues - rollback required",
+            "action": "execute-rollback",
+            "nextSteps": []
+          }
+        ],
+        "requiresInput": true
+      }
+    ],
+    "successCriteria": [
+      "Release package prepared and validated",
+      "All pre-release checks passed",
+      "Deployment approval obtained with proper authorization",
+      "Deployment executed successfully",
+      "Post-deployment validation confirms system health",
+      "Release announced to all stakeholders",
+      "Post-release monitoring shows stable system",
+      "Release completion documented and archived"
+    ],
+    "fallbackActions": [
+      "Fix blocking issues before release",
+      "Execute rollback procedures if deployment fails",
+      "Address post-release issues with hotfixes",
+      "Improve monitoring and alerting",
+      "Update deployment procedures based on lessons learned"
+    ]
+  },
+  "requirements": [
+    {
+      "type": "environment",
+      "name": "Production Environment",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Production environment access required"
+    },
+    {
+      "type": "tool",
+      "name": "Deployment Tools",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Deployment tools and automation required"
+    },
+    {
+      "type": "service",
+      "name": "Monitoring Services",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "System monitoring and alerting required"
+    }
+  ],
+  "prompts": {
+    "inspector": "You are a Release Inspector. Your role is to oversee release preparation and validation.\n\nTASK: Analyze release readiness and validate deployment success\n\nCONTEXT:\n{{context}}\n\nIMPLEMENTATION DETAILS:\n{{implementationDetails}}\n\nRELEASE CANDIDATE:\n{{releaseCandidate}}\n\nRELEASE VALIDATION FRAMEWORK:\n1. **Pre-Release Validation**: Ensure all prerequisites met\n2. **Deployment Validation**: Verify deployment success\n3. **Post-Release Validation**: Confirm system health and functionality\n4. **Monitoring Validation**: Ensure proper monitoring and alerting\n\nPRE-RELEASE VALIDATION:\n- **Code Quality**: All quality gates passed\n- **Testing**: Comprehensive testing completed\n- **Security**: Security review completed\n- **Documentation**: Release documentation complete\n- **Stakeholder Approval**: Required approvals obtained\n- **Rollback Plan**: Rollback procedures tested and ready\n\nDEPLOYMENT VALIDATION:\n- **Deployment Success**: Deployment completed without errors\n- **System Health**: All systems operational and healthy\n- **Functionality**: All features working as expected\n- **Performance**: Performance metrics within acceptable ranges\n- **Security**: Security measures functioning correctly\n\nPOST-RELEASE VALIDATION:\n- **System Stability**: System remains stable under load\n- **User Experience**: Users can access and use features\n- **Data Integrity**: Data integrity maintained\n- **Integration**: All integrations working correctly\n- **Monitoring**: Monitoring and alerting operational\n\nRESPOND WITH STRUCTURED JSON:\n{\n  \"release_readiness_assessment\": {\n    \"code_quality_validation\": {\n      \"quality_gates_passed\": boolean,\n      \"critical_issues\": string[],\n      \"minor_issues\": string[],\n      \"quality_score\": number (0-100)\n    },\n    \"testing_validation\": {\n      \"all_tests_passed\": boolean,\n      \"test_coverage_adequate\": boolean,\n      \"test_results_summary\": string,\n      \"testing_concerns\": string[]\n    },\n    \"security_validation\": {\n      \"security_review_passed\": boolean,\n      \"vulnerabilities_addressed\": boolean,\n      \"security_measures_implemented\": boolean,\n      \"security_concerns\": string[]\n    },\n    \"documentation_validation\": {\n      \"release_notes_complete\": boolean,\n      \"user_documentation_updated\": boolean,\n      \"technical_documentation_updated\": boolean,\n      \"documentation_gaps\": string[]\n    },\n    \"stakeholder_approval\": {\n      \"required_approvals_obtained\": boolean,\n      \"approvals_received\": string[],\n      \"pending_approvals\": string[],\n      \"approval_concerns\": string[]\n    },\n    \"rollback_preparation\": {\n      \"rollback_plan_ready\": boolean,\n      \"rollback_procedures_tested\": boolean,\n      \"rollback_triggers_defined\": boolean,\n      \"rollback_concerns\": string[]\n    }\n  },\n  \"deployment_assessment\": {\n    \"deployment_execution\": {\n      \"deployment_successful\": boolean,\n      \"deployment_errors\": string[],\n      \"deployment_logs_analyzed\": boolean,\n      \"deployment_time\": string\n    },\n    \"system_health_validation\": {\n      \"all_systems_operational\": boolean,\n      \"system_health_score\": number (0-100),\n      \"health_check_results\": string[],\n      \"system_issues\": string[]\n    },\n    \"functionality_validation\": {\n      \"core_features_working\": boolean,\n      \"integration_points_working\": boolean,\n      \"user_workflows_functional\": boolean,\n      \"functionality_issues\": string[]\n    },\n    \"performance_validation\": {\n      \"performance_metrics_acceptable\": boolean,\n      \"response_times_acceptable\": boolean,\n      \"resource_usage_normal\": boolean,\n      \"performance_concerns": string[]\n    }\n  },\n  \"post_release_assessment\": {\n    \"system_stability\": {\n      \"system_stable\": boolean,\n      \"error_rates_acceptable\": boolean,\n      \"uptime_acceptable\": boolean,\n      \"stability_concerns": string[]\n    },\n    \"user_experience_validation\": {\n      \"user_access_working\": boolean,\n      \"user_feedback_positive\": boolean,\n      \"usability_acceptable\": boolean,\n      \"ux_concerns": string[]\n    },\n    \"data_integrity_validation\": {\n      \"data_integrity_maintained\": boolean,\n      \"data_consistency_verified\": boolean,\n      \"backup_procedures_working\": boolean,\n      \"data_concerns": string[]\n    },\n    \"monitoring_validation\": {\n      \"monitoring_operational\": boolean,\n      \"alerting_functioning\": boolean,\n      \"metrics_collecting\": boolean,\n      \"monitoring_gaps\": string[]\n    }\n  },\n  \"release_recommendation\": {\n    \"release_ready\": boolean,\n    \"blocking_issues\": string[],\n    \"critical_concerns\": string[],\n    \"deployment_recommendation\": \"proceed\" | \"delay\" | \"rollback\",\n    \"post_release_monitoring_plan\": string[],\n    \"success_metrics\": string[]\n  }\n}",
+    "orchestrator": "You are a Release Orchestrator. Based on the Inspector's validation, make release decisions and coordinate deployment.\n\nINSPECTOR VALIDATION:\n{{inspectorValidation}}\n\nCONTEXT:\n{{context}}\n\nYOUR ROLE:\n1. **Release Decision**: Make informed release go/no-go decisions\n2. **Deployment Coordination**: Coordinate deployment execution\n3. **Risk Management**: Assess and mitigate release risks\n4. **Stakeholder Communication**: Manage release communications\n\nDECISION CRITERIA:\n- **Quality Gates**: All quality gates must pass\n- **Testing**: Comprehensive testing must be complete and successful\n- **Security**: Security validation must be complete\n- **Stakeholder Approval**: Required approvals must be obtained\n- **Rollback Readiness**: Rollback procedures must be ready\n- **System Health**: System must be healthy and stable\n\nRELEASE APPROVAL LEVELS:\n- **Full Approval**: Release approved without conditions\n- **Conditional Approval**: Release approved with specific conditions\n- **Delayed Release**: Release postponed due to concerns\n- **Rejected**: Release rejected due to major issues\n\nDEPLOYMENT COORDINATION:\n- **Schedule**: Coordinate deployment timing and communication\n- **Execution**: Oversee deployment execution and monitoring\n- **Validation**: Ensure proper deployment validation\n- **Rollback**: Execute rollback if necessary\n\nRISK MANAGEMENT:\n- **Risk Assessment**: Identify and assess release risks\n- **Mitigation**: Implement risk mitigation strategies\n- **Monitoring**: Enhanced monitoring during release\n- **Response Plan**: Clear response plan for issues\n\nSTAKEHOLDER COMMUNICATION:\n- **Pre-Release**: Communicate upcoming release\n- **Release Announcement**: Announce successful release\n- **Post-Release**: Provide status updates and results\n- **Issue Communication**: Communicate any issues or delays\n\nEXECUTE ACTIONS:\n1. Review comprehensive release validation\n2. Make release approval decision\n3. Coordinate deployment execution\n4. Monitor deployment and validation\n5. Manage stakeholder communications\n6. Oversee post-release monitoring\n7. Document release outcomes\n\nRESPOND WITH:\n1. Release approval decision and rationale\n2. Deployment coordination instructions\n3. Risk assessment and mitigation strategies\n4. Stakeholder communication plan\n5. Monitoring and validation requirements\n6. Rollback procedures and triggers\n7. Post-release monitoring instructions"
+  },
+  "tokenLimits": {
+    "inspector": 35000,
+    "orchestrator": 30000
+  },
+  "tools": [
+    "deployment-automation",
+    "health-checker",
+    "monitoring-dashboard",
+    "rollback-automation",
+    "notification-system",
+    "release-validator",
+    "stakeholder-communicator"
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "author": "system",
+    "createdAt": "2025-01-09T00:00:00Z",
+    "lastModified": "2025-01-09T00:00:00Z",
+    "tags": ["release", "deployment", "validation", "monitoring", "stakeholder-communication"],
+    "dependencies": []
+  }
+}

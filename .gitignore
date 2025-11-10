@@ -14,11 +14,16 @@ build/
 coverage/
 .nyc_output/
 *.lcov
+prp-project/
 
 # Environment
 .env
 .env.local
 .env.*.local
+
+# PRP Secrets - never commit!
+.prpsecrets
+*/.prpsecrets
 
 # IDE
 .vscode/

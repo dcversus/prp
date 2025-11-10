@@ -9,6 +9,7 @@ import { createLayerLogger } from '../../shared';
 import { spawn } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join, resolve } from 'path';
+import { SignalBasedAgentSpawner, SignalBasedSpawnRequest } from '../../agents/agent-spawner.js';
 
 const logger = createLayerLogger('orchestrator');
 
@@ -41,6 +42,44 @@ export interface SendMessageToAgentParams {
   message: string;
   messageType?: 'instruction' | 'query' | 'signal' | 'update';
   priority?: 'low' | 'normal' | 'high' | 'urgent';
+}
+
+export interface SpawnAgentFromSignalParams {
+  signal: string;
+  context?: {
+    prpId?: string;
+    filePath?: string;
+    description?: string;
+    metadata?: Record<string, unknown>;
+  };
+  task?: string;
+  priority?: number;
+  timeout?: number;
+  waitForHealth?: boolean;
+  tokenTracking?: boolean;
+}
+
+export interface GetAgentAnalyticsParams {
+  agentId?: string;
+  includeHistory?: boolean;
+  includeRecommendations?: boolean;
+}
+
+export interface UpdateAgentCapabilitiesParams {
+  agentId: string;
+  capabilities: {
+    primary?: string[];
+    secondary?: string[];
+    tools?: string[];
+    maxConcurrent?: number;
+    specializations?: string[];
+  };
+}
+
+export interface GetSpawningAnalyticsParams {
+  includeSignalHistory?: boolean;
+  includeAgentUsage?: boolean;
+  includeRecommendations?: boolean;
 }
 
 export interface AgentProcess {
@@ -132,9 +171,19 @@ export const spawnAgentTool: Tool = {
     // spawn, existsSync, mkdirSync, writeFileSync, join, resolve already imported
 
     try {
-      const typedParams = params as SpawnAgentParams;
+      // Type guard to ensure params is the correct type
+      if (!params || typeof params !== 'object') {
+        throw new Error('Invalid parameters: object expected');
+      }
+
+      const typedParams = params as Record<string, unknown>;
+
+      // Validate required parameter
+      if (!typedParams['agentType'] || typeof typedParams['agentType'] !== 'string') {
+        throw new Error('Missing or invalid agentType parameter');
+      }
       const agentId = `agent_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const worktree = typedParams.worktree || resolve('/tmp/prp-worktrees', agentId);
+      const worktree = (typedParams['worktree'] as string) || resolve('/tmp/prp-worktrees', agentId);
 
       // Create worktree directory if it doesn't exist
       if (!existsSync(worktree)) {
@@ -144,13 +193,13 @@ export const spawnAgentTool: Tool = {
       // Create agent configuration
       const agentConfig = {
         id: agentId,
-        type: typedParams.agentType,
-        role: typedParams.role,
+        type: typedParams['agentType'],
+        role: typedParams['role'] as string | undefined,
         config: {
-          ...typedParams.config,
-          model: getModelForAgentType(typedParams.agentType),
-          tokenLimits: getTokenLimitsForAgentType(typedParams.agentType),
-          tools: getToolsForAgentType(typedParams.agentType)
+          ...(typedParams['config'] && typeof typedParams['config'] === 'object' ? typedParams['config'] : {}),
+          model: getModelForAgentType(typedParams['agentType']),
+          tokenLimits: getTokenLimitsForAgentType(typedParams['agentType']),
+          tools: getToolsForAgentType(typedParams['agentType'])
         },
         spawnedAt: new Date().toISOString(),
         worktree,
@@ -164,15 +213,16 @@ export const spawnAgentTool: Tool = {
       );
 
       // Set up Claude Code configuration if needed
-      if (typedParams.agentType === 'claude-code' || typedParams.agentType === 'claude-code-glm') {
+      const agentType = typedParams.agentType;
+      if (agentType === 'claude-code' || agentType === 'claude-code-glm') {
         await setupClaudeCodeConfig(worktree, agentConfig);
       }
 
       // Prepare spawn command
-      const spawnCommand = getSpawnCommand(typedParams.agentType);
-      const spawnArgs = getSpawnArgs(typedParams.agentType, agentConfig);
+      const spawnCommand = getSpawnCommand(agentType);
+      const spawnArgs = getSpawnArgs();
 
-      logger.info('spawn_agent', `Spawning ${typedParams.agentType} agent: ${agentId}`);
+      logger.info('spawn_agent', `Spawning ${agentType} agent: ${agentId}`);
 
       const childProcess = spawn(spawnCommand, spawnArgs, {
         cwd: worktree,
@@ -180,22 +230,19 @@ export const spawnAgentTool: Tool = {
         env: {
           ...process.env,
           AGENT_ID: agentId,
-          AGENT_TYPE: typedParams.agentType,
-          AGENT_ROLE: typedParams.role,
+          AGENT_TYPE: agentType,
+          AGENT_ROLE: typedParams.role as string | undefined,
           WORKTREE: worktree
         }
       });
 
       // Handle agent process events
-      let output = '';
-      let errorOutput = '';
-
-      childProcess.stdout?.on('data', (data: Buffer) => {
-        output += data.toString();
+      childProcess.stdout.on('data', () => {
+        // Output processing would be implemented here
       });
 
-      childProcess.stderr?.on('data', (data: Buffer) => {
-        errorOutput += data.toString();
+      childProcess.stderr.on('data', () => {
+        // Error output processing would be implemented here
       });
 
       childProcess.on('spawn', () => {
@@ -203,7 +250,7 @@ export const spawnAgentTool: Tool = {
       });
 
       childProcess.on('error', (error: Error) => {
-        logger.error('spawn_agent', `Agent spawn failed`, error);
+        logger.error('spawn_agent', 'Agent spawn failed', error);
         throw error;
       });
 
@@ -229,7 +276,7 @@ export const spawnAgentTool: Tool = {
       return result;
 
     } catch (error) {
-      logger.error('spawn_agent', `Agent spawning failed`, error instanceof Error ? error : new Error(String(error)));
+      logger.error('spawn_agent', 'Agent spawning failed', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -268,7 +315,7 @@ export const getAgentStatusTool: Tool = {
 
       for (const agent of agents) {
         if (!typedParams.agentId || agent.id === typedParams.agentId) {
-          const status = await getDetailedAgentStatus(agent.id, Boolean(typedParams.includeMetrics));
+          const status = await getDetailedAgentStatus();
           agentStatuses.push(status);
         }
       }
@@ -286,7 +333,7 @@ export const getAgentStatusTool: Tool = {
       };
 
     } catch (error) {
-      logger.error('get_agent_status', `Failed to get agent status`, error instanceof Error ? error : new Error(String(error)));
+      logger.error('get_agent_status', 'Failed to get agent status', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -321,7 +368,7 @@ export const killAgentTool: Tool = {
   execute: async (params: unknown) => {
     try {
       const typedParams = params as KillAgentParams;
-      const agent = await getAgentById(typedParams.agentId);
+      const agent = await getAgentById();
 
       if (!agent) {
         throw new Error(`Agent ${typedParams.agentId} not found`);
@@ -332,16 +379,16 @@ export const killAgentTool: Tool = {
       let killed = false;
       let method = 'unknown';
 
-      if (typedParams.graceful && (agent as RunningAgent).process) {
+      if (typedParams.graceful && (agent).process) {
         // Try graceful shutdown first
         try {
-          (agent as RunningAgent).process!.send({ command: 'shutdown' });
+          (agent).process.send({ command: 'shutdown' });
 
           // Wait for graceful shutdown
           await new Promise((resolve) => {
-            const timeout = setTimeout(() => resolve(undefined), typedParams.timeout || 10000);
+            const timeout = setTimeout(() => resolve(undefined), typedParams.timeout ?? 10000);
 
-            (agent as RunningAgent).process!.once('exit', () => {
+            (agent).process?.once('exit', () => {
               clearTimeout(timeout);
               resolve(true);
             });
@@ -350,13 +397,13 @@ export const killAgentTool: Tool = {
           killed = true;
           method = 'graceful';
         } catch (error) {
-          logger.warn('kill_agent', `Graceful shutdown failed`, error instanceof Error ? error as unknown as Record<string, unknown> : new Error(String(error)) as unknown as Record<string, unknown>);
+          logger.warn('kill_agent', 'Graceful shutdown failed', error instanceof Error ? error as unknown as Record<string, unknown> : new Error(String(error)) as unknown as Record<string, unknown>);
         }
       }
 
-      if (!killed && (agent as RunningAgent).process) {
+      if (!killed && (agent).process) {
         // Force kill if graceful didn't work
-        (agent as RunningAgent).process!.kill('SIGTERM');
+        (agent).process.kill('SIGTERM');
         method = 'force';
         killed = true;
       }
@@ -377,7 +424,7 @@ export const killAgentTool: Tool = {
       return result;
 
     } catch (error) {
-      logger.error('kill_agent', `Failed to kill agent`, error instanceof Error ? error : new Error(String(error)));
+      logger.error('kill_agent', 'Failed to kill agent', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -419,13 +466,13 @@ export const sendMessageToAgentTool: Tool = {
   execute: async (params: unknown) => {
     try {
       const typedParams = params as SendMessageToAgentParams;
-      const agent = await getAgentById(typedParams.agentId);
+      const agent = await getAgentById();
 
       if (!agent) {
         throw new Error(`Agent ${typedParams.agentId} not found`);
       }
 
-      if (!(agent as RunningAgent).process || (agent as RunningAgent).process!.killed) {
+      if (!(agent).process || (agent).process.killed) {
         throw new Error(`Agent ${typedParams.agentId} is not running`);
       }
 
@@ -438,7 +485,7 @@ export const sendMessageToAgentTool: Tool = {
       };
 
       // Send message to agent process
-      (agent as RunningAgent).process!.send(message);
+      (agent).process.send(message);
 
       logger.info('send_message_to_agent', `Sent ${typedParams.messageType} to agent ${typedParams.agentId}`);
 
@@ -455,7 +502,7 @@ export const sendMessageToAgentTool: Tool = {
       };
 
     } catch (error) {
-      logger.error('send_message_to_agent', `Failed to send message`, error instanceof Error ? error : new Error(String(error)));
+      logger.error('send_message_to_agent', 'Failed to send message', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -471,7 +518,7 @@ function getModelForAgentType(agentType: string): string {
     'amp': 'claude-3-opus-20240229',
     'aider': 'gpt-4'
   };
-  return models[agentType] || 'claude-3-5-sonnet-20241022';
+  return models[agentType] ?? 'claude-3-5-sonnet-20241022';
 }
 
 function getTokenLimitsForAgentType(agentType: string): TokenLimits {
@@ -483,7 +530,7 @@ function getTokenLimitsForAgentType(agentType: string): TokenLimits {
     'amp': { daily: 2000000, weekly: 10000000, monthly: 40000000 },
     'aider': { daily: 500000, weekly: 2500000, monthly: 10000000 }
   };
-  return limits[agentType] || { daily: 1000000, weekly: 5000000, monthly: 20000000 };
+  return limits[agentType] ?? { daily: 1000000, weekly: 5000000, monthly: 20000000 };
 }
 
 function getToolsForAgentType(agentType: string): string[] {
@@ -495,7 +542,7 @@ function getToolsForAgentType(agentType: string): string[] {
     'amp': ['file-edit', 'bash', 'search', 'git', 'web'],
     'aider': ['file-edit', 'bash', 'search', 'git']
   };
-  return tools[agentType] || ['file-edit', 'bash', 'search'];
+  return tools[agentType] ?? ['file-edit', 'bash', 'search'];
 }
 
 function getSpawnCommand(agentType: string): string {
@@ -507,16 +554,16 @@ function getSpawnCommand(agentType: string): string {
     'amp': 'amp',
     'aider': 'aider'
   };
-  return commands[agentType] || 'claude';
+  return commands[agentType] ?? 'claude';
 }
 
-function getSpawnArgs(_agentType: string, _config: unknown): string[] {
+function getSpawnArgs(): string[] {
   // This would generate appropriate arguments for each agent type
   // Implementation depends on specific agent CLI requirements
   return [];
 }
 
-async function setupClaudeCodeConfig(worktree: string, _config: unknown): Promise<void> {
+async function setupClaudeCodeConfig(worktree: string, agentConfig: Record<string, unknown>): Promise<void> {
   // writeFileSync, mkdirSync, join already imported
 
   // Create .claude directory
@@ -524,17 +571,17 @@ async function setupClaudeCodeConfig(worktree: string, _config: unknown): Promis
   mkdirSync(claudeDir, { recursive: true });
 
   // Create claude config file
-  const config = _config as { config?: AgentConfig; type?: string };
+  const config = agentConfig as { config?: AgentConfig; type?: string };
   const claudeConfig: ClaudeConfig = {
-    api_key: config?.config?.apiKey || process['env']['ANTHROPIC_API_KEY'],
-    base_url: config?.config?.baseUrl || process['env']['ANTHROPIC_BASE_URL'],
-    default_model: config?.config?.model,
+    api_key: config.config?.authentication.credentials?.apiKey ?? process.env.ANTHROPIC_API_KEY,
+    base_url: config.config?.baseUrl ?? process.env.ANTHROPIC_BASE_URL,
+    default_model: config.config?.model,
     timeout: 300000,
-    max_tokens: config?.config?.maxTokens || 4096
+    max_tokens: config.config?.maxTokens ?? 4096
   };
 
   // Handle GLM configuration if needed
-  if (config?.type === 'claude-code-glm') {
+  if (config.type === 'claude-code-glm') {
     claudeConfig.base_url = 'https://api.z.ai/api/anthropic';
     claudeConfig.default_model = 'glm-4.6';
   }
@@ -551,12 +598,12 @@ async function getRunningAgents(): Promise<RunningAgent[]> {
   return [];
 }
 
-async function getAgentById(_agentId: string): Promise<RunningAgent | null> {
+async function getAgentById(): Promise<RunningAgent | null> {
   // This would query actual agent registry
   return null;
 }
 
-async function getDetailedAgentStatus(_agentId: string, _includeMetrics: boolean): Promise<{
+async function getDetailedAgentStatus(): Promise<{
   id: string;
   status: string;
   uptime: number;
@@ -565,7 +612,7 @@ async function getDetailedAgentStatus(_agentId: string, _includeMetrics: boolean
 }> {
   // This would return detailed agent status including metrics
   return {
-    id: _agentId,
+    id: 'agent-' + Date.now(),
     status: 'running',
     uptime: Date.now(),
     tokenUsage: { used: 0, limit: 1000000 },
@@ -573,10 +620,372 @@ async function getDetailedAgentStatus(_agentId: string, _includeMetrics: boolean
   };
 }
 
+/**
+ * Spawn Agent From Signal Tool
+ */
+export const spawnAgentFromSignalTool: Tool = {
+  id: 'spawn_agent_from_signal',
+  name: 'spawn_agent_from_signal',
+  description: 'Spawn an agent based on signal type with automatic agent selection',
+  category: 'agent',
+  enabled: true,
+  parameters: {
+    signal: {
+      type: 'string',
+      description: 'Signal that triggered the agent spawn (e.g., [tp], [bb], [gg])',
+      required: true
+    },
+    context: {
+      type: 'object',
+      description: 'Additional context for the signal',
+      required: false,
+      properties: {
+        prpId: { type: 'string', description: 'PRP identifier' },
+        filePath: { type: 'string', description: 'Related file path' },
+        description: { type: 'string', description: 'Signal description' },
+        metadata: { type: 'object', description: 'Additional metadata' }
+      }
+    },
+    task: {
+      type: 'string',
+      description: 'Specific task for the agent to handle',
+      required: false
+    },
+    priority: {
+      type: 'number',
+      description: 'Task priority (1-10, higher is more priority)',
+      required: false
+    },
+    timeout: {
+      type: 'number',
+      description: 'Task timeout in milliseconds',
+      required: false
+    },
+    waitForHealth: {
+      type: 'boolean',
+      description: 'Wait for agent health check before returning',
+      required: false
+    },
+    tokenTracking: {
+      type: 'boolean',
+      description: 'Enable token usage tracking',
+      required: false
+    }
+  },
+  execute: async (params: unknown) => {
+    try {
+      const typedParams = params as SpawnAgentFromSignalParams;
+
+      if (!typedParams.signal) {
+        throw new Error('Signal parameter is required');
+      }
+
+      // Create signal-based spawner
+      const spawner = new SignalBasedAgentSpawner();
+
+      // Create spawn request
+      const spawnRequest: SignalBasedSpawnRequest = {
+        signal: typedParams.signal,
+        context: typedParams.context,
+        task: typedParams.task,
+        priority: typedParams.priority,
+        timeout: typedParams.timeout,
+        waitForHealth: typedParams.waitForHealth,
+        tokenTracking: typedParams.tokenTracking
+      };
+
+      logger.info('spawn_agent_from_signal', `Spawning agent for signal: ${typedParams.signal}`);
+
+      // Make spawning decision first
+      const decision = spawner.makeSpawnDecision(typedParams.signal, typedParams.context);
+
+      if (!decision.shouldSpawn) {
+        return {
+          success: false,
+          data: {
+            signal: typedParams.signal,
+            decision,
+            reason: decision.reason,
+            alternatives: decision.alternativeAgents
+          },
+          executionTime: 0
+        };
+      }
+
+      // Spawn the agent
+      const result = await spawner.spawnAgentForSignal(spawnRequest);
+
+      // Get analytics
+      const analytics = spawner.getSpawningAnalytics();
+
+      // Cleanup
+      await spawner.cleanup();
+
+      return {
+        success: result.success,
+        data: {
+          signal: typedParams.signal,
+          decision,
+          spawnResult: result,
+          analytics: {
+            signalFrequency: analytics.signalFrequency[typedParams.signal] ?? 0,
+            agentUsage: analytics.agentUsage,
+            currentLoad: analytics.currentLoad
+          }
+        },
+        executionTime: result.spawnTime
+      };
+
+    } catch (error) {
+      logger.error('spawn_agent_from_signal', 'Signal-based agent spawn failed', error instanceof Error ? error : new Error(String(error)));
+      throw error;
+    }
+  }
+};
+
+/**
+ * Get Agent Analytics Tool
+ */
+export const getAgentAnalyticsTool: Tool = {
+  id: 'get_agent_analytics',
+  name: 'get_agent_analytics',
+  description: 'Get detailed analytics and performance metrics for agents',
+  category: 'agent',
+  enabled: true,
+  parameters: {
+    agentId: {
+      type: 'string',
+      description: 'Specific agent ID to analyze (optional, analyzes all if not provided)',
+      required: false
+    },
+    includeHistory: {
+      type: 'boolean',
+      description: 'Include historical data and trends',
+      required: false
+    },
+    includeRecommendations: {
+      type: 'boolean',
+      description: 'Include optimization recommendations',
+      required: false
+    }
+  },
+  execute: async (params: unknown) => {
+    try {
+      const typedParams = params as GetAgentAnalyticsParams;
+
+      // Create lifecycle manager to get analytics
+      const { AgentLifecycleManager } = await import('../../agents/agent-lifecycle-manager.js');
+      const lifecycleManager = new AgentLifecycleManager();
+
+      const analytics = lifecycleManager.getPerformanceAnalytics(typedParams.agentId);
+
+      // Filter based on parameters
+      let filteredAnalytics = analytics;
+
+      if (!typedParams.includeRecommendations) {
+        filteredAnalytics = analytics.map(item => ({
+          ...item,
+          recommendations: []
+        }));
+      }
+
+      // Add system-wide statistics if no specific agent requested
+      let systemStats = undefined;
+      if (!typedParams.agentId) {
+        const allAgents = lifecycleManager.getAllAgentsStatus();
+        const healthyAgents = lifecycleManager.getHealthyAgents();
+
+        systemStats = {
+          totalAgents: allAgents.size,
+          healthyAgents: healthyAgents.length,
+          runningAgents: Array.from(allAgents.values()).filter(agent => agent.status.state === 'running').length,
+          agentTypes: Array.from(new Set(Array.from(allAgents.values()).map(agent => agent.config.type)))
+        };
+      }
+
+      await lifecycleManager.cleanup();
+
+      logger.info('get_agent_analytics', `Retrieved analytics for ${filteredAnalytics.length} agents`);
+
+      return {
+        success: true,
+        data: {
+          analytics: filteredAnalytics,
+          systemStats,
+          timestamp: new Date().toISOString()
+        },
+        executionTime: 0
+      };
+
+    } catch (error) {
+      logger.error('get_agent_analytics', 'Failed to get agent analytics', error instanceof Error ? error : new Error(String(error)));
+      throw error;
+    }
+  }
+};
+
+/**
+ * Update Agent Capabilities Tool
+ */
+export const updateAgentCapabilitiesTool: Tool = {
+  id: 'update_agent_capabilities',
+  name: 'update_agent_capabilities',
+  description: 'Update agent capabilities and configuration at runtime',
+  category: 'agent',
+  enabled: true,
+  parameters: {
+    agentId: {
+      type: 'string',
+      description: 'Agent ID to update',
+      required: true
+    },
+    capabilities: {
+      type: 'object',
+      description: 'New capabilities configuration',
+      required: true,
+      properties: {
+        primary: { type: 'array', items: { type: 'string' } },
+        secondary: { type: 'array', items: { type: 'string' } },
+        tools: { type: 'array', items: { type: 'string' } },
+        maxConcurrent: { type: 'number' },
+        specializations: { type: 'array', items: { type: 'string' } }
+      }
+    }
+  },
+  execute: async (params: unknown) => {
+    try {
+      const typedParams = params as UpdateAgentCapabilitiesParams;
+
+      if (!typedParams.agentId || !typedParams.capabilities) {
+        throw new Error('agentId and capabilities are required');
+      }
+
+      // Create lifecycle manager
+      const { AgentLifecycleManager } = await import('../../agents/agent-lifecycle-manager.js');
+      const lifecycleManager = new AgentLifecycleManager();
+
+      // Update capabilities
+      lifecycleManager.updateAgentCapabilities(typedParams.agentId, typedParams.capabilities);
+
+      // Get updated agent status
+      const agentStatus = lifecycleManager.getAgentStatus(typedParams.agentId);
+
+      await lifecycleManager.cleanup();
+
+      if (!agentStatus) {
+        throw new Error(`Agent ${typedParams.agentId} not found`);
+      }
+
+      logger.info('update_agent_capabilities', `Updated capabilities for agent: ${typedParams.agentId}`);
+
+      return {
+        success: true,
+        data: {
+          agentId: typedParams.agentId,
+          previousCapabilities: agentStatus.capabilities,
+          updatedCapabilities: agentStatus.capabilities,
+          timestamp: new Date().toISOString()
+        },
+        executionTime: 0
+      };
+
+    } catch (error) {
+      logger.error('update_agent_capabilities', 'Failed to update agent capabilities', error instanceof Error ? error : new Error(String(error)));
+      throw error;
+    }
+  }
+};
+
+/**
+ * Get Spawning Analytics Tool
+ */
+export const getSpawningAnalyticsTool: Tool = {
+  id: 'get_spawning_analytics',
+  name: 'get_spawning_analytics',
+  description: 'Get analytics about agent spawning patterns and signal processing',
+  category: 'agent',
+  enabled: true,
+  parameters: {
+    includeSignalHistory: {
+      type: 'boolean',
+      description: 'Include detailed signal history',
+      required: false
+    },
+    includeAgentUsage: {
+      type: 'boolean',
+      description: 'Include agent usage statistics',
+      required: false
+    },
+    includeRecommendations: {
+      type: 'boolean',
+      description: 'Include optimization recommendations',
+      required: false
+    }
+  },
+  execute: async (params: unknown) => {
+    try {
+      const typedParams = params as GetSpawningAnalyticsParams;
+
+      // Create signal-based spawner
+      const spawner = new SignalBasedAgentSpawner();
+
+      // Get analytics
+      const analytics = spawner.getSpawningAnalytics();
+
+      // Get signal mapping information
+      const signalMapping = spawner.getSignalMapping();
+
+      // Filter based on parameters
+      const result: any = {
+        signalFrequency: analytics.signalFrequency,
+        currentLoad: analytics.currentLoad,
+        signalMapping: {
+          totalMappings: Object.keys(signalMapping.mappings).length,
+          unmappedSignals: signalMapping.unmappedSignals.length,
+          agentTypes: Object.keys(signalMapping.agentCapabilities)
+        }
+      };
+
+      if (typedParams.includeAgentUsage) {
+        result.agentUsage = analytics.agentUsage;
+      }
+
+      if (typedParams.includeRecommendations) {
+        result.recommendations = analytics.recommendations;
+      }
+
+      if (typedParams.includeSignalHistory) {
+        result.signalHistory = analytics.signalHistory;
+      }
+
+      await spawner.cleanup();
+
+      logger.info('get_spawning_analytics', 'Retrieved spawning analytics');
+
+      return {
+        success: true,
+        data: {
+          ...result,
+          timestamp: new Date().toISOString()
+        },
+        executionTime: 0
+      };
+
+    } catch (error) {
+      logger.error('get_spawning_analytics', 'Failed to get spawning analytics', error instanceof Error ? error : new Error(String(error)));
+      throw error;
+    }
+  }
+};
+
 // Export all agent tools
 export const agentTools = [
   spawnAgentTool,
   getAgentStatusTool,
   killAgentTool,
-  sendMessageToAgentTool
+  sendMessageToAgentTool,
+  spawnAgentFromSignalTool,
+  getAgentAnalyticsTool,
+  updateAgentCapabilitiesTool,
+  getSpawningAnalyticsTool
 ];

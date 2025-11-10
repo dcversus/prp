@@ -5,7 +5,7 @@
  */
 
 // Base types for unknown data structures
-export interface UnknownRecord extends Record<string, unknown> {}
+export type UnknownRecord = Record<string, unknown>;
 
 // Enhanced signal data types
 export interface SignalData extends UnknownRecord {

@@ -1,0 +1,187 @@
+{
+  "id": "plan-protocol",
+  "name": "Planning Protocol",
+  "description": "Comprehensive planning workflow for PRP implementation strategy and execution",
+  "version": "1.0.0",
+  "category": "planning",
+  "priority": "critical",
+  "enabled": true,
+  "protocol": {
+    "id": "implementation-planning-workflow",
+    "description": "Complete planning process from analysis results to actionable implementation plan",
+    "steps": [
+      {
+        "id": "task-breakdown",
+        "name": "Task Breakdown",
+        "description": "Break down requirements into specific implementable tasks",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["task-list", "task-dependencies", "effort-estimates"],
+        "nextSteps": ["resource-planning"]
+      },
+      {
+        "id": "resource-planning",
+        "name": "Resource Planning",
+        "description": "Identify and allocate required resources and expertise",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["resource-needs", "skill-requirements", "timeline"],
+        "nextSteps": ["milestone-definition"]
+      },
+      {
+        "id": "milestone-definition",
+        "name": "Milestone Definition",
+        "description": "Define clear milestones and deliverables",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["milestones", "deliverables", "success-criteria"],
+        "nextSteps": ["risk-planning"]
+      },
+      {
+        "id": "risk-planning",
+        "name": "Risk Planning",
+        "description": "Plan risk mitigation and contingency strategies",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["risk-mitigation-plan", "contingency-plans", "monitoring-strategy"],
+        "nextSteps": ["quality-planning"]
+      },
+      {
+        "id": "quality-planning",
+        "name": "Quality Planning",
+        "description": "Define quality gates and testing strategies",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["quality-gates", "testing-strategy", "acceptance-criteria"],
+        "nextSteps": ["final-plan-validation"]
+      },
+      {
+        "id": "final-plan-validation",
+        "name": "Plan Validation",
+        "description": "Validate plan completeness and feasibility",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["validation-report", "plan-completeness", "feasibility-confirmation"],
+        "nextSteps": ["plan-approval"]
+      },
+      {
+        "id": "plan-approval",
+        "name": "Plan Approval",
+        "description": "Final approval and implementation readiness confirmation",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["approval-status", "implementation-ready", "next-steps"],
+        "nextSteps": []
+      }
+    ],
+    "decisionPoints": [
+      {
+        "id": "implementation-approach",
+        "question": "What is the optimal implementation approach?",
+        "options": [
+          {
+            "id": "sequential-implementation",
+            "label": "Sequential implementation - one phase at a time",
+            "action": "plan-sequential-execution",
+            "nextSteps": ["milestone-definition"]
+          },
+          {
+            "id": "parallel-implementation",
+            "label": "Parallel implementation - multiple work streams",
+            "action": "plan-parallel-execution",
+            "nextSteps": ["milestone-definition"]
+          },
+          {
+            "id": "hybrid-approach",
+            "label": "Hybrid approach - mix of sequential and parallel",
+            "action": "plan-hybrid-execution",
+            "nextSteps": ["milestone-definition"]
+          }
+        ],
+        "requiresInput": true
+      },
+      {
+        "id": "plan-complexity",
+        "question": "What is the plan complexity and management approach?",
+        "options": [
+          {
+            "id": "simple-plan",
+            "label": "Simple plan - straightforward execution",
+            "action": "approve-simple-plan",
+            "nextSteps": ["plan-approval"]
+          },
+          {
+            "id": "moderate-complexity",
+            "label": "Moderate complexity - requires active management",
+            "action": "require-active-management",
+            "nextSteps": ["plan-approval"]
+          },
+          {
+            "id": "high-complexity",
+            "label": "High complexity - requires detailed management and contingency planning",
+            "action": "require-intensive-management",
+            "nextSteps": []
+          }
+        ],
+        "requiresInput": true
+      }
+    ],
+    "successCriteria": [
+      "All requirements broken down into specific tasks",
+      "Task dependencies identified and sequenced",
+      "Resource needs assessed and allocated",
+      "Clear milestones with success criteria defined",
+      "Risk mitigation strategies planned",
+      "Quality gates and testing strategy defined",
+      "Plan validated for completeness and feasibility",
+      "Stakeholder approval obtained"
+    ],
+    "fallbackActions": [
+      "Refine task breakdown for better granularity",
+      "Adjust resource allocation or timeline",
+      "Add additional risk mitigation strategies",
+      "Simplify implementation approach",
+      "Request additional planning expertise"
+    ]
+  },
+  "requirements": [
+    {
+      "type": "knowledge",
+      "name": "Project Planning Knowledge",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Project planning expertise required"
+    },
+    {
+      "type": "tool",
+      "name": "Task Management Tools",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Task management capabilities required"
+    }
+  ],
+  "prompts": {
+    "inspector": "You are a PRP Planning Inspector. Your role is to create comprehensive implementation plans from analyzed requirements.\n\nTASK: Create detailed implementation plan with tasks, resources, and milestones\n\nCONTEXT:\n{{context}}\n\nANALYSIS RESULTS:\n{{analysisResults}}\n\nPLANNING FRAMEWORK:\n1. **Task Breakdown**: Decompose requirements into implementable tasks\n2. **Resource Planning**: Identify required skills and resources\n3. **Timeline Planning**: Create realistic timeline with milestones\n4. **Risk Planning**: Identify and plan for potential risks\n5. **Quality Planning**: Define quality gates and testing strategy\n\nTASK PLANNING:\n- Break down requirements into specific, measurable tasks\n- Identify task dependencies and sequencing\n- Estimate effort and duration for each task\n- Define deliverables for each task\n\nRESOURCE PLANNING:\n- Identify required skills and expertise\n- Assess resource availability\n- Plan resource allocation\n- Identify potential resource constraints\n\nMILESTONE PLANNING:\n- Define key milestones and checkpoints\n- Set clear success criteria for each milestone\n- Plan milestone reviews and approvals\n- Identify critical path items\n\nRISK PLANNING:\n- Identify implementation risks\n- Plan mitigation strategies\n- Define contingency plans\n- Set up risk monitoring\n\nQUALITY PLANNING:\n- Define quality gates and checkpoints\n- Plan testing strategy and approach\n- Define acceptance criteria\n- Plan code reviews and validations\n\nRESPOND WITH STRUCTURED JSON:\n{\n  \"task_breakdown\": {\n    \"tasks\": [\n      {\n        \"id\": string,\n        \"title\": string,\n        \"description\": string,\n        \"type\": \"development\" | \"testing\" | \"documentation\" | \"deployment\",\n        \"priority\": \"critical\" | \"high\" | \"medium\" | \"low\",\n        \"estimated_effort\": string,\n        \"estimated_duration\": string,\n        \"dependencies\": string[],\n        \"deliverables\": string[],\n        \"acceptance_criteria\": string[],\n        \"assigned_to\": string\n      }\n    ],\n    \"task_groups\": [\n      {\n        \"name\": string,\n        \"tasks\": string[],\n        \"description\": string\n      }\n    ],\n    \"critical_path\": string[],\n    \"parallel_tasks\": string[][]\n  },\n  \"resource_planning\": {\n    \"required_skills\": [\n      {\n        \"skill\": string,\n        \"required_level\": \"expert\" | \"intermediate\" | \"junior\",\n        \"tasks_requiring\": string[],\n        \"availability\": \"available\" | \"limited\" | \"not_available\"\n      }\n    ],\n    \"team_assignment\": [\n      {\n        \"role\": string,\n        \"responsibilities\": string[],\n        \"assigned_tasks\": string[]\n      }\n    ],\n    \"external_dependencies\": string[],\n    \"resource_constraints\": string[]\n  },\n  \"milestone_planning\": {\n    \"milestones\": [\n      {\n        \"id\": string,\n        \"name\": string,\n        \"description\": string,\n        \"target_date\": string,\n        \"success_criteria\": string[],\n        \"deliverables\": string[],\n        \"dependencies\": string[],\n        \"review_required\": boolean\n      }\n    ],\n    \"checkpoint_frequency\": string,\n    \"milestone_reviews\": string[]\n  },\n  \"risk_planning\": {\n    \"implementation_risks\": [\n      {\n        \"risk\": string,\n        \"probability\": \"high\" | \"medium\" | \"low\",\n        \"impact\": \"critical\" | \"high\" | \"medium\" | \"low\",\n        \"mitigation_strategy\": string,\n        \"contingency_plan\": string,\n        \"owner\": string\n      }\n    ],\n    \"risk_monitoring\": {\n      \"monitoring_frequency\": string,\n      \"risk_indicators\": string[],\n      \"escalation_triggers\": string[]\n    }\n  },\n  \"quality_planning\": {\n    \"quality_gates\": [\n      {\n        \"gate\": string,\n        \"criteria\": string[],\n        \"validation_method\": string,\n        \"approver\": string\n      }\n    ],\n    \"testing_strategy\": {\n      \"unit_testing\": string,\n      \"integration_testing\": string,\n      \"e2e_testing\": string,\n      \"performance_testing\": string,\n      \"security_testing\": string\n    },\n    \"code_review_process\": {\n      \"review_required\": boolean,\n      \"review_criteria\": string[],\n      \"reviewers\": string[]\n    }\n  },\n  \"timeline_planning\": {\n    \"estimated_start_date\": string,\n    \"estimated_end_date\": string,\n    \"total_duration\": string,\n    \"buffer_time\": string,\n    \"phase_breakdown\": [\n      {\n        \"phase\": string,\n        \"duration\": string,\n        \"tasks\": string[],\n        \"deliverables\": string[]\n      }\n    ]\n  },\n  \"plan_quality\": {\n    \"completeness_score\": number (0-100),\n    \"feasibility_score\": number (0-100),\n    \"detail_level\": \"adequate\" | \"insufficient\" | \"excessive\",\n    \"missing_elements\": string[],\n    \"planning_confidence\": number (0-100)\n  }\n}",
+    "orchestrator": "You are a PRP Planning Orchestrator. Based on the Inspector's detailed planning, make final decisions and prepare for implementation.\n\nINSPECTOR PLANNING:\n{{inspectorPlanning}}\n\nCONTEXT:\n{{context}}\n\nYOUR ROLE:\n1. **Validate Plan**: Review completeness and feasibility\n2. **Make Strategic Decisions**: Approve plan or request modifications\n3. **Coordinate Resources**: Ensure resources are properly allocated\n4. **Prepare Implementation**: Set up for successful execution\n\nPLAN VALIDATION CRITERIA:\n- **Completeness**: Are all requirements covered by tasks?\n- **Feasibility**: Is the timeline and resource plan realistic?\n- **Risk Management**: Are risks properly identified and mitigated?\n- **Quality Assurance**: Are quality gates and testing adequate?\n- **Resource Alignment**: Do resources match task requirements?\n\nDECISION FRAMEWORK:\n- **APPROVE**: Plan is ready for implementation\n- **APPROVE WITH CONDITIONS**: Minor adjustments needed\n- **REQUEST REVISIONS**: Significant changes required\n- **REPLAN**: Major issues requiring complete replanning\n\nIMPLEMENTATION READINESS:\n- Tasks clearly defined and assigned\n- Resources confirmed and available\n- Timeline agreed upon\n- Risk mitigation in place\n- Quality gates defined\n- Stakeholder buy-in obtained\n\nEXECUTE ACTIONS:\n1. Validate plan completeness and feasibility\n2. Make approval decision with conditions\n3. Coordinate resource allocation\n4. Set up monitoring and reporting\n5. Prepare implementation kickoff\n6. Update PRP with final plan\n\nRESPOND WITH:\n1. Plan validation results and approval decision\n2. Implementation readiness assessment\n3. Resource allocation confirmation\n4. Monitoring and reporting setup\n5. Implementation kickoff preparations\n6. PRP updates and next steps\n7. Any conditions or requirements for implementation start"
+  },
+  "tokenLimits": {
+    "inspector": 35000,
+    "orchestrator": 25000
+  },
+  "tools": [
+    "task-manager",
+    "resource-planner",
+    "timeline-calculator",
+    "risk-assessor",
+    "quality-gate-manager",
+    "milestone-tracker"
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "author": "system",
+    "createdAt": "2025-01-09T00:00:00Z",
+    "lastModified": "2025-01-09T00:00:00Z",
+    "tags": ["planning", "implementation", "resource-management", "milestone-planning"],
+    "dependencies": []
+  }
+}

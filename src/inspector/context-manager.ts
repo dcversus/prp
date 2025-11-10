@@ -40,7 +40,7 @@ export interface ContextEntry {
   type: 'signal' | 'activity' | 'agent_status' | 'environment' | 'note' | 'summary';
   timestamp: Date;
   priority: number;
-  data: any;
+  data: unknown;
   tokenCount: number;
   compressed: boolean;
   referenced: boolean;
@@ -87,7 +87,7 @@ export class ContextManager extends EventEmitter {
   private config: ContextWindowConfig;
   private entries: Map<string, ContextEntry> = new Map();
   private summaries: Map<string, SemanticSummary> = new Map();
-  private lastCompression: Date = new Date();
+  // private _lastCompression!: Date; // Unused - removed for strict compliance
   private lastSummary: Date = new Date();
   private totalTokens: number = 0;
 
@@ -237,8 +237,8 @@ export class ContextManager extends EventEmitter {
       agentStatus: this.extractAgentStatus(recentEntries),
       sharedNotes: this.extractSharedNotes(recentEntries),
       environment: this.extractEnvironment(recentEntries),
-      guidelineContext: this.buildGuidelineContext(recentEntries),
-      historicalData: this.buildHistoricalData(recentEntries)
+      guidelineContext: this.buildGuidelineContext(),
+      historicalData: this.buildHistoricalData()
     };
 
     return context;
@@ -249,8 +249,8 @@ export class ContextManager extends EventEmitter {
    */
   async getContextSummary(timeRange?: { start: Date; end: Date }): Promise<SemanticSummary | null> {
     const now = new Date();
-    const start = timeRange?.start || new Date(now.getTime() - this.config.windowSize);
-    const end = timeRange?.end || now;
+    const start = timeRange?.start ?? new Date(now.getTime() - this.config.windowSize);
+    const end = timeRange?.end ?? now;
 
     // Check if we have a recent summary for this range
     const existingSummary = Array.from(this.summaries.values())
@@ -264,7 +264,7 @@ export class ContextManager extends EventEmitter {
     }
 
     // Generate new summary
-    return await this.generateSummary(start, end);
+    return this.generateSummary(start, end);
   }
 
   /**
@@ -304,7 +304,8 @@ export class ContextManager extends EventEmitter {
       processingTime
     };
 
-    this.lastCompression = new Date();
+    // Track last compression time (commented for strict compliance)
+    // this._lastCompression = new Date();
 
     logger.info('ContextManager', 'Context compression completed', {
       originalSize: result.originalSize,
@@ -335,15 +336,15 @@ export class ContextManager extends EventEmitter {
       ratio: number;
     }>;
     summaryCount: number;
-  } {
+    } {
     const entries = Array.from(this.entries.values());
     const entriesByType: Record<string, number> = {};
     const entriesByPriority: Record<string, number> = {};
 
     entries.forEach(entry => {
-      entriesByType[entry.type] = (entriesByType[entry.type] || 0) + 1;
+      entriesByType[entry.type] = (entriesByType[entry.type] ?? 0) + 1;
       const priorityRange = this.getPriorityRange(entry.priority);
-      entriesByPriority[priorityRange] = (entriesByPriority[priorityRange] || 0) + 1;
+      entriesByPriority[priorityRange] = (entriesByPriority[priorityRange] ?? 0) + 1;
     });
 
     const timestamps = entries.map(e => e.timestamp);
@@ -402,7 +403,7 @@ export class ContextManager extends EventEmitter {
     const cutoffTime = new Date(now.getTime() - this.config.maxAge);
     let removed = 0;
 
-    for (const [id, entry] of this.entries) {
+    for (const [id, entry] of Array.from(this.entries.entries())) {
       if (entry.timestamp < cutoffTime && entry.type !== 'summary') {
         this.entries.delete(id);
         this.totalTokens -= entry.tokenCount;
@@ -435,7 +436,9 @@ export class ContextManager extends EventEmitter {
     const targetSize = this.config.maxSize * 0.7; // Target 70% of max size
 
     for (const entry of entries) {
-      if (this.totalTokens <= targetSize) break;
+      if (this.totalTokens <= targetSize) {
+        break;
+      }
 
       // Don't remove high priority or recent entries
       if (entry.priority >= 4 ||
@@ -493,8 +496,10 @@ export class ContextManager extends EventEmitter {
   private async applySemanticCompression(): Promise<number> {
     let compressed = 0;
 
-    for (const [id, entry] of this.entries) {
-      if (entry.compressed) continue;
+    for (const [, entry] of Array.from(this.entries.entries())) {
+      if (entry.compressed) {
+        continue;
+      }
 
       // Compress text-based entries
       if (typeof entry.data === 'string' && entry.data.length > 1000) {
@@ -526,9 +531,9 @@ export class ContextManager extends EventEmitter {
       period: { start, end },
       type: 'comprehensive',
       content: this.generateBasicSummary(entries),
-      keyPoints: this.extractKeyPoints(entries),
-      trends: this.extractTrends(entries),
-      anomalies: this.extractAnomalies(entries),
+      keyPoints: this.extractKeyPoints(),
+      trends: this.extractTrends(),
+      anomalies: this.extractAnomalies(),
       confidence: 0.7,
       tokenCount: 800,
       generatedAt: new Date(),
@@ -555,7 +560,7 @@ export class ContextManager extends EventEmitter {
   /**
    * Extract key points from entries
    */
-  private extractKeyPoints(entries: ContextEntry[]): string[] {
+  private extractKeyPoints(): string[] {
     // In a real implementation, this would use NLP to extract key points
     return [];
   }
@@ -563,7 +568,7 @@ export class ContextManager extends EventEmitter {
   /**
    * Extract trends from entries
    */
-  private extractTrends(entries: ContextEntry[]): string[] {
+  private extractTrends(): string[] {
     // In a real implementation, this would analyze trends
     return [];
   }
@@ -571,7 +576,7 @@ export class ContextManager extends EventEmitter {
   /**
    * Extract anomalies from entries
    */
-  private extractAnomalies(entries: ContextEntry[]): string[] {
+  private extractAnomalies(): string[] {
     // In a real implementation, this would detect anomalies
     return [];
   }
@@ -581,15 +586,15 @@ export class ContextManager extends EventEmitter {
    */
   private extractWorktree(entries: ContextEntry[]): string | undefined {
     const envEntry = entries.find(e => e.type === 'environment');
-    return envEntry?.data?.worktree;
+    return this.isEnvironmentInfo(envEntry?.data) ? envEntry.data.worktree : undefined;
   }
 
   /**
    * Extract current agent from entries
    */
   private extractCurrentAgent(entries: ContextEntry[]): string | undefined {
-    const agentEntry = entries.find(e => e.type === 'agent_status' && e.data?.status === 'active');
-    return agentEntry?.data?.name;
+    const agentEntry = entries.find(e => e.type === 'agent_status' && this.isAgentStatusInfo(e.data) && e.data.status === 'active');
+    return this.isAgentStatusInfo(agentEntry?.data) ? agentEntry.data.name : undefined;
   }
 
   /**
@@ -597,9 +602,9 @@ export class ContextManager extends EventEmitter {
    */
   private extractRelatedSignals(entries: ContextEntry[], currentSignalId: string): Signal[] {
     return entries
-      .filter(e => e.type === 'signal' && e.data?.id !== currentSignalId)
+      .filter(e => e.type === 'signal' && this.isSignal(e.data) && e.data.id !== currentSignalId)
       .slice(0, 10) // Limit to 10 recent signals
-      .map(e => e.data);
+      .map(e => e.data as Signal);
   }
 
   /**
@@ -607,10 +612,10 @@ export class ContextManager extends EventEmitter {
    */
   private extractActivePRPs(entries: ContextEntry[]): string[] {
     const prpRefs = entries
-      .filter(e => e.data?.prpId)
-      .map(e => e.data.prpId);
+      .filter(e => this.hasPrpId(e.data))
+      .map(e => (e.data as { prpId: string }).prpId);
 
-    return [...new Set(prpRefs)]; // Remove duplicates
+    return Array.from(new Set(prpRefs)); // Remove duplicates
   }
 
   /**
@@ -618,9 +623,9 @@ export class ContextManager extends EventEmitter {
    */
   private extractRecentActivities(entries: ContextEntry[]): ActivityEntry[] {
     return entries
-      .filter(e => e.type === 'activity')
+      .filter(e => e.type === 'activity' && this.isActivityEntry(e.data))
       .slice(0, 20) // Limit to 20 recent activities
-      .map(e => e.data);
+      .map(e => e.data as ActivityEntry);
   }
 
   /**
@@ -646,9 +651,9 @@ export class ContextManager extends EventEmitter {
    */
   private extractAgentStatus(entries: ContextEntry[]): AgentStatusInfo[] {
     return entries
-      .filter(e => e.type === 'agent_status')
+      .filter(e => e.type === 'agent_status' && this.isAgentStatusInfo(e.data))
       .slice(0, 10) // Limit to 10 agents
-      .map(e => e.data);
+      .map(e => e.data as AgentStatusInfo);
   }
 
   /**
@@ -656,9 +661,9 @@ export class ContextManager extends EventEmitter {
    */
   private extractSharedNotes(entries: ContextEntry[]): SharedNoteInfo[] {
     return entries
-      .filter(e => e.type === 'note')
+      .filter(e => e.type === 'note' && this.isSharedNoteInfo(e.data))
       .slice(0, 15) // Limit to 15 notes
-      .map(e => e.data);
+      .map(e => e.data as SharedNoteInfo);
   }
 
   /**
@@ -666,7 +671,7 @@ export class ContextManager extends EventEmitter {
    */
   private extractEnvironment(entries: ContextEntry[]): EnvironmentInfo {
     const envEntry = entries.find(e => e.type === 'environment');
-    return envEntry?.data || {
+    return this.isEnvironmentInfo(envEntry?.data) ? envEntry.data : {
       worktree: '',
       branch: '',
       availableTools: [],
@@ -679,7 +684,7 @@ export class ContextManager extends EventEmitter {
   /**
    * Build guideline context
    */
-  private buildGuidelineContext(entries: ContextEntry[]): GuidelineContext {
+  private buildGuidelineContext(): GuidelineContext {
     return {
       applicableGuidelines: [],
       enabledGuidelines: [],
@@ -696,7 +701,7 @@ export class ContextManager extends EventEmitter {
   /**
    * Build historical data
    */
-  private buildHistoricalData(entries: ContextEntry[]): HistoricalData {
+  private buildHistoricalData(): HistoricalData {
     return {
       similarSignals: [],
       agentPerformance: {},
@@ -713,17 +718,25 @@ export class ContextManager extends EventEmitter {
    * Get priority range string
    */
   private getPriorityRange(priority: number): string {
-    if (priority >= 9) return 'critical';
-    if (priority >= 7) return 'high';
-    if (priority >= 5) return 'medium';
-    if (priority >= 3) return 'low';
+    if (priority >= 9) {
+      return 'critical';
+    }
+    if (priority >= 7) {
+      return 'high';
+    }
+    if (priority >= 5) {
+      return 'medium';
+    }
+    if (priority >= 3) {
+      return 'low';
+    }
     return 'info';
   }
 
   /**
    * Estimate token count
    */
-  private estimateTokens(text: any): number {
+  private estimateTokens(text: unknown): number {
     if (typeof text === 'string') {
       return Math.ceil(text.length / 4);
     } else if (typeof text === 'object') {
@@ -776,5 +789,92 @@ export class ContextManager extends EventEmitter {
       entriesCount: this.entries.size,
       tokensUsed: this.totalTokens
     });
+  }
+
+  /**
+   * Type guard functions
+   */
+
+  /**
+   * Check if data is a Signal
+   */
+  private isSignal(data: unknown): data is Signal {
+    return typeof data === 'object' &&
+           data !== null &&
+           'id' in data &&
+           'type' in data &&
+           'timestamp' in data &&
+           'source' in data;
+  }
+
+  /**
+   * Check if data is an ActivityEntry
+   */
+  private isActivityEntry(data: unknown): data is ActivityEntry {
+    return typeof data === 'object' &&
+           data !== null &&
+           'timestamp' in data &&
+           'actor' in data &&
+           'action' in data &&
+           'details' in data &&
+           'relevantTo' in data &&
+           'priority' in data;
+  }
+
+  /**
+   * Check if data is an AgentStatusInfo
+   */
+  private isAgentStatusInfo(data: unknown): data is AgentStatusInfo {
+    return typeof data === 'object' &&
+           data !== null &&
+           'id' in data &&
+           'name' in data &&
+           'type' in data &&
+           'status' in data &&
+           'lastActivity' in data &&
+           'capabilities' in data &&
+           'performance' in data;
+  }
+
+  /**
+   * Check if data is a SharedNoteInfo
+   */
+  private isSharedNoteInfo(data: unknown): data is SharedNoteInfo {
+    return typeof data === 'object' &&
+           data !== null &&
+           'id' in data &&
+           'name' in data &&
+           'pattern' in data &&
+           'content' in data &&
+           'lastModified' in data &&
+           'tags' in data &&
+           'relevantTo' in data &&
+           'priority' in data &&
+           'wordCount' in data &&
+           'readingTime' in data;
+  }
+
+  /**
+   * Check if data is an EnvironmentInfo
+   */
+  private isEnvironmentInfo(data: unknown): data is EnvironmentInfo {
+    return typeof data === 'object' &&
+           data !== null &&
+           'worktree' in data &&
+           'branch' in data &&
+           'availableTools' in data &&
+           'systemCapabilities' in data &&
+           'constraints' in data &&
+           'recentChanges' in data;
+  }
+
+  /**
+   * Check if data has prpId property
+   */
+  private hasPrpId(data: unknown): data is { prpId: string } {
+    return typeof data === 'object' &&
+           data !== null &&
+           'prpId' in data &&
+           typeof (data as { prpId: unknown }).prpId === 'string';
   }
 }

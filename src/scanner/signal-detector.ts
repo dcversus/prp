@@ -26,7 +26,7 @@ export class SignalDetectorImpl implements SignalDetector {
     this.customPatterns = [];
     this.enabledCategories = new Set([
       'system', 'development', 'analysis', 'incident', 'coordination',
-      'testing', 'release', 'post-release', 'design', 'devops'
+      'testing', 'release', 'post-release', 'design', 'devops', 'custom'
     ]);
     this.cache = new Map();
     this.maxCacheSize = 10000;
@@ -981,7 +981,7 @@ export class SignalDetectorImpl implements SignalDetector {
         description: 'Rollback procedures need preparation for parallel deployments',
         enabled: true,
         custom: false
-      },
+      }
 
       // === LOW PRIORITY SIGNALS (1-2) ===
 
@@ -993,59 +993,108 @@ export class SignalDetectorImpl implements SignalDetector {
   }
 
   /**
-   * Detect signals in text content
+   * Detect signals in text content with enhanced performance
    */
   async detectSignals(content: string, source?: string): Promise<Signal[]> {
+    const startTime = Date.now();
     const hashString = await HashUtils.hashString(content);
     const cacheKey = hashString.substring(0, 16);
 
     // Check cache first
     if (this.cache.has(cacheKey)) {
-      return this.cache.get(cacheKey)!;
+      const cachedResult = this.cache.get(cacheKey);
+      if (cachedResult) {
+        return cachedResult;
+      }
     }
 
     const signals: Signal[] = [];
     const allPatterns = [...this.patterns, ...this.customPatterns];
+
+    // Enhanced pattern matching with performance optimization
+    const contentLines = content.split('\n');
 
     for (const pattern of allPatterns) {
       if (!pattern.enabled || !this.enabledCategories.has(pattern.category)) {
         continue;
       }
 
-      const matches = content.match(pattern.pattern);
-      if (matches) {
-        for (const match of matches) {
-          const signalCode = match.substring(1, 3); // Extract code from [Xx] format
+      // Reset regex lastIndex for global patterns
+      if (pattern.pattern.global) {
+        pattern.pattern.lastIndex = 0;
+      }
 
-          signals.push({
-            id: HashUtils.generateId(),
-            type: signalCode,
-            priority: pattern.priority,
-            source: source || 'scanner',
-            timestamp: new Date(),
-            data: {
-              rawSignal: match,
-              patternName: pattern.name,
-              category: pattern.category,
-              description: pattern.description
-            },
-            metadata: {
-              agent: 'signal-detector',
-              guideline: pattern.id
-            }
-          });
-        }
+      let match;
+      while ((match = pattern.pattern.exec(content)) !== null) {
+        const signalMatch = match[0]; // Full match including brackets
+        if (!signalMatch || typeof signalMatch !== 'string') {
+          continue;
+        } // Safety check
+        const signalCode = signalMatch.substring(1, 3); // Extract code from [Xx] format
+        const matchIndex = match.index || 0;
+        const position = this.getSignalPosition(content, matchIndex);
+
+        signals.push({
+          id: HashUtils.generateId(),
+          type: signalCode,
+          priority: pattern.priority,
+          source: source ?? 'scanner',
+          timestamp: new Date(),
+          resolved: false,
+          relatedSignals: [],
+          data: {
+            rawSignal: signalMatch,
+            patternName: pattern.name,
+            category: pattern.category,
+            description: pattern.description,
+            line: position.line,
+            column: position.column,
+            context: this.extractContext(contentLines, position.line, position.column)
+          },
+          metadata: {
+            agent: 'signal-detector',
+            guideline: pattern.id,
+            detectionTime: Date.now() - startTime
+          }
+        });
       }
     }
 
-    // Remove duplicates based on signal code
+    // Remove duplicates based on signal code and position
     const uniqueSignals = this.removeDuplicateSignals(signals);
 
     // Cache result
     this.cache.set(cacheKey, uniqueSignals);
     this.trimCacheIfNeeded();
 
+    // Log performance metrics
+    const processingTime = Date.now() - startTime;
+    if (processingTime > 100) {
+      logger.warn('SignalDetector', `Slow signal detection: ${processingTime}ms for ${uniqueSignals.length} signals`);
+    }
+
     return uniqueSignals;
+  }
+
+  /**
+   * Get signal position in content (line and column)
+   */
+  private getSignalPosition(content: string, index: number): { line: number; column: number } {
+    const beforeIndex = content.substring(0, index);
+    const lines = beforeIndex.split('\n');
+    const line = lines.length - 1;
+    const column = lines[lines.length - 1]?.length ?? 0;
+    return { line, column };
+  }
+
+  /**
+   * Extract context around signal for better understanding
+   */
+  private extractContext(lines: string[], lineIndex: number, column: number, contextRadius: number = 50): string {
+    const line = lines[lineIndex] ?? '';
+    const start = Math.max(0, column - contextRadius);
+    const end = Math.min(line.length, column + contextRadius);
+    return line.substring(start, end).trim();
   }
 
   /**
@@ -1056,7 +1105,8 @@ export class SignalDetectorImpl implements SignalDetector {
 
     for (const signal of signals) {
       const key = signal.type;
-      if (!seen.has(key) || seen.get(key)!.priority < signal.priority) {
+      const existingSignal = seen.get(key);
+      if (!seen.has(key) || (existingSignal && existingSignal.priority < signal.priority)) {
         seen.set(key, signal);
       }
     }
@@ -1099,7 +1149,7 @@ export class SignalDetectorImpl implements SignalDetector {
     const index = this.customPatterns.findIndex(p => p.id === patternId);
     if (index >= 0) {
       const removed = this.customPatterns.splice(index, 1)[0];
-      logger.info('SignalDetector', `Removed custom pattern: ${removed?.name || 'unknown'}`, { patternId });
+      logger.info('SignalDetector', `Removed custom pattern: ${removed?.name ?? 'unknown'}`, { patternId });
       return true;
     }
     return false;
@@ -1177,7 +1227,7 @@ export class SignalDetectorImpl implements SignalDetector {
     size: number;
     maxSize: number;
     hitRate: number; // Would need to implement hit tracking
-  } {
+    } {
     return {
       size: this.cache.size,
       maxSize: this.maxCacheSize,
@@ -1254,10 +1304,13 @@ export class SignalDetectorImpl implements SignalDetector {
     count: number;
     signals: Signal[];
   } {
-    const matches = sampleText.match(pattern.pattern) || [];
+    const matches = sampleText.match(pattern.pattern) ?? [];
     const signals: Signal[] = [];
 
     for (const match of matches) {
+      if (!match || typeof match !== 'string') {
+        continue;
+      } // Safety check
       const signalCode = match.substring(1, 3);
       signals.push({
         id: HashUtils.generateId(),
@@ -1265,6 +1318,8 @@ export class SignalDetectorImpl implements SignalDetector {
         priority: pattern.priority,
         source: 'test',
         timestamp: new Date(),
+        resolved: false,
+        relatedSignals: [],
         data: {
           rawSignal: match,
           patternName: pattern.name,

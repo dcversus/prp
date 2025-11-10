@@ -1,0 +1,182 @@
+{
+  "id": "pull-request-signal-guideline",
+  "name": "Pull Request Signal Guideline",
+  "description": "Comprehensive guideline for handling [pr] Pull Request signals with full analysis and decision making",
+  "version": "1.0.0",
+  "category": "development",
+  "priority": "critical",
+  "enabled": true,
+  "signalTriggers": ["[pr]"],
+  "protocol": {
+    "id": "pull-request-signal-protocol",
+    "description": "Complete handling of Pull Request signals from detection to resolution",
+    "steps": [
+      {
+        "id": "pr-signal-detection",
+        "name": "PR Signal Detection and Context",
+        "description": "Detect [pr] signal and gather comprehensive PR context",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["pr-context", "signal-metadata", "trigger-analysis"],
+        "nextSteps": ["pr-data-collection"]
+      },
+      {
+        "id": "pr-data-collection",
+        "name": "PR Data Collection",
+        "description": "Collect all relevant PR data from GitHub and other sources",
+        "type": "action_execution",
+        "required": true,
+        "outputs": ["pr-data", "file-changes", "commit-history", "metadata"],
+        "nextSteps": ["pr-analysis"]
+      },
+      {
+        "id": "pr-analysis",
+        "name": "Comprehensive PR Analysis",
+        "description": "Analyze PR for completeness, quality, and compliance",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["pr-analysis", "quality-assessment", "risk-analysis"],
+        "nextSteps": ["pr-decision"]
+      },
+      {
+        "id": "pr-decision",
+        "name": "PR Decision and Action",
+        "description": "Make PR decision and execute appropriate actions",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["pr-decision", "action-executed", "feedback-provided"],
+        "nextSteps": ["pr-followup"]
+      },
+      {
+        "id": "pr-followup",
+        "name": "PR Follow-up and Monitoring",
+        "description": "Monitor PR progress and follow up as needed",
+        "type": "action_execution",
+        "required": true,
+        "outputs": ["followup-actions", "monitoring-setup", "next-steps"],
+        "nextSteps": []
+      }
+    ],
+    "decisionPoints": [
+      {
+        "id": "pr-approval-decision",
+        "question": "What is the appropriate action for this Pull Request?",
+        "options": [
+          {
+            "id": "approve-pr",
+            "label": "Approve PR - Ready for merge",
+            "action": "approve-and-comment",
+            "nextSteps": ["pr-decision"]
+          },
+          {
+            "id": "request-changes",
+            "label": "Request Changes - Not ready for merge",
+            "action": "request-changes-with-feedback",
+            "nextSteps": ["pr-decision"]
+          },
+          {
+            "id": "comment-only",
+            "label": "Add Comments - Minor suggestions only",
+            "action": "add-suggestions-comment",
+            "nextSteps": ["pr-decision"]
+          },
+          {
+            "id": "escalate-pr",
+            "label": "Escalate - Requires expert review",
+            "action": "escalate-to-expert",
+            "nextSteps": []
+          }
+        ],
+        "requiresInput": true
+      },
+      {
+        "id": "pr-complexity-decision",
+        "question": "How complex is this PR and what level of review is needed?",
+        "options": [
+          {
+            "id": "simple-pr",
+            "label": "Simple PR - Standard review sufficient",
+            "action": "standard-review-process",
+            "nextSteps": ["pr-analysis"]
+          },
+          {
+            "id": "moderate-complexity",
+            "label": "Moderate complexity - Detailed review required",
+            "action": "detailed-review-process",
+            "nextSteps": ["pr-analysis"]
+          },
+          {
+            "id": "high-complexity",
+            "label": "High complexity - Expert review and additional validation",
+            "action": "expert-review-process",
+            "nextSteps": []
+          }
+        ],
+        "requiresInput": true
+      }
+    ],
+    "successCriteria": [
+      "PR signal detected and context properly captured",
+      "All PR data collected from GitHub and other sources",
+      "Comprehensive PR analysis completed with clear recommendations",
+      "Appropriate PR decision made and actions executed",
+      "Clear feedback provided to PR author",
+      "Follow-up monitoring established as needed"
+    ],
+    "fallbackActions": [
+      "Request additional information if PR data incomplete",
+      "Escalate complex PRs to senior reviewers",
+      "Schedule additional review sessions for controversial changes",
+      "Coordinate with multiple stakeholders for cross-functional PRs"
+    ]
+  },
+  "requirements": [
+    {
+      "type": "service",
+      "name": "GitHub API Access",
+      "required": true,
+      "check": "async () => { const hasToken = process.env.GITHUB_TOKEN || process.env.GITHUB_ACTIONS_TOKEN; return Boolean(hasToken); }",
+      "errorMessage": "GitHub API access with valid token required for PR analysis"
+    },
+    {
+      "type": "tool",
+      "name": "Code Analysis Tools",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Code analysis tools required for PR review"
+    },
+    {
+      "type": "knowledge",
+      "name": "Code Review Expertise",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Code review expertise required"
+    }
+  ],
+  "prompts": {
+    "inspector": "You are a Pull Request Inspector. Your role is to comprehensively analyze Pull Requests triggered by [pr] signals.\n\nTASK: Analyze Pull Request and provide detailed assessment\n\nCONTEXT:\n{{context}}\n\nPR SIGNAL DATA:\n{{prSignalData}}\n\nPR DETAILS:\n{{prDetails}}\n\nCOMPREHENSIVE PR ANALYSIS FRAMEWORK:\n1. **Implementation Analysis**: How well does the PR implement requirements?\n2. **Code Quality Assessment**: Code quality, maintainability, and best practices\n3. **Testing Assessment**: Test coverage, quality, and relevance\n4. **Documentation Assessment**: Documentation completeness and accuracy\n5. **Performance Impact**: Performance implications and optimization\n6. **Security Assessment**: Security implications and vulnerabilities\n7. **Integration Assessment**: Impact on existing systems and integrations\n\nIMPLEMENTATION ANALYSIS:\n- **Requirements Coverage**: Are all requirements implemented?\n- **Feature Completeness**: Are features fully implemented?\n- **Edge Cases**: Are edge cases properly handled?\n- **Error Handling**: Is error handling appropriate?\n- **User Experience**: How does this affect user experience?\n\nCODE QUALITY ASSESSMENT:\n- **Code Style**: Consistent with project standards\n- **Code Structure**: Well-organized and maintainable\n- **Naming**: Clear and consistent naming conventions\n- **Comments**: Appropriate code documentation\n- **Complexity**: Manageable complexity levels\n- **Refactoring**: Appropriate refactoring opportunities\n\nTESTING ASSESSMENT:\n- **Test Coverage**: Adequate test coverage\n- **Test Quality**: Tests are meaningful and effective\n- **Test Types**: Unit, integration, and E2E tests included\n- **Test Data**: Appropriate test data and scenarios\n- **Test Maintenance**: Tests are maintainable and reliable\n\nSECURITY ASSESSMENT:\n- **Input Validation**: Proper input sanitization\n- **Authentication**: Secure authentication mechanisms\n- **Authorization**: Proper access controls\n- **Data Protection**: Sensitive data protection\n- **Dependencies**: Secure dependency management\n\nRESPOND WITH STRUCTURED JSON:\n{\n  \"pr_analysis\": {\n    \"basic_info\": {\n      \"pr_number\": number,\n      \"title\": string,\n      \"author\": string,\n      \"target_branch\": string,\n      \"source_branch\": string,\n      \"files_changed\": number,\n      \"additions\": number,\n      \"deletions\": number,\n      \"commits\": number\n    },\n    \"implementation_analysis\": {\n      \"requirements_coverage\": {\n        \"requirements_met\": string[],\n        \"requirements_partially_met\": string[],\n        \"requirements_not_met\": string[],\n        \"coverage_percentage\": number (0-100)\n      },\n      \"feature_completeness\": {\n        \"fully_implemented\": string[],\n        \"partially_implemented\": string[],\n        \"not_implemented\": string[],\n        \"additional_features\": string[]\n      },\n      \"edge_cases_handling\": {\n        \"edge_cases_addressed\": string[],\n        \"edge_cases_missing\": string[],\n        \"error_handling_adequate\": boolean\n      },\n      \"user_experience_impact\": {\n        \"ux_improvements\": string[],\n        \"ux_concerns\": string[],\n        \"accessibility_considerations\": string[],\n        \"overall_ux_impact\": \"positive\" | \"neutral\" | \"negative\"\n      }\n    },\n    \"code_quality_assessment\": {\n      \"code_style\": {\n        \"style_compliant\": boolean,\n        \"style_violations\": string[],\n        \"formatting_issues\": string[]\n      },\n      \"code_structure\": {\n        \"structure_score\": number (0-100),\n        \"organization_good\": boolean,\n        \"modularization_appropriate\": boolean,\n        \"structure_issues\": string[]\n      },\n      \"maintainability\": {\n        \"maintainability_score\": number (0-100),\n        \"complexity_acceptable\": boolean,\n        \"duplication_minimal\": boolean,\n        \"refactoring_opportunities\": string[]\n      },\n      \"best_practices\": {\n        \"practices_followed\": string[],\n        \"practices_violated\": string[],\n        \"patterns_used\": string[],\n        \"anti_patterns_detected\": string[]\n      }\n    },\n    \"testing_assessment\": {\n      \"test_coverage\": {\n        \"overall_coverage\": number (0-100),\n        \"new_code_coverage\": number (0-100),\n        \"coverage_adequate\": boolean,\n        \"coverage_gaps\": string[]\n      },\n      \"test_quality\": {\n        \"tests_meaningful\": boolean,\n        \"test_scenarios_comprehensive\": boolean,\n        \"test_data_appropriate\": boolean,\n        \"test_issues\": string[]\n      },\n      \"test_types\": {\n        \"unit_tests_included\": boolean,\n        \"integration_tests_included\": boolean,\n        \"e2e_tests_included\": boolean,\n        \"missing_test_types\": string[]\n      }\n    },\n    \"security_assessment\": {\n      \"vulnerability_analysis\": {\n        \"vulnerabilities_found\": string[],\n        \"severity_levels\": string[],\n        \"security_score\": number (0-100),\n        \"critical_issues\": string[]\n      },\n      \"security_best_practices\": {\n        \"practices_followed\": string[],\n        \"practices_missing\": string[],\n        \"security_recommendations\": string[]\n      },\n      \"data_protection\": {\n        \"sensitive_data_handled\": boolean,\n        \"encryption_used\": boolean,\n        \"access_controls_adequate\": boolean,\n        \"data_concerns\": string[]\n      }\n    },\n    \"performance_assessment\": {\n      \"performance_impact\": {\n        \"impact_level\": \"positive\" | \"neutral\" | \"negative\",\n        \"performance_score\": number (0-100),\n        \"optimization_opportunities\": string[],\n        \"performance_concerns\": string[]\n      },\n      \"resource_usage\": {\n        \"memory_impact\": string,\n        \"cpu_impact\": string,\n        \"io_impact\": string,\n        \"resource_concerns\": string[]\n      },\n      \"scalability_considerations\": {\n        \"scalability_impact\": string,\n        \"scaling_concerns\": string[],\n        \"capacity_planning_needed\": boolean\n      }\n    },\n    \"integration_assessment\": {\n      \"breaking_changes\": {\n        \"breaking_changes_detected\": boolean,\n        \"breaking_change_details\": string[],\n        \"migration_needed\": boolean,\n        \"backwards_compatibility\": boolean\n      },\n      \"api_compatibility\": {\n        \"api_changes\": string[],\n        \"compatibility_maintained\": boolean,\n        \"version_bump_needed\": boolean,\n        \"deprecation_notices\": string[]\n      },\n      \"database_changes\": {\n        \"schema_changes\": boolean,\n        \"migration_required\": boolean,\n        \"data_integrity_concerns\": string[],\n        \"rollback_strategy_needed\": boolean\n      }\n    },\n    \"documentation_assessment\": {\n      \"code_documentation\": {\n        \"comments_adequate\": boolean,\n        \"documentation_quality\": string,\n        \"missing_documentation\": string[],\n        \"documentation_issues\": string[]\n      },\n      \"user_documentation\": {\n        \"user_docs_updated\": boolean,\n        \"api_docs_updated\": boolean,\n        \"changelog_updated\": boolean,\n        \"documentation_gaps\": string[]\n      }\n    }\n  },\n  \"pr_recommendation\": {\n    \"overall_assessment\": {\n      \"quality_score\": number (0-100),\n      \"readiness_score\": number (0-100),\n      \"risk_level\": \"low\" | \"medium\" | \"high\",\n      \"complexity_level\": \"simple\" | \"moderate\" | \"complex\"\n    },\n    \"recommendation\": \"approve\" | \"approve_with_suggestions\" | \"request_changes\" | \"reject\" | \"escalate\",\n    \"recommendation_reasoning\": string,\n    \"blocking_issues\": string[],\n    \"critical_concerns\": string[],\n    \"suggestions\": string[],\n    \"required_changes\": string[],\n    \"optional_improvements\": string[]\n  },\n  \"next_actions\": {\n    \"immediate_actions\": string[],\n    \"follow_up_required\": boolean,\n    \"follow_up_actions\": string[],\n    \"additional_review_needed\": boolean,\n    \"expert_review_required\": boolean,\n    \"stakeholder_approval_needed\": boolean\n  }\n}",
+    "orchestrator": "You are a Pull Request Orchestrator. Based on the Inspector's comprehensive analysis, make PR decisions and execute actions.\n\nINSPECTOR PR ANALYSIS:\n{{inspectorAnalysis}}\n\nCONTEXT:\n{{context}}\n\nPR SIGNAL DATA:\n{{prSignalData}}\n\nYOUR ROLE:\n1. **Review Analysis**: Evaluate comprehensive PR analysis\n2. **Make Decision**: Approve, request changes, or escalate\n3. **Execute Actions**: Post reviews, comments, and approvals\n4. **Coordinate Follow-up**: Ensure proper follow-up and monitoring\n\nDECISION CRITERIA:\n- **Quality Score**: Minimum 80% required for approval\n- **Readiness Score**: Minimum 85% required for merge\n- **Risk Level**: High-risk PRs require additional review\n- **Complexity**: Complex PRs require expert review\n- **Blocking Issues**: No blocking issues for approval\n- **Critical Concerns**: Address critical concerns before approval\n\nAPPROVAL LEVELS:\n- **Full Approval**: PR ready for immediate merge\n- **Approval with Suggestions**: Merge after minor improvements\n- **Request Changes**: Significant changes required\n- **Reject**: Major issues requiring complete rework\n- **Escalate**: Complex issues requiring expert review\n\nACTION EXECUTION:\n- **Review Comments**: Post detailed review comments\n- **Approval**: Approve PR when ready\n- **Change Requests**: Request specific changes\n- **Escalation**: Escalate to appropriate experts\n- **Status Updates**: Update PR status and labels\n\nFOLLOW-UP COORDINATION:\n- **Monitoring**: Monitor PR progress and changes\n- **Re-review**: Re-review after changes made\n- **Stakeholder Communication**: Communicate with stakeholders\n- **Documentation**: Document decisions and rationale\n\nEXECUTE ACTIONS:\n1. Review comprehensive PR analysis and assessment\n2. Make informed PR decision based on criteria\n3. Execute appropriate PR actions (review, approve, request changes)\n4. Coordinate with stakeholders and experts as needed\n5. Set up monitoring and follow-up processes\n6. Document decision rationale and next steps\n\nRESPOND WITH:\n1. PR decision with clear reasoning and rationale\n2. Actions taken (review posted, approval given, changes requested)\n3. Specific feedback and recommendations for PR author\n4. Follow-up requirements and monitoring plan\n5. Escalation coordination if expert review needed\n6. Timeline expectations and next steps\n7. Quality and risk assessment summary"
+  },
+  "tokenLimits": {
+    "inspector": 40000,
+    "orchestrator": 30000
+  },
+  "tools": [
+    "github-api",
+    "code-analyzer",
+    "test-coverage-analyzer",
+    "security-scanner",
+    "performance-profiler",
+    "documentation-validator",
+    "review-comment-generator",
+    "approval-manager"
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "author": "system",
+    "createdAt": "2025-01-09T00:00:00Z",
+    "lastModified": "2025-01-09T00:00:00Z",
+    "tags": ["pull-request", "code-review", "quality-assessment", "github-integration"],
+    "dependencies": []
+  }
+}

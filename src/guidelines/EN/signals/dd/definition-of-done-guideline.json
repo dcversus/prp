@@ -1,0 +1,185 @@
+{
+  "id": "definition-of-done-signal-guideline",
+  "name": "Definition of Done Signal Guideline",
+  "description": "Comprehensive guideline for handling [dd] Definition of Done signals with validation and compliance checking",
+  "version": "1.0.0",
+  "category": "quality",
+  "priority": "critical",
+  "enabled": true,
+  "signalTriggers": ["[dd]"],
+  "protocol": {
+    "id": "definition-of-done-protocol",
+    "description": "Complete handling of Definition of Done signals from validation to compliance enforcement",
+    "steps": [
+      {
+        "id": "dd-signal-detection",
+        "name": "DD Signal Detection and Context",
+        "description": "Detect [dd] signal and understand DoD context and requirements",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["dd-context", "do-requirements", "validation-scope"],
+        "nextSteps": ["do-extraction"]
+      },
+      {
+        "id": "do-extraction",
+        "name": "DoD Criteria Extraction",
+        "description": "Extract and analyze DoD criteria from PRP and related documents",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["do-criteria", "acceptance-criteria", "success-metrics"],
+        "nextSteps": ["compliance-analysis"]
+      },
+      {
+        "id": "compliance-analysis",
+        "name": "DoD Compliance Analysis",
+        "description": "Analyze current implementation against DoD criteria",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["compliance-report", "gap-analysis", "completion-status"],
+        "nextSteps": ["quality-validation"]
+      },
+      {
+        "id": "quality-validation",
+        "name": "Quality Gate Validation",
+        "description": "Validate that quality gates and standards are met",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["quality-report", "gate-status", "quality-issues"],
+        "nextSteps": ["do-decision"]
+      },
+      {
+        "id": "do-decision",
+        "name": "DoD Decision and Action",
+        "description": "Make DoD compliance decision and execute appropriate actions",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["do-decision", "compliance-status", "required-actions"],
+        "nextSteps": ["do-documentation"]
+      },
+      {
+        "id": "do-documentation",
+        "name": "DoD Documentation and Reporting",
+        "description": "Document DoD validation results and compliance status",
+        "type": "action_execution",
+        "required": true,
+        "outputs": ["do-report", "compliance-certificate", "status-updates"],
+        "nextSteps": []
+      }
+    ],
+    "decisionPoints": [
+      {
+        "id": "do-compliance-decision",
+        "question": "Does the implementation meet all Definition of Done criteria?",
+        "options": [
+          {
+            "id": "do-met",
+            "label": "DoD Met - Ready for release",
+            "action": "approve-do-compliance",
+            "nextSteps": ["do-decision"]
+          },
+          {
+            "id": "do-partially-met",
+            "label": "DoD Partially Met - Minor items outstanding",
+            "action": "conditional-do-approval",
+            "nextSteps": ["do-decision"]
+          },
+          {
+            "id": "do-not-met",
+            "label": "DoD Not Met - Significant work remaining",
+            "action": "reject-do-compliance",
+            "nextSteps": []
+          }
+        ],
+        "requiresInput": true
+      },
+      {
+        "id": "quality-gate-decision",
+        "question": "Are all quality gates and standards met?",
+        "options": [
+          {
+            "id": "quality-passed",
+            "label": "Quality gates passed - proceed with DoD validation",
+            "action": "quality-validation-passed",
+            "nextSteps": ["do-decision"]
+          },
+          {
+            "id": "quality-issues-minor",
+            "label": "Minor quality issues - address before DoD approval",
+            "action": "request-quality-fixes",
+            "nextSteps": []
+          },
+          {
+            "id": "quality-issues-major",
+            "label": "Major quality issues - significant work required",
+            "action": "require-major-quality-work",
+            "nextSteps": []
+          }
+        ],
+        "requiresInput": true
+      }
+    ],
+    "successCriteria": [
+      "DoD signal detected and context properly captured",
+      "DoD criteria extracted and clearly defined",
+      "Comprehensive compliance analysis completed",
+      "Quality gate validation performed and passed",
+      "DoD decision made with clear rationale",
+      "Compliance status documented and reported"
+    ],
+    "fallbackActions": [
+      "Request clarification on ambiguous DoD criteria",
+      "Extend implementation timeline for complex DoD requirements",
+      "Create additional quality gates for missing validation areas",
+      "Coordinate with stakeholders for DoD criteria adjustments"
+    ]
+  },
+  "requirements": [
+    {
+      "type": "document",
+      "name": "PRP with DoD Criteria",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "PRP with defined DoD criteria required"
+    },
+    {
+      "type": "tool",
+      "name": "Quality Validation Tools",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Quality validation and testing tools required"
+    },
+    {
+      "type": "knowledge",
+      "name": "DoD Framework Knowledge",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Definition of Done framework expertise required"
+    }
+  ],
+  "prompts": {
+    "inspector": "You are a Definition of Done Inspector. Your role is to validate implementation against DoD criteria.\n\nTASK: Analyze DoD compliance and validate implementation readiness\n\nCONTEXT:\n{{context}}\n\nDD SIGNAL DATA:\n{{ddSignalData}}\n\nIMPLEMENTATION DETAILS:\n{{implementationDetails}}\n\nCOMPREHENSIVE DOD ANALYSIS FRAMEWORK:\n1. **DoD Criteria Extraction**: Extract and understand DoD requirements\n2. **Implementation Compliance**: Check implementation against each criterion\n3. **Quality Gate Validation**: Validate all quality gates and standards\n4. **Acceptance Criteria Validation**: Verify acceptance criteria are met\n5. **Success Metrics Validation**: Confirm success metrics are achieved\n6. **Documentation Validation**: Ensure required documentation is complete\n7. **Testing Validation**: Verify testing requirements are met\n\nDOD CRITERIA ANALYSIS:\n- **Functional Requirements**: All required features implemented\n- **Non-Functional Requirements**: Performance, security, usability met\n- **Code Quality**: Code standards and best practices followed\n- **Testing Requirements**: Test coverage and quality adequate\n- **Documentation Requirements**: All documentation complete and accurate\n- **Integration Requirements**: Integration points working correctly\n- **Deployment Requirements**: Deployment readiness validated\n\nQUALITY GATE VALIDATION:\n- **Code Quality**: Lint, formatting, style standards met\n- **Test Coverage**: Minimum coverage thresholds met\n- **Performance**: Performance requirements satisfied\n- **Security**: Security requirements and best practices met\n- **Accessibility**: Accessibility standards compliance\n- **Documentation**: Documentation completeness and quality\n\nACCEPTANCE CRITERIA VALIDATION:\n- **User Requirements**: User needs satisfied\n- **Business Requirements**: Business goals achieved\n- **Technical Requirements**: Technical specifications met\n- **Regulatory Requirements**: Compliance with regulations\n- **Operational Requirements**: Operational readiness achieved\n\nRESPOND WITH STRUCTURED JSON:\n{\n  \"dod_analysis\": {\n    \"criteria_extraction\": {\n      \"functional_requirements\": [\n        {\n          \"requirement\": string,\n          \"source\": string,\n          \"validation_method\": string,\n          \"priority\": \"critical\" | \"high\" | \"medium\" | \"low\"\n        }\n      ],\n      \"non_functional_requirements\": [\n        {\n          \"requirement\": string,\n          \"category\": \"performance\" | \"security\" | \"usability\" | \"reliability\",\n          \"metric\": string,\n          \"threshold\": string\n        }\n      ],\n      \"code_quality_requirements\": [\n        {\n          \"requirement\": string,\n          \"standard\": string,\n          \"validation_tool\": string\n        }\n      ],\n      \"testing_requirements\": [\n        {\n          \"requirement\": string,\n          \"test_type\": \"unit\" | \"integration\" | \"e2e\" | \"performance\",\n          \"coverage_threshold\": number\n        }\n      ],\n      \"documentation_requirements\": [\n        {\n          \"requirement\": string,\n          \"document_type\": \"user\" | \"technical\" | \"api\" | \"deployment\",\n          \"format\": string\n        }\n      ]\n    },\n    \"compliance_analysis\": {\n      \"functional_compliance\": [\n        {\n          \"requirement\": string,\n          \"compliance_status\": \"fully_met\" | \"partially_met\" | \"not_met\",\n          \"evidence\": string[],\n          \"gaps\": string[],\n          \"completion_percentage\": number (0-100)\n        }\n      ],\n      \"non_functional_compliance\": [\n        {\n          \"requirement\": string,\n          \"category\": string,\n          \"metric_achieved\": string,\n          \"threshold_met\": boolean,\n          \"performance_data\": string\n        }\n      ],\n      \"code_quality_compliance\": {\n        \"lint_results\": {\n          \"issues_found\": number,\n          \"issues_fixed\": number,\n          \"compliance_percentage\": number (0-100)\n        },\n        \"test_coverage\": {\n          \"coverage_percentage\": number (0-100),\n          \"threshold_met\": boolean,\n          \"coverage_gaps\": string[]\n        },\n        \"code_standards\": {\n          \"standards_compliant\": boolean,\n          \"violations\": string[],\n          \"quality_score\": number (0-100)\n        }\n      },\n      \"testing_compliance\": {\n        \"unit_tests\": {\n          \"written\": boolean,\n          \"passing\": boolean,\n          \"coverage_adequate\": boolean,\n          \"issues\": string[]\n        },\n        \"integration_tests\": {\n          \"written\": boolean,\n          \"passing\": boolean,\n          \"scenarios_covered\": string[],\n          \"issues\": string[]\n        },\n        \"e2e_tests\": {\n          \"written\": boolean,\n          \"passing\": boolean,\n          \"user_scenarios_tested\": string[],\n          \"issues\": string[]\n        },\n        \"performance_tests\": {\n          \"conducted\": boolean,\n          \"passed\": boolean,\n          \"performance_metrics\": string,\n          \"issues\": string[]\n        }\n      },\n      \"documentation_compliance\": {\n        \"user_documentation\": {\n          \"complete\": boolean,\n          \"accurate\": boolean,\n          \"accessible\": boolean,\n          \"missing_sections\": string[]\n        },\n        \"technical_documentation\": {\n          \"complete\": boolean,\n          \"up_to_date\": boolean,\n          \"clear\": boolean,\n          \"missing_information\": string[]\n        },\n        \"api_documentation\": {\n          \"complete\": boolean,\n          \"accurate\": boolean,\n          \"examples_included\": boolean,\n          \"missing_endpoints\": string[]\n        },\n        \"deployment_documentation\": {\n          \"complete\": boolean,\n          \"tested\": boolean,\n          \"clear_instructions\": boolean,\n          \"missing_steps\": string[]\n        }\n      }\n    },\n    \"quality_gate_validation\": {\n      \"code_quality_gates\": {\n        \"lint_passed\": boolean,\n        \"formatting_correct\": boolean,\n        \"style_compliant\": boolean,\n        \"no_critical_issues\": boolean,\n        \"quality_score_above_threshold\": boolean\n      },\n      \"testing_gates\": {\n        \"all_tests_passing\": boolean,\n        \"coverage_threshold_met\": boolean,\n        \"no_critical_test_failures\": boolean,\n        \"test_quality_acceptable\": boolean\n      },\n      \"performance_gates\": {\n        \"response_times_acceptable\": boolean,\n        \"resource_usage_acceptable\": boolean,\n        \"scalability_requirements_met\": boolean,\n        \"no_performance_regressions\": boolean\n      },\n      \"security_gates\": {\n        \"no_vulnerabilities\": boolean,\n        \"security_scan_passed\": boolean,\n        \"authentication_working\": boolean,\n        \"authorization_correct\": boolean,\n        \"data_protection_adequate\": boolean\n      },\n      \"documentation_gates\": {\n        \"all_documentation_complete\": boolean,\n        \"documentation_reviewed\": boolean,\n        \"changelog_updated\": boolean,\n        \"release_notes_ready\": boolean\n      }\n    },\n    \"acceptance_criteria_validation\": {\n      \"user_acceptance\": {\n        \"user_requirements_met\": boolean,\n        \"user_feedback_positive\": boolean,\n        \"user_acceptance_test_passed\": boolean,\n        \"user_issues\": string[]\n      },\n      \"business_acceptance\": {\n        \"business_goals_achieved\": boolean,\n        \"roi_acceptable\": boolean,\n        \"stakeholder_approval_received\": boolean,\n        \"business_concerns\": string[]\n      },\n      \"technical_acceptance\": {\n        \"technical_specifications_met\": boolean,\n        \"architecture_compliant\": boolean,\n        \"integration_successful\": boolean,\n        \"technical_issues\": string[]\n      },\n      \"operational_acceptance\": {\n        \"deployment_ready\": boolean,\n        \"monitoring_configured\": boolean,\n        \"backup_procedures_ready\": boolean,\n        \"operational_concerns\": string[]\n      }\n    },\n    \"success_metrics_validation\": {\n      \"metrics_defined\": boolean,\n      \"metrics_measurable\": boolean,\n      \"metrics_achieved\": boolean,\n      \"measurement_data\": {\n        \"metric_name\": string,\n        \"target_value\": string,\n        \"actual_value\": string,\n        \"achieved\": boolean\n      }[],\n      \"unmet_metrics\": string[]\n    }\n  },\n  \"dod_assessment\": {\n    \"overall_compliance\": {\n      \"compliance_percentage\": number (0-100),\n      \"critical_criteria_met\": boolean,\n      \"major_criteria_met\": boolean,\n      \"minor_criteria_met\": boolean,\n      \"overall_status\": \"fully_compliant\" | \"substantially_compliant\" | \"partially_compliant\" | \"non_compliant\"\n    },\n    \"risk_assessment\": {\n      \"release_risk\": \"low\" | \"medium\" | \"high\",\n      \"blocking_issues\": string[],\n      \"critical_concerns\": string[],\n      \"mitigation_required\": boolean,\n      \"mitigation_strategies\": string[]\n    },\n    \"readiness_assessment\": {\n      \"ready_for_release\": boolean,\n      \"ready_for_staging\": boolean,\n      \"requires_additional_work\": boolean,\n      \"estimated_completion_time\": string,\n      \"blocking_dependencies\": string[]\n    }\n  },\n  \"recommendations\": {\n    \"immediate_actions\": string[],\n    \"blocking_issues\": string[],\n    \"critical_fixes_required\": string[],\n    \"minor_improvements_suggested\": string[],\n    \"additional_validation_needed\": string[],\n    \"stakeholder_approval_required\": boolean\n  },\n  \"next_steps\": {\n    \"approval_ready\": boolean,\n    \"additional_work_needed\": boolean,\n    \"revalidation_required\": boolean,\n    \"escalation_needed\": boolean,\n    \"timeline_adjustment_needed\": boolean,\n    \"recommended_timeline\": string\n  }\n}",
+    "orchestrator": "You are a Definition of Done Orchestrator. Based on the Inspector's comprehensive analysis, make DoD compliance decisions.\n\nINSPECTOR DOD ANALYSIS:\n{{inspectorAnalysis}}\n\nCONTEXT:\n{{context}}\n\nDD SIGNAL DATA:\n{{ddSignalData}}\n\nYOUR ROLE:\n1. **Review Compliance**: Evaluate comprehensive DoD compliance analysis\n2. **Make Decisions**: Approve DoD compliance or request additional work\n3. **Coordinate Actions**: Execute DoD validation and compliance actions\n4. **Ensure Quality**: Maintain high quality standards and gate compliance\n\nDECISION CRITERIA:\n- **Compliance Percentage**: Minimum 95% for full approval\n- **Critical Criteria**: All critical criteria must be met\n- **Quality Gates**: All quality gates must pass\n- **Risk Level**: Low to medium risk acceptable for approval\n- **Blocking Issues**: No blocking issues for approval\n- **Readiness Status**: Implementation ready for next phase\n\nAPPROVAL LEVELS:\n- **Full DoD Approval**: All criteria met, ready for release\n- **Conditional DoD Approval**: Minor items outstanding, acceptable risk\n- **DoD Not Met**: Significant work remaining, not ready\n- **DoD Rejection**: Critical issues, major rework required\n\nQUALITY GATE ENFORCEMENT:\n- **Code Quality**: Must meet all code quality standards\n- **Testing**: Must achieve required test coverage and pass all tests\n- **Performance**: Must meet performance requirements\n- **Security**: Must pass security validation\n- **Documentation**: Must have complete and accurate documentation\n\nCOMPLIANCE ACTIONS:\n- **Validation**: Validate compliance with each DoD criterion\n- **Documentation**: Document compliance status and evidence\n- **Reporting**: Generate compliance reports and certificates\n- **Monitoring**: Set up compliance monitoring if needed\n\nEXECUTE ACTIONS:\n1. Review comprehensive DoD compliance analysis\n2. Make DoD approval decision based on criteria\n3. Execute DoD validation and compliance actions\n4. Document compliance status and generate reports\n5. Coordinate with stakeholders for approval decisions\n6. Set up monitoring and follow-up as needed\n\nRESPOND WITH:\n1. DoD compliance decision with clear rationale\n2. Compliance status summary and detailed assessment\n3. Quality gate validation results\n4. Actions taken for DoD validation and documentation\n5. Recommendations for any additional work needed\n6. Release readiness determination\n7. Follow-up monitoring and validation requirements"
+  },
+  "tokenLimits": {
+    "inspector": 40000,
+    "orchestrator": 30000
+  },
+  "tools": [
+    "do-validator",
+    "quality-gate-checker",
+    "compliance-analyzer",
+    "test-coverage-validator",
+    "performance-validator",
+    "security-validator",
+    "documentation-validator",
+    "compliance-reporter"
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "author": "system",
+    "createdAt": "2025-01-09T00:00:00Z",
+    "lastModified": "2025-01-09T00:00:00Z",
+    "tags": ["definition-of-done", "quality-gates", "compliance", "validation", "release-readiness"],
+    "dependencies": []
+  }
+}

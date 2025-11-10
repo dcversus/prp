@@ -1,64 +1,131 @@
 #!/usr/bin/env node
 
-import { Command } from 'commander';
-import { render } from 'ink';
-import React from 'react';
-import App from './ui/App.js';
-import { createNudgeCommand } from './commands/nudge.js';
-import { createTUICommand } from './commands/tui.js';
-import { createDebugCommand } from './commands/debug.js';
-import { createInitCommand } from './commands/init.js';
-import { createBuildCommand } from './commands/build.js';
-import { createTestCommand } from './commands/test.js';
-import { createLintCommand } from './commands/lint.js';
-import { createQualityCommand } from './commands/quality.js';
-import { createStatusCommand } from './commands/status.js';
-import { createConfigCommand } from './commands/config.js';
-import { createCICommand } from './commands/ci.js';
-import { createDeployCommand } from './commands/deploy.js';
+/**
+ * Main CLI entry point for PRP
+ * Handles command routing and global options
+ */
 
+// [da] CLI entry point implemented with commander.js - supports prp, prp init, prp orchestrator commands - robo-developer
+
+import { Command } from 'commander';
+import { createLayerLogger } from './shared/logger.js';
+import { createInitCommand } from './commands/init.js';
+import { createOrchestratorCommand } from './commands/orchestrator.js';
+
+const logger = createLayerLogger('shared');
 const program = new Command();
 
 program
   .name('prp')
-  .description('Interactive Project Bootstrap CLI - Modern scaffolding tool with AI integration')
-  .version('0.4.9')
-  .option('-n, --name <name>', 'project name')
-  .option('-d, --description <description>', 'project description')
-  .option('-a, --author <author>', 'author name')
-  .option('-e, --email <email>', 'author email')
-  .option(
-    '-t, --template <template>',
-    'project template (fastapi, nestjs, react, typescript-lib, wikijs, none)'
-  )
-  .option('--no-interactive', 'run in non-interactive mode')
-  .option('--yes', 'use default values for all options')
-  .option('--license <license>', 'license type (default: MIT)')
-  .option('--no-git', 'skip git initialization')
-  .option('--no-install', 'skip dependency installation')
-  .action(async (options) => {
-    if (options.interactive) {
-      // Interactive mode with Ink UI
-      render(React.createElement(App, { options }));
-    } else {
-      // Non-interactive mode
-      const { runNonInteractive } = await import('./nonInteractive.js');
-      await runNonInteractive(options);
-    }
+  .description('♫ @dcversus/prp - Autonomous Development Orchestration')
+  .version('0.5.0')
+  .configureOutput({
+    writeErr: (str) => process.stderr.write(str),
+    writeOut: (str) => process.stdout.write(str)
+  })
+  // Global options available for all commands (PRP-001 bootstrap requirements)
+  .option('--ci', 'Run in CI mode without TUI or interactive prompts')
+  .option('--debug', 'Enable debug mode with verbose logging and system monitoring')
+  .option('--log-level <level>', 'Set logging level (error|warn|info|debug|verbose)', 'info')
+  .option('--log-file <path>', 'Write logs to specified file')
+  .option('--no-color', 'Disable colored output')
+  .option('--dry-run', 'Show what would be done without executing')
+  .option('--verbose', 'Enable verbose output')
+  .option('--quiet', 'Suppress non-error output')
+  .option('--no-interactive', 'Disable interactive prompts')
+  .option('--mcp-port <port>', 'Start MCP server on specified port');
+
+// Add version as explicit command
+program
+  .command('version')
+  .description('Show version number')
+  .action(() => {
+    logger.info('cli', 'CLI', `Version: ${program.version()}`);
+    process.exit(0);
   });
 
-// Add all subcommands
-program.addCommand(createNudgeCommand());
-program.addCommand(createTUICommand());
-program.addCommand(createDebugCommand());
+// Add core commands as specified in PRP-001
 program.addCommand(createInitCommand());
-program.addCommand(createBuildCommand());
-program.addCommand(createTestCommand());
-program.addCommand(createLintCommand());
-program.addCommand(createQualityCommand());
-program.addCommand(createStatusCommand());
-program.addCommand(createConfigCommand());
-program.addCommand(createCICommand());
-program.addCommand(createDeployCommand());
+program.addCommand(createOrchestratorCommand());
 
-program.parse();
+// Export program for testing
+export { program };
+
+// Only parse if this file is run directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const args = process.argv.slice(2);
+
+  // Check for version flag first - it should always exit after showing version
+  if (args.includes('-V') || args.includes('--version')) {
+    logger.info('cli', 'CLI', `Version: ${program.version()}`);
+    process.exit(0);
+  }
+
+  // Check for help flag
+  if (args.includes('-h') || args.includes('--help')) {
+    program.help();
+    process.exit(0);
+  }
+
+  // Parse commands with Commander
+  try {
+    program.parse();
+
+    // Handle global --mcp-port option
+    const opts = program.opts();
+    if (opts.mcpPort) {
+      // Start MCP server if --mcp-port is specified
+      if (!process.env.API_SECRET) {
+        logger.error(
+          'cli',
+          'CLI',
+          'API_SECRET environment variable is required when using --mcp-port',
+          new Error('Missing API_SECRET')
+        );
+        process.exit(1);
+      }
+
+      const { MCPServer } = await import('./mcp/server.js');
+      const mcpConfig = {
+        host: '0.0.0.0',
+        port: parseInt(opts.mcpPort, 10) || 8080,
+        ssl: false,
+        apiSecret: process.env.API_SECRET,
+        jwtExpiration: '24h',
+        rateLimitWindow: 900000, // 15 minutes
+        rateLimitMax: 100,
+        corsOrigins: ['*'],
+        enableStreaming: true,
+        maxConnections: 10
+      };
+
+      const mcpServer = new MCPServer(mcpConfig);
+      await mcpServer.start();
+
+      logger.info('cli', 'CLI', `MCP Server started on port ${opts.mcpPort}`, {});
+      logger.info(
+        'cli',
+        'CLI',
+        `Metrics available at: http://localhost:${opts.mcpPort}/metrics`,
+        {}
+      );
+
+      // Keep the process alive
+      process.on('SIGINT', async () => {
+        logger.info('cli', 'CLI', 'Shutting down MCP Server...', {});
+        await mcpServer.stop();
+        process.exit(0);
+      });
+    }
+  } catch (error) {
+    logger.debug(
+      'shared',
+      'command-parsing-error',
+      `Command parsing failed: ${error instanceof Error ? error.message : String(error)}`,
+      error instanceof Error
+        ? { error: error.message, stack: error.stack }
+        : { error: String(error) }
+    );
+    process.exit(1);
+  }
+}

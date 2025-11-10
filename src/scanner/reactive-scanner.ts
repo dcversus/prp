@@ -5,7 +5,7 @@ import { existsSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import { PRPParser } from './prp-parser';
 import { TokenAccountant } from './token-accountant';
-import { FileHasher } from './file-hasher';
+import { FileHasher } from '../shared/tools/file-hasher.js';
 // import { SignalDetectorImpl } from './signal-detector'; // TODO: Use in signal detection logic
 
 /**
@@ -93,7 +93,7 @@ export class ReactiveScanner extends EventEmitter {
    * Start the reactive scanner
    */
   async start(): Promise<void> {
-    console.log('🚀 Starting Reactive Scanner (Event-driven, NO polling)');
+    logger.info('🚀 Starting Reactive Scanner (Event-driven, NO polling)');
 
     try {
       this.metrics.startTime = new Date();
@@ -112,7 +112,7 @@ export class ReactiveScanner extends EventEmitter {
       await this.performInitialAnalysis();
 
       this.isRunning = true;
-      console.log(`✅ Reactive Scanner started. Monitoring ${this.config.worktrees.length} worktrees`);
+      logger.info(`✅ Reactive Scanner started. Monitoring ${this.config.worktrees.length} worktrees`);
 
       this.emit('scanner:started', {
         worktreeCount: this.config.worktrees.length,
@@ -121,7 +121,7 @@ export class ReactiveScanner extends EventEmitter {
       });
 
     } catch (error) {
-      console.error('❌ Failed to start reactive scanner:', error);
+      logger.error('❌ Failed to start reactive scanner:', error);
       this.emit('scanner:error', error);
       throw error;
     }
@@ -132,7 +132,7 @@ export class ReactiveScanner extends EventEmitter {
    */
   private async setupWorktreeWatcher(worktreePath: string): Promise<void> {
     if (!existsSync(worktreePath)) {
-      console.warn(`⚠️ Worktree path does not exist: ${worktreePath}`);
+      logger.warning(`⚠️ Worktree path does not exist: ${worktreePath}`);
       return;
     }
 
@@ -160,11 +160,11 @@ export class ReactiveScanner extends EventEmitter {
 
     // Handle errors
     watcher.on('error', (error) => {
-      console.error(`❌ File watcher error for ${worktreePath}:`, error);
+      logger.error(`❌ File watcher error for ${worktreePath}:`, error);
       this.emit('scanner:error', { type: 'file_watcher', path: worktreePath, error });
     });
 
-    console.log(`📁 File watcher setup for: ${worktreePath}`);
+    logger.info(`📁 File watcher setup for: ${worktreePath}`);
   }
 
   /**
@@ -200,7 +200,7 @@ export class ReactiveScanner extends EventEmitter {
         };
       }
 
-      console.log(`📁 File ${event}: ${filePath}`);
+      logger.info(`📁 File ${event}: ${filePath}`);
 
       // Emit file change event
       this.emit('file_change', {
@@ -222,7 +222,7 @@ export class ReactiveScanner extends EventEmitter {
       }
 
     } catch (error) {
-      console.error(`❌ Error handling file change ${filePath}:`, error);
+      logger.error(`❌ Error handling file change ${filePath}:`, error);
       this.emit('scanner:error', { type: 'file_change', path: fullPath, error });
     }
   }
@@ -232,7 +232,9 @@ export class ReactiveScanner extends EventEmitter {
    * Automatically finds any [XX] pattern - no configuration needed
    */
   private async detectSignals(fileData: FileChangeEvent): Promise<void> {
-    if (!fileData.content) return;
+    if (!fileData.content) {
+      return;
+    }
 
     try {
       const lines = fileData.content.split('\n');
@@ -244,8 +246,8 @@ export class ReactiveScanner extends EventEmitter {
         const line = lines[i];
         let match;
 
-        while ((match = universalSignalPattern.exec(line || '')) !== null) {
-          const signal = match[0] || '';
+        while ((match = universalSignalPattern.exec(line ?? '')) !== null) {
+          const signal = match[0];
 
           // Extract signal context
           const contextStart = Math.max(0, i - 2);
@@ -265,7 +267,7 @@ export class ReactiveScanner extends EventEmitter {
           };
 
           this.metrics.signalsDetected++;
-          console.log(`🔍 Signal detected: ${signal} in ${fileData.path}`);
+          logger.highlight(`🔍 Signal detected: ${signal} in ${fileData.path}`);
 
           this.emit('signal_detected', {
             type: 'signal_detected',
@@ -277,7 +279,7 @@ export class ReactiveScanner extends EventEmitter {
         }
       }
     } catch (error) {
-      console.error(`❌ Error detecting signals in ${fileData.path}:`, error);
+      logger.error(`❌ Error detecting signals in ${fileData.path}:`, error);
     }
   }
 
@@ -300,7 +302,7 @@ export class ReactiveScanner extends EventEmitter {
         });
 
         this.gitWatchers.set(worktree, gitWatcher);
-        console.log(`🔧 Git monitoring setup for: ${worktree}`);
+        logger.info(`🔧 Git monitoring setup for: ${worktree}`);
       }
     }
   }
@@ -327,7 +329,7 @@ export class ReactiveScanner extends EventEmitter {
 
       if (files.length > 0) {
         this.metrics.gitEvents++;
-        console.log(`🔧 Git changes detected in ${worktreePath}: ${files.length} files`);
+        logger.info(`🔧 Git changes detected in ${worktreePath}: ${files.length} files`);
 
         this.emit('git_change', {
           type: 'git_change',
@@ -343,7 +345,7 @@ export class ReactiveScanner extends EventEmitter {
         });
       }
     } catch (error) {
-      console.error(`❌ Error handling git change in ${worktreePath}:`, error);
+      logger.error(`❌ Error handling git change in ${worktreePath}:`, error);
     }
   }
 
@@ -351,7 +353,9 @@ export class ReactiveScanner extends EventEmitter {
    * Update token tracking and check thresholds
    */
   private async updateTokenTracking(fileData: FileChangeEvent): Promise<void> {
-    if (!fileData.content) return;
+    if (!fileData.content) {
+      return;
+    }
 
     try {
       const tokenCount = this.estimateTokenCount(fileData.content);
@@ -366,7 +370,7 @@ export class ReactiveScanner extends EventEmitter {
       // Check if we've crossed threshold
       if (tokenCount > this.config.tokenThreshold) {
         this.metrics.tokenEvents++;
-        console.log(`⚠️ Token threshold exceeded: ${tokenCount} tokens in ${fileData.path}`);
+        logger.warning(`⚠️ Token threshold exceeded: ${tokenCount} tokens in ${fileData.path}`);
 
         this.emit('token_threshold', {
           type: 'token_threshold',
@@ -382,7 +386,7 @@ export class ReactiveScanner extends EventEmitter {
         });
       }
     } catch (error) {
-      console.error(`❌ Error updating token tracking for ${fileData.path}:`, error);
+      logger.error(`❌ Error updating token tracking for ${fileData.path}:`, error);
     }
   }
 
@@ -390,7 +394,7 @@ export class ReactiveScanner extends EventEmitter {
    * Perform initial analysis to establish baseline
    */
   private async performInitialAnalysis(): Promise<void> {
-    console.log('🔍 Performing initial analysis...');
+    logger.info('🔍 Performing initial analysis...');
 
     for (const worktree of this.config.worktrees) {
       try {
@@ -398,7 +402,7 @@ export class ReactiveScanner extends EventEmitter {
         const prpFiles = await this.prpParser.discoverPRPFiles(worktree);
 
         if (prpFiles.length > 0) {
-          console.log(`📋 Found ${prpFiles.length} PRP files in ${worktree}`);
+          logger.info(`📋 Found ${prpFiles.length} PRP files in ${worktree}`);
 
           this.emit('prp_updated', {
             type: 'prp_updated',
@@ -412,7 +416,7 @@ export class ReactiveScanner extends EventEmitter {
           });
         }
       } catch (error) {
-        console.error(`❌ Error in initial analysis for ${worktree}:`, error);
+        logger.error(`❌ Error in initial analysis for ${worktree}:`, error);
       }
     }
   }
@@ -431,9 +435,15 @@ export class ReactiveScanner extends EventEmitter {
   }
 
   private calculateFileUrgency(fileData: FileChangeEvent): 'low' | 'medium' | 'high' | 'critical' {
-    if (fileData.action === 'unlink') return 'medium';
-    if (fileData.size > 100000) return 'high'; // Large files
-    if (fileData.path.includes('package.json') || fileData.path.includes('.prprc')) return 'high';
+    if (fileData.action === 'unlink') {
+      return 'medium';
+    }
+    if (fileData.size > 100000) {
+      return 'high';
+    } // Large files
+    if (fileData.path.includes('package.json') || fileData.path.includes('.prprc')) {
+      return 'high';
+    }
     return 'low';
   }
 
@@ -441,8 +451,12 @@ export class ReactiveScanner extends EventEmitter {
     const urgentSignals = ['[Bb]', '[AE]', '[OA]'];
     const mediumSignals = ['[af]', '[oa]', '[op]'];
 
-    if (urgentSignals.some(s => signal.includes(s))) return 'critical';
-    if (mediumSignals.some(s => signal.includes(s))) return 'medium';
+    if (urgentSignals.some(s => signal.includes(s))) {
+      return 'critical';
+    }
+    if (mediumSignals.some(s => signal.includes(s))) {
+      return 'medium';
+    }
     return 'low';
   }
 
@@ -462,7 +476,7 @@ export class ReactiveScanner extends EventEmitter {
    * Stop the reactive scanner
    */
   async stop(): Promise<void> {
-    console.log('🛑 Stopping Reactive Scanner');
+    logger.info('🛑 Stopping Reactive Scanner');
 
     this.isRunning = false;
 
@@ -478,7 +492,7 @@ export class ReactiveScanner extends EventEmitter {
     }
     this.gitWatchers.clear();
 
-    console.log('✅ Reactive Scanner stopped');
+    logger.info('✅ Reactive Scanner stopped');
     this.emit('scanner:stopped', { metrics: this.getMetrics() });
   }
 }

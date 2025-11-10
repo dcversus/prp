@@ -5,12 +5,13 @@
  * and brand display as specified in the PRP
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Text, useApp } from 'ink';
-import { TUIConfig } from '../types/TUIConfig.js';
-import { createLayerLogger } from '../../shared/logger.js';
+import { useState, useEffect } from 'react';
+import { Text } from 'ink';
+import type { TUIConfig } from '../../../shared/types/TUIConfig.js';
+import { createLayerLogger } from '../../../shared/logger.js';
+import { getVersion } from '../../../shared/utils/version.js';
 
-const logger = createLayerLogger('intro-sequence');
+const logger = createLayerLogger('tui');
 
 interface IntroSequenceProps {
   config: TUIConfig;
@@ -23,7 +24,6 @@ interface Frame {
 }
 
 export function IntroSequence({ config, onComplete }: IntroSequenceProps) {
-  const { exit } = useApp();
   const [frame, setFrame] = useState(0);
   const [frames, setFrames] = useState<Frame[]>([]);
 
@@ -36,7 +36,9 @@ export function IntroSequence({ config, onComplete }: IntroSequenceProps) {
 
   // Frame animation loop
   useEffect(() => {
-    if (frames.length === 0) return;
+    if (frames.length === 0) {
+      return;
+    }
 
     const timer = setTimeout(() => {
       if (frame < frames.length - 1) {
@@ -45,7 +47,7 @@ export function IntroSequence({ config, onComplete }: IntroSequenceProps) {
         // Animation complete
         onComplete(true);
       }
-    }, frames[frame]?.delay || 100);
+    }, frames[frame]?.delay ?? 100);
 
     return () => clearTimeout(timer);
   }, [frame, frames, onComplete]);
@@ -73,6 +75,10 @@ export function IntroSequence({ config, onComplete }: IntroSequenceProps) {
   }
 
   const currentFrame = frames[frame];
+
+  if (!currentFrame) {
+    return null;
+  }
 
   return (
     <>
@@ -114,8 +120,6 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
     if (progress < 0.1) {
       const alpha = progress / 0.1;
       const symbol = '♪';
-      const x = centerX;
-      const y = centerY;
 
       // Add radial vignette
       for (let y = 0; y < rows; y++) {
@@ -127,13 +131,22 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
 
           if (finalAlpha > 0.1) {
             const rampIndex = Math.floor(finalAlpha * (asciiRamp.length - 1));
-            content[y][x] = asciiRamp[Math.min(rampIndex, asciiRamp.length - 1)];
+            const char = asciiRamp[Math.min(rampIndex, asciiRamp.length - 1)];
+            if (content[y] && char !== undefined) {
+              const row = content[y];
+              if (row) {
+                row[x] = char;
+              }
+            }
           }
         }
       }
 
       if (alpha > 0.5) {
-        content[centerY][centerX] = symbol;
+        const centerRow = content[centerY];
+        if (centerRow) {
+          centerRow[centerX] = symbol;
+        }
       }
     }
 
@@ -150,7 +163,10 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
           const x = centerX + dx;
           const y = centerY + dy;
           if (x >= 0 && x < columns && y >= 0 && y < rows) {
-            content[y][x] = symbol;
+            const row = content[y];
+            if (row) {
+              row[x] = symbol;
+            }
           }
         }
       }
@@ -160,7 +176,10 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
       for (let i = 0; i < starCount; i++) {
         const x = Math.floor(Math.random() * columns);
         const y = Math.floor(Math.random() * rows);
-        content[y][x] = Math.random() > 0.5 ? '·' : '*';
+        const row = content[y];
+        if (row) {
+          row[x] = Math.random() > 0.5 ? '·' : '*';
+        }
       }
     }
 
@@ -176,14 +195,20 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
         const x = Math.floor(centerX + Math.cos(angle) * orbitRadius);
         const y = Math.floor(centerY + Math.sin(angle) * orbitRadius);
 
-        if (x >= 0 && x < columns && y >= 0 && y < rows) {
+        if (x >= 0 && x < columns && y >= 0 && y < rows && content[y]) {
           const symbolIndex = (step + Math.floor(orbitProgress * orbitSteps)) % musicSymbols.length;
-          content[y][x] = musicSymbols[symbolIndex];
+          const symbol = musicSymbols[symbolIndex];
+          if (symbol !== undefined) {
+            content[y][x] = symbol;
+          }
         }
       }
 
       // Center symbol
-      content[centerY][centerX] = '♫';
+      const centerRow = content[centerY];
+      if (centerRow) {
+        centerRow[centerX] = '♫';
+      }
     }
 
     // Phase 4: 6.0-8.0s - Morph trail: ♪ trails → ♬ → resolves to ♫ (hold)
@@ -207,22 +232,31 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
           } else {
             symbol = '♫';
           }
-          content[y][x] = symbol;
+          const row = content[y];
+          if (row) {
+            row[x] = symbol;
+          }
         }
       }
 
       // Center final symbol
-      content[centerY][centerX] = '♫';
+      const finalCenterRow = content[centerY];
+      if (finalCenterRow) {
+        finalCenterRow[centerX] = '♫';
+      }
 
       // Radial glow effect
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < columns; x++) {
           const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
           const glowRadius = 10 + morphProgress * 5;
-          if (distance < glowRadius && content[y][x] === ' ') {
-            const alpha = 1 - (distance / glowRadius);
-            if (alpha > 0.3 && Math.random() > 0.8) {
-              content[y][x] = '·';
+          if (distance < glowRadius) {
+            const row = content[y];
+            if (row?.[x] === ' ') {
+              const alpha = 1 - (distance / glowRadius);
+              if (alpha > 0.3 && Math.random() > 0.8) {
+                row[x] = '·';
+              }
             }
           }
         }
@@ -234,13 +268,16 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
       const titleProgress = (progress - 0.8) / 0.2;
 
       // Final symbol at center
-      content[centerY][centerX] = '♫';
+      const finalSymbolRow = content[centerY];
+      if (finalSymbolRow) {
+        finalSymbolRow[centerX] = '♫';
+      }
 
       // Title lines
       const titleLines = [
         '♫ @dcversus/prp',
         'Autonomous Development Orchestration',
-        'v0.5.0 - Three-Layer Architecture'
+        `v${getVersion()} - Three-Layer Architecture`
       ];
 
       titleLines.forEach((line, lineIndex) => {
@@ -254,8 +291,12 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
 
         for (let i = 0; i < visibleLine.length; i++) {
           const x = startX + i;
-          if (x >= 0 && x < columns && y >= 0 && y < rows) {
-            content[y][x] = visibleLine[i];
+          const char = visibleLine[i];
+          if (x >= 0 && x < columns && y >= 0 && y < rows && char !== undefined) {
+            const row = content[y];
+            if (row) {
+              row[x] = char;
+            }
           }
         }
       });
@@ -265,9 +306,10 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
         const fadeAlpha = 1 - ((titleProgress - 0.5) / 0.5);
         for (let y = 0; y < rows; y++) {
           for (let x = 0; x < columns; x++) {
-            if (content[y][x] === '·' || content[y][x] === '*') {
+            const row = content[y];
+            if (row && (row[x] === '·' || row[x] === '*')) {
               if (Math.random() > fadeAlpha) {
-                content[y][x] = ' ';
+                row[x] = ' ';
               }
             }
           }

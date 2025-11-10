@@ -3,6 +3,14 @@
  *
  * LLM-based orchestration with chain of thought reasoning, tool execution,
  * and shared context management across PRPs.
+ *
+ * Token Distribution Configuration (200k total cap):
+ * - Inspector payload: 40k
+ * - Agents.md: 10k
+ * - PRP content: 20k
+ * - Shared context: 10k
+ * - PRP context (CoT/tools): 70k
+ * - Base/guideline prompts: 40k
  */
 
 import { EventEmitter } from 'events';
@@ -12,9 +20,30 @@ import { ToolRegistry } from './tool-registry';
 import { ContextManager } from './context-manager';
 import { CoTProcessor, ProcessingContext } from './cot-processor';
 import { AgentManager } from './agent-manager';
+import { SignalResolutionEngine } from './signal-resolution-engine';
+import { TokenMonitoringTools } from './tools/token-monitoring-tools';
 import { createLayerLogger, HashUtils } from '../shared';
 
 const logger = createLayerLogger('orchestrator');
+
+// Token distribution caps per PRP requirements
+export const TOKEN_DISTRIBUTION_CAPS = {
+  TOTAL: 200000,
+  INSPECTOR_PAYLOAD: 40000,
+  AGENTS_MD: 10000,
+  PRP_CONTENT: 20000,
+  SHARED_CONTEXT: 10000,
+  PRP_CONTEXT: 70000,
+  BASE_PROMPT: 20000,
+  GUIDELINE_PROMPT: 20000
+} as const;
+
+// Token monitoring thresholds
+export const TOKEN_THRESHOLDS = {
+  WARNING: 0.8,   // 80% of cap
+  CRITICAL: 0.95, // 95% of cap
+  COMPACTION: 0.85 // 85% triggers compaction
+} as const;
 
 /**
  * Orchestrator Core - Central coordination with LLM-based decision making
@@ -25,6 +54,7 @@ export class OrchestratorCore extends EventEmitter {
   private contextManager: ContextManager;
   private cotProcessor: CoTProcessor;
   private agentManager: AgentManager;
+  private signalResolutionEngine: SignalResolutionEngine;
   private isRunning = false;
   private activePRPs: Map<string, PRPFile> = new Map();
   private signalQueue: Signal[] = [];
@@ -39,6 +69,17 @@ export class OrchestratorCore extends EventEmitter {
   constructor(_config: OrchestratorConfig) {
     super();
 
+    // Initialize token distribution tracking
+    const tokenDistribution = {
+      inspectorPayload: { used: 0, cap: TOKEN_DISTRIBUTION_CAPS.INSPECTOR_PAYLOAD },
+      agentsMd: { used: 0, cap: TOKEN_DISTRIBUTION_CAPS.AGENTS_MD },
+      prpContent: { used: 0, cap: TOKEN_DISTRIBUTION_CAPS.PRP_CONTENT },
+      sharedContext: { used: 0, cap: TOKEN_DISTRIBUTION_CAPS.SHARED_CONTEXT },
+      prpContext: { used: 0, cap: TOKEN_DISTRIBUTION_CAPS.PRP_CONTEXT },
+      basePrompt: { used: 0, cap: TOKEN_DISTRIBUTION_CAPS.BASE_PROMPT },
+      guidelinePrompt: { used: 0, cap: TOKEN_DISTRIBUTION_CAPS.GUIDELINE_PROMPT }
+    };
+
     this.state = {
       status: 'idle',
       activeAgents: new Map(),
@@ -52,7 +93,7 @@ export class OrchestratorCore extends EventEmitter {
         sharedNotes: new Map(),
         lastUpdate: new Date(),
         size: 0,
-        maxSize: 1000000
+        maxSize: TOKEN_DISTRIBUTION_CAPS.TOTAL
       },
       chainOfThought: {
         id: '',
@@ -100,13 +141,34 @@ export class OrchestratorCore extends EventEmitter {
           averageTime: 0,
           successRate: 0
         }
+      },
+      sharedContext: {
+        warzone: {
+          blockers: [],
+          completed: [],
+          next: []
+        },
+        systemMetrics: {
+          tokensUsed: 0,
+          activeAgents: 0,
+          processingSignals: 0
+        },
+        tokenDistribution
       }
     };
 
     this.toolRegistry = new ToolRegistry();
     this.contextManager = new ContextManager({ total: 100000 });
-    this.cotProcessor = new CoTProcessor(_config.model || 'gpt-4');
+    this.cotProcessor = new CoTProcessor();
     this.agentManager = new AgentManager(_config);
+    this.signalResolutionEngine = new SignalResolutionEngine(this);
+
+    // Register token monitoring tools
+    const tokenMonitoring = new TokenMonitoringTools();
+    this.toolRegistry.registerTool(tokenMonitoring.get_current_token_caps());
+    this.toolRegistry.registerTool(tokenMonitoring.get_latest_scanner_metrics());
+    this.toolRegistry.registerTool(tokenMonitoring.track_token_distribution());
+    this.toolRegistry.registerTool(tokenMonitoring.real_time_token_monitoring());
   }
 
   /**
@@ -213,12 +275,12 @@ export class OrchestratorCore extends EventEmitter {
         signal,
         action: 'processed',
         result,
-        tokenUsage: resultWithTokenUsage.tokenUsage || 0
+        tokenUsage: resultWithTokenUsage.tokenUsage ?? 0
       });
 
       // Update token usage
       if (this.state.sharedContext?.systemMetrics) {
-        this.state.sharedContext.systemMetrics.tokensUsed += resultWithTokenUsage.tokenUsage || 0;
+        this.state.sharedContext.systemMetrics.tokensUsed += resultWithTokenUsage.tokenUsage ?? 0;
       }
 
       this.emit('orchestrator:signal_processed', { signal, result });
@@ -232,20 +294,32 @@ export class OrchestratorCore extends EventEmitter {
   }
 
   /**
-   * Execute signal processing with CoT and tools
+   * Execute signal processing with resolution engine
    */
   private async executeSignalProcessing(signal: Signal): Promise<unknown> {
     const startTime = Date.now();
 
     try {
-      // 1. Build context for the signal
+      // 1. Get the PRP context for this signal if available
+      const prpId = typeof signal.data === 'object' && 'prpId' in signal.data
+        ? (signal.data as { prpId: string }).prpId
+        : undefined;
+      const prp = prpId ? this.activePRPs.get(prpId) :
+        Array.from(this.activePRPs.values()).find(p =>
+          p.content?.includes(`[${signal.type}]`)
+        );
+
+      // 2. Use signal resolution engine for comprehensive processing
+      const resolutionResult = await this.signalResolutionEngine.processSignal(signal, prp);
+
+      // 3. Build context for the signal
       const context = await this.contextManager.buildContext(signal, this.state);
 
-      // 2. Determine appropriate guideline and tools
+      // 4. Determine appropriate guideline and tools (fallback for complex scenarios)
       await this.determineGuideline(signal);
-      const requiredTools = await this.determineRequiredTools(signal, 'general-guideline');
+      const requiredTools = await this.determineRequiredTools(signal);
 
-      // 3. Generate Chain of Thought
+      // 5. Generate Chain of Thought for complex decisions
       const processingContext: ProcessingContext = {
         signals: [signal],
         availableAgents: Array.from(this.state.activeAgents.values()).map(agent => ({
@@ -254,10 +328,11 @@ export class OrchestratorCore extends EventEmitter {
           type: agent.agentConfig.type,
           status: agent.status,
           capabilities: agent.capabilities.availableTools
-        })) || [],
+        })) ?? [],
         systemState: {
           status: this.state.status,
-          metrics: this.state.metrics
+          metrics: this.state.metrics,
+          resolutionResult // Include resolution result in systemState
         },
         previousDecisions: [],
         constraints: []
@@ -265,37 +340,68 @@ export class OrchestratorCore extends EventEmitter {
 
       const cot = await this.cotProcessor.generateCoT(signal, processingContext, 'general-guideline');
 
-      // 4. Execute tool calls based on CoT
+      // Track token usage for CoT (part of PRP context)
+      const cotTokens = cot.tokenUsage || 0;
+      this.trackTokenUsage('prpContext', cotTokens);
+
+      // 6. Execute tool calls based on CoT (for additional processing)
       const toolResults = await this.executeToolCalls(cot, requiredTools);
 
-      // 5. Update shared context based on results
-      await this.updateSharedContext(signal, cot, toolResults);
+      // Track token usage for tools (part of PRP context)
+      const toolTokens = toolResults.tokenUsage || 0;
+      this.trackTokenUsage('prpContext', toolTokens);
 
-      // 6. Determine next actions
-      const nextActions = await this.determineNextActions(signal, cot, toolResults);
+      // 7. Update shared context based on results
+      await this.updateSharedContext(signal, cot);
 
-      // 7. Execute agent tasks if needed
+      // 8. Determine next actions (from both resolution engine and CoT)
+      const nextActions = await this.determineNextActions(signal, cot);
+
+      // 9. Execute agent tasks if needed
       if (nextActions.agentTasks.length > 0) {
         await this.executeAgentTasks(nextActions.agentTasks);
       }
 
+      // Track token usage for inspector payload processing
+      const inspectorTokens = Math.ceil(JSON.stringify(resolutionResult).length / 4); // Rough estimate
+      this.trackTokenUsage('inspectorPayload', inspectorTokens);
+
+      // Track token usage for PRP content (signal data)
+      const prpTokens = Math.ceil(JSON.stringify(signal).length / 4);
+      this.trackTokenUsage('prpContent', prpTokens);
+
       const processingTime = Date.now() - startTime;
+      const totalTokens = cotTokens + toolTokens + inspectorTokens + prpTokens;
 
       return {
-        success: true,
+        success: resolutionResult.success,
         processingTime,
-        tokenUsage: cot.tokenUsage + toolResults.tokenUsage,
+        tokenUsage: totalTokens,
+        tokenBreakdown: {
+          cot: cotTokens,
+          tools: toolTokens,
+          inspector: inspectorTokens,
+          prp: prpTokens
+        },
+        resolutionResult,
         chainOfThought: cot,
         toolResults,
         nextActions,
-        context: context
+        context: context,
+        actions: resolutionResult.actions,
+        escalation: resolutionResult.escalation
       };
 
     } catch (error) {
       const processingTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      logger.error('executeSignalProcessing', 'Signal processing failed');
+      logger.error('executeSignalProcessing', 'Signal processing failed',
+        error instanceof Error ? error : new Error(errorMessage),
+        {
+          signalType: signal.type
+        }
+      );
 
       return {
         success: false,
@@ -321,13 +427,13 @@ export class OrchestratorCore extends EventEmitter {
       'Bb': 'blocker-guideline'
     };
 
-    return signalGuidelines[_signal.type] || 'general-guideline';
+    return signalGuidelines[_signal.type] ?? 'general-guideline';
   }
 
   /**
    * Determine required tools for signal processing
    */
-  private async determineRequiredTools(_signal: Signal, _guideline: string): Promise<Tool[]> {
+  private async determineRequiredTools(_signal: Signal): Promise<Tool[]> {
     const baseTools = ['read_file', 'write_file', 'list_directory'];
 
     const signalSpecificTools: Record<string, string[]> = {
@@ -337,11 +443,11 @@ export class OrchestratorCore extends EventEmitter {
       'af': ['web_search', 'documentation_reader']
     };
 
-    const toolNames = [...baseTools, ...(signalSpecificTools[_signal.type] || [])];
+    const toolNames = [...baseTools, ...(signalSpecificTools[_signal.type] ?? [])];
 
     return toolNames
       .map(name => this.toolRegistry.getTool(name))
-      .filter(tool => tool !== null) as Tool[];
+      .filter(tool => tool !== null);
   }
 
   /**
@@ -356,12 +462,12 @@ export class OrchestratorCore extends EventEmitter {
 
     for (const step of cot.steps) {
       if (step.toolCall) {
-        const tool = tools.find(t => t.name === step.toolCall!.toolName);
+        const tool = tools.find(t => t.name === step.toolCall?.toolName);
         if (tool) {
           try {
             const result = await this.toolRegistry.executeTool(
               tool.name,
-              step.toolCall!.parameters
+              step.toolCall.parameters
             );
 
             results.push({
@@ -371,10 +477,10 @@ export class OrchestratorCore extends EventEmitter {
               success: true
             });
 
-            totalTokenUsage += result.tokenUsage || 0;
+            totalTokenUsage += result.tokenUsage ?? 0;
 
           } catch (error) {
-              logger.error('executeToolCalls', 'Tool execution failed');
+            logger.error('executeToolCalls', 'Tool execution failed');
 
             const errorMessage = error instanceof Error ? error.message : String(error);
             results.push({
@@ -396,8 +502,7 @@ export class OrchestratorCore extends EventEmitter {
    */
   private async updateSharedContext(
     _signal: Signal,
-    cot: ChainOfThought,
-    _toolResults: unknown
+    cot: ChainOfThought
   ): Promise<void> {
     // Update warzone context if available
     if (this.state.sharedContext?.warzone) {
@@ -429,8 +534,7 @@ export class OrchestratorCore extends EventEmitter {
    */
   private async determineNextActions(
     _signal: Signal,
-    cot: ChainOfThought,
-    _toolResults: unknown
+    cot: ChainOfThought
   ): Promise<{
     agentTasks: Array<{
       agentType: string;
@@ -463,27 +567,27 @@ export class OrchestratorCore extends EventEmitter {
       for (const action of cot.decision.actions) {
         if (action.type === 'agent_task') {
           agentTasks.push({
-            agentType: action.agentType || 'unknown',
-            task: action.task || 'unknown',
-            priority: action.priority || 5,
-            context: action.context || {} as Record<string, unknown>
+            agentType: action.agentType ?? 'unknown',
+            task: action.task ?? 'unknown',
+            priority: action.priority ?? 5,
+            context: action.context ?? {} as Record<string, unknown>
           });
         } else if (action.type === 'signal') {
-          const signalType = action.signalType || 'default';
+          const signalType = action.signalType ?? 'default';
           followUpSignals.push({
             id: HashUtils.generateId(),
             type: signalType,
-            priority: action.priority || 5,
+            priority: action.priority ?? 5,
             source: 'orchestrator',
             timestamp: new Date(),
-            data: (action.data || {}) as Record<string, unknown>,
+            data: (action.data ?? {}) as Record<string, unknown>,
             metadata: {} as Record<string, unknown>
           });
         } else if (action.type === 'notification') {
           userNotifications.push({
-            message: action.message || 'unknown',
-            priority: String(action.priority || 'medium'),
-            channel: action.channel || 'default'
+            message: action.message ?? 'unknown',
+            priority: String(action.priority ?? 'medium'),
+            channel: action.channel ?? 'default'
           });
         }
       }
@@ -520,7 +624,7 @@ export class OrchestratorCore extends EventEmitter {
           task: task.task
         });
 
-      } catch (error) {
+      } catch {
         logger.error('executeAgentTasks', 'Agent task failed');
       }
     }
@@ -557,7 +661,7 @@ export class OrchestratorCore extends EventEmitter {
     signalQueueLength: number;
     activePRPsCount: number;
     processingHistoryCount: number;
-  } {
+    } {
     return {
       ...this.state,
       signalQueueLength: this.signalQueue.length,
@@ -632,6 +736,173 @@ export class OrchestratorCore extends EventEmitter {
   }
 
   /**
+   * Token Management Methods
+   */
+
+  /**
+   * Get current token distribution status
+   */
+  getTokenDistributionStatus() {
+    const distribution = this.state.sharedContext?.tokenDistribution;
+    if (!distribution) {
+      return null;
+    }
+
+    const total = Object.values(distribution).reduce((sum, cat) => sum + cat.used, 0);
+    const totalCap = Object.values(distribution).reduce((sum, cat) => sum + cat.cap, 0);
+
+    return {
+      distribution: Object.entries(distribution).map(([key, value]) => ({
+        category: key,
+        used: value.used,
+        cap: value.cap,
+        percentage: Math.round((value.used / value.cap) * 100),
+        status: this.getThresholdStatus(value.used, value.cap)
+      })),
+      total: {
+        used: total,
+        cap: totalCap,
+        percentage: Math.round((total / totalCap) * 100),
+        status: this.getThresholdStatus(total, totalCap)
+      }
+    };
+  }
+
+  /**
+   * Get threshold status for token usage
+   */
+  private getThresholdStatus(used: number, cap: number): 'normal' | 'warning' | 'critical' {
+    const percentage = used / cap;
+    if (percentage >= TOKEN_THRESHOLDS.CRITICAL) {
+      return 'critical';
+    }
+    if (percentage >= TOKEN_THRESHOLDS.WARNING) {
+      return 'warning';
+    }
+    return 'normal';
+  }
+
+  /**
+   * Track token usage for specific category
+   */
+  trackTokenUsage(category: keyof typeof TOKEN_DISTRIBUTION_CAPS, tokens: number): boolean {
+    const distribution = this.state.sharedContext?.tokenDistribution;
+    if (!distribution || !(category in distribution)) {
+      return false;
+    }
+
+    const categoryUsage = distribution[category];
+    const newTotal = categoryUsage.used + tokens;
+
+    if (newTotal > categoryUsage.cap) {
+      logger.warn('trackTokenUsage', 'Token cap exceeded', {
+        category,
+        used: categoryUsage.used,
+        additional: tokens,
+        cap: categoryUsage.cap
+      });
+      return false;
+    }
+
+    categoryUsage.used = newTotal;
+
+    // Update system metrics
+    if (this.state.sharedContext?.systemMetrics) {
+      this.state.sharedContext.systemMetrics.tokensUsed = Object.values(distribution)
+        .reduce((sum, cat) => sum + cat.used, 0);
+    }
+
+    // Check if we need to trigger compaction
+    if (newTotal >= categoryUsage.cap * TOKEN_THRESHOLDS.COMPACTION) {
+      this.emit('token_compaction_needed', { category, usage: categoryUsage });
+    }
+
+    // Check thresholds
+    const status = this.getThresholdStatus(newTotal, categoryUsage.cap);
+    if (status === 'critical') {
+      this.emit('token_critical', { category, usage: categoryUsage });
+    } else if (status === 'warning') {
+      this.emit('token_warning', { category, usage: categoryUsage });
+    }
+
+    return true;
+  }
+
+  /**
+   * Compact context to free up tokens
+   */
+  async compactContext(category?: keyof typeof TOKEN_DISTRIBUTION_CAPS): Promise<boolean> {
+    try {
+      logger.info('compactContext', 'Starting context compaction', { category });
+
+      if (category) {
+        // Compact specific category
+        const distribution = this.state.sharedContext?.tokenDistribution;
+        if (distribution && category in distribution) {
+          const categoryUsage = distribution[category];
+          const targetSize = Math.floor(categoryUsage.cap * 0.7); // Compact to 70%
+
+          if (category === 'prpContext') {
+            // Compact PRP context while preserving CoT and tool history
+            await this.contextManager.compactContext(targetSize, {
+              preserveChainOfThought: true,
+              preserveToolHistory: true
+            });
+          } else if (category === 'sharedContext') {
+            // Compact shared context while preserving war-room memo format
+            await this.compactSharedContext(targetSize);
+          }
+        }
+      } else {
+        // Compact all categories approaching limits
+        const distribution = this.state.sharedContext?.tokenDistribution;
+        if (distribution) {
+          for (const [cat, usage] of Object.entries(distribution)) {
+            if (usage.used >= usage.cap * TOKEN_THRESHOLDS.COMPACTION) {
+              await this.compactContext(cat as keyof typeof TOKEN_DISTRIBUTION_CAPS);
+            }
+          }
+        }
+      }
+
+      logger.info('compactContext', 'Context compaction completed');
+      this.emit('context_compacted', { category });
+      return true;
+
+    } catch (error) {
+      logger.error('compactContext', 'Context compaction failed');
+      this.emit('compaction_failed', { category, error });
+      return false;
+    }
+  }
+
+  /**
+   * Compact shared context while preserving war-room memo format
+   */
+  private async compactSharedContext(targetSize: number): Promise<void> {
+    if (!this.state.sharedContext?.warzone) {
+      return;
+    }
+
+    const warzone = this.state.sharedContext.warzone;
+
+    // Preserve recent items, compact older ones
+    const maxItems = Math.floor(targetSize / 100); // Rough estimate of tokens per item
+
+    warzone.blockers = warzone.blockers.slice(-maxItems);
+    warzone.completed = warzone.completed.slice(-maxItems * 2); // Keep more completed items
+    warzone.next = warzone.next.slice(-maxItems);
+
+    // Emit compaction signal for agents to see
+    this.emit('signal_generated', {
+      type: 'co',
+      message: 'Context compacted to maintain token limits',
+      category: 'system',
+      timestamp: new Date()
+    });
+  }
+
+  /**
    * Get available tools
    */
   getAvailableTools(): Tool[] {
@@ -643,5 +914,63 @@ export class OrchestratorCore extends EventEmitter {
    */
   getAgentStatuses(): Map<string, AgentStatus> {
     return this.agentManager.getAllStatuses();
+  }
+
+  /**
+   * Get signal resolution engine
+   */
+  getSignalResolutionEngine(): SignalResolutionEngine {
+    return this.signalResolutionEngine;
+  }
+
+  /**
+   * Get active signal workflows
+   */
+  getActiveWorkflows() {
+    return this.signalResolutionEngine.getActiveWorkflows();
+  }
+
+  /**
+   * Get all available signal resolutions
+   */
+  getAllSignalResolutions() {
+    return this.signalResolutionEngine.getAllResolutions();
+  }
+
+  /**
+   * Add custom signal resolution
+   */
+  addSignalResolution(resolution: {
+    signal: string;
+    agent: string;
+    action: string;
+    context: string;
+    priority: number;
+    requirements: string[];
+    expectedOutcome: string;
+    successCriteria: string[];
+  }): void {
+    // Convert to SignalResolution format
+    const signalResolution = {
+      signalType: resolution.signal,
+      category: 'custom',
+      priority: resolution.priority,
+      actions: [{
+        type: 'agent_task' as const,
+        priority: resolution.priority,
+        description: resolution.action,
+        agentType: resolution.agent,
+        context: { customContext: resolution.context, requirements: resolution.requirements }
+      }],
+      successCriteria: resolution.successCriteria
+    };
+    this.signalResolutionEngine.addResolution(signalResolution);
+  }
+
+  /**
+   * Get token monitoring status
+   */
+  getTokenMonitoringStatus() {
+    return this.toolRegistry.executeTool('get_current_token_caps', { component: 'all' });
   }
 }

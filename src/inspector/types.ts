@@ -4,7 +4,10 @@
  * Types for the analysis layer - GPT-5 mini classification and signal preparation.
  */
 
-import { Signal, GuidelineConfig, AgentRole } from '../shared/types';
+import { Signal, GuidelineConfiguration, AgentRole } from '../shared/types';
+
+// Re-export GuidelineConfig for backward compatibility
+export type GuidelineConfig = GuidelineConfiguration;
 
 // Enhanced type definitions for better type safety
 export interface JSONSchema {
@@ -20,6 +23,7 @@ export interface JSONSchema {
   minLength?: number;
   maxLength?: number;
   pattern?: string;
+  [key: string]: unknown; // Index signature to allow additional properties
 }
 
 export interface ContextData {
@@ -52,12 +56,32 @@ export interface SignalClassification {
   deadline: Date;
   dependencies: string[];
   confidence: number;
+  urgency?: 'low' | 'medium' | 'high' | 'critical' | 'urgent';
+  suggestedRole?: string;
+  signal?: string;
+  suggestedActions?: string[];
+  reasoning?: string;
+}
+
+export interface EnhancedSignalClassification extends SignalClassification {
+  signalId: string;
+  complexity: 'low' | 'medium' | 'high' | 'critical';
+  urgency: 'low' | 'medium' | 'high' | 'urgent';
+  primary: AgentRole;
+  context?: string;
+  metadata?: Record<string, unknown>;
+  historicalMatches?: Array<{
+    id: string;
+    confidence: number;
+    timestamp: Date;
+  }>;
 }
 
 export interface Recommendation {
   type: string;
   priority: string;
   description: string;
+  reasoning?: string;  // Added reasoning property
   estimatedTime: number;
   prerequisites: string[];
 }
@@ -69,6 +93,7 @@ export interface PreparedContext {
   size: number;
   compressed: boolean;
   tokenCount: number;
+  summary?: string;
 }
 
 export interface InspectorPayload {
@@ -80,6 +105,7 @@ export interface InspectorPayload {
   timestamp: Date;
   size: number;
   compressed: boolean;
+  estimatedTokens?: number;
 }
 
 export interface SignalProcessor {
@@ -207,6 +233,7 @@ export interface InspectorError {
   retryCount: number;
   recoverable: boolean;
 }
+
 
 export interface ProcessingContext {
   signalId: string;
@@ -390,6 +417,7 @@ export interface PayloadSection {
   maxSize: number; // tokens
   priority: number;
   content?: ContextData;
+  metadata?: Record<string, unknown>;
 }
 
 export interface InspectorMetrics {
@@ -539,4 +567,70 @@ export interface InspectorBatchCompletedEvent {
   batchId: string;
   results: DetailedInspectorResult[];
   summary: EventData;
+}
+
+// Missing types that are being imported
+export interface ConfidenceCalibration {
+  baseline: number;
+  adjustment: number;
+  confidence: number;
+  timestamp: Date;
+}
+
+export interface ClassificationFeatures {
+  category: string;
+  urgency: string;
+  complexity: string;
+  agentRole: string;
+  priority: number;
+  context: string;
+}
+
+export interface EnsembleResult {
+  classifications: SignalClassification[];
+  confidence: number;
+  consensus: number;
+  timestamp: Date;
+}
+
+export interface TokenAnalysis {
+  input: number;
+  output: number;
+  total: number;
+  estimated: number;
+  efficiency: number;
+}
+
+// Helper function for creating test signals
+export function createTestSignal(overrides: Partial<Signal> = {}): Signal {
+  return {
+    id: `test-signal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    type: 'test',
+    source: 'test',
+    timestamp: new Date(),
+    data: {},
+    priority: 5,
+    resolved: false,
+    relatedSignals: [],
+    ...overrides
+  };
+}
+
+// Missing interface that's being imported
+export interface InspectorAnalysisRequest {
+  id: string;
+  signal: Signal;
+  context: ProcessingContext;
+  guidelines: GuidelineConfig[];
+  requirements: ClassificationRequirements;
+}
+
+// Additional types for enhanced signal classification
+export interface SignalFeatures {
+  type: string;
+  priority: number;
+  source: string;
+  timestamp: Date;
+  data: unknown;
+  metadata?: Record<string, unknown>;
 }

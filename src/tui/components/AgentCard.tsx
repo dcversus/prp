@@ -5,12 +5,10 @@
  * implements the exact format from the PRP specification
  */
 
-import React from 'react';
 import { Box, Text } from 'ink';
-import { AgentCard as AgentCardType, TUIConfig } from '../types/TUIConfig.js';
 import { MusicIcon } from './MusicIcon.js';
-import { RoboRolePill } from './RoboRolePill.js';
 import { getRoleColors } from '../config/TUIConfig.js';
+import type { AgentCard as AgentCardType, TUIConfig } from '../../shared/types/TUIConfig.js';
 
 interface AgentCardProps {
   agent: AgentCardType;
@@ -18,7 +16,7 @@ interface AgentCardProps {
   maxWidth: number;
 }
 
-export function AgentCard({ agent, config, maxWidth }: AgentCardProps) {
+export function AgentCard({ agent, config }: AgentCardProps) {
   const roleColors = getRoleColors(agent.role, config.colors);
 
   return (
@@ -41,7 +39,7 @@ export function AgentCard({ agent, config, maxWidth }: AgentCardProps) {
       </Box>
 
       {/* Output lines */}
-      {agent.output.map((line, index) => (
+      {agent.output.map((line: string, index: number) => (
         <Box key={index}>
           <Text color={config.colors.muted}>
             last ▸{' '}

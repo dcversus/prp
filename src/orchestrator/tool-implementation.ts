@@ -9,7 +9,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import fetch from 'node-fetch';
+// Using native fetch (Node.js 18+)
 import { ToolUsage } from './types';
 
 interface ToolDefinition {
@@ -194,12 +194,18 @@ export class ToolImplementation {
     body: string;
   }> {
     try {
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), options.timeout || 30000);
+
       const response = await fetch(url, {
         method: options.method || 'GET',
         headers: options.headers,
         body: options.body,
-        timeout: options.timeout || 30000
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       const headers: Record<string, string> = {};
       response.headers.forEach((value: string, key: string) => {
@@ -314,24 +320,24 @@ export class ToolImplementation {
 
       // If toolName is specified, use executeTool
       if (params.toolName) {
-        return await this.executeTool(params.toolName, params);
+        return this.executeTool(params.toolName, params);
       }
 
       // Otherwise, try to infer the tool from parameters
       if (params['filePath']) {
-        return await this.readFile(params['filePath'] as string);
+        return this.readFile(params['filePath'] as string);
       }
       if (params['content'] && params['filePath']) {
-        return await this.writeFile(params['filePath'] as string, params['content'] as string);
+        return this.writeFile(params['filePath'] as string, params['content'] as string);
       }
       if (params['directoryPath']) {
-        return await this.listFiles(params['directoryPath'] as string, params['pattern'] as string);
+        return this.listFiles(params['directoryPath'] as string, params['pattern'] as string);
       }
       if (params['command']) {
-        return await this.executeCommand(params['command'] as string, params['workingDir'] as string);
+        return this.executeCommand(params['command'] as string, params['workingDir'] as string);
       }
       if (params['url']) {
-        return await this.makeRequest(
+        return this.makeRequest(
           params['url'] as string,
           {
             method: params['method'] as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH',

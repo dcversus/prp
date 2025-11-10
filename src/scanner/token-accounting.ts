@@ -4,6 +4,8 @@
  * Comprehensive token usage tracking, limits monitoring, and alerting.
  */
 
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+
 import {
   TokenAccountingEntry,
   TokenAccountingReport,
@@ -23,8 +25,20 @@ import {
   ConfigUtils
 } from '../shared';
 import { configManager } from '../shared/config';
+import { EventEmitter } from 'events';
 
 const logger = createLayerLogger('scanner');
+
+export interface TokenUsageEvent {
+  agentId: string;
+  tokensUsed: number;
+  limit: number | undefined;
+  remaining: number;
+  timestamp: Date;
+  operation: string;
+  model: string;
+  cost: number;
+}
 
 export interface TokenLimitStatus {
   agentId: string;
@@ -56,6 +70,7 @@ export class TokenAccountingManager {
   private entries: Map<string, TokenAccountingEntry> = new Map();
   private alerts: Map<string, TokenAlert> = new Map();
   private persistPath: string;
+  private eventEmitter: EventEmitter = new EventEmitter();
 
   constructor(_config: ScannerConfig, persistPath: string = '.prp/token-accounting.json') {
     this.persistPath = persistPath;
@@ -95,7 +110,7 @@ export class TokenAccountingManager {
       metadata: {
         ...metadata,
         scanId: metadata.scanId,
-        worktree: metadata.worktree,
+        worktree: metadata.worktree
       }
     };
 
@@ -107,17 +122,22 @@ export class TokenAccountingManager {
     });
 
     // Check for alerts
-    this.checkTokenLimits(agentId, entry);
+    this.checkTokenLimits(agentId);
 
-    // Event publishing would be handled by the event system
-    // eventBus.publishToChannel('scanner', {
-    //   id: entry.id,
-    //   type: 'token_usage_recorded',
-    //   timestamp: entry.timestamp,
-    //   source: 'scanner',
-    //   data: entry,
-    //   metadata: entry.metadata
-    // });
+    // Emit token usage event
+    const limit = this.getAgentDailyLimit(agentId);
+    const currentUsage = this.getCurrentUsage(agentId);
+
+    this.eventEmitter.emit('tokenUsage', {
+      agentId,
+      tokensUsed: totalTokens,
+      limit,
+      remaining: limit - currentUsage,
+      timestamp: new Date(),
+      operation,
+      model,
+      cost
+    } as TokenUsageEvent);
 
     // Persist data periodically
     if (this.entries.size % 10 === 0) {
@@ -154,8 +174,8 @@ export class TokenAccountingManager {
         startTime = TimeUtils.daysAgo(30);
         break;
       case 'custom':
-        startTime = customStart || TimeUtils.daysAgo(1);
-        endTime = customEnd || now;
+        startTime = customStart ?? TimeUtils.daysAgo(1);
+        endTime = customEnd ?? now;
         break;
     }
 
@@ -198,12 +218,29 @@ export class TokenAccountingManager {
       operations: dailyUsage.operations
     };
 
-    const tokenLimits = (agentConfig as any).tokenLimits || {};
+    // Extract token limits from AgentConfig.limits and create a proper Record<string, unknown>
+    const agentLimitsRecord: Record<string, unknown> = {
+      maxTokensPerRequest: agentConfig.limits?.maxTokensPerRequest ?? 0,
+      maxRequestsPerHour: agentConfig.limits?.maxRequestsPerHour ?? 0,
+      maxRequestsPerDay: agentConfig.limits?.maxRequestsPerDay ?? 0,
+      maxCostPerDay: agentConfig.limits?.maxCostPerDay ?? 0,
+      maxExecutionTime: agentConfig.limits?.maxExecutionTime ?? 0,
+      maxMemoryUsage: agentConfig.limits?.maxMemoryUsage ?? 0,
+      maxConcurrentTasks: agentConfig.limits?.maxConcurrentTasks ?? 0,
+      cooldownPeriod: agentConfig.limits?.cooldownPeriod ?? 0
+    };
+
+    // Extract additional properties if they exist in configuration
+    if (agentConfig.configuration && typeof agentConfig.configuration === 'object') {
+      Object.assign(agentLimitsRecord, agentConfig.configuration);
+    }
+
+    const tokenLimits = agentLimitsRecord as Record<string, number>;
     const limits = {
-      daily: tokenLimits.daily || 0,
-      weekly: tokenLimits.weekly || 0,
-      monthly: tokenLimits.monthly || 0,
-      maxPrice: tokenLimits.maxPrice || 0
+      daily: tokenLimits.daily ?? tokenLimits.maxRequestsPerDay ?? 0,
+      weekly: tokenLimits.weekly ?? 0,
+      monthly: tokenLimits.monthly ?? 0,
+      maxPrice: tokenLimits.maxPrice ?? tokenLimits.maxCostPerDay ?? 0
     };
 
     const percentages = {
@@ -260,8 +297,8 @@ export class TokenAccountingManager {
         startTime = TimeUtils.daysAgo(30);
         break;
       case 'custom':
-        startTime = customStart || TimeUtils.daysAgo(1);
-        endTime = customEnd || now;
+        startTime = customStart ?? TimeUtils.daysAgo(1);
+        endTime = customEnd ?? now;
         break;
     }
 
@@ -280,9 +317,7 @@ export class TokenAccountingManager {
     // Breakdown by agent
     const byAgent: Record<string, AgentBreakdown> = {};
     allEntries.forEach(entry => {
-      if (!byAgent[entry.agentId]) {
-        byAgent[entry.agentId] = { tokens: 0, cost: 0, operations: 0, percentage: 0 };
-      }
+      byAgent[entry.agentId] ??= { tokens: 0, cost: 0, operations: 0, percentage: 0 };
       const agentStats = byAgent[entry.agentId];
       if (agentStats) {
         agentStats.tokens += entry.totalTokens;
@@ -302,9 +337,7 @@ export class TokenAccountingManager {
     // Breakdown by layer
     const byLayer: Record<string, LayerBreakdown> = {};
     allEntries.forEach(entry => {
-      if (!byLayer[entry.layer]) {
-        byLayer[entry.layer] = { tokens: 0, cost: 0, operations: 0, percentage: 0 };
-      }
+      byLayer[entry.layer] ??= { tokens: 0, cost: 0, operations: 0, percentage: 0 };
       const layerStats = byLayer[entry.layer];
       if (layerStats) {
         layerStats.tokens += entry.totalTokens;
@@ -323,9 +356,7 @@ export class TokenAccountingManager {
     // Breakdown by model
     const byModel: Record<string, ModelBreakdown> = {};
     allEntries.forEach(entry => {
-      if (!byModel[entry.model]) {
-        byModel[entry.model] = { tokens: 0, cost: 0, operations: 0, percentage: 0 };
-      }
+      byModel[entry.model] ??= { tokens: 0, cost: 0, operations: 0, percentage: 0 };
       const modelStats = byModel[entry.model];
       if (modelStats) {
         modelStats.tokens += entry.totalTokens;
@@ -347,12 +378,10 @@ export class TokenAccountingManager {
 
     allEntries.forEach(entry => {
       const hourKey = new Date(entry.timestamp).toISOString().substring(0, 13); // YYYY-MM-DDTHH
-      if (!timeBuckets.has(hourKey)) {
-        timeBuckets.set(hourKey, { tokens: 0, cost: 0 });
-      }
-      const bucket = timeBuckets.get(hourKey)!;
+      const bucket = timeBuckets.get(hourKey) ?? { tokens: 0, cost: 0 };
       bucket.tokens += entry.totalTokens;
       bucket.cost += entry.cost;
+      timeBuckets.set(hourKey, bucket);
     });
 
     timeBuckets.forEach((data, hourKey) => {
@@ -396,9 +425,11 @@ export class TokenAccountingManager {
   /**
    * Check token limits and create alerts if needed
    */
-  private checkTokenLimits(agentId: string, _entry: TokenAccountingEntry): void {
+  private checkTokenLimits(agentId: string): void {
     const status = this.getLimitStatus(agentId);
-    if (!status) return;
+    if (!status) {
+      return;
+    }
 
     const { percentages, limits } = status;
 
@@ -492,7 +523,7 @@ export class TokenAccountingManager {
       message,
       current,
       threshold: {
-        tokens: limits.daily || limits.weekly || limits.monthly,
+        tokens: limits.daily ?? limits.weekly ?? limits.monthly,
         cost: limits.maxPrice,
         percentage: Math.max(percentages.daily, percentages.weekly, percentages.monthly, percentages.price)
       },
@@ -525,7 +556,9 @@ export class TokenAccountingManager {
    */
   resolveAlert(alertId: string): boolean {
     const alert = this.alerts.get(alertId);
-    if (!alert) return false;
+    if (!alert) {
+      return false;
+    }
 
     alert.resolved = true;
     alert.resolvedAt = TimeUtils.now();
@@ -566,10 +599,10 @@ export class TokenAccountingManager {
       'claude-3-sonnet': 0.015,
       'claude-3-haiku': 0.00025,
       'gemini-pro': 0.00025,
-      'gemini-pro-vision': 0.0025,
+      'gemini-pro-vision': 0.0025
     };
 
-    const costPerToken = (costPer1kTokens[model] || 0.01) / 1000;
+    const costPerToken = (costPer1kTokens[model] ?? 0.01) / 1000;
     return tokens * costPerToken;
   }
 
@@ -631,10 +664,14 @@ export class TokenAccountingManager {
   private async loadPersistedData(): Promise<void> {
     try {
       const exists = await FileUtils.pathExists(this.persistPath);
-      if (!exists) return;
+      if (!exists) {
+        return;
+      }
 
       const data = await ConfigUtils.loadConfigFile<PersistedAccountingData>(this.persistPath);
-      if (!data) return;
+      if (!data) {
+        return;
+      }
 
       // Load entries (only recent ones to avoid memory issues)
       const cutoffDate = TimeUtils.daysAgo(30); // Keep only last 30 days
@@ -699,7 +736,7 @@ export class TokenAccountingManager {
     agentsTracked: number;
     oldestEntry: Date | null;
     newestEntry: Date | null;
-  } {
+    } {
     const entries = Array.from(this.entries.values());
     const activeAlerts = this.getActiveAlerts();
     const uniqueAgents = new Set(entries.map(e => e.agentId));
@@ -711,7 +748,61 @@ export class TokenAccountingManager {
       totalCost: entries.reduce((sum, e) => sum + e.cost, 0),
       agentsTracked: uniqueAgents.size,
       oldestEntry: entries.length > 0 ? new Date(Math.min(...entries.map(e => e.timestamp.getTime()))) : null,
-      newestEntry: entries.length > 0 ? new Date(Math.max(...entries.map(e => e.timestamp.getTime()))) : null,
+      newestEntry: entries.length > 0 ? new Date(Math.max(...entries.map(e => e.timestamp.getTime()))) : null
     };
+  }
+
+  /**
+   * Get agent's daily token limit
+   */
+  private getAgentDailyLimit(agentId: string): number {
+    const config = configManager.get();
+    const agentConfig = config.agents.find(a => a.id === agentId);
+
+    if (!agentConfig) {
+      return 0;
+    }
+
+    // Extract token limits from AgentConfig.limits and create a proper Record<string, unknown>
+    const agentLimitsRecord: Record<string, unknown> = {
+      maxTokensPerRequest: agentConfig.limits?.maxTokensPerRequest ?? 0,
+      maxRequestsPerHour: agentConfig.limits?.maxRequestsPerHour ?? 0,
+      maxRequestsPerDay: agentConfig.limits?.maxRequestsPerDay ?? 0,
+      maxCostPerDay: agentConfig.limits?.maxCostPerDay ?? 0,
+      maxExecutionTime: agentConfig.limits?.maxExecutionTime ?? 0,
+      maxMemoryUsage: agentConfig.limits?.maxMemoryUsage ?? 0,
+      maxConcurrentTasks: agentConfig.limits?.maxConcurrentTasks ?? 0,
+      cooldownPeriod: agentConfig.limits?.cooldownPeriod ?? 0
+    };
+
+    // Extract additional properties if they exist in configuration
+    if (agentConfig.configuration && typeof agentConfig.configuration === 'object') {
+      Object.assign(agentLimitsRecord, agentConfig.configuration);
+    }
+
+    const tokenLimits = agentLimitsRecord as Record<string, number>;
+    return tokenLimits.daily ?? tokenLimits.maxRequestsPerDay ?? 0;
+  }
+
+  /**
+   * Get current token usage for an agent (today)
+   */
+  private getCurrentUsage(agentId: string): number {
+    const dailyUsage = this.getUsage(agentId, 'day');
+    return dailyUsage.tokens;
+  }
+
+  /**
+   * Subscribe to token usage events
+   */
+  public onTokenUsage(callback: (data: TokenUsageEvent) => void): void {
+    this.eventEmitter.on('tokenUsage', callback);
+  }
+
+  /**
+   * Unsubscribe from token usage events
+   */
+  public offTokenUsage(callback: (data: TokenUsageEvent) => void): void {
+    this.eventEmitter.off('tokenUsage', callback);
   }
 }

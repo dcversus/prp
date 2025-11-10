@@ -1,3 +1,5 @@
+/* global window, document */
+
 import { useState, useEffect, useRef } from 'react';
 
 // @ts-check

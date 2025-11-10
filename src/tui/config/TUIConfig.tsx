@@ -5,7 +5,9 @@
  * with color schemes, fonts, layouts, and animation settings
  */
 
-import type { TUIConfig } from '../types/TUIConfig.js';
+
+// Re-export TUIConfig type for backward compatibility
+export type { TUIConfig };
 
 /**
  * Color scheme definitions for different roles and themes
@@ -163,7 +165,7 @@ const DEFAULT_CONFIG = {
  * Create TUI configuration with defaults and overrides
  */
 export function createTUIConfig(overrides: Partial<TUIConfig> = {}): TUIConfig {
-  const theme = overrides.theme || DEFAULT_CONFIG.theme;
+  const theme = overrides.theme ?? DEFAULT_CONFIG.theme;
   const colors = COLOR_SCHEMES[theme];
 
   return {
@@ -193,11 +195,14 @@ export function createTUIConfig(overrides: Partial<TUIConfig> = {}): TUIConfig {
 /**
  * Get role color configuration
  */
-export function getRoleColors(role: string, colors: typeof COLOR_SCHEMES.dark) {
-  const roleKey = role.replace(/-/g, '_') as keyof typeof colors;
+export function getRoleColors(role: string, colors: ColorScheme) {
+  const roleKey = role.replace(/-/g, '_');
   return {
-    active: colors[`${roleKey}` as keyof typeof colors] || colors.orchestrator,
+     
+    active: colors[roleKey as keyof typeof colors] || colors.orchestrator,
+     
     dim: colors[`${roleKey}_dim` as keyof typeof colors] || colors.orchestrator_dim,
+     
     bg: colors[`${roleKey}_bg` as keyof typeof colors] || colors.orchestrator_bg
   };
 }
@@ -208,7 +213,7 @@ export function getRoleColors(role: string, colors: typeof COLOR_SCHEMES.dark) {
 export function getSignalColor(
   code: string,
   state: 'placeholder' | 'active' | 'progress' | 'resolved',
-  colors: typeof COLOR_SCHEMES.dark
+  colors: ColorScheme
 ): string {
   if (state === 'placeholder') {
     return colors.signal_placeholder;
@@ -245,7 +250,7 @@ export function getSignalColor(
       '[dt]': 'robo-ux-ui'
     };
 
-    const role = signalRoleMap[code] || 'orchestrator';
+    const role = signalRoleMap[code] ?? 'orchestrator';
     return getRoleColors(role, colors).active;
   }
 

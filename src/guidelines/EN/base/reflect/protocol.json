@@ -1,0 +1,203 @@
+{
+  "id": "reflect-protocol",
+  "name": "Reflection Protocol",
+  "description": "Comprehensive reflection workflow for post-release analysis and continuous improvement",
+  "version": "1.0.0",
+  "category": "reflection",
+  "priority": "critical",
+  "enabled": true,
+  "protocol": {
+    "id": "post-release-reflection-workflow",
+    "description": "Complete reflection process including lessons learned, performance analysis, and improvement planning",
+    "steps": [
+      {
+        "id": "release-analysis",
+        "name": "Release Analysis",
+        "description": "Analyze release outcomes and performance metrics",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["release-metrics", "performance-analysis", "outcome-assessment"],
+        "nextSteps": ["lessons-learned"]
+      },
+      {
+        "id": "lessons-learned",
+        "name": "Lessons Learned Collection",
+        "description": "Collect and analyze lessons learned from the release",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["lessons-learned", "success-factors", "improvement-opportunities"],
+        "nextSteps": ["stakeholder-feedback"]
+      },
+      {
+        "id": "stakeholder-feedback",
+        "name": "Stakeholder Feedback Analysis",
+        "description": "Collect and analyze feedback from all stakeholders",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["feedback-summary", "satisfaction-analysis", "concerns-identified"],
+        "nextSteps": ["process-improvement"]
+      },
+      {
+        "id": "process-improvement",
+        "name": "Process Improvement Analysis",
+        "description": "Analyze and identify process improvements",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["process-gaps", "improvement-recommendations", "action-items"],
+        "nextSteps": ["performance-metrics-analysis"]
+      },
+      {
+        "id": "performance-metrics-analysis",
+        "name": "Performance Metrics Analysis",
+        "description": "Analyze performance metrics and success indicators",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["metrics-analysis", "success-indicators", "performance-gaps"],
+        "nextSteps": ["goal-achievement-assessment"]
+      },
+      {
+        "id": "goal-achievement-assessment",
+        "name": "Goal Achievement Assessment",
+        "description": "Assess achievement of original PRP goals and success criteria",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["goal-achievement", "success-criteria-met", "gap-analysis"],
+        "nextSteps": ["continuous-improvement-planning"]
+      },
+      {
+        "id": "continuous-improvement-planning",
+        "name": "Continuous Improvement Planning",
+        "description": "Create actionable improvement plans based on reflection",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["improvement-plan", "action-items", "success-metrics"],
+        "nextSteps": ["reflection-documentation"]
+      },
+      {
+        "id": "reflection-documentation",
+        "name": "Reflection Documentation",
+        "description": "Document reflection outcomes and create knowledge artifacts",
+        "type": "action_execution",
+        "required": true,
+        "outputs": ["reflection-report", "knowledge-base-updates", "best-practices"],
+        "nextSteps": []
+      }
+    ],
+    "decisionPoints": [
+      {
+        "id": "success-assessment",
+        "question": "How successful was the release and what is the overall assessment?",
+        "options": [
+          {
+            "id": "highly-successful",
+            "label": "Highly successful - exceeded expectations",
+            "action": "document-success-factors",
+            "nextSteps": ["process-improvement"]
+          },
+          {
+            "id": "moderately-successful",
+            "label": "Moderately successful - met expectations with issues",
+            "action": "document-improvements-needed",
+            "nextSteps": ["process-improvement"]
+          },
+          {
+            "id": "needs-improvement",
+            "label": "Needs improvement - significant issues identified",
+            "action": "document-critical-improvements",
+            "nextSteps": []
+          }
+        ],
+        "requiresInput": true
+      },
+      {
+        "id": "improvement-priorities",
+        "question": "What are the highest priority improvements needed?",
+        "options": [
+          {
+            "id": "process-improvements",
+            "label": "Focus on process improvements",
+            "action": "prioritize-process-changes",
+            "nextSteps": ["continuous-improvement-planning"]
+          },
+          {
+            "id": "technical-improvements",
+            "label": "Focus on technical improvements",
+            "action": "prioritize-technical-changes",
+            "nextSteps": ["continuous-improvement-planning"]
+          },
+          {
+            "id": "comprehensive-improvements",
+            "label": "Comprehensive improvements across all areas",
+            "action": "prioritize-all-improvements",
+            "nextSteps": ["continuous-improvement-planning"]
+          }
+        ],
+        "requiresInput": true
+      }
+    ],
+    "successCriteria": [
+      "Release outcomes thoroughly analyzed",
+      "Lessons learned identified and documented",
+      "Stakeholder feedback collected and analyzed",
+      "Process improvements identified and prioritized",
+      "Performance metrics analyzed and trends identified",
+      "Original goals assessed against actual outcomes",
+      "Actionable improvement plans created",
+      "Reflection documented for future reference"
+    ],
+    "fallbackActions": [
+      "Conduct additional analysis for unclear outcomes",
+      "Gather more stakeholder feedback if needed",
+      "Extend reflection period for complex releases",
+      "Create follow-up reviews for ongoing improvements"
+    ]
+  },
+  "requirements": [
+    {
+      "type": "data",
+      "name": "Release Metrics Data",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Release metrics and monitoring data required"
+    },
+    {
+      "type": "service",
+      "name": "Feedback Collection",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Stakeholder feedback collection mechanisms required"
+    },
+    {
+      "type": "knowledge",
+      "name": "Process Analysis Expertise",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Process analysis and improvement expertise required"
+    }
+  ],
+  "prompts": {
+    "inspector": "You are a Reflection Inspector. Your role is to conduct comprehensive post-release analysis and reflection.\n\nTASK: Analyze release outcomes and identify lessons learned\n\nCONTEXT:\n{{context}}\n\nRELEASE DETAILS:\n{{releaseDetails}}\n\nORIGINAL PRP GOALS:\n{{originalGoals}}\n\nREFLECTION ANALYSIS FRAMEWORK:\n1. **Release Outcome Analysis**: What were the results?\n2. **Performance Assessment**: How did we perform against metrics?\n3. **Lessons Learned**: What did we learn?\n4. **Stakeholder Feedback**: What are stakeholders saying?\n5. **Process Assessment**: How well did our processes work?\n6. **Improvement Opportunities**: What can we improve?\n\nRELEASE ANALYSIS AREAS:\n- **Success Metrics**: Did we achieve our success criteria?\n- **Performance Metrics**: How did the system perform?\n- **User Adoption**: How well was the release adopted?\n- **Issues Encountered**: What problems arose?\n- **Response Times**: How quickly did we respond to issues?\n- **Stakeholder Satisfaction**: Are stakeholders satisfied?\n\nLESSONS LEARNED ANALYSIS:\n- **Success Factors**: What contributed to success?\n- **Failure Factors**: What caused problems?\n- **Process Effectiveness**: How well did our processes work?\n- **Team Performance**: How did the team perform?\n- **Tool Effectiveness**: How effective were our tools?\n- **Communication**: How well did we communicate?\n\nPROCESS IMPROVEMENT ANALYSIS:\n- **Planning Process**: How effective was our planning?\n- **Development Process**: How well did development work?\n- **Testing Process**: How effective was our testing?\n- **Release Process**: How well did the release process work?\n- **Monitoring Process**: How effective was our monitoring?\n- **Communication Process**: How well did we communicate?\n\nRESPOND WITH STRUCTURED JSON:\n{\n  \"release_outcome_analysis\": {\n    \"success_criteria_achievement\": {\n      \"criteria_met\": string[],\n      \"criteria_partially_met\": string[],\n      \"criteria_not_met\": string[],\n      \"achievement_percentage\": number (0-100)\n    },\n    \"performance_metrics_analysis\": {\n      \"system_performance\": {\n        \"response_times\": string,\n        \"error_rates\": string,\n        \"resource_usage\": string,\n        \"uptime_percentage\": number\n      },\n      \"business_metrics\": {\n        \"user_adoption_rate\": number,\n        \"feature_usage\": string,\n        \"user_satisfaction_score\": number,\n        \"business_impact\": string\n      },\n      \"operational_metrics\": {\n        \"deployment_time\": string,\n        \"rollback_time\": string,\n        \"issue_resolution_time\": string,\n        \"mean_time_to_recovery\": string\n      }\n    },\n    \"issues_analysis\": {\n      \"critical_issues_encountered\": string[],\n      \"minor_issues_encountered\": string[],\n      \"unexpected_issues\": string[],\n      \"issue_resolution_effectiveness\": string,\n      \"preventable_issues\": string[]\n    }\n  },\n  \"lessons_learned_analysis\": {\n    \"success_factors\": [\n      {\n        \"factor\": string,\n        \"impact\": \"high\" | \"medium\" | \"low\",\n        \"description\": string,\n        \"repeatability\": string\n      }\n    ],\n    \"failure_factors\": [\n      {\n        \"factor\": string,\n        \"impact\": \"high\" | \"medium\" | \"low\",\n        \"description\": string,\n        \"preventability\": string\n      }\n    ],\n    \"process_assessment\": {\n      \"planning_effectiveness\": number (0-100),\n      \"development_effectiveness\": number (0-100),\n      \"testing_effectiveness\": number (0-100),\n      \"release_effectiveness\": number (0-100),\n      \"monitoring_effectiveness\": number (0-100),\n      \"communication_effectiveness\": number (0-100)\n    },\n    \"team_performance_assessment\": {\n      \"collaboration_quality\": string,\n      \"skill_utilization\": string,\n      \"communication_effectiveness\": string,\n      \"decision_making_quality\": string,\n      \"overall_team_performance\": number (0-100)\n    }\n  },\n  \"stakeholder_feedback_analysis\": {\n    \"user_feedback\": {\n      \"positive_feedback\": string[],\n      \"negative_feedback\": string[],\n      \"suggestions\": string[],\n      \"overall_satisfaction\": number (0-100)\n    },\n    \"business_stakeholder_feedback\": {\n      \"business_goals_met\": boolean,\n      \"roi_assessment\": string,\n      \"strategic_alignment\": string,\n      \"business_concerns\": string[]\n    },\n    \"technical_stakeholder_feedback\": {\n      \"technical_quality_assessment\": string,\n      \"maintenance_concerns\": string[],\n     scalability_assessment\": string,\n      \"technical_debt_impact\": string\n    }\n  },\n  \"process_improvement_analysis\": {\n    \"process_gaps_identified\": [\n      {\n        \"process_area\": string,\n        \"gap_description\": string,\n        \"impact_level\": \"high\" | \"medium\" | \"low\",\n        \"improvement_priority\": \"high\" | \"medium\" | \"low\"\n      }\n    ],\n    \"improvement_recommendations\": [\n      {\n        \"recommendation\": string,\n        \"benefits\": string[],\n        \"implementation_effort\": string,\n        \"expected_impact\": string\n      }\n    ],\n    \"best_practices_identified\": string[],\n    \"anti_patterns_identified\": string[]\n  },\n  \"continuous_improvement_plan\": {\n    \"immediate_actions\": [\n      {\n        \"action\": string,\n        \"owner\": string,\n        \"timeline\": string,\n        \"success_criteria\": string\n      }\n    ],\n    \"short_term_improvements\": [\n      {\n        \"improvement\": string,\n        \"timeline\": string,\n        \"resources_needed\": string,\n        \"expected_outcome\": string\n      }\n    ],\n    \"long_term_strategic_changes\": [\n      {\n        \"strategic_change\": string,\n        \"rationale\": string,\n        \"implementation_plan\": string,\n        \"success_metrics\": string[]\n      }\n    ],\n    \"success_metrics_for_improvements\": string[]\n  },\n  \"reflection_summary\": {\n    \"overall_success_assessment\": string,\n    \"key_achievements\": string[],\n    \"major_challenges\": string[],\n    \"critical_learnings\": string[],\n    \"next_phase_priorities\": string[],\n    \"confidence_in_future_releases\": number (0-100)\n  }\n}",
+    "orchestrator": "You are a Reflection Orchestrator. Based on the Inspector's comprehensive analysis, guide improvement planning and knowledge capture.\n\nINSPECTOR REFLECTION ANALYSIS:\n{{inspectorAnalysis}}\n\nCONTEXT:\n{{context}}\n\nYOUR ROLE:\n1. **Synthesize Learning**: Consolidate all insights and learnings\n2. **Prioritize Improvements**: Determine highest priority improvements\n3. **Create Action Plans**: Develop actionable improvement plans\n4. **Drive Continuous Improvement**: Ensure improvements are implemented\n\nSYNTHESIS CRITERIA:\n- **Success Assessment**: Overall release success evaluation\n- **Learning Consolidation**: Key insights and lessons learned\n- **Impact Assessment**: Impact on business and users\n- **Process Effectiveness**: Overall process performance evaluation\n\nIMPROVEMENT PRIORITIZATION:\n- **Impact vs Effort**: High impact, low effort prioritized\n- **Criticality**: Critical fixes prioritized over enhancements\n- **Dependencies**: Address dependency constraints\n- **Resource Availability**: Consider resource constraints\n- **Strategic Alignment**: Align with strategic objectives\n\nACTION PLANNING:\n- **Specific Actions**: Clear, specific, measurable actions\n- **Ownership**: Clear ownership and accountability\n- **Timeline**: Realistic timelines for implementation\n- **Success Criteria**: Clear criteria for success\n- **Follow-up**: Regular follow-up and monitoring\n\nKNOWLEDGE MANAGEMENT:\n- **Documentation**: Document all learnings and insights\n- **Knowledge Base**: Update knowledge base with lessons learned\n- **Best Practices**: Capture and share best practices\n- **Training**: Develop training based on learnings\n\nEXECUTE ACTIONS:\n1. Review comprehensive reflection analysis\n2. Synthesize key insights and learnings\n3. Prioritize improvements based on impact and feasibility\n4. Create actionable improvement plans\n5. Ensure proper documentation and knowledge capture\n6. Set up monitoring for improvement implementation\n7. Prepare for next release cycle improvements\n\nRESPOND WITH:\n1. Overall release success assessment and synthesis\n2. Prioritized improvement recommendations\n3. Actionable improvement plans with ownership and timelines\n4. Knowledge capture and documentation instructions\n5. Process improvement implementation strategy\n6. Monitoring and follow-up requirements\n7. Recommendations for future release cycles"
+  },
+  "tokenLimits": {
+    "inspector": 40000,
+    "orchestrator": 35000
+  },
+  "tools": [
+    "metrics-analyzer",
+    "feedback-collector",
+    "process-analyzer",
+    "knowledge-base-manager",
+    "improvement-tracker",
+    "documentation-generator",
+    "trend-analyzer"
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "author": "system",
+    "createdAt": "2025-01-09T00:00:00Z",
+    "lastModified": "2025-01-09T00:00:00Z",
+    "tags": ["reflection", "lessons-learned", "continuous-improvement", "process-improvement", "knowledge-management"],
+    "dependencies": []
+  }
+}

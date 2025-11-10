@@ -176,7 +176,7 @@ export function getRoleColorConfig(role: string): Partial<DebugConfig> {
       inspector: '\x1b[38;5;208m',
       orchestrator: '\x1b[38;5;208m',
       guidelines: '\x1b[38;5;140m',
-      agent: roleColors[role] || '\x1b[38;5;147m',
+      agent: roleColors[role] ?? '\x1b[38;5;147m',
       low: '\x1b[38;5;245m',
       medium: '\x1b[38;5;226m',
       high: '\x1b[38;5;196m',

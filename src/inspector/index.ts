@@ -1,67 +1,37 @@
 /**
  * ♫ Inspector Layer for @dcversus/prp
  *
- * LLM-powered signal analysis with 40K token limit management,
- * parallel execution framework, and intelligent context management.
+ * Enhanced Inspector (Critic) system with:
+ * - FIFO processing with cheapest LLM and largest context
+ * - Parallel execution support (default 2 inspectors, configurable)
+ * - 1M token cap with 40K output limits
+ * - Signal classification with priority/confidence scoring
+ * - Dynamic guidelines loading from /src/guidelines/XX/ directories
+ * - Structured output and comprehensive testing
  */
 
-// Export specific types to avoid conflicts
-export type {
-  DetailedInspectorResult as InspectorResult,
-  InspectorError,
-  InspectorConfig,
-  InspectorState,
-  InspectorMetrics,
-  InspectorBatch,
-  SignalClassification,
-  Recommendation,
-  ProcessingContext,
-  InspectorPayload,
-  PreparedContext,
-  ContextData,
-  EventData,
-  SignalProcessor,
-  InspectorEvent,
-  StructuredOutputConfig,
-  InspectorProcessing,
-  ClassificationRequest,
-  ClassificationRequirements,
-  ClassificationRule,
-  PayloadGenerationRequest,
-  PayloadSection,
-  ModelResponse,
-  PromptTemplate,
-  PromptVariable,
-  ValidationRule,
-  CacheEntry,
-  InspectorSignalReceivedEvent,
-  InspectorProcessingStartedEvent,
-  InspectorClassificationCompletedEvent,
-  InspectorPayloadGeneratedEvent,
-  InspectorProcessingCompletedEvent,
-  InspectorProcessingFailedEvent,
-  InspectorBatchCompletedEvent,
-  ActivityEntry,
-  TokenStatusInfo,
-  AgentStatusInfo,
-  SharedNoteInfo,
-  EnvironmentInfo,
-  GuidelineContext,
-  HistoricalData,
-  JSONSchema
-} from './types';
+// Export all types from the types module
+export type * from './types';
 
-export * from './inspector';
+// Core FIFO Inspector Implementation (PRP-000-agents05)
+export { FIFOInspector } from './fifo-inspector';
+export type { FIFOInspectorConfig, InspectorAnalysisResult } from './fifo-inspector';
+
+// Export alias for backward compatibility
+export { FIFOInspector as Inspector } from './fifo-inspector';
+
+// Enhanced Guideline Adapter
+export { EnhancedGuidelineAdapter } from './enhanced-guideline-adapter';
+export type { InspectorGuideline, GuidelineLoadResult } from './enhanced-guideline-adapter';
+
+// Legacy components for compatibility
 export * from './inspector-core';
+export * from './inspector';
+export * from './enhanced-inspector';
 export * from './llm-execution-engine';
+export * from './llm-executor';
 export * from './context-manager';
 export * from './parallel-executor';
 export * from './guideline-adapter';
-
-// Main exports
-export { Inspector } from './inspector';
-export { InspectorCore } from './inspector-core';
-export { LLMExecutionEngine } from './llm-execution-engine';
-export { ContextManager } from './context-manager';
-export { ParallelExecutor } from './parallel-executor';
-export { GuidelineAdapter } from './guideline-adapter';
+export { SignalClassifier } from './signal-classifier';
+export { GuidelinesAdapterV2 } from './guideline-adapter-v2';

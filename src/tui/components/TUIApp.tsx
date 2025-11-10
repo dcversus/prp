@@ -2,23 +2,131 @@
  * ♫ TUI App Component
  *
  * Main application component handling screen routing and global state
+ * Enhanced with PRP-007 signal system integration for real-time updates
  */
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useApp } from 'ink';
-import { TUIConfig, TUIState, TerminalResizeEvent, SignalUpdateEvent, AgentUpdateEvent, HistoryUpdateEvent, IntroCompleteEvent, ScreenType, AgentCard, PRPItem, HistoryItem } from '../types/TUIConfig.js';
+import {
+  SignalEvent,
+  EventBusIntegration
+} from '../../types.js';
+import {
+  TUIConfig,
+  TUIState,
+  TerminalResizeEvent,
+  IntroCompleteEvent,
+  ScreenType,
+  AgentCard,
+  HistoryItem
+} from '../../shared/types/TUIConfig.js';
 import { EventBus } from '../../shared/events.js';
-import { IntroSequence } from './IntroSequence.js';
+import { VideoIntro } from './VideoIntro.js';
 import { OrchestratorScreen } from './screens/OrchestratorScreen.js';
+import { InfoScreen } from './screens/InfoScreen.js';
 import { PRPContextScreen } from './screens/PRPContextScreen.js';
 import { AgentScreen } from './screens/AgentScreen.js';
+import { TokenMetricsScreen } from './screens/TokenMetricsScreen.js';
 import { DebugScreen } from './screens/DebugScreen.js';
 import { Footer } from './Footer.js';
 import { InputBar } from './InputBar.js';
 import { getTerminalLayout } from '../config/TUIConfig.js';
 import { createLayerLogger } from '../../shared/logger.js';
+import { useSignalSubscription } from '../hooks/useSignalSubscription.js';
 
-const logger = createLayerLogger('tui-app');
+const logger = createLayerLogger('tui');
+
+
+function getStatusForSignals(signals: Array<{ state?: string; code?: string }>): string {
+  const activeSignals = signals.filter(s => s.state === 'active' || s.state === 'progress');
+  const highPrioritySignals = signals.filter(s => s.code === '[FF]' || s.code === '[bb]' || s.code === '[ff]');
+
+  if (highPrioritySignals.length > 0) {
+    return 'RUNNING';
+  }
+  if (activeSignals.length > 0) {
+    return 'SPAWNING';
+  }
+  return 'IDLE';
+}
+
+function getStatusIcon(status: string): string {
+  switch (status.toUpperCase()) {
+    case 'SPAWNING': return '♪';
+    case 'RUNNING': return '♬';
+    case 'IDLE': return '♫';
+    case 'ERROR': return '♫';
+    default: return '♫';
+  }
+}
+
+function formatTimeLeft(activeTime?: number): string {
+  if (!activeTime) {
+    return 'T--:--';
+  }
+  const minutes = Math.floor(activeTime / 60);
+  const seconds = Math.floor(activeTime % 60);
+  return `T-${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function formatActiveTime(activeTime?: number): string {
+  if (!activeTime) {
+    return '00:00:00';
+  }
+  const hours = Math.floor(activeTime / 3600);
+  const minutes = Math.floor((activeTime % 3600) / 60);
+  const seconds = Math.floor(activeTime % 60);
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function formatTokenCount(tokens?: number): string {
+  if (!tokens) {
+    return '0';
+  }
+  if (tokens >= 1000) {
+    return `${(tokens / 1000).toFixed(1)}k`;
+  }
+  return tokens.toString();
+}
+
+// Convert EventBus to EventBusIntegration interface
+const eventBusToIntegration = (eventBus: EventBus): EventBusIntegration => ({
+  subscribe: (eventType: string, handler: (event: SignalEvent) => void) => {
+    return eventBus.subscribeToChannel(eventType, (event: unknown) => {
+      // Convert EventBus event to SignalEvent format
+      if (typeof event === 'object' && event !== null && 'type' in event) {
+        const signalEvent = event as SignalEvent;
+        handler(signalEvent);
+      }
+    });
+  },
+  unsubscribe: (subscriptionId: string) => {
+    eventBus.unsubscribe(subscriptionId);
+  },
+  emit: (event: SignalEvent) => {
+    eventBus.emit(event.type, event as unknown as Record<string, unknown>);
+  },
+  getRecentEvents: (count = 10) => {
+    const events = (eventBus.getEventHistory?.())?.slice(-count) ?? [];
+    return events.filter((event): event is SignalEvent =>
+      typeof event === 'object' && event !== null && 'signal' in event
+    );
+  },
+  getEventsByType: (type: string, count = 50) => {
+    const events = (eventBus.getEventHistory?.())?.filter(event =>
+      typeof event === 'object' && event !== null &&
+      (event).type === type
+    ).slice(-count) ?? [];
+    return events.filter((event): event is SignalEvent =>
+      typeof event === 'object' && event !== null && 'signal' in event
+    );
+  },
+  clearHistory: () => {
+    if (eventBus.clearEventHistory) {
+      eventBus.clearEventHistory();
+    }
+  }
+});
 
 interface TUIAppProps {
   config: TUIConfig;
@@ -28,8 +136,25 @@ interface TUIAppProps {
 export function TUIApp({ config, eventBus }: TUIAppProps) {
   const { exit } = useApp();
   const [introComplete, setIntroComplete] = useState(false);
+
+  // Refs for debouncing and race condition prevention
+  const updateTimeoutRef = useRef<NodeJS.Timeout>();
+  const lastUpdateRef = useRef<number>(0);
+
+  // Convert EventBus to integration interface
+  const eventBusIntegration = useMemo(() => eventBusToIntegration(eventBus), [eventBus]);
+
+  // Initialize signal subscription with global filter
+  const signalSubscription = useSignalSubscription(eventBusIntegration, {
+    types: ['agent', 'system', 'scanner', 'inspector', 'orchestrator']
+  }, {
+    historySize: 200,
+    debounceDelay: 50,
+    refreshInterval: 500
+  });
+
   const [state, setState] = useState<TUIState>(() => ({
-    currentScreen: 'orchestrator',
+    currentScreen: 'info',
     debugMode: false,
     introPlaying: config.animations.intro.enabled,
     agents: new Map(),
@@ -43,95 +168,347 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
     terminalLayout: getTerminalLayout(config)
   }));
 
+  // Debounced state update to prevent excessive re-renders
+  const debouncedSetState = useCallback((updater: (prev: TUIState) => TUIState) => {
+    // Clear existing timeout
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+
+    // Debounce updates to 100ms for <100ms latency requirement
+    updateTimeoutRef.current = setTimeout(() => {
+      setState(updater);
+      lastUpdateRef.current = Date.now();
+    }, 100);
+  }, []);
+
   // Calculate terminal layout
   const terminalLayout = useMemo(() => {
     return getTerminalLayout(config);
-  }, [config, state.terminalLayout.columns, state.terminalLayout.rows]);
+  }, [config]);
 
-  // Setup event listeners
+  // Update state with signals from the new signal system
   useEffect(() => {
-    const handleTerminalResize = (event: TerminalResizeEvent) => {
+    if (signalSubscription.signals.length === 0) {
+      return;
+    }
+
+    try {
+      setState(prev => {
+        const newPRPs = new Map(prev.prps);
+        const newAgents = new Map(prev.agents);
+
+        // Process signal events and update TUI state
+        signalSubscription.signals.forEach((signalEvent) => {
+          if (signalEvent.prpId) {
+            // Update PRP with signal
+            const existingPRP = newPRPs.get(signalEvent.prpId);
+            const signals = existingPRP?.signals ?? [];
+
+            // Convert signal event to TUI signal format
+            const tuiSignal = {
+              code: signalEvent.signal,
+              state: signalEvent.state === 'active' ? 'active' : 'resolved',
+              role: signalEvent.source,
+              latest: true
+            };
+
+            // Update signals array
+            const updatedSignals = signals.filter(s => s.code !== tuiSignal.code);
+            updatedSignals.push(tuiSignal);
+
+            const updatedPRP = {
+              name: signalEvent.prpId,
+              status: getStatusForSignals(updatedSignals),
+              role: tuiSignal.role,
+              signals: updatedSignals.slice(-7), // Keep last 7 signals
+              lastUpdate: signalEvent.timestamp
+            };
+
+            newPRPs.set(signalEvent.prpId, updatedPRP);
+          }
+
+          if (signalEvent.agentId) {
+            // Update agent with signal data
+            const existingAgent = newAgents.get(signalEvent.agentId);
+
+            const tuiAgent: AgentCard = {
+              id: signalEvent.agentId,
+              statusIcon: getStatusIcon(signalEvent.state),
+              status: signalEvent.state === 'active' ? 'RUNNING' : 'IDLE',
+              prp: signalEvent.prpId ?? 'unknown-prp',
+              role: signalEvent.source,
+              task: signalEvent.title,
+              timeLeft: formatTimeLeft(signalEvent.metadata?.duration),
+              progress: signalEvent.state === 'active' ? 50 : 100,
+              output: signalEvent.description ? [signalEvent.description] : existingAgent?.output ?? ['Processing...'],
+              tokens: formatTokenCount(signalEvent.data?.tokensUsed as number),
+              active: formatActiveTime(signalEvent.metadata?.duration),
+              lastUpdate: signalEvent.timestamp
+            };
+
+            newAgents.set(signalEvent.agentId, tuiAgent);
+          }
+        });
+
+        // Add signal events to history
+        const historyItems: HistoryItem[] = signalSubscription.signals.slice(-10).map(signal => ({
+          source: signal.type,
+          timestamp: signal.timestamp.toISOString().replace('T', ' ').substring(0, 19),
+          data: signal as unknown as Record<string, unknown>
+        }));
+
+        return {
+          ...prev,
+          prps: newPRPs,
+          agents: newAgents,
+          history: [...prev.history.slice(-50), ...historyItems]
+        };
+      });
+    } catch (error) {
+      logger.error('tui', 'Error processing signal events:', error);
+    }
+  }, [signalSubscription.signals, logger]);
+
+  // Setup real-time EventBus integration
+  useEffect(() => {
+    const handleTerminalResize = (...args: unknown[]) => {
+      const event = args[0] as TerminalResizeEvent;
       setState(prev => ({
         ...prev,
         terminalLayout: getTerminalLayout(config)
       }));
-      logger.debug('resize', 'Terminal resized', event);
+      logger.debug('resize', 'Terminal resized', event as unknown as Record<string, unknown>);
     };
 
-    const handleSignalUpdate = (event: SignalUpdateEvent) => {
-      setState(prev => {
-        const prp = prev.prps.get(event.prpName);
-        if (!prp) return prev;
+    // Legacy signal event handling (kept for compatibility)
+    const handleLegacySignalEvent = (event: { type?: string; data?: Record<string, unknown> }) => {
+      try {
+        if (event.type === 'signal' && event.data) {
+          const signal = event.data;
 
-        const updatedSignals = [...prp.signals];
-        const existingIndex = updatedSignals.findIndex(s => s.code === event.signal.code);
+          // Convert to new signal system format
+          const signalEvent: SignalEvent = {
+            id: `legacy-${Date.now()}`,
+            type: 'system',
+            signal: '[XX]',
+            title: 'Legacy Signal',
+            description: '',
+            timestamp: new Date(),
+            source: 'system',
+            priority: 'medium',
+            state: 'resolved',
+            data: signal
+          };
 
-        if (existingIndex >= 0) {
-          updatedSignals[existingIndex] = event.signal;
-        } else {
-          updatedSignals.push(event.signal);
+          // Emit as new signal format
+          eventBusIntegration.emit(signalEvent);
         }
-
-        const updatedPRP = { ...prp, signals: updatedSignals, lastUpdate: new Date() };
-        const newPRPs = new Map(prev.prps);
-        newPRPs.set(event.prpName, updatedPRP);
-
-        return { ...prev, prps: newPRPs };
-      });
+      } catch (error) {
+        logger.error('tui', 'Error in handleLegacySignalEvent:', error);
+      }
     };
 
-    const handleAgentUpdate = (event: AgentUpdateEvent) => {
-      setState(prev => {
-        const existingAgent = prev.agents.get(event.agentId);
-        const updatedAgent = { ...existingAgent, ...event.update, lastUpdate: new Date() } as AgentCard;
-        const newAgents = new Map(prev.agents);
-        newAgents.set(event.agentId, updatedAgent);
+    // Handle real-time agent events from orchestrator with error handling
+    const handleAgentEvent = (event: { type?: string; data?: Record<string, unknown> }) => {
+      try {
+        if (event.type?.startsWith('agent_') && event.data) {
+          debouncedSetState(prev => {
+            const agentId = `agent-${Date.now()}`;
 
-        return { ...prev, agents: newAgents };
-      });
+            // Convert agent event to TUI agent format
+            const tuiAgent: AgentCard = {
+              id: agentId,
+              statusIcon: '♫',
+              status: 'RUNNING',
+              prp: 'unknown-prp',
+              role: 'robo-developer',
+              task: 'Processing...',
+              timeLeft: 'T--:--',
+              progress: 0,
+              output: ['Initializing...'],
+              tokens: '0',
+              active: '00:00:00',
+              lastUpdate: new Date()
+            };
+
+            const newAgents = new Map(prev.agents);
+            newAgents.set(agentId, tuiAgent);
+
+            return { ...prev, agents: newAgents };
+          });
+        }
+      } catch (error) {
+        logger.error('tui', 'Error in handleAgentEvent:', error);
+      }
     };
 
-    const handleHistoryUpdate = (event: HistoryUpdateEvent) => {
-      setState(prev => ({
-        ...prev,
-        history: [...prev.history.slice(-50), event.item] // Keep last 50 items
-      }));
+    // Handle real-time scanner events with error handling
+    const handleScannerEvent = (event: { type?: string; data?: Record<string, unknown> }) => {
+      try {
+        if (event.type?.startsWith('scanner_') && event.data) {
+  
+          const historyItem: HistoryItem = {
+            source: 'scanner',
+            timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+            data: event.data
+          };
+
+          // Use immediate setState for history (no debouncing needed for real-time logs)
+          setState(prev => ({
+            ...prev,
+            history: [...prev.history.slice(-50), historyItem]
+          }));
+        }
+      } catch (error) {
+        logger.error('tui', 'Error in handleScannerEvent:', error);
+      }
     };
 
-    const handleIntroComplete = (event: IntroCompleteEvent) => {
+    // Handle real-time inspector events with error handling
+    const handleInspectorEvent = (event: { type?: string; data?: Record<string, unknown> }) => {
+      try {
+        if (event.type?.startsWith('inspector_') && event.data) {
+
+          const historyItem: HistoryItem = {
+            source: 'inspector',
+            timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+            data: event.data
+          };
+
+          // Use immediate setState for history (no debouncing needed for real-time logs)
+          setState(prev => ({
+            ...prev,
+            history: [...prev.history.slice(-50), historyItem]
+          }));
+        }
+      } catch (error) {
+        logger.error('tui', 'Error in handleInspectorEvent:', error);
+      }
+    };
+
+    // Handle orchestrator events with error handling and debouncing
+    const handleOrchestratorEvent = (event: { type?: string; data?: Record<string, unknown> }) => {
+      try {
+        if (event.type?.startsWith('orchestrator_') && event.data) {
+          debouncedSetState(prev => ({
+            ...prev,
+            orchestrator: {
+              status: 'RUNNING',
+              prp: 'unknown-prp',
+              signals: prev.orchestrator?.signals ?? [],
+              latestSignalIndex: 0,
+              cotLines: ['Processing...'],
+              toolCall: '',
+              lastUpdate: new Date()
+            }
+          }));
+        }
+      } catch (error) {
+        logger.error('tui', 'Error in handleOrchestratorEvent:', error);
+      }
+    };
+
+    const handleIntroComplete = (...args: unknown[]) => {
+      const event = args[0] as IntroCompleteEvent;
       setIntroComplete(true);
       setState(prev => ({ ...prev, introPlaying: false }));
       logger.info('intro', 'Intro sequence completed', { success: event.success });
     };
 
-    // Subscribe to events
+    // Subscribe to real-time EventBus channels
+    const unsubscribeSignal = eventBus.subscribeToChannel('signals', handleLegacySignalEvent);
+    const unsubscribeAgent = eventBus.subscribeToChannel('agents', handleAgentEvent);
+    const unsubscribeScanner = eventBus.subscribeToChannel('scanner', handleScannerEvent);
+    const unsubscribeInspector = eventBus.subscribeToChannel('inspector', handleInspectorEvent);
+    const unsubscribeOrchestrator = eventBus.subscribeToChannel('orchestrator', handleOrchestratorEvent);
+
+    // Keep keyboard events
     eventBus.on('terminal.resize', handleTerminalResize);
-    eventBus.on('signal.update', handleSignalUpdate);
-    eventBus.on('agent.update', handleAgentUpdate);
-    eventBus.on('history.update', handleHistoryUpdate);
     eventBus.on('intro.complete', handleIntroComplete);
 
     return () => {
+      // Cleanup all subscriptions
+      unsubscribeSignal();
+      unsubscribeAgent();
+      unsubscribeScanner();
+      unsubscribeInspector();
+      unsubscribeOrchestrator();
       eventBus.off('terminal.resize', handleTerminalResize);
-      eventBus.off('signal.update', handleSignalUpdate);
-      eventBus.off('agent.update', handleAgentUpdate);
-      eventBus.off('history.update', handleHistoryUpdate);
       eventBus.off('intro.complete', handleIntroComplete);
-    };
-  }, [config, eventBus]);
 
-  // Setup keyboard input handling
+      // Cleanup debounced updates
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, [config, eventBus, debouncedSetState]);
+
+  // Setup keyboard input handling - PRP spec: o|i|a|1..9
   useEffect(() => {
     const handleKeyPress = (data: Buffer) => {
       const key = data.toString();
 
       switch (key) {
-        case '\t': // Tab
+        // PRP spec tab navigation: o|i|a|1..9
+        case 'o':
+        case 'O':
+          setState(prev => ({ ...prev, currentScreen: 'orchestrator' }));
+          break;
+
+        case 'i':
+        case 'I':
+          setState(prev => ({ ...prev, currentScreen: 'info' }));
+          break;
+
+        case 'a':
+        case 'A':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '1':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '2':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '3':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '4':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '5':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '6':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '7':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '8':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '9':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '\t': // Tab - cycle through main screens
           setState(prev => {
-            const screens: ScreenType[] = ['orchestrator', 'prp-context', 'agent'];
-            const currentIndex = screens.indexOf(prev.currentScreen);
+            const screens: ScreenType[] = ['orchestrator', 'info', 'prp-context', 'agent', 'token-metrics'];
+            const currentScreen = prev.currentScreen;
+            const currentIndex = screens.indexOf(currentScreen);
             const nextScreen = screens[(currentIndex + 1) % screens.length];
-            return { ...prev, currentScreen: nextScreen };
+            return { ...prev, currentScreen: nextScreen as ScreenType };
           });
           break;
 
@@ -149,7 +526,7 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
         case '\u0013': // Ctrl+S
           // Handle submit
           if (state.input.value.trim()) {
-            eventBus.emit('input.submit', { value: state.input.value });
+            eventBus.emit('input.submit', { value: state.input.value } as Record<string, unknown>);
             setState(prev => ({
               ...prev,
               input: { ...prev.input, value: '', isSubmitting: false }
@@ -179,115 +556,41 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
     }));
   }, []);
 
-  // Simulate some initial data for demonstration
+  // Initialize with system startup message
   useEffect(() => {
     if (introComplete) {
-      // Add some sample agents
-      const sampleAgents: AgentCard[] = [
-        {
-          id: 'agent-1',
-          statusIcon: '♬',
-          status: 'RUNNING',
-          prp: 'prp-agents-v05',
-          role: 'robo-aqa',
-          task: 'audit PRP links',
-          timeLeft: 'T–00:09',
-          progress: 35,
-          output: ['integrating cross-links...', 'commit staged: 3 files'],
-          tokens: '18.2k',
-          active: '00:01:43',
-          lastUpdate: new Date()
-        },
-        {
-          id: 'agent-2',
-          statusIcon: '♪',
-          status: 'SPAWNING',
-          prp: 'prp-landing',
-          role: 'robo-developer',
-          task: 'extract sections',
-          timeLeft: 'T–00:25',
-          progress: 12,
-          output: ['npm run build: ok', 'parsing md toc...'],
-          tokens: '4.3k',
-          active: '00:00:28',
-          lastUpdate: new Date()
-        }
-      ];
-
-      const samplePRPs: PRPItem[] = [
-        {
-          name: 'prp-agents-v05',
-          status: 'RUNNING',
-          role: 'robo-aqa',
-          signals: [
-            { code: '[  ]', state: 'placeholder' },
-            { code: '[aA]', state: 'active', role: 'robo-aqa' },
-            { code: '[pr]', state: 'active', role: 'robo-developer' },
-            { code: '[PR]', state: 'active', role: 'robo-aqa', latest: true },
-            { code: '[FF]', state: 'progress' },
-            { code: '[ob]', state: 'active', role: 'robo-developer' }
-          ],
-          lastUpdate: new Date()
-        },
-        {
-          name: 'prp-landing',
-          status: 'SPAWNING',
-          role: 'robo-developer',
-          signals: [
-            { code: '[  ]', state: 'placeholder' },
-            { code: '[  ]', state: 'placeholder' },
-            { code: '[  ]', state: 'placeholder' },
-            { code: '[FF]', state: 'progress' },
-            { code: '[  ]', state: 'placeholder' },
-            { code: '[  ]', state: 'placeholder' }
-          ],
-          lastUpdate: new Date()
-        }
-      ];
-
-      const sampleHistory: HistoryItem[] = [
-        {
-          source: 'system',
-          timestamp: '2025-11-02 13:22:01',
-          data: { startup: true, prpCount: 7, readyToSpawn: true }
-        },
-        {
-          source: 'scanner',
-          timestamp: '2025-11-02 13:22:04',
-          data: { detected: ['fs-change', 'new-branch', 'secrets-ref'], count: 3 }
-        },
-        {
-          source: 'inspector',
-          timestamp: '2025-11-02 13:22:08',
-          data: { impact: 'high', risk: 8, files: ['PRPs/agents-v05.md', 'PRPs/…'], why: 'cross-links missing' }
-        }
-      ];
+      // Add initial system startup message
+      const startupHistory: HistoryItem = {
+        source: 'system',
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        data: { startup: true, prpCount: 0, readyToSpawn: true }
+      };
 
       setState(prev => ({
         ...prev,
-        agents: new Map(sampleAgents.map(a => [a.id, a])),
-        prps: new Map(samplePRPs.map(p => [p.name, p])),
-        history: sampleHistory,
+        history: [startupHistory],
         orchestrator: {
-          status: 'RUNNING',
-          prp: 'prp-agents-v05',
-          signals: samplePRPs[0].signals,
-          latestSignalIndex: 3,
-          cotLines: [
-            '◇ Δ from scanner → pick role → budget',
-            '⇢ diff.read → { "changed": 6, "hot": ["PRPs/agents-v05.md","…"] }',
-            '✦ next: AQA first, then DEV'
-          ],
-          toolCall: 'diff.read → { "changed": 6, "hot": ["PRPs/agents-v05.md","…"] }',
+          status: 'IDLE',
+          prp: 'none',
+          signals: [],
+          latestSignalIndex: 0,
+          cotLines: ['System initialized, waiting for PRP data...'],
+          toolCall: '',
           lastUpdate: new Date()
         }
       }));
+
+      // Emit TUI ready event for other components
+      eventBus.emit('tui.ready', {
+        timestamp: new Date(),
+        config: config
+      });
     }
-  }, [introComplete]);
+  }, [introComplete, config, eventBus]);
 
   // Render intro sequence if enabled and not complete
   if (config.animations.intro.enabled && !introComplete) {
-    return <IntroSequence config={config} onComplete={() => setIntroComplete(true)} />;
+    return <VideoIntro config={config} onComplete={(success) => setIntroComplete(success)} />;
   }
 
   // Render main TUI
@@ -297,6 +600,13 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
     <>
       {currentScreen === 'orchestrator' && (
         <OrchestratorScreen
+          state={state}
+          config={config}
+          terminalLayout={terminalLayout}
+        />
+      )}
+      {currentScreen === 'info' && (
+        <InfoScreen
           state={state}
           config={config}
           terminalLayout={terminalLayout}
@@ -314,6 +624,12 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
           state={state}
           config={config}
           terminalLayout={terminalLayout}
+        />
+      )}
+      {currentScreen === 'token-metrics' && (
+        <TokenMetricsScreen
+          isActive={true}
+          onNavigate={(screen) => setState(prev => ({ ...prev, currentScreen: screen as ScreenType }))}
         />
       )}
       {currentScreen === 'debug' && (

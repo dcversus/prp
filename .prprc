@@ -1,5 +1,18 @@
 {
   "version": "1.0.0",
+  "name": "prp-project",
+  "description": "PRP Project",
+  "storage": {
+    "dataDir": ".prp",
+    "cacheDir": "/tmp/prp-cache",
+    "worktreesDir": "/tmp/prp-worktrees",
+    "notesDir": ".prp/notes",
+    "logsDir": "/tmp/prp-logs",
+    "keychainFile": ".prp/keychain.json",
+    "persistFile": ".prp/state.json",
+    "maxCacheSize": 104857600,
+    "retentionPeriod": 2592000000
+  },
   "agents": [
     {
       "id": "claude-code-anthropic-main",
@@ -145,8 +158,8 @@
       "metadata": {
         "version": "1.0.0",
         "author": "system",
-        "createdAt": "2025-11-03T07:38:26.487Z",
-        "lastModified": "2025-11-03T07:38:26.487Z",
+        "createdAt": "2025-11-06T14:49:50.045Z",
+        "lastModified": "2025-11-06T14:49:50.045Z",
         "tags": [
           "default",
           "anthropic",
@@ -179,6 +192,160 @@
       }
     }
   ],
+  "guidelines": [],
+  "signals": {},
+  "orchestrator": {},
+  "scanner": {},
+  "inspector": {},
+  "tui": {
+    "mode": "cli",
+    "activeScreen": "main",
+    "followEvents": true,
+    "autoRefresh": true,
+    "refreshInterval": 5000
+  },
+  "features": {
+    "scanner": true,
+    "inspector": true,
+    "orchestrator": true,
+    "tui": true,
+    "mcp": true,
+    "worktrees": true
+  },
+  "limits": {
+    "maxConcurrentAgents": 5,
+    "maxWorktrees": 50,
+    "maxPRPsPerWorktree": 20,
+    "tokenAlertThreshold": 0.8,
+    "tokenCriticalThreshold": 0.95
+  },
+  "logging": {
+    "level": "info",
+    "enableFileLogging": true,
+    "enableTokenTracking": true,
+    "enablePerformanceTracking": true,
+    "logRetentionDays": 7
+  },
+  "security": {
+    "enablePinProtection": false,
+    "encryptSecrets": true,
+    "sessionTimeout": 60
+  },
+  "settings": {
+    "debug": {
+      "enabled": true,
+      "level": "info",
+      "console": true,
+      "file": false,
+      "timestamp": true,
+      "colors": true,
+      "profiling": false
+    },
+    "quality": {
+      "linting": {
+        "enabled": true,
+        "rules": {},
+        "fixOnSave": true
+      },
+      "testing": {
+        "enabled": true,
+        "coverage": 80,
+        "frameworks": [
+          "jest"
+        ]
+      },
+      "security": {
+        "enabled": true,
+        "tools": [
+          "npm-audit"
+        ],
+        "rules": {}
+      },
+      "performance": {
+        "enabled": true,
+        "thresholds": {
+          "loadTime": 3000,
+          "bundleSize": 1000000
+        }
+      }
+    },
+    "build": {
+      "tool": "tsc",
+      "optimization": true,
+      "minification": true,
+      "sourceMap": true,
+      "target": [
+        "es2020"
+      ],
+      "output": {
+        "directory": "dist",
+        "filename": "index.js",
+        "format": [
+          "cjs"
+        ]
+      }
+    },
+    "test": {
+      "framework": "jest",
+      "coverage": {
+        "enabled": true,
+        "threshold": 80,
+        "reporters": [
+          "text",
+          "lcov"
+        ]
+      },
+      "environment": "node",
+      "setupFiles": [],
+      "testMatch": [
+        "**/__tests__/**/*.ts",
+        "**/?(*.)+(spec|test).ts"
+      ]
+    },
+    "ci": {
+      "platform": "github",
+      "workflows": {
+        "build": true,
+        "test": true,
+        "deploy": false,
+        "security": true
+      },
+      "triggers": {
+        "onPush": true,
+        "onPR": true,
+        "onSchedule": false
+      },
+      "environment": {
+        "NODE_ENV": "test"
+      }
+    },
+    "development": {
+      "watch": true,
+      "hotReload": true,
+      "port": 3000,
+      "host": "localhost",
+      "proxy": {},
+      "server": "webpack-dev-server"
+    },
+    "packageManager": {
+      "manager": "npm",
+      "autoInstall": true,
+      "scripts": {
+        "dev": "prp dev",
+        "build": "prp build",
+        "test": "prp test"
+      },
+      "dependencies": {},
+      "devDependencies": {}
+    }
+  },
+  "scripts": {
+    "dev": "prp dev",
+    "build": "prp build",
+    "test": "prp test",
+    "lint": "prp lint",
+    "quality": "prp quality"
+  },
   "templates": [
     {
       "id": "claude-code-anthropic",
@@ -243,5 +410,5 @@
       ]
     }
   ],
-  "lastModified": "2025-11-03T07:38:26.487Z"
+  "lastModified": "2025-11-06T14:49:50.045Z"
 }

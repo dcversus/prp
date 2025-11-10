@@ -5,35 +5,77 @@
  */
 
 import { EventEmitter } from 'events';
-import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
+import { Worker } from 'worker_threads';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { Signal } from '../shared/types';
 import {
   SignalProcessor,
   DetailedInspectorResult,
   InspectorError,
-  InspectorMetrics
+  InspectorMetrics,
+  SignalClassification,
+  PreparedContext,
+  InspectorPayload
 } from './types';
 import { LLMExecutionEngine } from './llm-execution-engine';
-import { ContextManager } from './context-manager';
-import { GuidelineAdapter } from './guideline-adapter';
-import { createLayerLogger, HashUtils } from '../shared';
+import {
+  createLayerLogger,
+  HashUtils,
+  type WorkerPoolConfig,
+  type WorkerPoolStatus,
+  type WorkerMessage
+} from '../shared';
 
 const logger = createLayerLogger('inspector');
 
+// Get current file path for worker
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 /**
- * Worker configuration
+ * Task data interface
  */
-export interface WorkerConfig {
-  id: number;
-  maxConcurrent: number;
-  timeout: number;
-  retryAttempts: number;
-  retryDelay: number;
-  heartbeatInterval: number;
+export interface TaskData {
+  signal: Signal;
+  processor: SignalProcessor;
+  priority: number;
+  timestamp: Date;
 }
 
 /**
- * Execution task
+ * Re-export types from inspector types for worker use
+ */
+export type {
+  DetailedInspectorResult,
+  InspectorPayload
+} from './types';
+
+// Worker interfaces now imported from shared tools/worker-pool.ts
+
+/**
+ * Worker task message interface specific to inspector
+ */
+export interface WorkerTaskMessage {
+  type: 'task:execute';
+  taskId: string;
+  data: TaskData;
+  workerId?: number;
+  timestamp: Date;
+}
+
+/**
+ * Worker message union type for all worker communications
+ */
+export type WorkerMessage =
+  | WorkerTaskMessage
+  | { type: 'worker:ready'; workerId: number; timestamp: Date }
+  | { type: 'worker:error'; workerId: number; error: { code: string; message: string; stack?: string }; timestamp: Date }
+  | { type: 'worker:heartbeat'; workerId: number; timestamp: Date }
+  | { type: 'worker:shutdown'; workerId: number; timestamp: Date };
+
+/**
+ * Execution task specific to inspector
  */
 export interface ExecutionTask {
   id: string;
@@ -49,63 +91,11 @@ export interface ExecutionTask {
 }
 
 /**
- * Worker pool status
- */
-export interface WorkerPoolStatus {
-  totalWorkers: number;
-  activeWorkers: number;
-  idleWorkers: number;
-  busyWorkers: number;
-  failedWorkers: number;
-  queueSize: number;
-  processingTasks: number;
-  completedTasks: number;
-  averageResponseTime: number;
-  throughput: number;
-}
-
-/**
  * Parallel execution configuration
  */
-export interface ParallelExecutionConfig {
-  maxWorkers: number;
-  maxConcurrentPerWorker: number;
-  taskTimeout: number;
-  retryAttempts: number;
-  retryDelay: number;
-  enableLoadBalancing: boolean;
-  enableHealthChecks: boolean;
-  healthCheckInterval: number;
-  gracefulShutdownTimeout: number;
-}
-
-/**
- * Worker message types
- */
-export type WorkerMessageType =
-  | 'task:start'
-  | 'task:progress'
-  | 'task:complete'
-  | 'task:error'
-  | 'worker:ready'
-  | 'worker:heartbeat'
-  | 'worker:error'
-  | 'worker:shutdown';
-
-/**
- * Worker message interface
- */
-export interface WorkerMessage {
-  type: WorkerMessageType;
-  taskId?: string;
-  workerId?: number;
-  data?: any;
-  error?: {
-    code: string;
-    message: string;
-    stack?: string;
-  };
-  timestamp: Date;
+export interface ParallelExecutionConfig extends Omit<WorkerPoolConfig, 'maxMemory'> {
+  // Inspector-specific configuration can be added here
+  inspectorSpecific?: boolean;
 }
 
 /**
@@ -113,7 +103,7 @@ export interface WorkerMessage {
  */
 export class ParallelExecutor extends EventEmitter {
   private config: ParallelExecutionConfig;
-  private workers: Map<number, WorkerInfo> = new Map();
+  private workers: Map<number, InspectorWorkerInfo> = new Map();
   private taskQueue: ExecutionTask[] = [];
   private processingTasks: Map<string, ExecutionTask> = new Map();
   private completedTasks: Map<string, DetailedInspectorResult> = new Map();
@@ -156,15 +146,15 @@ export class ParallelExecutor extends EventEmitter {
     super();
 
     this.config = {
-      maxWorkers: config.maxWorkers || 2,
-      maxConcurrentPerWorker: config.maxConcurrentPerWorker || 3,
-      taskTimeout: config.taskTimeout || 60000, // 1 minute
-      retryAttempts: config.retryAttempts || 3,
-      retryDelay: config.retryDelay || 5000, // 5 seconds
+      maxWorkers: config.maxWorkers ?? 2,
+      maxConcurrentPerWorker: config.maxConcurrentPerWorker ?? 3,
+      taskTimeout: config.taskTimeout ?? 60000, // 1 minute
+      retryAttempts: config.retryAttempts ?? 3,
+      retryDelay: config.retryDelay ?? 5000, // 5 seconds
       enableLoadBalancing: config.enableLoadBalancing ?? true,
       enableHealthChecks: config.enableHealthChecks ?? true,
-      healthCheckInterval: config.healthCheckInterval || 30000, // 30 seconds
-      gracefulShutdownTimeout: config.gracefulShutdownTimeout || 30000 // 30 seconds
+      healthCheckInterval: config.healthCheckInterval ?? 30000, // 30 seconds
+      gracefulShutdownTimeout: config.gracefulShutdownTimeout ?? 30000 // 30 seconds
     };
 
     this.llmEngine = llmEngine;
@@ -268,12 +258,12 @@ export class ParallelExecutor extends EventEmitter {
         id: taskId,
         signal,
         processor,
-        priority: signal.priority || 5,
+        priority: signal.priority,
         createdAt: new Date(),
         scheduledAt: new Date(),
         attempts: 0,
-        maxAttempts: this.config.retryAttempts,
-        timeout: this.config.taskTimeout
+        maxAttempts: this.config.retryAttempts ?? 3,
+        timeout: this.config.taskTimeout ?? 30000
       };
 
       // Set up result handlers
@@ -304,7 +294,7 @@ export class ParallelExecutor extends EventEmitter {
         this.off('task:completed', handleResult);
         this.off('task:failed', handleError);
         reject(new Error(`Signal processing timeout: ${signal.type}`));
-      }, this.config.taskTimeout * 2);
+      }, (this.config.taskTimeout ?? 30000) * 2);
     });
   }
 
@@ -316,17 +306,23 @@ export class ParallelExecutor extends EventEmitter {
       throw new Error('Signals and processors must have the same length');
     }
 
-    const tasks = signals.map((signal, index) => ({
-      id: HashUtils.generateId(),
-      signal,
-      processor: processors[index],
-      priority: signal.priority || 5,
-      createdAt: new Date(),
-      scheduledAt: new Date(),
-      attempts: 0,
-      maxAttempts: this.config.retryAttempts,
-      timeout: this.config.taskTimeout
-    }));
+    const tasks = signals.map((signal, index) => {
+      const processor = processors[index];
+      if (!processor) {
+        throw new Error(`No processor found for signal at index ${index}`);
+      }
+      return {
+        id: HashUtils.generateId(),
+        signal,
+        processor,
+        priority: signal.priority,
+        createdAt: new Date(),
+        scheduledAt: new Date(),
+        attempts: 0,
+        maxAttempts: this.config.retryAttempts ?? 3,
+        timeout: this.config.taskTimeout ?? 30000
+      };
+    }).filter(task => task !== null) as ExecutionTask[];
 
     // Add all tasks to queue
     tasks.forEach(task => this.addTask(task));
@@ -378,7 +374,7 @@ export class ParallelExecutor extends EventEmitter {
    * Get executor status
    */
   getStatus(): WorkerPoolStatus {
-    const activeWorkers = Array.from(this.workers.values()).filter(w => w.status === 'active').length;
+    const activeWorkers = Array.from(this.workers.values()).filter(w => w.status === 'busy').length;
     const busyWorkers = Array.from(this.workers.values()).filter(w => w.status === 'busy').length;
     const idleWorkers = Array.from(this.workers.values()).filter(w => w.status === 'idle').length;
     const failedWorkers = Array.from(this.workers.values()).filter(w => w.status === 'failed').length;
@@ -393,7 +389,14 @@ export class ParallelExecutor extends EventEmitter {
       processingTasks: this.processingTasks.size,
       completedTasks: this.completedTasks.size,
       averageResponseTime: this.metrics.averageProcessingTime,
-      throughput: this.metrics.processingRate
+      throughput: this.metrics.processingRate,
+      workerDetails: Array.from(this.workers.values()).map(worker => ({
+        id: worker.id,
+        status: worker.status,
+        tasksProcessed: worker.taskCount,
+        currentTask: worker.currentTask || null,
+        lastHeartbeat: new Date()
+      }))
     };
   }
 
@@ -423,7 +426,8 @@ export class ParallelExecutor extends EventEmitter {
     // Insert task based on priority (higher priority first)
     let insertIndex = this.taskQueue.length;
     for (let i = 0; i < this.taskQueue.length; i++) {
-      if (this.taskQueue[i].priority < task.priority) {
+      const queueTask = this.taskQueue[i];
+      if (queueTask?.priority !== undefined && task.priority !== undefined && queueTask.priority < task.priority) {
         insertIndex = i;
         break;
       }
@@ -443,7 +447,7 @@ export class ParallelExecutor extends EventEmitter {
   private async initializeWorkerPool(): Promise<void> {
     const workerPromises = [];
 
-    for (let i = 0; i < this.config.maxWorkers; i++) {
+    for (let i = 0; i < (this.config.maxWorkers ?? 4); i++) {
       workerPromises.push(this.createWorker(i));
     }
 
@@ -464,16 +468,17 @@ export class ParallelExecutor extends EventEmitter {
   /**
    * Create a single worker
    */
-  private async createWorker(workerId: number): Promise<WorkerInfo> {
+  private async createWorker(workerId: number): Promise<InspectorWorkerInfo> {
     return new Promise((resolve, reject) => {
-      const worker = new Worker(__filename, {
+      const workerPath = join(__dirname, 'parallel-executor-worker.js');
+      const worker = new Worker(workerPath, {
         workerData: {
           workerId,
           config: this.config
         }
       });
 
-      const workerInfo: WorkerInfo = {
+      const workerInfo: InspectorWorkerInfo = {
         id: workerId,
         worker,
         status: 'initializing',
@@ -537,7 +542,9 @@ export class ParallelExecutor extends EventEmitter {
    */
   private handleWorkerMessage(workerId: number, message: WorkerMessage): void {
     const worker = this.workers.get(workerId);
-    if (!worker) return;
+    if (!worker) {
+      return;
+    }
 
     switch (message.type) {
       case 'worker:ready':
@@ -560,7 +567,7 @@ export class ParallelExecutor extends EventEmitter {
 
       case 'task:complete':
         if (message.taskId && message.data) {
-          this.handleTaskComplete(workerId, message.taskId, message.data);
+          this.handleTaskComplete(workerId, message.taskId, message.data as DetailedInspectorResult);
         }
         break;
 
@@ -628,7 +635,7 @@ export class ParallelExecutor extends EventEmitter {
   /**
    * Handle task error
    */
-  private handleTaskError(workerId: number, taskId: string, error: any): void {
+  private handleTaskError(workerId: number, taskId: string, error: Error | Record<string, unknown>): void {
     const worker = this.workers.get(workerId);
     const task = this.processingTasks.get(taskId);
 
@@ -642,9 +649,9 @@ export class ParallelExecutor extends EventEmitter {
         id: taskId,
         signal: task.signal,
         error: {
-          code: error.code || 'WORKER_ERROR',
-          message: error.message || 'Unknown worker error',
-          stack: error.stack
+          code: (error as Record<string, unknown>).code as string || 'WORKER_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown worker error',
+          stack: error instanceof Error ? error.stack : undefined
         },
         processingTime: Date.now() - task.scheduledAt.getTime(),
         timestamp: new Date(),
@@ -669,14 +676,17 @@ export class ParallelExecutor extends EventEmitter {
         this.processingTasks.delete(taskId);
         this.failedTasks.set(taskId, inspectorError);
         this.updateMetrics({
-          signalId: task.signal.id,
-          classification: {} as any,
-          context: {} as any,
+          id: task.signal.id,
+          signal: task.signal,
+          classification: {} as SignalClassification,
+          context: {} as PreparedContext,
+          payload: {} as InspectorPayload,
           recommendations: [],
           tokenUsage: { input: 0, output: 0, total: 0, cost: 0 },
           confidence: 0,
           processingTime: inspectorError.processingTime,
-          model: ''
+          model: '',
+          timestamp: new Date()
         }, false);
       }
 
@@ -695,7 +705,9 @@ export class ParallelExecutor extends EventEmitter {
    */
   private startTaskProcessingLoop(): void {
     const processLoop = () => {
-      if (this.shutdownRequested) return;
+      if (this.shutdownRequested) {
+        return;
+      }
 
       // Get available workers
       const availableWorkers = Array.from(this.workers.values())
@@ -703,11 +715,13 @@ export class ParallelExecutor extends EventEmitter {
 
       // Process tasks if we have available workers and tasks in queue
       while (availableWorkers.length > 0 && this.taskQueue.length > 0) {
-        const worker = availableWorkers.shift()!;
-        const task = this.taskQueue.shift()!;
+        const worker = availableWorkers.shift();
+        const task = this.taskQueue.shift();
 
-        // Assign task to worker
-        this.assignTaskToWorker(worker, task);
+        // Assign task to worker if both exist
+        if (worker && task) {
+          this.assignTaskToWorker(worker, task);
+        }
       }
 
       // Schedule next iteration
@@ -720,7 +734,7 @@ export class ParallelExecutor extends EventEmitter {
   /**
    * Assign task to worker
    */
-  private assignTaskToWorker(worker: WorkerInfo, task: ExecutionTask): void {
+  private assignTaskToWorker(worker: InspectorWorkerInfo, task: ExecutionTask): void {
     // Move task from queue to processing
     this.processingTasks.set(task.id, task);
 
@@ -744,7 +758,7 @@ export class ParallelExecutor extends EventEmitter {
   /**
    * Terminate worker
    */
-  private async terminateWorker(worker: WorkerInfo): Promise<void> {
+  private async terminateWorker(worker: InspectorWorkerInfo): Promise<void> {
     try {
       // Send shutdown message
       worker.worker.postMessage({
@@ -767,7 +781,12 @@ export class ParallelExecutor extends EventEmitter {
       });
 
     } catch (error) {
-      logger.warn('ParallelExecutor', `Error terminating worker ${worker.id}`, error instanceof Error ? error : new Error(String(error)));
+      const errorObj = error instanceof Error ? error : new Error(String(error));
+      logger.warn('ParallelExecutor', `Error terminating worker ${worker.id}`, {
+        message: errorObj.message,
+        stack: errorObj.stack,
+        name: errorObj.name
+      });
     }
   }
 
@@ -785,9 +804,9 @@ export class ParallelExecutor extends EventEmitter {
    */
   private performHealthCheck(): void {
     const now = new Date();
-    const staleThreshold = this.config.healthCheckInterval * 2;
+    const staleThreshold = (this.config.healthCheckInterval ?? 5000) * 2;
 
-    for (const [workerId, worker] of this.workers) {
+    for (const [workerId, worker] of Array.from(this.workers.entries())) {
       const timeSinceHeartbeat = now.getTime() - worker.lastHeartbeat.getTime();
 
       if (timeSinceHeartbeat > staleThreshold) {
@@ -870,9 +889,9 @@ export class ParallelExecutor extends EventEmitter {
 }
 
 /**
- * Worker information interface
+ * Inspector worker information interface (extends shared WorkerInfo)
  */
-interface WorkerInfo {
+interface InspectorWorkerInfo {
   id: number;
   worker: Worker;
   status: 'initializing' | 'idle' | 'busy' | 'failed' | 'exited' | 'shutdown';
@@ -881,161 +900,4 @@ interface WorkerInfo {
   lastHeartbeat: Date;
   createdAt: Date;
   startTime: Date | null;
-}
-
-// Worker thread code
-if (!isMainThread) {
-  const { workerId, config } = workerData as { workerId: number; config: ParallelExecutionConfig };
-
-  // Import worker dependencies
-  let llmEngine: LLMExecutionEngine;
-  let contextManager: ContextManager;
-  let guidelineAdapter: GuidelineAdapter;
-
-  // Initialize worker components
-  const initializeWorker = async () => {
-    try {
-      // Initialize components (would be injected in real implementation)
-      // llmEngine = new LLMExecutionEngine(...);
-      // contextManager = new ContextManager(...);
-      // guidelineAdapter = new GuidelineAdapter(...);
-
-      // Send ready message
-      parentPort?.postMessage({
-        type: 'worker:ready',
-        workerId,
-        timestamp: new Date()
-      });
-
-    } catch (error) {
-      parentPort?.postMessage({
-        type: 'worker:error',
-        workerId,
-        error: {
-          code: 'INIT_FAILED',
-          message: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
-        },
-        timestamp: new Date()
-      });
-    }
-  };
-
-  // Handle messages from main thread
-  parentPort?.on('message', async (message: WorkerMessage) => {
-    switch (message.type) {
-      case 'task:execute':
-        await handleTaskExecution(message);
-        break;
-
-      case 'worker:heartbeat':
-        parentPort?.postMessage({
-          type: 'worker:heartbeat',
-          workerId,
-          timestamp: new Date()
-        });
-        break;
-
-      case 'worker:shutdown':
-        parentPort?.postMessage({
-          type: 'worker:shutdown',
-          workerId,
-          timestamp: new Date()
-        });
-        process.exit(0);
-        break;
-    }
-  });
-
-  // Handle task execution
-  const handleTaskExecution = async (message: any) => {
-    const { taskId, data } = message;
-
-    try {
-      // Send task start message
-      parentPort?.postMessage({
-        type: 'task:start',
-        taskId,
-        workerId,
-        timestamp: new Date()
-      });
-
-      // Execute task (placeholder implementation)
-      const result = await executeTask(data);
-
-      // Send task completion message
-      parentPort?.postMessage({
-        type: 'task:complete',
-        taskId,
-        workerId,
-        data: result,
-        timestamp: new Date()
-      });
-
-    } catch (error) {
-      // Send task error message
-      parentPort?.postMessage({
-        type: 'task:error',
-        taskId,
-        workerId,
-        error: {
-          code: 'EXECUTION_FAILED',
-          message: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
-        },
-        timestamp: new Date()
-      });
-    }
-  };
-
-  // Execute task (placeholder implementation)
-  const executeTask = async (data: any): Promise<DetailedInspectorResult> => {
-    // In a real implementation, this would use the LLM engine and other components
-    // For now, return a mock result that matches the DetailedInspectorResult interface
-    const mockPreparedContext: any = {
-      id: `ctx-${data.signal.id}`,
-      signalId: data.signal.id,
-      content: { signalContent: '' },
-      size: 1000,
-      compressed: false,
-      tokenCount: 250
-    };
-
-    const mockPayload: any = {
-      id: `payload-${data.signal.id}`,
-      signalId: data.signal.id,
-      classification: {
-        category: 'test',
-        subcategory: 'test',
-        priority: 5,
-        agentRole: 'developer' as any,
-        escalationLevel: 1,
-        deadline: new Date(),
-        dependencies: [],
-        confidence: 0.8
-      },
-      context: mockPreparedContext,
-      recommendations: [],
-      timestamp: new Date(),
-      size: 1000,
-      compressed: false
-    };
-
-    return {
-      id: `result-${data.signal.id}`,
-      signal: data.signal,
-      classification: mockPayload.classification,
-      context: mockPreparedContext,
-      payload: mockPayload,
-      recommendations: [],
-      processingTime: 1000,
-      tokenUsage: { input: 100, output: 150, total: 250, cost: 0.0005 },
-      model: 'mock-model',
-      timestamp: new Date(),
-      confidence: 0.8
-    };
-  };
-
-  // Initialize worker
-  initializeWorker();
 }

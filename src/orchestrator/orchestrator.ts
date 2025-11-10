@@ -38,9 +38,9 @@ import {
 } from '../shared';
 import type { ToolImplementation } from './tool-implementation';
 import { guidelinesRegistry } from '../guidelines';
-import { storageManager } from '../storage';
+import { storageManager } from '../shared/storage.js';
 // import { TmuxManager, createDefaultTmuxConfig } from '../tmux'; // Temporarily disabled
-// import { AgentTerminalSession } from '../tmux/types'; // Temporarily disabled
+// import { AgentTerminalSession } from ../../shared/types'; // Temporarily disabled
 
 // Model call interfaces
 interface ModelCallOptions {
@@ -131,7 +131,7 @@ export class Orchestrator extends EventEmitter {
     //   createDefaultTmuxConfig(),
     //   createLayerLogger('shared')
     // );
-    // this.tmuxManager = null as any; // Temporarily disabled
+    // this.tmuxManager = null; // Temporarily disabled
 
     this.initializeTools();
     this.setupEventHandlers();
@@ -246,7 +246,7 @@ export class Orchestrator extends EventEmitter {
         compressionStrategy: 'summarize',
         preserveElements: ['signals', 'active_tasks', 'agent_status'],
         compressionRatio: 0.3,
-        importantSignals: ['At', 'Bb', 'Ur', 'Co'],
+        importantSignals: ['At', 'Bb', 'Ur', 'Co']
       },
       tools: [
         {
@@ -369,12 +369,24 @@ export class Orchestrator extends EventEmitter {
         context: {
           originalPayload: {
             id: 'init-' + HashUtils.generateId(),
+            signalId: 'init-signal-' + HashUtils.generateId(),
             timestamp: new Date(),
             sourceSignals: [],
-            classification: [],
+            classification: {
+              category: 'system',
+              subcategory: 'initialization',
+              priority: 5,
+              confidence: 1.0,
+              reasoning: 'System initialization'
+            },
             recommendations: [],
             context: {
+              id: 'init-ctx-' + HashUtils.generateId(),
               summary: 'initialization',
+              keyPoints: ['system starting', 'initializing components'],
+              relevantData: { status: 'initializing' },
+              fileReferences: [],
+              agentStates: {},
               activePRPs: [],
               blockedItems: [],
               recentActivity: [],
@@ -382,6 +394,8 @@ export class Orchestrator extends EventEmitter {
               agentStatus: [],
               sharedNotes: []
             },
+            size: 0,
+            compressed: false,
             estimatedTokens: 0,
             priority: 5
           },
@@ -624,8 +638,8 @@ export class Orchestrator extends EventEmitter {
 
       logger.debug('orchestrator', 'Chain of thought completed', {
         decisionId,
-        depth: chainOfThoughtResult.steps?.length || 0,
-        confidence: chainOfThoughtResult.confidence || 0
+        depth: chainOfThoughtResult.steps.length,
+        confidence: chainOfThoughtResult.confidence
       });
 
       return chainOfThoughtResult;
@@ -689,7 +703,7 @@ export class Orchestrator extends EventEmitter {
       plan.steps.push(step);
 
       // Add dependencies
-      if (action.dependencies && action.dependencies.length > 0) {
+      if (action.dependencies.length) {
         plan.dependencies.set(step.id, action.dependencies);
       }
     }
@@ -746,9 +760,9 @@ export class Orchestrator extends EventEmitter {
         summary: this.generateOutcomeSummary(results),
         achievedGoals: results.filter(r => r.status === 'completed').map(r => {
           const result = r.result as { goal?: string } | undefined;
-          return result?.goal || 'Task completed';
+          return result?.goal ?? 'Task completed';
         }),
-        blockedItems: results.filter(r => r.status === 'failed').map(r => r.error || 'Task failed'),
+        blockedItems: results.filter(r => r.status === 'failed').map(r => r.error ?? 'Task failed'),
         nextActions: this.getNextActions(results),
         recommendations: this.generateRecommendations(results),
         lessons: this.extractLessons(results),
@@ -829,7 +843,7 @@ export class Orchestrator extends EventEmitter {
       agentSession.performance.tasksCompleted++;
       if (result.success) {
         // Calculate average task time
-        const totalTime = agentSession.performance.averageTaskTime * (agentSession.performance.tasksCompleted - 1) + (result.duration || 0);
+        const totalTime = agentSession.performance.averageTaskTime * (agentSession.performance.tasksCompleted - 1) + (result.duration ?? 0);
         agentSession.performance.averageTaskTime = totalTime / agentSession.performance.tasksCompleted;
       } else {
         agentSession.performance.errorCount++;
@@ -849,13 +863,13 @@ export class Orchestrator extends EventEmitter {
   private async buildChainOfThoughtContext(payload: InspectorPayload): Promise<CoTContext> {
     return {
       originalPayload: payload,
-      signals: payload.sourceSignals,
+      signals: (payload as any).sourceSignals || [],
       activeGuidelines: [],
       availableAgents: Array.from(this.agents.keys()),
       systemState: this.getSystemState(),
       previousDecisions: Array.from(this.decisions.values()).slice(-5),
-      constraints: await this.getCurrentConstraints(),
-    } as CoTContext;
+      constraints: await this.getCurrentConstraints()
+    } as unknown as CoTContext;
   }
 
   /**
@@ -901,9 +915,13 @@ export class Orchestrator extends EventEmitter {
   /**
    * Simulate model call (placeholder for actual implementation)
    */
-  private async simulateModelCall(prompt: string, _options: unknown): Promise<unknown> {
+  private async simulateModelCall(prompt: string, options: unknown): Promise<unknown> {
+    // Extract options for simulation
+    const optionsObj = options as Record<string, unknown>;
+    const delay = (optionsObj.delay as number) || (200 + Math.random() * 300);
+
     // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
+    await new Promise(resolve => setTimeout(resolve, delay));
 
     // Generate mock response based on prompt content
     if (prompt.includes('chain of thought')) {
@@ -1013,13 +1031,13 @@ export class Orchestrator extends EventEmitter {
       const content = (response as ModelResponse).content || '{}';
       const parsed = JSON.parse(content);
       return {
-        reasoning: parsed.reasoning || 'Chain of thought analysis completed',
-        steps: parsed.steps || [],
-        decision: parsed.decision || 'analyze',
-        confidence: parsed.confidence || 0.5,
-        alternatives: parsed.alternatives || [],
-        risks: parsed.risks || [],
-        nextSteps: parsed.nextSteps || []
+        reasoning: parsed.reasoning ?? 'Chain of thought analysis completed',
+        steps: parsed.steps ?? [],
+        decision: parsed.decision ?? 'analyze',
+        confidence: parsed.confidence ?? 0.5,
+        alternatives: parsed.alternatives ?? [],
+        risks: parsed.risks ?? [],
+        nextSteps: parsed.nextSteps ?? []
       };
     } catch (error) {
       logger.warn('orchestrator', 'Failed to parse chain of thought response', { error: error instanceof Error ? error.message : String(error) });
@@ -1044,16 +1062,16 @@ export class Orchestrator extends EventEmitter {
       const parsed = JSON.parse(content);
       return {
         id: HashUtils.generateId(),
-        type: parsed.type || 'coordinate',
-        priority: parsed.priority || 5,
-        reasoning: parsed.reasoning || 'Default reasoning',
-        confidence: parsed.confidence || 0.5,
-        actions: parsed.actions || [],
-        agents: parsed.agents || [],
-        tools: parsed.tools || [],
-        checkpoints: parsed.checkpoints || [],
-        estimatedDuration: parsed.estimatedDuration || 30000,
-        tokenEstimate: parsed.tokenEstimate || 20000
+        type: parsed.type ?? 'coordinate',
+        priority: parsed.priority ?? 5,
+        reasoning: parsed.reasoning ?? 'Default reasoning',
+        confidence: parsed.confidence ?? 0.5,
+        actions: parsed.actions ?? [],
+        agents: parsed.agents ?? [],
+        tools: parsed.tools ?? [],
+        checkpoints: parsed.checkpoints ?? [],
+        estimatedDuration: parsed.estimatedDuration ?? 30000,
+        tokenEstimate: parsed.tokenEstimate ?? 20000
       };
     } catch (error) {
       logger.warn('orchestrator', 'Failed to parse decision response', { error: error instanceof Error ? error.message : String(error) });
@@ -1076,7 +1094,7 @@ export class Orchestrator extends EventEmitter {
   /**
    * Create execution step from action
    */
-  private async createExecutionStep(action: DecisionAction, _decision: OrchestratorDecision): Promise<ExecutionStep> {
+  private async createExecutionStep(action: DecisionAction, decision: OrchestratorDecision): Promise<ExecutionStep> {
     return {
       id: HashUtils.generateId(),
       name: action.description || action.type,
@@ -1084,7 +1102,22 @@ export class Orchestrator extends EventEmitter {
       type: this.getActionType(action.type),
       status: 'pending',
       assignedTo: this.getStepAssignee(action),
-      payload: action.payload,
+      payload: action.payload && typeof action.payload === 'object'
+        ? {
+          ...action.payload,
+          decisionContext: {
+            decisionId: decision.id,
+            decisionType: decision.type,
+            confidence: decision.confidence
+          }
+        }
+        : {
+          decisionContext: {
+            decisionId: decision.id,
+            decisionType: decision.type,
+            confidence: decision.confidence
+          }
+        },
       result: undefined,
       error: undefined,
       startTime: undefined,
@@ -1111,7 +1144,7 @@ export class Orchestrator extends EventEmitter {
       'wait': 'wait',
       'escalate': 'decision'
     };
-    return typeMap[type] || 'tool_call';
+    return typeMap[type] ?? 'tool_call';
   }
 
   /**
@@ -1119,10 +1152,10 @@ export class Orchestrator extends EventEmitter {
    */
   private getStepAssignee(action: DecisionAction): string | undefined {
     const payload = action.payload as Record<string, unknown>;
-    if (action.type === 'spawn_agent' && payload?.agentId) {
+    if (action.type === 'spawn_agent' && payload.agentId) {
       return payload.agentId as string;
     }
-    if (action.type === 'call_tool' && payload?.toolName) {
+    if (action.type === 'call_tool' && payload.toolName) {
       return payload.toolName as string;
     }
     return undefined;
@@ -1137,10 +1170,12 @@ export class Orchestrator extends EventEmitter {
     const sorted: ExecutionStep[] = [];
 
     const visit = (stepId: string) => {
-      if (visited.has(stepId)) return;
+      if (visited.has(stepId)) {
+        return;
+      }
       visited.add(stepId);
 
-      const dependencies = plan.dependencies.get(stepId) || [];
+      const dependencies = plan.dependencies.get(stepId) ?? [];
       for (const dep of dependencies) {
         visit(dep);
       }
@@ -1163,12 +1198,14 @@ export class Orchestrator extends EventEmitter {
    * Check if step can be executed
    */
   private canExecuteStep(step: ExecutionStep, plan: ExecutionPlan): boolean {
-    if (step.status !== 'pending') return false;
+    if (step.status !== 'pending') {
+      return false;
+    }
 
-    const dependencies = plan.dependencies.get(step.id) || [];
+    const dependencies = plan.dependencies.get(step.id) ?? [];
     for (const depId of dependencies) {
       const depStep = plan.steps.find(s => s.id === depId);
-      if (!depStep || depStep.status !== 'completed') {
+      if (depStep?.status !== 'completed') {
         return false;
       }
     }
@@ -1179,7 +1216,7 @@ export class Orchestrator extends EventEmitter {
   /**
    * Execute a single step
    */
-  private async executeStep(step: ExecutionStep, _decisionId: string): Promise<ActionResult> {
+  private async executeStep(step: ExecutionStep, decisionId: string): Promise<ActionResult> {
     const startTime = Date.now();
     const result: ActionResult = {
       id: HashUtils.generateId(),
@@ -1188,6 +1225,8 @@ export class Orchestrator extends EventEmitter {
       startTime: new Date(),
       duration: 0
     };
+
+    logger.debug('orchestrator', `Executing step ${step.id} for decision ${decisionId}`);
 
     try {
       step.status = 'in_progress';
@@ -1275,7 +1314,7 @@ export class Orchestrator extends EventEmitter {
       throw new Error(`Tool not found: ${toolName}`);
     }
 
-    return await tool.execute(step.payload);
+    return tool.execute(step.payload);
   }
 
   /**
@@ -1332,11 +1371,12 @@ export class Orchestrator extends EventEmitter {
     return results
       .filter(r => r.status === 'failed')
       .map(r => ({
-        type: 'spawn_agent' as const,
-        target: 'developer',
-        payload: { retryAction: r.actionId, error: r.error },
-        reasoning: `Consider retrying the failed action: ${r.error}`,
-        priority: 5
+        type: 'retry_action',
+        priority: 'medium',
+        description: `Retry failed action: ${r.error}`,
+        reasoning: `The action ${r.actionId} failed and should be retried`,
+        estimatedTime: 5, // 5 minutes
+        prerequisites: [`fix_error: ${r.error}`]
       }));
   }
 
@@ -1379,7 +1419,7 @@ export class Orchestrator extends EventEmitter {
    * Calculate token usage
    */
   private calculateTokenUsage(results: ActionResult[]): number {
-    return results.reduce((total, r) => total + (r.tokenUsage || 0), 0);
+    return results.reduce((total, r) => total + (r.tokenUsage ?? 0), 0);
   }
 
   /**
@@ -1389,7 +1429,7 @@ export class Orchestrator extends EventEmitter {
     const record: DecisionRecord = {
       id: decisionId,
       timestamp: new Date(),
-      payload,
+      payload: payload as any,
       decision,
       reasoning: chainOfThought,
       actions: [],
@@ -1462,7 +1502,7 @@ export class Orchestrator extends EventEmitter {
       activeDecisions: this.activeDecisions.size,
       agentCount: this.agents.size,
       queueLength: this.decisions.size,
-      memoryUsage: process['memoryUsage']?.() || {},
+      memoryUsage: process.memoryUsage(),
       uptime: Date.now() - this.state.metrics.startTime.getTime()
     };
   }
@@ -1471,16 +1511,19 @@ export class Orchestrator extends EventEmitter {
    * Get current constraints
    */
   private async getCurrentConstraints(): Promise<Constraint[]> {
-    const constraints = [];
+    const constraints: Constraint[] = [];
 
     // Token budget constraint
     const tokenState = storageManager.getTokenState();
-    if (tokenState.limits.globalLimits?.daily && tokenState.accounting.totalUsed > tokenState.limits.globalLimits.daily * 0.9) {
+    if (tokenState.limits.globalLimits.daily && tokenState.accounting.totalUsed > tokenState.limits.globalLimits.daily * 0.9) {
       constraints.push({
+        id: 'token-budget-warning',
         type: 'resource',
         description: 'Approaching token usage limit',
-        severity: 'warning',
-        status: 'active'
+        severity: 'high' as const,
+        status: 'active' as const,
+        affectedComponents: ['orchestrator'],
+        resolution: 'Monitor token usage and optimize operations'
       });
     }
 
@@ -1514,7 +1557,7 @@ export class Orchestrator extends EventEmitter {
    * Get current goals (public wrapper)
    */
   async getCurrentGoals(): Promise<Goal[]> {
-    return await this._getCurrentGoals();
+    return this._getCurrentGoals();
   }
 
   /**
@@ -1528,7 +1571,7 @@ export class Orchestrator extends EventEmitter {
       category: def.category,
       description: def.description,
       enabled: def.enabled,
-      priority: def.priority || 5,
+      priority: typeof def.priority === 'string' ? parseInt(def.priority, 10) : def.priority,
       conditions: [],
       applicable: def.enabled
     }));
@@ -1539,7 +1582,7 @@ export class Orchestrator extends EventEmitter {
    */
   private calculateTokenBudget(): number {
     const tokenState = storageManager.getTokenState();
-    return Math.max(0, (tokenState.limits.globalLimits?.daily || 0) - tokenState.accounting.totalUsed);
+    return Math.max(0, (tokenState.limits.globalLimits.daily ?? 0) - tokenState.accounting.totalUsed);
   }
 
   /**
@@ -1883,10 +1926,15 @@ Format your response as JSON:
         supportsImages: agentConfig.capabilities.supportsImages,
         supportsSubAgents: agentConfig.capabilities.supportsSubAgents,
         supportsParallel: agentConfig.capabilities.supportsParallel,
+        supportsCodeExecution: agentConfig.capabilities.supportsCodeExecution || false,
         maxContextLength: agentConfig.capabilities.maxContextLength,
         supportedModels: agentConfig.capabilities.supportedModels,
-        availableTools: [], // placeholder - agentConfig.capabilities may not have availableTools
-        specializations: agentConfig.roles || []
+        supportedFileTypes: agentConfig.capabilities.supportedFileTypes,
+        canAccessInternet: agentConfig.capabilities.canAccessInternet,
+        canAccessFileSystem: agentConfig.capabilities.canAccessFileSystem,
+        canExecuteCommands: agentConfig.capabilities.canExecuteCommands,
+        availableTools: agentConfig.capabilities.availableTools,
+        specializations: agentConfig.roles
       }
     };
 
@@ -1949,7 +1997,7 @@ Format your response as JSON:
 
     if (updates.notes) {
       updates.notes.forEach(note => {
-        this.contextMemory.sharedNotes.set((note as { id?: string }).id || 'unknown', note as SharedNote);
+        this.contextMemory.sharedNotes.set((note as { id?: string }).id ?? 'unknown', note as SharedNote);
       });
     }
 
@@ -1995,10 +2043,13 @@ Format your response as JSON:
     logger.info('shutdown', 'Shutting down orchestrator');
 
     // Cancel active decisions
-    Array.from(this.activeDecisions.entries()).forEach(([id, _promise]) => {
+    Array.from(this.activeDecisions.entries()).forEach(([id]) => {
       try {
-        // Cancel the promise
+        // Cancel the promise - note: actual promise cancellation would require AbortController
         logger.info('shutdown', 'Cancelling active decision', { decisionId: id });
+        // In a real implementation, we would use AbortController or similar to cancel the promise
+        // Attempt to cancel if the promise supports cancellation
+        logger.debug('shutdown', `Attempting to cancel promise for decision ${id}`);
       } catch (error) {
         logger.warn('shutdown', 'Failed to cancel decision', { decisionId: id, error: error instanceof Error ? error.message : String(error) });
       }
@@ -2052,7 +2103,7 @@ class ToolImplementationClass {
     // Mock implementation
     const params = parameters as { path?: string };
     return {
-      content: `File content from ${params.path || 'unknown'}`,
+      content: `File content from ${params.path ?? 'unknown'}`,
       size: 1024,
       lines: 10
     };
@@ -2062,7 +2113,7 @@ class ToolImplementationClass {
     // Mock implementation
     const params = parameters as { command?: string };
     return {
-      output: `Git command executed: ${params.command || 'unknown'}`,
+      output: `Git command executed: ${params.command ?? 'unknown'}`,
       status: 'success'
     };
   }
@@ -2071,7 +2122,7 @@ class ToolImplementationClass {
     // Mock implementation
     const params = parameters as { command?: string };
     return {
-      output: `Command executed: ${params.command || 'unknown'}`,
+      output: `Command executed: ${params.command ?? 'unknown'}`,
       exitCode: 0,
       duration: 1000
     };
@@ -2082,7 +2133,7 @@ class ToolImplementationClass {
     const params = parameters as { url?: string };
     return {
       status: 200,
-      body: `Response from ${params.url || 'unknown'}`,
+      body: `Response from ${params.url ?? 'unknown'}`,
       headers: {}
     };
   }
@@ -2095,10 +2146,17 @@ export const orchestrator = new Orchestrator();
 /**
  * Initialize orchestrator system
  */
-export async function initializeOrchestrator(_config?: Partial<OrchestratorConfig>): Promise<Orchestrator> {
+export async function initializeOrchestrator(config?: Partial<OrchestratorConfig>): Promise<Orchestrator> {
   // Initialize storage and guidelines if needed
   await storageManager.initialize();
   await guidelinesRegistry.load();
+
+  // If custom config provided, create new orchestrator instance
+  if (config) {
+    const customOrchestrator = new Orchestrator(config);
+    await customOrchestrator.initialize();
+    return customOrchestrator;
+  }
 
   // Initialize global orchestrator (includes tmux system)
   await orchestrator.initialize();

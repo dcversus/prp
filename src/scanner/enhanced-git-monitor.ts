@@ -130,7 +130,7 @@ export class EnhancedGitMonitor {
         lastUpdated: new Date()
       };
 
-      logger.debug('EnhancedGitMonitor', `Enhanced status complete`, {
+      logger.debug('EnhancedGitMonitor', 'Enhanced status complete', {
         commitSignals: commitSignals.length,
         branchSignals: branchSignals.length,
         prSignals: prSignals.length,
@@ -140,8 +140,10 @@ export class EnhancedGitMonitor {
       return enhancedStatus;
 
     } catch (error) {
-      logger.error('EnhancedGitMonitor', `Failed to get enhanced git status for ${repoPath}`, error instanceof Error ? error : new Error(String(error)));
-      throw new Error(`Failed to get enhanced git status for ${repoPath}: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorObj = error instanceof Error ? error : new Error(errorMessage);
+      logger.error('EnhancedGitMonitor', `Failed to get enhanced git status for ${repoPath}`, errorObj);
+      throw new Error(`Failed to get enhanced git status for ${repoPath}: ${errorMessage}`);
     }
   }
 
@@ -150,7 +152,7 @@ export class EnhancedGitMonitor {
    */
   private async getBasicGitStatus(repoPath: string): Promise<
   Omit<EnhancedGitStatus, 'lastScannedCommit' | 'commitSignals' | 'branchSignals' | 'prSignals' | 'fileChanges'> &
-  { fileChanges: any[] }
+  { fileChanges: EnhancedFileChange[] }
 > {
     try {
       // Get current branch and commit
@@ -181,15 +183,15 @@ export class EnhancedGitMonitor {
 
         if (divergenceOutput) {
           const [behindStr, aheadStr] = divergenceOutput.split('\t');
-          behind = parseInt(behindStr || '') || 0;
-          ahead = parseInt(aheadStr || '') || 0;
+          behind = parseInt(behindStr ?? '', 10) || 0;
+          ahead = parseInt(aheadStr ?? '', 10) || 0;
         }
       } catch {
         // No upstream or tracking information
       }
 
       // Parse file changes
-      const fileChanges = this.parseStatusOutput(statusOutput, repoPath);
+      const fileChanges = this.parseStatusOutput(statusOutput);
 
       // Determine overall status
       let status: EnhancedGitStatus['status'] = 'clean';
@@ -221,23 +223,26 @@ export class EnhancedGitMonitor {
       };
 
     } catch (error) {
-      throw new Error(`Failed to get basic git status: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to get basic git status: ${errorMessage}`);
     }
   }
 
   /**
    * Parse git status output with enhanced file information
    */
-  private parseStatusOutput(statusOutput: string, _repoPath: string): any[] {
+  private parseStatusOutput(statusOutput: string): EnhancedFileChange[] {
     if (!statusOutput) {
       return [];
     }
 
-    const changes: any[] = [];
+    const changes: EnhancedFileChange[] = [];
     const lines = statusOutput.split('\n');
 
     for (const line of lines) {
-      if (line.length < 3) continue;
+      if (line.length < 3) {
+        continue;
+      }
 
       const indexStatus = line[0];
       const workTreeStatus = line[1];
@@ -270,7 +275,12 @@ export class EnhancedGitMonitor {
       changes.push({
         path,
         status,
-        staged
+        staged,
+        hash: undefined,
+        signals: [],
+        isPRPFile: FileUtils.isPRPFile(path),
+        size: 0,
+        lastModified: new Date()
       });
     }
 
@@ -280,7 +290,7 @@ export class EnhancedGitMonitor {
   /**
    * Enhance file changes with signal detection and metadata
    */
-  private async enhanceFileChanges(repoPath: string, fileChanges: any[]): Promise<EnhancedFileChange[]> {
+  private async enhanceFileChanges(repoPath: string, fileChanges: EnhancedFileChange[]): Promise<EnhancedFileChange[]> {
     const enhanced: EnhancedFileChange[] = [];
 
     for (const change of fileChanges) {
@@ -371,9 +381,15 @@ export class EnhancedGitMonitor {
       const commits = logOutput.split('\n');
 
       for (const commitLine of commits) {
-        const [commit, message, author, dateStr] = commitLine.split('|');
+        const commitParts = commitLine.split('|');
+        const commit = commitParts[0];
+        const message = commitParts[1];
+        const author = commitParts[2];
+        const dateStr = commitParts[3];
 
-        if (!commit || !message) continue;
+        if (!commit || !message || !author || !dateStr) {
+          continue;
+        }
 
         // Detect signals in commit message
         const signals = await this.signalDetector.detectSignals(message, `commit:${commit}`);
@@ -383,9 +399,9 @@ export class EnhancedGitMonitor {
           signal.metadata = {
             ...signal.metadata,
             worktree: repoPath,
-            commit: commit as any,
-            author: author as any,
-            date: new Date(dateStr) as any
+            commit,
+            author,
+            date: new Date(dateStr)
           };
         });
 
@@ -417,7 +433,7 @@ export class EnhancedGitMonitor {
         signal.metadata = {
           ...signal.metadata,
           worktree: repoPath,
-          branch: branchName as any
+          branch: branchName
         };
       });
 
@@ -437,7 +453,7 @@ export class EnhancedGitMonitor {
             signal.metadata = {
               ...signal.metadata,
               worktree: repoPath,
-              branch: branchName as any
+              branch: branchName
             };
           });
 
@@ -493,9 +509,9 @@ export class EnhancedGitMonitor {
               signal.metadata = {
                 ...signal.metadata,
                 worktree: repoPath,
-                prNumber: pr.number as any,
-                prAuthor: pr.author?.login || 'unknown' as any,
-                prState: pr.state as any
+                prNumber: pr.number,
+                prAuthor: pr.author?.login ?? 'unknown',
+                prState: pr.state
               };
             });
 
@@ -538,7 +554,43 @@ export class EnhancedGitMonitor {
       );
 
       const lines = showOutput.split('\n');
-      const [commit, message, author, email, dateStr] = lines[0].split('|');
+      const line = lines[0];
+      if (!line) {
+        return {
+          commit: commitHash,
+          message: '',
+          author: '',
+          email: '',
+          date: new Date(),
+          changes: 0,
+          additions: 0,
+          deletions: 0,
+          files: [],
+          signals: []
+        };
+      }
+
+      const commitParts = line.split('|');
+      const commit = commitParts[0] ?? '';
+      const message = commitParts[1] ?? '';
+      const author = commitParts[2] ?? '';
+      const email = commitParts[3] ?? '';
+      const dateStr = commitParts[4] ?? '';
+
+      if (!commit || !message || !author || !email || !dateStr) {
+        return {
+          commit: commitHash,
+          message: '',
+          author: '',
+          email: '',
+          date: new Date(),
+          changes: 0,
+          additions: 0,
+          deletions: 0,
+          files: [],
+          signals: []
+        };
+      }
 
       // Parse file changes
       const files: string[] = [];
@@ -547,13 +599,15 @@ export class EnhancedGitMonitor {
 
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i];
-        if (!line.trim()) continue;
+        if (!line?.trim()) {
+          continue;
+        }
 
         const parts = line.split('\t');
         if (parts.length >= 3) {
-          const add = parseInt(parts[0]) || 0;
-          const del = parseInt(parts[1]) || 0;
-          const file = parts[2];
+          const add = parseInt(parts[0] ?? '', 10) || 0;
+          const del = parseInt(parts[1] ?? '', 10) || 0;
+          const file = parts[2] ?? '';
 
           additions += add;
           deletions += del;
@@ -610,7 +664,9 @@ export class EnhancedGitMonitor {
       for (const line of lines) {
         const [name, commit, trackingBranch] = line.split('|');
 
-        if (!name || !commit) continue;
+        if (!name || !commit) {
+          continue;
+        }
 
         const isRemote = name.startsWith('origin/') || name.includes('/');
         const branchName = isRemote ? name : name;
@@ -628,8 +684,8 @@ export class EnhancedGitMonitor {
 
             if (divergenceOutput) {
               const [behindStr, aheadStr] = divergenceOutput.split('\t');
-              behind = parseInt(behindStr || '') || 0;
-              ahead = parseInt(aheadStr || '') || 0;
+              behind = parseInt(behindStr ?? '', 10) || 0;
+              ahead = parseInt(aheadStr ?? '', 10) || 0;
             }
           } catch {
             // No tracking branch or other error
@@ -643,7 +699,7 @@ export class EnhancedGitMonitor {
           name: branchName,
           commit,
           isRemote,
-          trackingBranch: trackingBranch || undefined,
+          trackingBranch: trackingBranch ?? undefined,
           signals,
           ahead,
           behind
@@ -679,7 +735,7 @@ export class EnhancedGitMonitor {
     commitCache: number;
     branchCache: number;
     prCache: number;
-  } {
+    } {
     return {
       lastScannedCommits: this.lastScannedCommits.size,
       commitCache: this.commitCache.size,

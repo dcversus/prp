@@ -5,11 +5,10 @@
  * message prioritization, and orchestrator coordination protocols.
  */
 
-import { createAgentNudgeIntegration } from '../nudge/agent-integration';
+import { createAgentNudgeIntegration } from '../shared/nudge/agent-integration';
 import { createLayerLogger } from '../shared';
-import type { NodeJS } from 'node';
 
-const logger = createLayerLogger('orchestrator-message-handler');
+const logger = createLayerLogger('orchestrator');
 
 /**
  * Message priority levels
@@ -84,9 +83,11 @@ export interface MessageQueueConfig {
   maxRetries: number;
   expirationTime: number; // milliseconds
   escalationThresholds: {
+    low: number;    // minutes
     medium: number; // minutes
     high: number;   // minutes
     critical: number; // minutes
+    info: number;   // minutes
   };
 }
 
@@ -117,9 +118,11 @@ export class OrchestratorMessageHandlingGuidelines {
       maxRetries: 3,
       expirationTime: 86400000, // 24 hours
       escalationThresholds: {
+        low: 240,    // 4 hours
         medium: 60,  // 1 hour
         high: 30,    // 30 minutes
-        critical: 10 // 10 minutes
+        critical: 10, // 10 minutes
+        info: 480    // 8 hours
       },
       ...config
     };
@@ -192,10 +195,10 @@ export class OrchestratorMessageHandlingGuidelines {
       },
       context: {
         ...data.context,
-        relatedFiles: data.context?.relatedFiles || [],
-        dependentTasks: data.context?.dependentTasks || [],
-        blockingIssues: data.context?.blockingIssues || [],
-        options: data.context?.options || [],
+        relatedFiles: data.context?.relatedFiles ?? [],
+        dependentTasks: data.context?.dependentTasks ?? [],
+        blockingIssues: data.context?.blockingIssues ?? [],
+        options: data.context?.options ?? [],
         recommendation: data.context?.recommendation
       }
     };
@@ -277,8 +280,6 @@ export class OrchestratorMessageHandlingGuidelines {
    * Send message via nudge integration
    */
   private async sendMessageViaNudge(message: AdminMessage): Promise<void> {
-    const nudgeContent = this.formatMessageForNudge(message);
-
     switch (message.type) {
       case 'orchestrator-coordination':
         await this.agentNudge.sendOrchestratorCoordination({
@@ -310,7 +311,7 @@ export class OrchestratorMessageHandlingGuidelines {
           agentType: message.agentType,
           blockerDescription: message.subject,
           impact: message.content,
-          neededAction: message.actionRequired || 'Immediate attention required',
+          neededAction: message.actionRequired ?? 'Immediate attention required',
           attemptedSolutions: message.context.dependentTasks,
           urgency: this.mapPriorityToUrgency(message.priority)
         });
@@ -322,8 +323,8 @@ export class OrchestratorMessageHandlingGuidelines {
           agentType: message.agentType,
           topic: message.subject,
           summary: message.content,
-          details: message.context.recommendation || 'No additional details',
-          actionRequired: message.actionRequired || 'Please review and approve',
+          details: message.context.recommendation ?? 'No additional details',
+          actionRequired: message.actionRequired ?? 'Please review and approve',
           priority: this.mapPriorityToUrgency(message.priority)
         });
         break;
@@ -333,57 +334,23 @@ export class OrchestratorMessageHandlingGuidelines {
     }
   }
 
-  /**
-   * Format message for nudge delivery
-   */
-  private formatMessageForNudge(message: AdminMessage): string {
-    let content = `📋 ${message.subject}\n\n`;
-    content += `PRP: ${message.prpId}\n`;
-    content += `Agent: ${message.agentType}\n`;
-    content += `Priority: ${message.priority.toUpperCase()}\n\n`;
-    content += `${message.content}\n\n`;
-
-    if (message.actionRequired) {
-      content += `🎯 Action Required: ${message.actionRequired}\n\n`;
-    }
-
-    if (message.context.options && message.context.options.length > 0) {
-      content += `💡 Options:\n`;
-      message.context.options.forEach((option, i) => {
-        content += `${i + 1}. ${option}\n`;
-      });
-      content += '\n';
-    }
-
-    if (message.context.recommendation) {
-      content += `🔗 Recommendation: ${message.context.recommendation}\n\n`;
-    }
-
-    content += `📅 Created: ${message.metadata.createdAt.toISOString()}`;
-    if (message.metadata.expiresAt) {
-      content += `\n⏰ Expires: ${message.metadata.expiresAt.toISOString()}`;
-    }
-
-    return content;
-  }
-
+  
   /**
    * Handle message delivery failure
    */
-  private async handleMessageFailure(message: AdminMessage, error: any): Promise<void> {
+  private async handleMessageFailure(message: AdminMessage, error: unknown): Promise<void> {
     message.metadata.retryCount++;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-    logger.error('OrchestratorMessageHandler', 'Message delivery failed', {
+    logger.error('OrchestratorMessageHandler', 'Message delivery failed', error instanceof Error ? error : new Error(errorMessage), {
       messageId: message.id,
       retryCount: message.metadata.retryCount,
-      maxRetries: message.metadata.maxRetries,
-      error: errorMessage
+      maxRetries: message.metadata.maxRetries
     });
 
     if (message.metadata.retryCount >= message.metadata.maxRetries) {
       message.status = MessageStatus.FAILED;
-      logger.error('OrchestratorMessageHandler', 'Message failed after max retries', {
+      logger.error('OrchestratorMessageHandler', 'Message failed after max retries', error instanceof Error ? error : new Error(errorMessage), {
         messageId: message.id,
         retryCount: message.metadata.retryCount
       });
@@ -509,11 +476,11 @@ export class OrchestratorMessageHandlingGuidelines {
       return false;
     }
 
-    const followUpInterval = message.metadata.followUpInterval ||
+    const followUpInterval = message.metadata.followUpInterval ??
       this.config.escalationThresholds[message.priority] * 60000; // convert to milliseconds
 
     const timeSinceSent = Date.now() - message.metadata.sentAt.getTime();
-    const lastFollowUpTime = message.metadata.lastFollowUpAt?.getTime() || 0;
+    const lastFollowUpTime = message.metadata.lastFollowUpAt?.getTime() ?? 0;
 
     return timeSinceSent > followUpInterval && (Date.now() - lastFollowUpTime) > followUpInterval;
   }
@@ -529,7 +496,7 @@ This message requires your attention and was sent on ${message.metadata.sentAt?.
 
 Original message: ${message.content}
 
-Please review and take the required action: ${message.actionRequired || 'Please respond to this message'}`;
+Please review and take the required action: ${message.actionRequired ?? 'Please respond to this message'}`;
 
       await this.agentNudge.sendAdminAttention({
         prpId: message.prpId,
@@ -550,9 +517,8 @@ Please review and take the required action: ${message.actionRequired || 'Please 
       });
 
     } catch (error) {
-      logger.error('OrchestratorMessageHandler', 'Failed to send follow-up', {
-        messageId: message.id,
-        error: error instanceof Error ? error.message : 'Unknown error'
+      logger.error('OrchestratorMessageHandler', 'Failed to send follow-up', error instanceof Error ? error : new Error(error instanceof Error ? error.message : 'Unknown error'), {
+        messageId: message.id
       });
     }
   }
@@ -586,7 +552,7 @@ Current escalation level: ${message.metadata.escalationLevel}
 
 ${message.content}
 
-URGENT ACTION REQUIRED: ${message.actionRequired || 'Immediate admin attention required'}`;
+URGENT ACTION REQUIRED: ${message.actionRequired ?? 'Immediate admin attention required'}`;
 
     await this.agentNudge.sendAdminAttention({
       prpId: message.prpId,
@@ -614,7 +580,7 @@ URGENT ACTION REQUIRED: ${message.actionRequired || 'Immediate admin attention r
     pendingCritical: number;
     overdue: number;
     averageResponseTime?: number;
-  } {
+    } {
     const messages = Array.from(this.messageQueue.values());
 
     const byStatus: Record<MessageStatus, number> = {

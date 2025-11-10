@@ -14,32 +14,49 @@ import {
   Recommendation,
   InspectorMetrics
 } from './types';
-import { createLayerLogger, HashUtils } from '../shared';
+import {
+  createLayerLogger,
+  HashUtils,
+  TokenManager,
+  TextProcessor,
+  type TokenLimitConfig,
+  type LLMProvider,
+  type CompressionStrategy
+} from '../shared';
 
 const logger = createLayerLogger('inspector');
 
 /**
- * Token limit configuration for 40K constraint
+ * Context compression configuration
  */
-export interface TokenLimitConfig {
-  totalLimit: number;        // 40K tokens total
-  basePrompt: number;        // 20K tokens for base prompt
-  guidelinePrompt: number;   // 20K tokens for guidelines
-  contextWindow: number;     // Remaining tokens for context
-  safetyMargin: number;      // 5% safety margin
-  compressionThreshold: number; // When to start compressing
+export interface ContextCompression {
+  strategy: 'semantic' | 'summary' | 'truncate' | 'cluster';
+  level: 'low' | 'medium' | 'high';
+  preserveKeyInfo: boolean;
+  targetSize: number;
 }
 
 /**
- * LLM Provider interface
+ * LLM response data interfaces
  */
-export interface LLMProvider {
-  name: string;
-  model: string;
-  maxTokens: number;
-  costPerToken: number;
-  execute(prompt: string, options?: LLMExecuteOptions): Promise<ModelResponse>;
+export interface RecommendationData {
+  type?: string;
+  priority?: string;
+  description?: string;
+  estimatedTime?: number;
+  reasoning?: string;
+  prerequisites?: string[];
 }
+
+export interface ActivityData {
+  action: string;
+  actor: string;
+  details?: string;
+}
+
+// Token limit configuration now imported from shared utils
+
+// LLM Provider interface now imported from shared utils
 
 /**
  * LLM execution options
@@ -54,15 +71,7 @@ export interface LLMExecuteOptions {
   };
 }
 
-/**
- * Context compression strategies
- */
-export interface ContextCompression {
-  strategy: 'semantic' | 'summary' | 'truncate' | 'cluster';
-  level: 'low' | 'medium' | 'high';
-  preserveKeyInfo: boolean;
-  targetSize: number; // tokens
-}
+// Context compression strategies now imported from shared utils as CompressionStrategy
 
 /**
  * Inspector analysis result
@@ -99,15 +108,14 @@ export class LLMExecutionEngine extends EventEmitter {
     this.config = config;
     this.provider = provider;
 
-    // Initialize token limits for 40K constraint
-    this.tokenLimits = {
+    // Initialize token limits for 40K constraint using shared utility
+    this.tokenLimits = TokenManager.createTokenLimitConfig({
       totalLimit: 40000,
       basePrompt: 20000,
       guidelinePrompt: 20000,
-      contextWindow: 0, // Calculated dynamically
       safetyMargin: 0.05, // 5%
       compressionThreshold: 0.8 // Start compressing at 80% capacity
-    };
+    });
 
     this.metrics = {
       startTime: new Date(),
@@ -242,7 +250,7 @@ export class LLMExecutionEngine extends EventEmitter {
     const contextTokens = availableTokens - baseTokens - guidelineTokens;
 
     // Generate base prompt
-    const basePrompt = await this.generateBasePrompt(signal, context);
+    const basePrompt = await this.generateBasePrompt(signal);
 
     // Prepare guideline within token limit
     const guidelinePrompt = await this.prepareGuidelinePrompt(guideline, guidelineTokens);
@@ -255,10 +263,10 @@ export class LLMExecutionEngine extends EventEmitter {
       guidelinePrompt,
       contextPrompt,
       tokenDistribution: {
-        base: this.estimateTokens(basePrompt),
-        guideline: this.estimateTokens(guidelinePrompt),
-        context: this.estimateTokens(contextPrompt),
-        total: this.estimateTokens(basePrompt + guidelinePrompt + contextPrompt)
+        base: TokenManager.estimateTokens(basePrompt),
+        guideline: TokenManager.estimateTokens(guidelinePrompt),
+        context: TokenManager.estimateTokens(contextPrompt),
+        total: TokenManager.estimateTokens(basePrompt + guidelinePrompt + contextPrompt)
       }
     };
   }
@@ -284,7 +292,7 @@ export class LLMExecutionEngine extends EventEmitter {
       logger.warn('LLMExecutionEngine', `Prompt exceeds token limit: ${tokenDistribution.total}/${this.tokenLimits.totalLimit}`);
 
       // Apply compression
-      return await this.compressPrompt(components);
+      return this.compressPrompt(components);
     }
 
     // Build complete prompt
@@ -316,7 +324,7 @@ export class LLMExecutionEngine extends EventEmitter {
   /**
    * Generate base prompt for signal analysis
    */
-  private async generateBasePrompt(signal: Signal, _context: ProcessingContext): Promise<string> {
+  private async generateBasePrompt(signal: Signal): Promise<string> {
     return `You are an expert signal analysis system for the PRP (Project Requirements and Progress) workflow system.
 
 Your task is to analyze the provided signal and determine:
@@ -347,21 +355,21 @@ Respond in structured JSON format with all required fields.`;
    * Prepare guideline prompt within token limit
    */
   private async prepareGuidelinePrompt(guideline: string, maxTokens: number): Promise<string> {
-    const guidelineTokens = this.estimateTokens(guideline);
+    const guidelineTokens = TokenManager.estimateTokens(guideline);
 
     if (guidelineTokens <= maxTokens) {
       return guideline;
     }
 
-    // Apply semantic compression to guideline
-    const compression = this.compressionStrategies.get('guideline') || {
-      strategy: 'semantic' as const,
-      level: 'medium' as const,
+    // Apply semantic compression to guideline using shared utility
+    const compression: CompressionStrategy = {
+      strategy: 'semantic',
+      level: 'medium',
       preserveKeyInfo: true,
       targetSize: maxTokens
     };
 
-    return await this.compressText(guideline, compression);
+    return TextProcessor.compressText(guideline, compression);
   }
 
   /**
@@ -369,22 +377,22 @@ Respond in structured JSON format with all required fields.`;
    */
   private async prepareContextPrompt(context: ProcessingContext, maxTokens: number): Promise<string> {
     // Serialize context
-    let contextText = this.serializeContext(context);
-    const contextTokens = this.estimateTokens(contextText);
+    const contextText = this.serializeContext(context);
+    const contextTokens = TokenManager.estimateTokens(contextText);
 
     if (contextTokens <= maxTokens) {
       return contextText;
     }
 
-    // Apply intelligent context compression
-    const compression = this.compressionStrategies.get('context') || {
-      strategy: 'semantic' as const,
-      level: 'high' as const,
+    // Apply intelligent context compression using shared utility
+    const compression: CompressionStrategy = {
+      strategy: 'semantic',
+      level: 'high',
       preserveKeyInfo: true,
       targetSize: maxTokens
     };
 
-    return await this.compressContext(context, compression);
+    return this.compressContext(context, compression);
   }
 
   /**
@@ -404,7 +412,7 @@ Respond in structured JSON format with all required fields.`;
 
       const processingTime = Date.now() - startTime;
 
-      logger.debug('LLMExecutionEngine', `LLM execution completed`, {
+      logger.debug('LLMExecutionEngine', 'LLM execution completed', {
         processingTime,
         tokenUsage: response.usage.totalTokens,
         finishReason: response.finishReason
@@ -436,27 +444,27 @@ Respond in structured JSON format with all required fields.`;
 
       // Extract classification
       const classification: SignalClassification = {
-        category: responseData.category || 'unknown',
-        subcategory: responseData.subcategory || 'general',
-        priority: responseData.priority || signal.priority || 5,
-        agentRole: responseData.agentRole || 'developer',
-        escalationLevel: responseData.escalationLevel || 1,
+        category: responseData.category ?? 'unknown',
+        subcategory: responseData.subcategory ?? 'general',
+        priority: responseData.priority ?? signal.priority ?? 5,
+        agentRole: responseData.agentRole ?? 'developer',
+        escalationLevel: responseData.escalationLevel ?? 1,
         deadline: responseData.deadline ? new Date(responseData.deadline) : new Date(Date.now() + 86400000), // 24h default
-        dependencies: responseData.dependencies || [],
-        confidence: responseData.confidence || 50
+        dependencies: responseData.dependencies ?? [],
+        confidence: responseData.confidence ?? 50
       };
 
       // Extract recommendations
-      const recommendations: Recommendation[] = (responseData.recommendations || []).map((rec) => ({
-        type: rec.type || 'action',
-        priority: rec.priority || 'medium',
-        description: rec.description || 'No description provided',
-        estimatedTime: rec.estimatedTime || 30, // minutes
-        prerequisites: rec.prerequisites || []
+      const recommendations: Recommendation[] = (responseData.recommendations ?? []).map((rec: RecommendationData) => ({
+        type: rec.type ?? 'action',
+        priority: rec.priority ?? 'medium',
+        description: rec.description ?? 'No description provided',
+        estimatedTime: rec.estimatedTime ?? 30, // minutes
+        prerequisites: rec.prerequisites ?? []
       }));
 
-      // Calculate cost
-      const cost = this.calculateCost(response.usage.totalTokens);
+      // Calculate cost using shared utility
+      const cost = TokenManager.calculateCost(response.usage.totalTokens, this.provider.costPerToken);
 
       return {
         signalId: signal.id,
@@ -492,15 +500,15 @@ Respond in structured JSON format with all required fields.`;
     response: ModelResponse,
     processingTime: number
   ): InspectorAnalysis {
-    const cost = this.calculateCost(response.usage.totalTokens);
+    const cost = TokenManager.calculateCost(response.usage.totalTokens, this.provider.costPerToken);
 
     return {
       signalId: signal.id,
       classification: {
         category: 'unknown',
         subcategory: 'general',
-        priority: signal.priority || 5,
-        agentRole: 'developer',
+        priority: signal.priority ?? 5,
+        agentRole: 'robo-developer',
         escalationLevel: 1,
         deadline: new Date(Date.now() + 86400000),
         dependencies: [],
@@ -542,15 +550,15 @@ Respond in structured JSON format with all required fields.`;
   }): Promise<string> {
     logger.warn('LLMExecutionEngine', 'Applying prompt compression to meet token limits');
 
-    // Apply hierarchical compression
-    let compressedContext = await this.compressText(components.contextPrompt, {
+    // Apply hierarchical compression using shared utility
+    const compressedContext = await TextProcessor.compressText(components.contextPrompt, {
       strategy: 'semantic',
       level: 'high',
       preserveKeyInfo: true,
       targetSize: Math.floor(this.tokenLimits.contextWindow * 0.7)
     });
 
-    let compressedGuideline = await this.compressText(components.guidelinePrompt, {
+    const compressedGuideline = await TextProcessor.compressText(components.guidelinePrompt, {
       strategy: 'summary',
       level: 'medium',
       preserveKeyInfo: true,
@@ -574,33 +582,7 @@ Respond in structured JSON format with all required fields.`;
     ].join('\n');
   }
 
-  /**
-   * Compress text using various strategies
-   */
-  private async compressText(text: string, compression: ContextCompression): Promise<string> {
-    const tokens = this.estimateTokens(text);
-
-    if (tokens <= compression.targetSize) {
-      return text;
-    }
-
-    switch (compression.strategy) {
-      case 'truncate':
-        return this.truncateText(text, compression.targetSize);
-
-      case 'summary':
-        return await this.summarizeText(text, compression.targetSize);
-
-      case 'semantic':
-        return await this.semanticCompress(text, compression);
-
-      case 'cluster':
-        return await this.clusterCompress(text, compression);
-
-      default:
-        return this.truncateText(text, compression.targetSize);
-    }
-  }
+  // Text compression methods now handled by shared TextProcessor utility
 
   /**
    * Compress context intelligently
@@ -623,10 +605,14 @@ Respond in structured JSON format with all required fields.`;
     let remainingTokens = compression.targetSize;
 
     for (const key of priorityOrder) {
-      if (remainingTokens <= 0) break;
+      if (remainingTokens <= 0) {
+        break;
+      }
 
-      const value = (context as Record<string, unknown>)[key];
-      if (!value) continue;
+      const value = (context as unknown as Record<string, unknown>)[key];
+      if (!value) {
+        continue;
+      }
 
       const sectionText = this.serializeContextSection(key, value);
       const sectionTokens = this.estimateTokens(sectionText);
@@ -636,10 +622,11 @@ Respond in structured JSON format with all required fields.`;
         remainingTokens -= sectionTokens;
       } else {
         // Compress this section to fit remaining space
-        const compressed = await this.compressText(sectionText, {
+        const compressionStrategy: CompressionStrategy = {
           ...compression,
           targetSize: Math.floor(remainingTokens * 0.8)
-        });
+        };
+        const compressed = await TextProcessor.compressText(sectionText, compressionStrategy);
         contextText += compressed + '\n';
         break;
       }
@@ -648,47 +635,7 @@ Respond in structured JSON format with all required fields.`;
     return contextText.trim();
   }
 
-  /**
-   * Truncate text to target token count
-   */
-  private truncateText(text: string, targetTokens: number): string {
-    const words = text.split(/\s+/);
-    const avgTokensPerWord = 1.3; // Average estimation
-    const targetWords = Math.floor(targetTokens / avgTokensPerWord);
-
-    if (words.length <= targetWords) {
-      return text;
-    }
-
-    return words.slice(0, targetWords).join(' ') + '... [truncated]';
-  }
-
-  /**
-   * Summarize text (placeholder for LLM-based summarization)
-   */
-  private async summarizeText(text: string, targetTokens: number): Promise<string> {
-    // In a real implementation, this would use the LLM to summarize
-    // For now, use intelligent truncation
-    return this.truncateText(text, targetTokens);
-  }
-
-  /**
-   * Semantic compression (placeholder for advanced implementation)
-   */
-  private async semanticCompress(text: string, compression: ContextCompression): Promise<string> {
-    // In a real implementation, this would use semantic analysis
-    // For now, use summary compression
-    return await this.summarizeText(text, compression.targetSize);
-  }
-
-  /**
-   * Cluster compression (placeholder for advanced implementation)
-   */
-  private async clusterCompress(text: string, compression: ContextCompression): Promise<string> {
-    // In a real implementation, this would cluster similar content
-    // For now, use semantic compression
-    return await this.semanticCompress(text, compression);
-  }
+  // Text compression methods (truncate, summarize, semantic, cluster) now handled by shared TextProcessor utility
 
   /**
    * Serialize context to text
@@ -696,8 +643,8 @@ Respond in structured JSON format with all required fields.`;
   private serializeContext(context: ProcessingContext): string {
     const sections = [
       `Signal ID: ${context.signalId}`,
-      `Worktree: ${context.worktree || 'N/A'}`,
-      `Agent: ${context.agent || 'N/A'}`,
+      `Worktree: ${context.worktree ?? 'N/A'}`,
+      `Agent: ${context.agent ?? 'N/A'}`,
       `Related Signals: ${context.relatedSignals.length}`,
       `Active PRPs: ${context.activePRPs.length}`,
       `Recent Activity: ${context.recentActivity.length} entries`,
@@ -717,33 +664,20 @@ Respond in structured JSON format with all required fields.`;
         return `**Signal ID:** ${value}`;
 
       case 'relatedSignals':
-        return `**Related Signals:** ${value.length} signals`;
+        return `**Related Signals:** ${(value as unknown[]).length} signals`;
 
       case 'activePRPs':
-        return `**Active PRPs:** ${value.join(', ')}`;
+        return `**Active PRPs:** ${(value as string[]).join(', ')}`;
 
       case 'recentActivity':
-        return `**Recent Activity:** ${value.slice(0, 5).map(a => `${a.action} by ${a.actor}`).join(', ')}`;
+        return `**Recent Activity:** ${(value as ActivityData[]).slice(0, 5).map((a: ActivityData) => `${a.action} by ${a.actor}`).join(', ')}`;
 
       default:
         return `**${key}:** ${JSON.stringify(value).substring(0, 200)}...`;
     }
   }
 
-  /**
-   * Estimate token count (rough estimation)
-   */
-  private estimateTokens(text: string): number {
-    // Rough estimation: ~1 token per 4 characters
-    return Math.ceil(text.length / 4);
-  }
-
-  /**
-   * Calculate cost based on token usage
-   */
-  private calculateCost(tokens: number): number {
-    return tokens * this.provider.costPerToken;
-  }
+  // Token estimation and cost calculation now handled by shared TokenManager utility
 
   /**
    * Setup compression strategies
@@ -818,6 +752,13 @@ Respond in structured JSON format with all required fields.`;
    */
   getMetrics(): InspectorMetrics {
     return { ...this.metrics };
+  }
+
+  /**
+   * Estimate tokens for text
+   */
+  private estimateTokens(text: string): number {
+    return TokenManager.estimateTokens(text);
   }
 
   /**

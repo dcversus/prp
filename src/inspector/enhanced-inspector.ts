@@ -14,9 +14,11 @@ import {
   ProcessingContext,
   Recommendation,
   InspectorPayload,
-  PreparedContext
+  PreparedContext,
+  InspectorAnalysisRequest
 } from './types';
-import { LLMExecutionEngine, LLMProvider, TokenLimitConfig } from './llm-execution-engine';
+import { LLMExecutionEngine } from './llm-execution-engine';
+import type { LLMProvider, TokenLimitConfig } from '../shared';
 import { ContextManager, ContextWindowConfig } from './context-manager';
 import { ParallelExecutor, ParallelExecutionConfig } from './parallel-executor';
 import { GuidelineAdapter } from './guideline-adapter';
@@ -53,21 +55,7 @@ export interface EnhancedInspectorConfig {
   };
 }
 
-/**
- * Inspector Analysis Request
- */
-export interface InspectorAnalysisRequest {
-  id: string;
-  signal: Signal;
-  priority: number;
-  createdAt: Date;
-  context?: ProcessingContext;
-  options?: {
-    forceReprocess?: boolean;
-    useCache?: boolean;
-    timeout?: number;
-  };
-}
+// InspectorAnalysisRequest is now imported from './types'
 
 /**
  * Inspector Analysis Response
@@ -142,9 +130,7 @@ export class EnhancedInspector extends EventEmitter {
     if (config.features.enableParallelProcessing) {
       this.parallelExecutor = new ParallelExecutor(
         config.parallel,
-        this.llmEngine,
-        this.contextManager,
-        this.guidelineAdapter
+        this.llmEngine
       );
     }
 
@@ -166,10 +152,8 @@ export class EnhancedInspector extends EventEmitter {
       // Load guidelines
       await this.guidelineAdapter.loadGuidelines();
 
-      // Start parallel executor if enabled
-      if (this.parallelExecutor) {
-        await this.parallelExecutor.start();
-      }
+      // Start parallel executor
+      await this.parallelExecutor.start();
 
       this.isRunning = true;
 
@@ -201,10 +185,8 @@ export class EnhancedInspector extends EventEmitter {
     logger.info('EnhancedInspector', 'Stopping enhanced inspector');
 
     try {
-      // Stop parallel executor if running
-      if (this.parallelExecutor) {
-        await this.parallelExecutor.stop();
-      }
+      // Stop parallel executor
+      await this.parallelExecutor.stop();
 
       // Clear caches
       this.responseCache.clear();
@@ -237,12 +219,12 @@ export class EnhancedInspector extends EventEmitter {
     const request: InspectorAnalysisRequest = {
       id: requestId,
       signal,
-      priority: signal.priority || 5,
+      priority: signal.priority,
       createdAt: new Date(),
       options: {
-        forceReprocess: options?.forceReprocess || false,
-        useCache: options?.useCache !== false, // Default to true
-        timeout: options?.timeout || 60000 // 1 minute default
+        forceReprocess: options?.forceReprocess,
+        useCache: options?.useCache ?? true, // Default to true
+        timeout: options?.timeout
       }
     };
 
@@ -257,7 +239,8 @@ export class EnhancedInspector extends EventEmitter {
       this.processingRequests.set(requestId, request);
 
       // Check cache if enabled
-      if (request.options?.useCache && !request.options?.forceReprocess) {
+      const options = request.options;
+      if (options?.useCache && !options.forceReprocess) {
         const cachedResponse = this.getCachedResponse(signal);
         if (cachedResponse) {
           logger.debug('EnhancedInspector', `Cache hit for signal: ${signal.type}`);
@@ -282,13 +265,13 @@ export class EnhancedInspector extends EventEmitter {
       // Process signal
       let result: DetailedInspectorResult;
 
-      if (this.parallelExecutor && this.config.features.enableParallelProcessing) {
+      if (this.config.features.enableParallelProcessing) {
         // Use parallel execution
         const processor = {
           signal,
           guideline,
           context,
-          priority: signal.priority || 5,
+          priority: signal.priority,
           createdAt: new Date()
         };
 
@@ -305,8 +288,8 @@ export class EnhancedInspector extends EventEmitter {
         result,
         processingTime: result.processingTime,
         tokenUsage: this.calculateTokenUsage(result),
-        confidence: result.confidence || 0,
-        recommendations: result.recommendations || [],
+        confidence: result.confidence,
+        recommendations: result.recommendations,
         contextUsed: true,
         cacheHit: false
       };
@@ -373,13 +356,13 @@ export class EnhancedInspector extends EventEmitter {
     const enableParallel = options?.enableParallel !== false; // Default to true
     const responses: InspectorAnalysisResponse[] = [];
 
-    if (enableParallel && this.parallelExecutor) {
+    if (enableParallel) {
       // Process in parallel
       const processors = signals.map(signal => ({
         signal,
         guideline: '', // Will be populated by parallel executor
         context: {} as ProcessingContext,
-        priority: signal.priority || 5,
+        priority: signal.priority,
         createdAt: new Date()
       }));
 
@@ -395,15 +378,25 @@ export class EnhancedInspector extends EventEmitter {
             id: HashUtils.generateId(),
             request: {
               id: HashUtils.generateId(),
-              signal,
-              priority: signal.priority || 5,
+              signal: signal ?? {
+                id: 'unknown',
+                type: 'unknown',
+                priority: 5,
+                source: 'inspector',
+                timestamp: new Date(),
+                data: {},
+                resolved: false,
+                relatedSignals: [],
+                metadata: {}
+              },
+              priority: signal?.priority ?? 5,
               createdAt: new Date()
             },
             result,
             processingTime: result.processingTime,
             tokenUsage: this.calculateTokenUsage(result),
-            confidence: result.confidence || 0,
-            recommendations: result.recommendations || [],
+            confidence: result.confidence,
+            recommendations: result.recommendations ?? [],
             contextUsed: true,
             cacheHit: false
           };
@@ -436,16 +429,16 @@ export class EnhancedInspector extends EventEmitter {
     metrics: InspectorMetrics;
     queueSize: number;
     cacheSize: number;
-    parallelStatus?: any;
-    contextStats?: any;
-  } {
+    parallelStatus?: Record<string, unknown>;
+    contextStats?: Record<string, unknown>;
+    } {
     return {
       isRunning: this.isRunning,
       config: this.config,
       metrics: this.getMetrics(),
       queueSize: this.processingRequests.size,
       cacheSize: this.responseCache.size,
-      parallelStatus: this.parallelExecutor?.getStatus(),
+      parallelStatus: this.parallelExecutor.getStatus(),
       contextStats: this.contextManager.getStatistics()
     };
   }
@@ -497,7 +490,7 @@ export class EnhancedInspector extends EventEmitter {
       id: `ctx-${signal.id}`,
       signalId: signal.id,
       content: {
-        signalContent: signal.data.content as string || '',
+        signalContent: (signal.data.content as string) || '',
         agentContext: context.agent ? { agent: context.agent } : {},
         worktreeState: context.worktree ? { worktree: context.worktree } : {},
         environment: context.environment as Record<string, string | number | boolean>
@@ -573,7 +566,7 @@ export class EnhancedInspector extends EventEmitter {
    * Generate cache key for signal
    */
   private generateCacheKey(signal: Signal): string {
-    return `${signal.type}-${signal.data?.['rawSignal'] || ''}-${signal.priority || 5}`;
+    return `${signal.type}-${(signal.data['rawSignal'] as string) || ''}-${signal.priority || 5}`;
   }
 
   /**

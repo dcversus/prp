@@ -29,7 +29,7 @@ import {
 import {
   FileChange,
   Signal,
-  EventBus,
+  eventBus,
   createLayerLogger,
   PerformanceMonitor,
   TimeUtils,
@@ -139,7 +139,7 @@ export class Scanner extends EventEmitter {
   private setupEventHandlers(): void {
     this.on('scanStarted', (event: ScannerStartedEvent) => {
       logger.info('Scanner', `Scan started for ${event.worktree}`, { event });
-      EventBus.publishToChannel('scanner', {
+      eventBus.publishToChannel('scanner', {
         id: HashUtils.generateId(),
         type: 'scanner_scan_started',
         timestamp: TimeUtils.now(),
@@ -159,7 +159,7 @@ export class Scanner extends EventEmitter {
       });
 
       this.updateMetrics(event.result);
-      EventBus.publishToChannel('scanner', {
+      eventBus.publishToChannel('scanner', {
         id: HashUtils.generateId(),
         type: 'scanner_scan_completed',
         timestamp: TimeUtils.now(),
@@ -171,7 +171,7 @@ export class Scanner extends EventEmitter {
 
     this.on('scanError', (event: ScannerErrorEvent) => {
       logger.error('Scanner', `Scan error in ${event.worktree}: ${event.error instanceof Error ? event.error.message : String(event.error)}`);
-      EventBus.publishToChannel('scanner', {
+      eventBus.publishToChannel('scanner', {
         id: HashUtils.generateId(),
         type: 'scanner_scan_error',
         timestamp: TimeUtils.now(),
@@ -182,10 +182,10 @@ export class Scanner extends EventEmitter {
     });
 
     // Handle token accounting alerts
-    EventBus.subscribeToChannel('scanner', (event) => {
+    eventBus.subscribeToChannel('scanner', (event) => {
       if (event.type === 'token_alert') {
         this.emit('tokenAlert', event.data as TokenAlertEvent);
-        EventBus.publishToChannel('scanner', {
+        eventBus.publishToChannel('scanner', {
           id: HashUtils.generateId(),
           type: 'scanner_token_alert',
           timestamp: TimeUtils.now(),
@@ -201,7 +201,7 @@ export class Scanner extends EventEmitter {
    * Add a worktree to monitor
    */
   async addWorktree(path: string, name?: string): Promise<void> {
-    const worktreeName = name || path.split('/').pop() || path;
+    const worktreeName = name ?? path.split('/').pop() ?? path;
 
     if (this.worktreeMonitors.has(worktreeName)) {
       logger.warn('Scanner', `Worktree ${worktreeName} already exists`);
@@ -337,7 +337,7 @@ export class Scanner extends EventEmitter {
     };
 
     this.emit('fileChange', { worktree, event } as FileChangeEvent);
-    EventBus.publishToChannel('scanner', {
+    eventBus.publishToChannel('scanner', {
       id: HashUtils.generateId(),
       type: 'scanner_file_change',
       timestamp: TimeUtils.now(),
@@ -396,7 +396,11 @@ export class Scanner extends EventEmitter {
     this.isScanning = true;
 
     while (this.scanQueue.length > 0) {
-      const { worktree, type } = this.scanQueue.shift()!;
+      const scanItem = this.scanQueue.shift();
+      if (!scanItem) {
+        break;
+      }
+      const { worktree, type } = scanItem;
 
       try {
         await this.performScan(worktree, type);
@@ -499,7 +503,7 @@ export class Scanner extends EventEmitter {
 
       // File monitoring
       if (this.state.config.enableFileMonitoring) {
-        const fileChanges = await this.scanFileChanges(worktree, scanType);
+        const fileChanges = await this.scanFileChanges();
         result.changes.push(...fileChanges);
       }
 
@@ -520,7 +524,7 @@ export class Scanner extends EventEmitter {
 
       // Update performance metrics
       result.performance.duration = Date.now() - startTime;
-      result.performance.filesScanned = this.countScannedFiles(worktree);
+      result.performance.filesScanned = this.countScannedFiles();
       result.performance.changesFound = result.changes.length;
 
       logger.info('Scanner', `Scan completed for ${worktree}`, {
@@ -542,7 +546,10 @@ export class Scanner extends EventEmitter {
    * Scan for git changes in a worktree
    */
   private async scanGitChanges(worktree: string): Promise<FileChange[]> {
-    const monitor = this.worktreeMonitors.get(worktree)!;
+    const monitor = this.worktreeMonitors.get(worktree);
+    if (!monitor) {
+      throw new Error(`Worktree monitor not found: ${worktree}`);
+    }
     const changes: FileChange[] = [];
 
     try {
@@ -594,7 +601,7 @@ export class Scanner extends EventEmitter {
   /**
    * Scan for file changes (excluding git)
    */
-  private async scanFileChanges(_worktree: string, _scanType: 'full' | 'incremental'): Promise<FileChange[]> {
+  private async scanFileChanges(): Promise<FileChange[]> {
     // This would implement custom file change detection
     // For now, we rely on git monitoring and file watcher events
     return [];
@@ -604,9 +611,14 @@ export class Scanner extends EventEmitter {
    * Scan PRP files for updates and signals
    */
   private async scanPRPFiles(worktree: string): Promise<PRPScanResult[]> {
-    const monitor = this.worktreeMonitors.get(worktree)!;
+    const monitor = this.worktreeMonitors.get(worktree);
+    if (!monitor) {
+      throw new Error(`Worktree monitor not found: ${worktree}`);
+    }
     const parser = this.prpParsers.get(worktree);
-    if (!parser) return [];
+    if (!parser) {
+      return [];
+    }
 
     const updates: PRPScanResult[] = [];
 
@@ -655,7 +667,7 @@ export class Scanner extends EventEmitter {
       } catch {
         // Ignore permission errors
       }
-    }
+    };
 
     await scanDirectory(dirPath);
     return prpFiles;
@@ -750,7 +762,10 @@ export class Scanner extends EventEmitter {
    * Scan for signals in all files
    */
   private async scanForSignals(worktree: string): Promise<Signal[]> {
-    const monitor = this.worktreeMonitors.get(worktree)!;
+    const monitor = this.worktreeMonitors.get(worktree);
+    if (!monitor) {
+      throw new Error(`Worktree monitor not found: ${worktree}`);
+    }
     const allSignals: Signal[] = [];
 
     try {
@@ -806,7 +821,7 @@ export class Scanner extends EventEmitter {
       } catch {
         // Ignore permission errors
       }
-    }
+    };
 
     await scanDirectory(dirPath);
     return relevantFiles;
@@ -815,7 +830,7 @@ export class Scanner extends EventEmitter {
   /**
    * Count scanned files for metrics
    */
-  private countScannedFiles(_worktree: string): number {
+  private countScannedFiles(): number {
     // This would be implemented with actual file counting logic
     return 0;
   }
@@ -865,8 +880,11 @@ export class Scanner extends EventEmitter {
   private async cleanupWorktreeSubsystems(name: string): Promise<void> {
     // Cleanup file watcher
     const fileWatcher = this.fileWatchers.get(name);
-    if (fileWatcher) {
-      await (fileWatcher.watcher as WatcherInstance)?.close?.();
+    if (fileWatcher?.watcher) {
+      const watcher = fileWatcher.watcher as WatcherInstance;
+      if (watcher.close) {
+        await watcher.close();
+      }
       this.fileWatchers.delete(name);
     }
 

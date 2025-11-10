@@ -5,9 +5,8 @@
  * and compact JSON formatting as specified in the PRP
  */
 
-import React from 'react';
 import { Box, Text } from 'ink';
-import { HistoryItem as HistoryItemType, TUIConfig } from '../types/TUIConfig.js';
+import type { HistoryItem as HistoryItemType, TUIConfig } from '../../shared/types/TUIConfig.js';
 
 interface HistoryItemProps {
   item: HistoryItemType;

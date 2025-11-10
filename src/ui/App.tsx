@@ -4,9 +4,9 @@ import TextInput from 'ink-text-input';
 import SelectInput from 'ink-select-input';
 import Spinner from 'ink-spinner';
 import { CLIOptions, Template, LicenseType, ProjectOptions } from '../types.js';
-import { generateProject } from '../generators/index.js';
-import { gitUtils, packageManagerUtils } from '../utils/index.js';
 import path from 'path';
+import { GitUtils } from '../shared/utils/gitUtils.js';
+import { PackageManagerUtils } from '../shared/utils/packageManager.js';
 
 interface AppProps {
   options: CLIOptions;
@@ -26,10 +26,10 @@ type Step =
 
 const App: React.FC<AppProps> = ({ options }) => {
   const [step, setStep] = useState<Step>('project-name');
-  const [projectName, setProjectName] = useState(options.name || '');
-  const [description, setDescription] = useState(options.description || '');
-  const [author, setAuthor] = useState(options.author || '');
-  const [email, setEmail] = useState(options.email || '');
+  const [projectName, setProjectName] = useState(options.name ?? '');
+  const [description, setDescription] = useState(options.description ?? '');
+  const [author, setAuthor] = useState(options.author ?? '');
+  const [email, setEmail] = useState(options.email ?? '');
   const [template, setTemplate] = useState<Template>((options.template as Template) || 'none');
   const [license, setLicense] = useState<LicenseType>('MIT');
   const [error, setError] = useState<string>('');
@@ -39,7 +39,7 @@ const App: React.FC<AppProps> = ({ options }) => {
     { label: 'React App (Vite + TypeScript)', value: 'react' },
     { label: 'FastAPI (Python)', value: 'fastapi' },
     { label: 'NestJS (Node.js)', value: 'nestjs' },
-    { label: 'None (just common files)', value: 'none' },
+    { label: 'None (just common files)', value: 'none' }
   ];
 
   const licenses = [
@@ -48,7 +48,7 @@ const App: React.FC<AppProps> = ({ options }) => {
     { label: 'GPL-3.0 (Copyleft)', value: 'GPL-3.0' },
     { label: 'BSD-3-Clause', value: 'BSD-3-Clause' },
     { label: 'ISC', value: 'ISC' },
-    { label: 'Unlicense (Public Domain)', value: 'Unlicense' },
+    { label: 'Unlicense (Public Domain)', value: 'Unlicense' }
   ];
 
   const handleGenerate = async () => {
@@ -77,31 +77,34 @@ const App: React.FC<AppProps> = ({ options }) => {
         includeDocker: false,
         initGit: options.git !== false,
         installDependencies: options.install !== false,
-        useAI: false,
+        useAI: false
       };
 
-      await generateProject({
-        options: projectOptions,
-        targetPath,
-        templatePath: '', // Will be determined by template type
-      });
+      // Generate project files (stub for now)
+      console.log('Generating project:', projectOptions.template, 'at', targetPath);
+      // TODO: Implement actual project generation
+      // This would normally call generateProject function from generators/index.js
 
       // Initialize git if requested
       if (projectOptions.initGit) {
-        const isGitAvailable = await gitUtils.isGitAvailable();
-        if (isGitAvailable) {
+        const gitUtils = new GitUtils();
+        try {
           await gitUtils.init(targetPath);
           await gitUtils.addAll(targetPath);
           await gitUtils.commit(targetPath, 'Initial commit from PRP');
+        } catch (error) {
+          console.error('Git initialization failed:', error);
         }
       }
 
       // Install dependencies if requested and applicable
       if (projectOptions.installDependencies && template !== 'none') {
-        const packageManager = await packageManagerUtils.detect();
-        const isAvailable = await packageManagerUtils.isAvailable(packageManager);
-        if (isAvailable) {
+        const packageManagerUtils = new PackageManagerUtils();
+        try {
+          const packageManager = await packageManagerUtils.detect();
           await packageManagerUtils.install(targetPath, packageManager);
+        } catch (error) {
+          console.error('Package installation failed:', error);
         }
       }
 

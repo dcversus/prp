@@ -1,83 +1,143 @@
 #!/usr/bin/env node
 
-/**
- * Initialization Command Implementation
- *
- * Provides comprehensive project initialization with wizard
- * and template support.
- */
-
 import { Command } from 'commander';
-import { logger } from '../utils/logger';
-import { PRPCli } from '../core/cli';
+import { logger } from '../shared/logger.js';
+import { promises as fs } from 'fs';
+import * as path from 'path';
+import { runTUIInit } from './tui-init.js';
 
-interface InitOptions {
-  name?: string;
-  description?: string;
-  author?: string;
-  email?: string;
+export interface InitOptions {
+  prompt?: string;
+  projectName?: string;
   template?: string;
-  license?: string;
-  git?: boolean;
-  install?: boolean;
-  interactive?: boolean;
-  yes?: boolean;
+  force?: boolean;
+  default?: boolean;
+  ci?: boolean;
+  debug?: boolean;
+  logLevel?: string;
+  noColor?: boolean;
+  logFile?: string;
+  noInteractive?: boolean;
+  interactive?: boolean; // Commander passes --no-interactive as interactive:false
 }
 
-/**
- * Create init command for CLI
- */
 export function createInitCommand(): Command {
   const initCmd = new Command('init')
-    .description('Initialize a new PRP project or upgrade existing project')
-    .option('-n, --name <name>', 'project name')
-    .option('-d, --description <description>', 'project description')
-    .option('-a, --author <author>', 'author name')
-    .option('-e, --email <email>', 'author email')
-    .option('-t, --template <template>', 'project template (node, react, next, express, python, django, fastapi, go, cli, library)')
-    .option('-l, --license <license>', 'license type (default: MIT)', 'MIT')
-    .option('--no-git', 'skip git initialization')
-    .option('--no-install', 'skip dependency installation')
-    .option('--no-interactive', 'run in non-interactive mode')
-    .option('--yes', 'use default values for all options')
-    .action(async (options: InitOptions) => {
-      await handleInitCommand(options);
+    .description('Initialize a new PRP project')
+    .argument('[projectName]', 'project name (optional)')
+    .option('-p, --prompt <string>', 'Project base prompt from what project start auto build')
+    .option('-n, --project-name <string>', 'Project name')
+    .option(
+      '--template <type>',
+      'Project template (none|typescript|react|fastapi|wikijs|nestjs)',
+      'none'
+    )
+    .option('--default', 'Go with default options without stopping')
+    .option('--force', 'Overwrite existing files and apply all with overwrite')
+    .action(async (projectName: string | undefined, options: InitOptions, command: Command) => {
+      const args = process.argv.slice(2);
+      if (args.includes('--help') || args.includes('-h')) {
+        return;
+      }
+
+      const globalOptions = command.parent?.opts() ?? {};
+      const mergedOptions = { ...globalOptions, ...options };
+
+      await handleInitCommand(mergedOptions, projectName);
     });
 
   return initCmd;
 }
 
-/**
- * Handle init command execution
- */
-async function handleInitCommand(options: InitOptions): Promise<void> {
-  logger.info('🚀 Initializing PRP Project');
+async function handleInitCommand(options: InitOptions, projectName?: string): Promise<void> {
+  if (options.debug) {
+    process.env.DEBUG = 'true';
+    process.env.VERBOSE_MODE = 'true';
+  }
 
   try {
-    const cli = new PRPCli({
-      debug: false,
-    });
+    const targetDir = projectName ?? '.';
+    const prprcPath = path.join(targetDir, '.prprc');
 
-    await cli.initialize();
+    let prprcExists = false;
+    try {
+      await fs.access(prprcPath);
+      prprcExists = true;
+    } catch {
+      prprcExists = false;
+    }
 
-    // Execute init command
-    const result = await cli.run(['init'], options);
-
-    if (result.success) {
-      logger.success('✅ Project initialized successfully');
-    } else {
-      logger.error('❌ Project initialization failed');
-      if (result.stderr) {
-        logger.error(result.stderr);
-      }
+    if (prprcExists && !options.force) {
+      logger.error(
+        'shared',
+        'InitCommand',
+        `PRP project already exists in ${targetDir}`,
+        new Error('Project already exists')
+      );
+      logger.info(
+        'shared',
+        'InitCommand',
+        'Use --force to overwrite or choose a different directory',
+        {}
+      );
       process.exit(1);
     }
 
+    if (options.ci || options.default || options.noInteractive || options.interactive === false) {
+      // For CI, default, or non-interactive mode, use basic scaffolding
+      if (options.template && options.template !== 'none') {
+        logger.info('shared', 'InitCommand', `Creating ${options.template} project in ${targetDir}`, {});
+        // TODO: Implement basic scaffolding service for non-interactive mode
+        logger.info('shared', 'InitCommand', 'Non-interactive scaffolding not yet implemented', {});
+      } else {
+        logger.info('shared', 'InitCommand', 'No template specified or using none, creating basic project structure', {});
+        // Create basic project structure
+        await createBasicProjectStructure(targetDir, options.template);
+      }
+    } else {
+      await runTUIInit({
+        projectName: projectName ?? options.projectName,
+        template: options.template,
+        prompt: options.prompt,
+        force: options.force ?? false,
+        ci: options.ci ?? false,
+        debug: options.debug ?? false
+      });
+    }
   } catch (error) {
-    logger.error('Initialization failed:', error);
+    logger.error(
+      'shared',
+      'InitCommand',
+      `Initialization failed: ${error instanceof Error ? error.message : String(error)}`,
+      error instanceof Error ? error : new Error(String(error))
+    );
     process.exit(1);
   }
 }
 
-// Export for use in main CLI
-export { createInitCommand as default };
+async function createBasicProjectStructure(targetDir: string, template?: string): Promise<void> {
+  try {
+    // Ensure target directory exists
+    await fs.mkdir(targetDir, { recursive: true });
+
+    // Create basic .prprc file
+    const prprcContent = {
+      name: path.basename(targetDir),
+      template: template || 'none',
+      created: new Date().toISOString(),
+      version: '0.5.0'
+    };
+
+    await fs.writeFile(
+      path.join(targetDir, '.prprc'),
+      JSON.stringify(prprcContent, null, 2),
+      'utf8'
+    );
+
+    logger.info('shared', 'InitCommand', `Basic project structure created in ${targetDir}`, {});
+  } catch (error) {
+    throw new Error(`Failed to create project structure: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+export { handleInitCommand };

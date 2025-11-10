@@ -5,6 +5,7 @@
  */
 
 import { EventEmitter } from 'events';
+import { logger } from './logger.js';
 import {
   ChannelEvent,
   ScannerEvent,
@@ -67,7 +68,7 @@ export class EventChannelImpl<T = Record<string, unknown>> implements EventChann
       try {
         callback(eventWithMetadata);
       } catch (error) {
-        console.error(`Error in event subscriber for channel ${this.name}:`, error);
+        logger.error('shared', 'EventChannel', `Error in event subscriber for channel ${this.name}`, error instanceof Error ? error : new Error(String(error)));
       }
     });
   }
@@ -99,9 +100,22 @@ export class EventChannelImpl<T = Record<string, unknown>> implements EventChann
 }
 
 /**
+ * ♫ Event Bus Interface
+ */
+export interface IEventBus {
+  on(event: string, listener: (...args: unknown[]) => void): void;
+  off(event: string, listener: (...args: unknown[]) => void): void;
+  emit(event: string, ...args: unknown[]): void;
+  createChannel<T>(name: string, maxEvents?: number): EventChannel<T>;
+  getChannel<T>(name: string): EventChannel<T> | undefined;
+  publishToChannel<T>(channelName: string, event: ChannelEvent<T>): void;
+  subscribeToChannel<T>(channelName: string, callback: (event: ChannelEvent<T>) => void): () => void;
+}
+
+/**
  * ♫ Event Bus - Central coordinator for all event channels
  */
-export class EventBus {
+export class EventBus implements IEventBus {
   private channels: Map<string, EventChannel<Record<string, unknown>>> = new Map();
   private globalEmitter = new EventEmitter();
 
@@ -131,7 +145,7 @@ export class EventBus {
     if (channel) {
       channel.publish(event);
     } else {
-      console.warn(`Channel ${channelName} not found`);
+      logger.warn('shared', 'EventBus', `Channel ${channelName} not found`);
     }
 
     // Also emit globally for cross-channel listeners
@@ -184,6 +198,19 @@ export class EventBus {
       data: signal,
       metadata: signal.metadata
     });
+  }
+
+  // Standard EventEmitter interface methods
+  on(event: string, listener: (...args: unknown[]) => void): void {
+    this.globalEmitter.on(event, listener);
+  }
+
+  off(event: string, listener: (...args: unknown[]) => void): void {
+    this.globalEmitter.off(event, listener);
+  }
+
+  emit(event: string, ...args: unknown[]): void {
+    this.globalEmitter.emit(event, ...args);
   }
 
   // Cross-channel event listening
@@ -278,7 +305,7 @@ export const eventFilters = {
       typeof event.data === 'object' &&
       event.data !== null &&
       'priority' in event.data &&
-      typeof (event.data as Record<string, unknown>).priority === 'number' &&
-      ((event.data as Record<string, unknown>).priority as number) >= minPriority
-    ),
+      typeof (event.data).priority === 'number' &&
+      ((event.data).priority) >= minPriority
+    )
 };
