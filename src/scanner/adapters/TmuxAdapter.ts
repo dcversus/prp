@@ -75,13 +75,19 @@ export class TmuxAdapter {
       const lines = stdout.trim().split('\n');
 
       for (const line of lines) {
-        if (!line) continue;
+        if (!line) {
+          continue;
+        }
 
         const parts = line.split('|');
-        if (parts.length < 4) continue;
+        if (parts.length < 4) {
+          continue;
+        }
 
         const [id, name, createdStr, attachedStr] = parts;
-        if (!id || !name || !createdStr || attachedStr === undefined) continue;
+        if (!id || !name || !createdStr || attachedStr === undefined) {
+          continue;
+        }
 
         const created = new Date(createdStr);
         const attached = attachedStr === '1';
@@ -119,13 +125,19 @@ export class TmuxAdapter {
       const lines = stdout.trim().split('\n');
 
       for (const line of lines) {
-        if (!line) continue;
+        if (!line) {
+          continue;
+        }
 
         const parts = line.split('|');
-        if (parts.length < 4) continue;
+        if (parts.length < 4) {
+          continue;
+        }
 
         const [idStr, name, flags, currentPaneStr] = parts;
-        if (!idStr || name === undefined || flags === undefined || currentPaneStr === undefined) continue;
+        if (!idStr || name === undefined || flags === undefined || currentPaneStr === undefined) {
+          continue;
+        }
 
         const id = parseInt(idStr, 10);
         const active = flags.includes('*');
@@ -181,7 +193,9 @@ export class TmuxAdapter {
       const signalPattern = /\[([a-zA-Z]{2})\]/g;
 
       for (const line of lines) {
-        if (!line) continue;
+        if (!line) {
+          continue;
+        }
 
         const signals: string[] = [];
         let match;

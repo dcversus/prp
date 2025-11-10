@@ -7,6 +7,22 @@
 // Types are imported as needed in individual functions
 import { resolve, dirname } from 'path';
 
+// Export merge-prompt utilities
+export {
+  MergePrompt,
+  mergePrompt,
+  buildAgentPrompt,
+  buildInspectorPrompt,
+  buildOrchestratorPrompt,
+  TOON
+} from './utils/merge-prompt';
+
+// Re-export types from merge-prompt
+export type {
+  MergeConfig,
+  MergeOptions
+} from './utils/merge-prompt';
+
 /**
  * Token counting utilities
  */
@@ -14,7 +30,9 @@ export class TokenCounter {
   private static readonly CHARS_PER_TOKEN = 4;
 
   static estimateTokens(text: string): number {
-    if (!text) return 0;
+    if (!text) {
+      return 0;
+    }
     return Math.ceil(text.length / this.CHARS_PER_TOKEN);
   }
 
@@ -35,7 +53,7 @@ export class TokenCounter {
       'gpt-4-mini': 0.00015,
       'claude-3-sonnet': 0.015,
       'claude-3-haiku': 0.00025,
-      'gemini-pro': 0.00025,
+      'gemini-pro': 0.00025
     };
     return costs[model] ?? 0.01;
   }
@@ -54,10 +72,14 @@ export class SignalParser {
 
   static parseSignal(signal: string): { code: string; priority: number } | null {
     const match = signal.match(/\[([A-Z][a-z]?)\]/);
-    if (!match) return null;
+    if (!match) {
+      return null;
+    }
 
     const code = match[1];
-    if (!code) return null;
+    if (!code) {
+      return null;
+    }
 
     const priority = this.getSignalPriority(code);
 
@@ -77,7 +99,7 @@ export class SignalParser {
       'Pi': 2,  // Progress
       'Cf': 2,  // Confident
       'Vd': 2,  // Validated
-      'Co': 1,  // Completed
+      'Co': 1  // Completed
     };
     return priorities[code] ?? 5;
   }
@@ -103,7 +125,7 @@ export class FileUtils {
       size: stats.size,
       modified: stats.mtime,
       created: stats.birthtime,
-      isDirectory: stats.isDirectory(),
+      isDirectory: stats.isDirectory()
     };
   }
 
@@ -163,7 +185,7 @@ export class GitUtils {
 
     try {
       const { stdout } = await execAsync('git status --porcelain', {
-        cwd: repoPath,
+        cwd: repoPath
       });
 
       const lines = stdout.trim().split('\n');
@@ -172,11 +194,13 @@ export class GitUtils {
         modified: [] as string[],
         added: [] as string[],
         deleted: [] as string[],
-        untracked: [] as string[],
+        untracked: [] as string[]
       };
 
       for (const line of lines) {
-        if (!line) continue;
+        if (!line) {
+          continue;
+        }
 
         const status = line.substring(0, 2);
         const path = line.substring(3);
@@ -212,7 +236,7 @@ export class GitUtils {
 
     try {
       const { stdout } = await execAsync('git rev-parse --abbrev-ref HEAD', {
-        cwd: repoPath,
+        cwd: repoPath
       });
       return stdout.trim();
     } catch {
@@ -227,7 +251,7 @@ export class GitUtils {
 
     try {
       const { stdout } = await execAsync('git rev-parse HEAD', {
-        cwd: repoPath,
+        cwd: repoPath
       });
       return stdout.trim();
     } catch {
@@ -272,13 +296,13 @@ export class PerformanceMonitor {
     heapTotal: number;
     heapUsed: number;
     external: number;
-  } {
+    } {
     const usage = process.memoryUsage();
     return {
       rss: usage.rss,
       heapTotal: usage.heapTotal,
       heapUsed: usage.heapUsed,
-      external: usage.external,
+      external: usage.external
     };
   }
 }
@@ -314,7 +338,9 @@ export class Validator {
   }
 
   static sanitizeString(str: string, maxLength: number = 1000): string {
-    if (typeof str !== 'string') return '';
+    if (typeof str !== 'string') {
+      return '';
+    }
     return str.substring(0, maxLength).trim();
   }
 }

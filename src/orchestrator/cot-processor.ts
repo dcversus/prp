@@ -8,6 +8,15 @@
 import { Signal, InspectorPayload } from '../shared/types';
 import { ChainOfThought, CoTStep, CoTContext, DecisionRecord } from './types';
 import { logger, HashUtils } from '../shared';
+import {
+  TaskManager,
+  TaskDefinition,
+  TaskAssignment,
+  TaskResult,
+  TaskType,
+  TaskPriority,
+  AgentCapability
+} from '../shared/tasks';
 
 interface AgentInfo {
   id: string;
@@ -67,9 +76,10 @@ interface ChainOfThoughtContext {
  */
 export class CoTProcessor {
   private processingHistory: Map<string, ChainOfThought> = new Map();
+  private taskManager?: TaskManager;
 
-  constructor() {
-    // Config will be implemented when needed
+  constructor(taskManager?: TaskManager) {
+    this.taskManager = taskManager;
   }
 
   /**
@@ -161,6 +171,168 @@ export class CoTProcessor {
   }
 
   /**
+   * Set task manager instance
+   */
+  setTaskManager(taskManager: TaskManager): void {
+    this.taskManager = taskManager;
+  }
+
+  /**
+   * Generate Chain of Thought for a task
+   */
+  async generateCoTForTask(
+    task: TaskDefinition,
+    context: ProcessingContext,
+    guideline: string
+  ): Promise<ChainOfThought> {
+    logger.debug('orchestrator', 'cot-processor', 'Generating Chain of Thought for task', {
+      taskId: task.id,
+      taskType: task.type,
+      taskPriority: task.priority
+    });
+
+    // Create a signal from the task for processing
+    const taskSignal: Signal = {
+      id: `task_${task.id}`,
+      type: this.mapTaskTypeToSignalType(task.type),
+      priority: this.mapTaskPriorityToSignalPriority(task.priority),
+      source: task.context.requestedBy ?? 'task-manager',
+      data: {
+        taskId: task.id,
+        taskType: task.type,
+        taskTitle: task.title,
+        taskDescription: task.description,
+        parameters: task.parameters,
+        prpId: task.context.prpId,
+        files: task.context.files
+      },
+      timestamp: new Date()
+    };
+
+    // Add task information to context
+    const taskContext: ProcessingContext = {
+      ...context,
+      availableAgents: this.getAvailableAgentsForTask(task),
+      systemState: {
+        ...context.systemState,
+        currentTask: {
+          id: task.id,
+          type: task.type,
+          priority: task.priority,
+          requiredCapabilities: task.requiredCapabilities
+        }
+      }
+    };
+
+    return this.generateCoT(taskSignal, taskContext, guideline);
+  }
+
+  /**
+   * Create tasks from CoT decision
+   */
+  async createTasksFromCoTDecision(
+    cot: ChainOfThought,
+    context: ProcessingContext
+  ): Promise<TaskDefinition[]> {
+    if (!this.taskManager) {
+      logger.warn('orchestrator', 'cot-processor', 'No task manager available, cannot create tasks from CoT');
+      return [];
+    }
+
+    const createdTasks: TaskDefinition[] = [];
+
+    try {
+      // Extract task creation instructions from decision
+      const taskInstructions = this.extractTaskInstructions(cot);
+
+      for (const instruction of taskInstructions) {
+        // Create signal from instruction
+        const signal: Signal = {
+          id: `cot_${cot.id}_${Date.now()}`,
+          type: instruction.signalType,
+          priority: instruction.priority,
+          source: 'cot-processor',
+          data: {
+            cotId: cot.id,
+            instruction: instruction.description,
+            parameters: instruction.parameters,
+            context: instruction.context
+          },
+          timestamp: new Date()
+        };
+
+        // Create task
+        const task = this.taskManager.createTaskFromSignal(signal, {
+          type: instruction.taskType,
+          priority: instruction.priority,
+          title: instruction.title,
+          description: instruction.description,
+          requiredCapabilities: instruction.requiredCapabilities,
+          parameters: instruction.parameters
+        });
+
+        if (task) {
+          createdTasks.push(task);
+          logger.info('orchestrator', 'cot-processor', 'Task created from CoT decision', {
+            taskId: task.id,
+            cotId: cot.id,
+            taskType: task.type,
+            instruction: instruction.title
+          });
+        }
+      }
+
+      logger.info('orchestrator', 'cot-processor', `Created ${createdTasks.length} tasks from CoT decision`, {
+        cotId: cot.id
+      });
+
+    } catch (error) {
+      logger.error('orchestrator', 'cot-processor', 'Failed to create tasks from CoT decision', error instanceof Error ? error : new Error(String(error)), {
+        cotId: cot.id
+      });
+    }
+
+    return createdTasks;
+  }
+
+  /**
+   * Update CoT with task execution results
+   */
+  updateCoTWithTaskResults(cotId: string, results: TaskResult[]): void {
+    const cot = this.processingHistory.get(cotId);
+    if (!cot) {
+      logger.warn('orchestrator', 'cot-processor', 'CoT not found for update', { cotId });
+      return;
+    }
+
+    // Add task results as a new step
+    const resultsStep: CoTStep = {
+      id: HashUtils.generateId(),
+      type: 'verify',
+      content: this.formatTaskResults(results),
+      reasoning: 'Updating Chain of Thought with task execution results',
+      confidence: this.calculateResultsConfidence(results),
+      timestamp: new Date()
+    };
+
+    // Add step to CoT
+    if (!cot.steps) {
+      cot.steps = [];
+    }
+    cot.steps.push(resultsStep);
+
+    // Update decision if needed
+    if (results.length > 0) {
+      this.updateDecisionWithResults(cot, results);
+    }
+
+    logger.info('orchestrator', 'cot-processor', 'CoT updated with task results', {
+      cotId,
+      resultsCount: results.length
+    });
+  }
+
+  /**
    * Get CoT history
    */
   getCoTHistory(limit: number = 50): ChainOfThought[] {
@@ -221,7 +393,7 @@ export class CoTProcessor {
     steps.push(await this.createDecisionStep(signal, context));
 
     // Step 5: Verify decision
-    steps.push(await this.createVerificationStep(signal, context));
+    steps.push(this.createVerificationStep(signal, context));
 
     return steps;
   }
@@ -255,7 +427,7 @@ export class CoTProcessor {
   private async createConsiderationStep(_signal: Signal, context: CoTContext): Promise<CoTStep> {
     const systemState = context.systemState as { status?: string } | undefined;
     const considerations = [
-      `System State: ${systemState?.status || 'active'}`,
+      `System State: ${systemState?.status ?? 'active'}`,
       `Active Agents: ${context.availableAgents.length}`,
       `Similar Signals: ${context.previousDecisions.length}`,
       `Guidelines: ${context.activeGuidelines.join(', ')}`
@@ -276,7 +448,8 @@ export class CoTProcessor {
    */
   private async createEvaluationStep(signal: Signal, context: CoTContext): Promise<CoTStep> {
     const options = this.generateOptions(signal);
-    void context; // Explicitly mark as used to avoid ESLint warning (TODO: implement context-aware evaluation)
+    // TODO: implement context-aware evaluation
+    console.debug('Context marked as used:', context); // Explicitly mark as used
 
     return {
       id: HashUtils.generateId(),
@@ -309,7 +482,7 @@ export class CoTProcessor {
   /**
    * Create verification step
    */
-  private async createVerificationStep(signal: Signal, context: CoTContext): Promise<CoTStep> {
+  private createVerificationStep(signal: Signal, context: CoTContext): CoTStep {
     const verification = `Decision Verification:
 - Risk Assessment: ${this.assessRisk(signal)}
 - Resource Requirements: ${this.assessResourceRequirements(signal)}
@@ -336,7 +509,7 @@ export class CoTProcessor {
   ): Promise<ChainOfThought['decision']> {
     const decisionStep = steps.find(step => step.type === 'decide');
 
-    const action = decisionStep?.decision || 'No action determined';
+    const action = decisionStep?.decision ?? 'No action determined';
     const reasoning = steps.map(step => step.reasoning).join(' → ');
 
     // Determine actions based on signal type and decision
@@ -377,7 +550,7 @@ export class CoTProcessor {
    * Calculate confidence score
    */
   private calculateConfidence(steps: CoTStep[], decision: ChainOfThought['decision']): number {
-    const stepConfidence = steps.reduce((sum, step) => sum + (step.confidence || 0), 0) / steps.length;
+    const stepConfidence = steps.reduce((sum, step) => sum + (step.confidence ?? 0), 0) / steps.length;
     const decisionComplexity = this.assessDecisionComplexity(decision);
 
     // Adjust confidence based on complexity
@@ -394,8 +567,8 @@ export class CoTProcessor {
 
     // Steps tokens
     for (const step of steps) {
-      tokens += this.estimateTokens(step.content || '');
-      tokens += this.estimateTokens(step.reasoning || '');
+      tokens += this.estimateTokens(step.content ?? '');
+      tokens += this.estimateTokens(step.reasoning ?? '');
     }
 
     // Decision tokens
@@ -424,8 +597,12 @@ export class CoTProcessor {
   }
 
   private assessRequiredAttention(signal: Signal): string {
-    if (signal.priority > 8) return 'IMMEDIATE';
-    if (signal.priority > 5) return 'HIGH';
+    if (signal.priority > 8) {
+      return 'IMMEDIATE';
+    }
+    if (signal.priority > 5) {
+      return 'HIGH';
+    }
     return 'NORMAL';
   }
 
@@ -483,8 +660,9 @@ export class CoTProcessor {
   }
 
   private determineActions(signal: Signal, decision: string, context: CoTContext): string[] {
-    const actions = [];
-    void context; // Explicitly mark as used to avoid ESLint warning (TODO: implement context-aware actions)
+    const actions: string[] = [];
+    // TODO: implement context-aware actions
+    console.debug('Context marked as used:', context); // Explicitly mark as used
 
     if (decision.includes('agent')) {
       actions.push(`Deploy ${this.selectBestAgent(signal)} agent to handle signal: ${signal.type}`);
@@ -502,7 +680,7 @@ export class CoTProcessor {
   }
 
   private identifyBlockers(_signal: Signal, context: CoTContext): string[] {
-    const blockers = [];
+    const blockers: string[] = [];
 
     // Check for system constraints
     if (context.constraints.length > 0) {
@@ -518,13 +696,13 @@ export class CoTProcessor {
   }
 
   private identifyCompleted(_signal: Signal, context: CoTContext): string[] {
-    const completed = [];
+    const completed: string[] = [];
 
     // Mark recent decisions as completed
     if (context.previousDecisions.length > 0) {
       const recentDecisions = context.previousDecisions.slice(-3);
       for (const decision of recentDecisions) {
-        completed.push(`Previous decision: ${decision.decision?.type || 'unknown type'} for PRP: ${decision.payload?.id || 'unknown'}`);
+        completed.push(`Previous decision: ${decision.decision?.type ?? 'unknown type'} for PRP: ${decision.payload?.id ?? 'unknown'}`);
       }
     }
 
@@ -532,7 +710,7 @@ export class CoTProcessor {
   }
 
   private planNextSteps(signal: Signal): string[] {
-    const next = [];
+    const next: string[] = [];
 
     // Plan follow-up actions based on signal type
     switch (signal.type) {
@@ -559,32 +737,48 @@ export class CoTProcessor {
       'op': 'robo-developer'
     };
 
-    return signalAgentMap[signal.type] || 'robo-developer';
+    return signalAgentMap[signal.type] ?? 'robo-developer';
   }
 
   
   private assessDecisionComplexity(decision: ChainOfThought['decision']): number {
-    if (!decision) return 0;
+    if (!decision) {
+      return 0;
+    }
 
     let complexity = 0;
 
-    if (decision.actions && decision.actions.length > 2) complexity += 0.2;
-    if (decision.blockers && decision.blockers.length > 0) complexity += 0.3;
-    if (decision.next && decision.next.length > 3) complexity += 0.2;
+    if (decision.actions && decision.actions.length > 2) {
+      complexity += 0.2;
+    }
+    if (decision.blockers && decision.blockers.length > 0) {
+      complexity += 0.3;
+    }
+    if (decision.next && decision.next.length > 3) {
+      complexity += 0.2;
+    }
 
     return Math.min(1.0, complexity);
   }
 
   private assessRisk(signal: Signal): string {
-    if (signal.priority > 9) return 'HIGH';
-    if (signal.priority > 7) return 'MEDIUM';
+    if (signal.priority > 9) {
+      return 'HIGH';
+    }
+    if (signal.priority > 7) {
+      return 'MEDIUM';
+    }
     return 'LOW';
   }
 
   private assessResourceRequirements(signal: Signal): string {
     const complex = this.assessComplexity(signal);
-    if (complex === 'HIGH') return 'HIGH - Multiple agents and tools may be required';
-    if (complex === 'LOW') return 'LOW - Single agent or tool sufficient';
+    if (complex === 'HIGH') {
+      return 'HIGH - Multiple agents and tools may be required';
+    }
+    if (complex === 'LOW') {
+      return 'LOW - Single agent or tool sufficient';
+    }
     return 'MEDIUM - May require coordination';
   }
 
@@ -607,6 +801,262 @@ export class CoTProcessor {
   }
 
   
+  // Helper methods for task integration
+
+  /**
+   * Map task type to signal type
+   */
+  private mapTaskTypeToSignalType(taskType: TaskType): string {
+    const taskSignalMap: Record<TaskType, string> = {
+      [TaskType.DEVELOPMENT]: 'dp',
+      [TaskType.TESTING]: 'tw',
+      [TaskType.REVIEW]: 'rg',
+      [TaskType.ANALYSIS]: 'af',
+      [TaskType.DESIGN]: 'dr',
+      [TaskType.DOCUMENTATION]: 'da',
+      [TaskType.DEPLOYMENT]: 'mg',
+      [TaskType.COORDINATION]: 'oa',
+      [TaskType.RESEARCH]: 'rr',
+      [TaskType.BUGFIX]: 'bf',
+      [TaskType.FEATURE]: 'dp',
+      [TaskType.REFACTORING]: 'cd',
+      [TaskType.INTEGRATION]: 'cp',
+      [TaskType.MONITORING]: 'mo',
+      [TaskType.SECURITY]: 'sc',
+      [TaskType.PERFORMANCE]: 'so',
+      [TaskType.CLEANUP]: 'cd'
+    };
+
+    return taskSignalMap[taskType] ?? 'af';
+  }
+
+  /**
+   * Map task priority to signal priority
+   */
+  private mapTaskPriorityToSignalPriority(priority: TaskPriority): number {
+    const priorityMap: Record<TaskPriority, number> = {
+      [TaskPriority.CRITICAL]: 10,
+      [TaskPriority.HIGH]: 8,
+      [TaskPriority.MEDIUM]: 5,
+      [TaskPriority.LOW]: 3,
+      [TaskPriority.BACKGROUND]: 1
+    };
+
+    return priorityMap[priority] ?? 5;
+  }
+
+  /**
+   * Get available agents for a task
+   */
+  private getAvailableAgentsForTask(task: TaskDefinition): AgentInfo[] {
+    if (!this.taskManager) {
+      return [];
+    }
+
+    // Get available agents from task manager
+    const availableAgents = this.taskManager.getAvailableAgents(task);
+
+    return availableAgents.map(agent => ({
+      id: agent.id,
+      name: agent.id,
+      type: agent.agentType,
+      status: agent.status as 'idle' | 'busy' | 'error' | 'offline',
+      capabilities: agent.capabilities
+    }));
+  }
+
+  /**
+   * Extract task instructions from CoT decision
+   */
+  private extractTaskInstructions(cot: ChainOfThought): TaskInstruction[] {
+    const instructions: TaskInstruction[] = [];
+
+    if (!cot.decision?.actions) {
+      return instructions;
+    }
+
+    for (const action of cot.decision.actions) {
+      if (action.type === 'orchestration' && action.data?.reasoning) {
+        // Parse reasoning to extract task instructions
+        const instruction = this.parseActionToTaskInstruction(action);
+        if (instruction) {
+          instructions.push(instruction);
+        }
+      }
+    }
+
+    return instructions;
+  }
+
+  /**
+   * Parse action to task instruction
+   */
+  private parseActionToTaskInstruction(action: any): TaskInstruction | null {
+    try {
+      const reasoning = action.data?.reasoning || '';
+
+      // Extract task type from reasoning
+      let taskType = TaskType.COORDINATION; // Default
+      if (reasoning.includes('development') || reasoning.includes('code')) {
+        taskType = TaskType.DEVELOPMENT;
+      } else if (reasoning.includes('test') || reasoning.includes('validation')) {
+        taskType = TaskType.TESTING;
+      } else if (reasoning.includes('review') || reasoning.includes('check')) {
+        taskType = TaskType.REVIEW;
+      } else if (reasoning.includes('analysis') || reasoning.includes('investigate')) {
+        taskType = TaskType.ANALYSIS;
+      } else if (reasoning.includes('design') || reasoning.includes('ui')) {
+        taskType = TaskType.DESIGN;
+      }
+
+      // Determine priority from signal type
+      let priority = TaskPriority.MEDIUM;
+      let signalType = 'af';
+      if (action.signalType) {
+        signalType = action.signalType;
+        if (['At', 'Bb', 'Ur', 'AE', 'AA'].includes(signalType)) {
+          priority = TaskPriority.HIGH;
+        }
+      }
+
+      return {
+        title: `Task: ${action.task || 'General task'}`,
+        description: `Execute: ${action.task || 'Complete task as described'}`,
+        taskType,
+        signalType: signalType as any,
+        priority,
+        requiredCapabilities: this.inferRequiredCapabilities(reasoning, taskType),
+        parameters: {
+          originalAction: action,
+          reasoning: action.data?.reasoning
+        },
+        context: action.data
+      };
+    } catch (error) {
+      logger.warn('orchestrator', 'cot-processor', 'Failed to parse action to task instruction', error instanceof Error ? error : new Error(String(error)));
+      return null;
+    }
+  }
+
+  /**
+   * Infer required capabilities from reasoning and task type
+   */
+  private inferRequiredCapabilities(reasoning: string, taskType: TaskType): string[] {
+    const capabilities = new Set<string>();
+
+    // Add base capabilities for task type
+    const typeCapabilities: Record<TaskType, string[]> = {
+      [TaskType.DEVELOPMENT]: ['coding', 'file_operations'],
+      [TaskType.TESTING]: ['testing', 'validation'],
+      [TaskType.REVIEW]: ['code_review', 'analysis'],
+      [TaskType.ANALYSIS]: ['analysis', 'research'],
+      [TaskType.DESIGN]: ['design', 'creativity'],
+      [TaskType.DOCUMENTATION]: ['writing', 'documentation'],
+      [TaskType.DEPLOYMENT]: ['deployment', 'system_operations'],
+      [TaskType.COORDINATION]: ['coordination', 'communication'],
+      [TaskType.RESEARCH]: ['research', 'analysis'],
+      [TaskType.BUGFIX]: ['debugging', 'coding'],
+      [TaskType.FEATURE]: ['coding', 'design'],
+      [TaskType.REFACTORING]: ['coding', 'analysis'],
+      [TaskType.INTEGRATION]: ['coding', 'testing'],
+      [TaskType.MONITORING]: ['monitoring', 'analysis'],
+      [TaskType.SECURITY]: ['security', 'analysis'],
+      [TaskType.PERFORMANCE]: ['performance', 'analysis'],
+      [TaskType.CLEANUP]: ['cleanup', 'file_operations']
+    };
+
+    const baseCaps = typeCapabilities[taskType] || ['general'];
+    baseCaps.forEach(cap => capabilities.add(cap));
+
+    // Add capabilities based on reasoning keywords
+    const reasoningLower = reasoning.toLowerCase();
+    if (reasoningLower.includes('test')) {
+      capabilities.add('testing');
+    }
+    if (reasoningLower.includes('debug')) {
+      capabilities.add('debugging');
+    }
+    if (reasoningLower.includes('deploy')) {
+      capabilities.add('deployment');
+    }
+    if (reasoningLower.includes('security')) {
+      capabilities.add('security');
+    }
+    if (reasoningLower.includes('performance')) {
+      capabilities.add('performance');
+    }
+    if (reasoningLower.includes('document')) {
+      capabilities.add('documentation');
+    }
+    if (reasoningLower.includes('analyze')) {
+      capabilities.add('analysis');
+    }
+    if (reasoningLower.includes('coordinate')) {
+      capabilities.add('coordination');
+    }
+
+    return Array.from(capabilities);
+  }
+
+  /**
+   * Format task results for display
+   */
+  private formatTaskResults(results: TaskResult[]): string {
+    const summary = 'Task Execution Results:\n';
+
+    const resultsList = results.map((result, index) => {
+      const status = result.outcome === TaskOutcome.SUCCESS ? '✅' : '❌';
+      const duration = `${result.timestamps.duration}ms`;
+      const quality = `Quality: ${result.quality.score}/100`;
+
+      return `${index + 1}. ${status} Task ${result.taskId} (${duration}) - ${quality}\n` +
+             `   Summary: ${result.details.summary}\n` +
+             `   Outcome: ${result.outcome}`;
+    }).join('\n\n');
+
+    return summary + resultsList;
+  }
+
+  /**
+   * Calculate confidence from task results
+   */
+  private calculateResultsConfidence(results: TaskResult[]): number {
+    if (results.length === 0) {
+      return 0.5;
+    }
+
+    const avgQuality = results.reduce((sum, result) => sum + result.quality.score, 0) / results.length;
+    const successRate = results.filter(r => r.outcome === TaskOutcome.SUCCESS).length / results.length;
+
+    return (avgQuality / 100 * 0.7 + successRate * 0.3);
+  }
+
+  /**
+   * Update decision with task results
+   */
+  private updateDecisionWithResults(cot: ChainOfThought, results: TaskResult[]): void {
+    if (!cot.decision) {
+      return;
+    }
+
+    // Add task results to decision metadata
+    cot.decision.taskResults = {
+      count: results.length,
+      successCount: results.filter(r => r.outcome === TaskOutcome.SUCCESS).length,
+      avgQuality: results.reduce((sum, r) => sum + r.quality.score, 0) / results.length,
+      totalDuration: results.reduce((sum, r) => sum + r.timestamps.duration, 0)
+    };
+
+    // Update completed items
+    if (!cot.decision.completed) {
+      cot.decision.completed = [];
+    }
+
+    results.forEach(result => {
+      cot.decision!.completed!.push(`Task ${result.taskId}: ${result.details.summary}`);
+    });
+  }
+
   // Filesystem operations
   private async loadProcessingHistory(): Promise<void> {
     // Load processing history from storage
@@ -617,4 +1067,18 @@ export class CoTProcessor {
     // Save processing history to storage
     // Implementation would depend on storage backend
   }
+}
+
+/**
+ * Task instruction interface for CoT processing
+ */
+interface TaskInstruction {
+  title: string;
+  description: string;
+  taskType: TaskType;
+  signalType: string;
+  priority: TaskPriority;
+  requiredCapabilities: string[];
+  parameters: Record<string, unknown>;
+  context?: unknown;
 }

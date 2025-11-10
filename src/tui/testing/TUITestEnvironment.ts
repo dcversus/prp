@@ -5,8 +5,9 @@
  * mock terminal, animation control, and visual regression support
  */
 
+import React from 'react';
 import { EventEmitter } from 'events';
-import { render, RenderOptions } from 'ink-testing-library';
+import { render } from 'ink-testing-library';
 
 export interface MockTerminalDimensions {
   columns: number;
@@ -88,7 +89,7 @@ export class MockTerminal extends EventEmitter {
     this.emit('data', data);
   }
 
-  setRawMode(enable: boolean): void {
+  setRawMode(_enable: boolean): void {
     // Mock implementation
   }
 
@@ -100,19 +101,8 @@ export class MockTerminal extends EventEmitter {
     // Mock implementation
   }
 
-  on(event: string, listener: (...args: any[]) => void): this {
-    super.on(event, listener);
-    return this;
-  }
-
-  off(event: string, listener: (...args: any[]) => void): this {
-    super.off(event, listener);
-    return this;
-  }
-
-  emit(event: string, ...args: any[]): boolean {
-    return super.emit(event, ...args);
-  }
+  // EventEmitter methods are already available from parent class
+  // No need to override them
 
   // Test-specific methods
   setDimensions(columns: number, rows: number): void {
@@ -127,7 +117,8 @@ export class MockTerminal extends EventEmitter {
 
   readInput(): string | null {
     if (this.inputIndex < this.input.length) {
-      return this.input[this.inputIndex++];
+      const input = this.input[this.inputIndex++];
+      return input ?? null;
     }
     return null;
   }
@@ -195,7 +186,7 @@ export class AnimationController {
  */
 export class TUITestEnvironment {
   private mockTerminal: MockTerminal;
-  private animationController: AnimationController;
+  private animationController: AnimationController | null = null;
   private options: TUITestRenderOptions;
 
   constructor(options: TUITestRenderOptions = {}) {
@@ -235,19 +226,14 @@ export class TUITestEnvironment {
       columns: this.mockTerminal.columns,
       rows: this.mockTerminal.rows,
       write: (data: string) => this.mockTerminal.write(data)
-    } as any;
+    };
 
-    const { lastFrame, unmount, rerender, stdin } = render(element, {
-      ...this.options,
-      stdin: mockStdin,
-      stdout: mockStdout,
-      stderr: mockStdout
-    });
+    const { lastFrame, unmount, rerender } = render(element);
 
     // Capture frames if enabled
     if (this.options.captureFrames) {
       const captureInterval = setInterval(() => {
-        const content = lastFrame();
+        const content = lastFrame() ?? '';
         frames.push({
           timestamp: Date.now() - startTime,
           content,
@@ -268,7 +254,7 @@ export class TUITestEnvironment {
         rerender,
         frames,
         lastFrame: () => {
-          const content = lastFrame();
+          const content = lastFrame() ?? '';
           return {
             timestamp: Date.now() - startTime,
             content,
@@ -323,7 +309,7 @@ export class TUITestEnvironment {
       rerender,
       frames: [],
       lastFrame: () => {
-        const content = lastFrame();
+        const content = lastFrame() ?? '';
         return {
           timestamp: Date.now() - startTime,
           content,
@@ -341,7 +327,7 @@ export class TUITestEnvironment {
       wait: async (ms: number = 100) => {
         await new Promise(resolve => setTimeout(resolve, ms));
       },
-      waitFor: async (matcher: (frame: TUITestFrame) => boolean, timeout: number = 5000) => {
+      waitFor: async (_matcher: (frame: TUITestFrame) => boolean, _timeout: number = 5000) => {
         throw new Error('Frame capture not enabled');
       }
     };
@@ -407,16 +393,21 @@ export class TUITestEnvironment {
        */
       extractColorCodes: (): string[] => {
         const output = this.mockTerminal.getOutput().join('');
+        // eslint-disable-next-line no-control-regex
         const colorRegex = /\x1b\[[0-9;]*m/g;
         const matches = output.match(colorRegex);
-        return matches || [];
+        return matches ?? [];
       },
 
       /**
        * Check if output contains specific color
        */
       hasColorCode: (colorCode: string): boolean => {
-        const codes = this.extractColorCodes();
+        const output = this.mockTerminal.getOutput().join('');
+        // eslint-disable-next-line no-control-regex
+        const colorRegex = /\x1b\[[0-9;]*m/g;
+        const matches = output.match(colorRegex);
+        const codes = matches ?? [];
         return codes.includes(colorCode);
       },
 
@@ -425,6 +416,7 @@ export class TUITestEnvironment {
        */
       getCleanText: (): string => {
         const output = this.mockTerminal.getOutput().join('');
+        // eslint-disable-next-line no-control-regex
         return output.replace(/\x1b\[[0-9;]*m/g, '');
       },
 
@@ -449,7 +441,7 @@ export class TUITestEnvironment {
    */
   dispose(): void {
     this.mockTerminal.removeAllListeners();
-    this.animationController = null as any;
+    this.animationController = null;
   }
 }
 
@@ -512,9 +504,9 @@ export class VisualRegression {
       if (!baselineFrame || !currentFrame || baselineFrame.content !== currentFrame.content) {
         differences.push({
           frameIndex: i,
-          baselineFrame: baselineFrame || { timestamp: 0, content: '', dimensions: { columns: 0, rows: 0 } },
-          currentFrame: currentFrame || { timestamp: 0, content: '', dimensions: { columns: 0, rows: 0 } },
-          diff: this.generateDiff(baselineFrame?.content || '', currentFrame?.content || '')
+          baselineFrame: baselineFrame ?? { timestamp: 0, content: '', dimensions: { columns: 0, rows: 0 } },
+          currentFrame: currentFrame ?? { timestamp: 0, content: '', dimensions: { columns: 0, rows: 0 } },
+          diff: this.generateDiff(baselineFrame?.content ?? '', currentFrame?.content ?? '')
         });
       }
     }
@@ -536,8 +528,8 @@ export class VisualRegression {
     const diff: string[] = [];
 
     for (let i = 0; i < maxLines; i++) {
-      const line1 = lines1[i] || '';
-      const line2 = lines2[i] || '';
+      const line1 = lines1[i] ?? '';
+      const line2 = lines2[i] ?? '';
 
       if (line1 !== line2) {
         diff.push(`Line ${i + 1}: "${line1}" -> "${line2}"`);
@@ -550,9 +542,9 @@ export class VisualRegression {
   /**
    * Save baseline frames to file
    */
-  saveBaseline(name: string, frames: TUITestFrame[], filePath: string): void {
-    const data = JSON.stringify({ name, frames, timestamp: Date.now() }, null, 2);
+  saveBaseline(name: string, _frames: TUITestFrame[], filePath: string): void {
     // In a real implementation, this would write to file system
+    // eslint-disable-next-line no-console
     console.log(`Would save baseline ${name} to ${filePath}`);
   }
 
@@ -561,6 +553,7 @@ export class VisualRegression {
    */
   loadBaseline(name: string, filePath: string): TUITestFrame[] | null {
     // In a real implementation, this would read from file system
+    // eslint-disable-next-line no-console
     console.log(`Would load baseline ${name} from ${filePath}`);
     return null;
   }

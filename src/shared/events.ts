@@ -5,6 +5,7 @@
  */
 
 import { EventEmitter } from 'events';
+import { logger } from './logger.js';
 import {
   ChannelEvent,
   ScannerEvent,
@@ -67,7 +68,7 @@ export class EventChannelImpl<T = Record<string, unknown>> implements EventChann
       try {
         callback(eventWithMetadata);
       } catch (error) {
-        console.error(`Error in event subscriber for channel ${this.name}:`, error);
+        logger.error('shared', 'EventChannel', `Error in event subscriber for channel ${this.name}`, error instanceof Error ? error : new Error(String(error)));
       }
     });
   }
@@ -144,7 +145,7 @@ export class EventBus implements IEventBus {
     if (channel) {
       channel.publish(event);
     } else {
-      console.warn(`Channel ${channelName} not found`);
+      logger.warn('shared', 'EventBus', `Channel ${channelName} not found`);
     }
 
     // Also emit globally for cross-channel listeners
@@ -304,7 +305,7 @@ export const eventFilters = {
       typeof event.data === 'object' &&
       event.data !== null &&
       'priority' in event.data &&
-      typeof (event.data as Record<string, unknown>).priority === 'number' &&
-      ((event.data as Record<string, unknown>).priority as number) >= minPriority
-    ),
+      typeof (event.data).priority === 'number' &&
+      ((event.data).priority) >= minPriority
+    )
 };

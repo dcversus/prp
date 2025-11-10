@@ -6,7 +6,6 @@
 
 import { Tool, ToolResult } from '../types';
 import { createLayerLogger } from '../../shared';
-import { getOrchestratorUserAgent } from '../../utils/version';
 import * as https from 'https';
 import * as http from 'http';
 import { URL } from 'url';
@@ -204,7 +203,7 @@ export const httpRequestTool: Tool = {
         });
 
         req.on('error', (error: Error) => {
-          logger.error('http_request', `HTTP request failed`, error);
+          logger.error('http_request', 'HTTP request failed', error);
           reject(error);
         });
 
@@ -319,7 +318,7 @@ export const webSearchTool: Tool = {
       };
 
     } catch (error) {
-      logger.error('web_search', `Web search failed`, error instanceof Error ? error : new Error(String(error)));
+      logger.error('web_search', 'Web search failed', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -427,7 +426,7 @@ export const githubApiTool: Tool = {
       };
 
     } catch (error) {
-      logger.error('github_api', `GitHub API request failed`, error instanceof Error ? error : new Error(String(error)));
+      logger.error('github_api', 'GitHub API request failed', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -495,7 +494,7 @@ export const urlValidationTool: Tool = {
       };
 
     } catch (error) {
-      logger.error('validate_url', `URL validation failed`, error instanceof Error ? error : new Error(String(error)));
+      logger.error('validate_url', 'URL validation failed', error instanceof Error ? error : new Error(String(error)));
 
       return {
         success: false,

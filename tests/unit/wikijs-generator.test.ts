@@ -4,7 +4,7 @@
  */
 
 import { generateWikiJS } from '../../src/generators/wikijs.js';
-import { GeneratorContext } from '../../src/types.js';
+import { GeneratorContext, ProjectOptions, FileToGenerate } from '../../src/types.js';
 import { describe, it, expect, beforeEach } from '@jest/globals';
 
 describe('Wiki.js Generator Unit Tests', () => {
@@ -31,7 +31,12 @@ describe('Wiki.js Generator Unit Tests', () => {
         includeESLint: true,
         includePrettier: true,
         includeDocker: true,
-      }
+        initGit: false,
+        installDependencies: false,
+        useAI: false,
+      },
+      targetPath: '/tmp/test',
+      templatePath: '/templates/wikijs'
     };
   });
 
@@ -40,7 +45,7 @@ describe('Wiki.js Generator Unit Tests', () => {
       const files = await generateWikiJS(mockContext);
 
       // Should generate core configuration files
-      const filePaths = files.map(f => f.path);
+      const filePaths = files.map((f: FileToGenerate) => f.path);
       expect(filePaths).toContain('config.yml');
       expect(filePaths).toContain('docker-compose.yml');
       expect(filePaths).toContain('.env.example');
@@ -55,7 +60,7 @@ describe('Wiki.js Generator Unit Tests', () => {
 
     it('should generate all 20 documentation articles', async () => {
       const files = await generateWikiJS(mockContext);
-      const docsFiles = files.filter(f => f.path.startsWith('docs/'));
+      const docsFiles = files.filter((f: FileToGenerate) => f.path.startsWith('docs/'));
 
       expect(docsFiles).toHaveLength(20);
 
@@ -83,7 +88,7 @@ describe('Wiki.js Generator Unit Tests', () => {
       ];
 
       expectedArticles.forEach(article => {
-        expect(docsFiles.some(f => f.path === article)).toBe(true);
+        expect(docsFiles.some((f: FileToGenerate) => f.path === article)).toBe(true);
       });
     });
   });
@@ -91,7 +96,7 @@ describe('Wiki.js Generator Unit Tests', () => {
   describe('Docker Configuration', () => {
     it('should generate valid Docker Compose configuration', async () => {
       const files = await generateWikiJS(mockContext);
-      const dockerComposeFile = files.find(f => f.path === 'docker-compose.yml');
+      const dockerComposeFile = files.find((f: FileToGenerate) => f.path === 'docker-compose.yml');
 
       expect(dockerComposeFile).toBeDefined();
 
@@ -121,7 +126,7 @@ describe('Wiki.js Generator Unit Tests', () => {
 
     it('should include volumes for data persistence', async () => {
       const files = await generateWikiJS(mockContext);
-      const dockerComposeFile = files.find(f => f.path === 'docker-compose.yml');
+      const dockerComposeFile = files.find((f: FileToGenerate) => f.path === 'docker-compose.yml');
 
       const content = dockerComposeFile!.content;
       expect(content).toContain('db-data:/var/lib/postgresql/data');
@@ -132,7 +137,7 @@ describe('Wiki.js Generator Unit Tests', () => {
   describe('Wiki.js Configuration', () => {
     it('should generate valid Wiki.js config', async () => {
       const files = await generateWikiJS(mockContext);
-      const configFile = files.find(f => f.path === 'config.yml');
+      const configFile = files.find((f: FileToGenerate) => f.path === 'config.yml');
 
       expect(configFile).toBeDefined();
 
@@ -159,9 +164,9 @@ describe('Wiki.js Generator Unit Tests', () => {
   describe('Article Frontmatter', () => {
     it('should generate valid frontmatter for all articles', async () => {
       const files = await generateWikiJS(mockContext);
-      const articleFiles = files.filter(f => f.path.startsWith('docs/'));
+      const articleFiles = files.filter((f: FileToGenerate) => f.path.startsWith('docs/'));
 
-      articleFiles.forEach(file => {
+      articleFiles.forEach((file: FileToGenerate) => {
         const content = file.content;
 
         // Verify frontmatter structure
@@ -180,7 +185,7 @@ describe('Wiki.js Generator Unit Tests', () => {
 
     it('should include proper tags in article frontmatter', async () => {
       const files = await generateWikiJS(mockContext);
-      const welcomeFile = files.find(f => f.path === 'docs/00-welcome.md');
+      const welcomeFile = files.find((f: FileToGenerate) => f.path === 'docs/00-welcome.md');
 
       expect(welcomeFile).toBeDefined();
 
@@ -200,7 +205,7 @@ describe('Wiki.js Generator Unit Tests', () => {
       ];
 
       keyArticles.forEach(articlePath => {
-        const file = files.find(f => f.path === articlePath);
+        const file = files.find((f: FileToGenerate) => f.path === articlePath);
         expect(file).toBeDefined();
         expect(file!.path).toBe(articlePath);
 
@@ -231,7 +236,7 @@ describe('Wiki.js Generator Unit Tests', () => {
       ];
 
       articlesWithFactChecks.forEach(articlePath => {
-        const file = files.find(f => f.path === articlePath);
+        const file = files.find((f: FileToGenerate) => f.path === articlePath);
         expect(file).toBeDefined();
 
         const content = file!.content;
@@ -243,7 +248,7 @@ describe('Wiki.js Generator Unit Tests', () => {
 
     it('should include internal links in navigation articles', async () => {
       const files = await generateWikiJS(mockContext);
-      const welcomeFile = files.find(f => f.path === 'docs/00-welcome.md');
+      const welcomeFile = files.find((f: FileToGenerate) => f.path === 'docs/00-welcome.md');
 
       expect(welcomeFile).toBeDefined();
 
@@ -262,8 +267,8 @@ describe('Wiki.js Generator Unit Tests', () => {
     it('should use project name in configurations', async () => {
       const files = await generateWikiJS(mockContext);
 
-      const configFile = files.find(f => f.path === 'config.yml');
-      const dockerFile = files.find(f => f.path === 'docker-compose.yml');
+      const configFile = files.find((f: FileToGenerate) => f.path === 'config.yml');
+      const dockerFile = files.find((f: FileToGenerate) => f.path === 'docker-compose.yml');
 
       expect(configFile!.content).toContain('title: test-wiki-project');
       expect(dockerFile!.content).toContain('POSTGRES_PASSWORD: test-wiki-projectPass123');
@@ -271,7 +276,7 @@ describe('Wiki.js Generator Unit Tests', () => {
 
     it('should include author information in README', async () => {
       const files = await generateWikiJS(mockContext);
-      const readmeFile = files.find(f => f.path === 'README.md');
+      const readmeFile = files.find((f: FileToGenerate) => f.path === 'README.md');
 
       expect(readmeFile).toBeDefined();
 
@@ -284,7 +289,7 @@ describe('Wiki.js Generator Unit Tests', () => {
   describe('Environment Configuration', () => {
     it('should generate proper environment template', async () => {
       const files = await generateWikiJS(mockContext);
-      const envFile = files.find(f => f.path === '.env.example');
+      const envFile = files.find((f: FileToGenerate) => f.path === '.env.example');
 
       expect(envFile).toBeDefined();
 
@@ -306,10 +311,14 @@ describe('Wiki.js Generator Unit Tests', () => {
 
   describe('Error Handling', () => {
     it('should handle missing options gracefully', async () => {
-      const minimalContext = {
+      const minimalContext: GeneratorContext = {
         options: {
           name: 'minimal-test',
+          description: 'Minimal test project',
+          author: 'Test Author',
+          email: 'test@example.com',
           template: 'wikijs',
+          license: 'MIT',
           includeCodeOfConduct: false,
           includeContributing: false,
           includeCLA: false,
@@ -321,19 +330,24 @@ describe('Wiki.js Generator Unit Tests', () => {
           includeESLint: false,
           includePrettier: false,
           includeDocker: false,
-        }
+          initGit: false,
+          installDependencies: false,
+          useAI: false,
+        },
+        targetPath: '/tmp/minimal-test',
+        templatePath: '/templates/wikijs'
       };
 
       const files = await generateWikiJS(minimalContext);
 
       // Should still generate core files
-      const filePaths = files.map(f => f.path);
+      const filePaths = files.map((f: FileToGenerate) => f.path);
       expect(filePaths).toContain('config.yml');
       expect(filePaths).toContain('docker-compose.yml');
       expect(filePaths).toContain('README.md');
 
       // Should generate all articles regardless of options
-      const articleFiles = files.filter(f => f.path.startsWith('docs/'));
+      const articleFiles = files.filter((f: FileToGenerate) => f.path.startsWith('docs/'));
       expect(articleFiles).toHaveLength(20);
     });
   });

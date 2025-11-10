@@ -130,7 +130,7 @@ export class EnhancedGitMonitor {
         lastUpdated: new Date()
       };
 
-      logger.debug('EnhancedGitMonitor', `Enhanced status complete`, {
+      logger.debug('EnhancedGitMonitor', 'Enhanced status complete', {
         commitSignals: commitSignals.length,
         branchSignals: branchSignals.length,
         prSignals: prSignals.length,
@@ -240,7 +240,9 @@ export class EnhancedGitMonitor {
     const lines = statusOutput.split('\n');
 
     for (const line of lines) {
-      if (line.length < 3) continue;
+      if (line.length < 3) {
+        continue;
+      }
 
       const indexStatus = line[0];
       const workTreeStatus = line[1];
@@ -385,7 +387,9 @@ export class EnhancedGitMonitor {
         const author = commitParts[2];
         const dateStr = commitParts[3];
 
-        if (!commit || !message || !author || !dateStr) continue;
+        if (!commit || !message || !author || !dateStr) {
+          continue;
+        }
 
         // Detect signals in commit message
         const signals = await this.signalDetector.detectSignals(message, `commit:${commit}`);
@@ -595,7 +599,9 @@ export class EnhancedGitMonitor {
 
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i];
-        if (!line?.trim()) continue;
+        if (!line?.trim()) {
+          continue;
+        }
 
         const parts = line.split('\t');
         if (parts.length >= 3) {
@@ -658,7 +664,9 @@ export class EnhancedGitMonitor {
       for (const line of lines) {
         const [name, commit, trackingBranch] = line.split('|');
 
-        if (!name || !commit) continue;
+        if (!name || !commit) {
+          continue;
+        }
 
         const isRemote = name.startsWith('origin/') || name.includes('/');
         const branchName = isRemote ? name : name;
@@ -727,7 +735,7 @@ export class EnhancedGitMonitor {
     commitCache: number;
     branchCache: number;
     prCache: number;
-  } {
+    } {
     return {
       lastScannedCommits: this.lastScannedCommits.size,
       commitCache: this.commitCache.size,

@@ -6,7 +6,7 @@
  */
 
 import { execSync } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync } from 'fs-extra';
 import { join } from 'path';
 
 const cliPath = join(__dirname, '../../dist/cli.js');

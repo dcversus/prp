@@ -11,7 +11,7 @@
  */
 
 import { EventEmitter } from 'events';
-import { performanceManager, LazyImport } from '../performance/index.js';
+import { performanceManager, LazyImport } from '../shared/performance/index.js';
 
 // Logger that can be replaced with proper logging implementation
 const createLogger = () => {
@@ -557,7 +557,9 @@ export class OptimizedOrchestrator extends EventEmitter {
 
   private startBatchProcessing(): void {
     setInterval(async () => {
-      if (this.signalQueue.length === 0) return;
+      if (this.signalQueue.length === 0) {
+        return;
+      }
 
       // Process signals in batches
       const batch = this.signalQueue.splice(0, this.config.batchSize);
@@ -642,7 +644,7 @@ export class OptimizedOrchestrator extends EventEmitter {
     busy: number;
     idle: number;
     error: number;
-  } {
+    } {
     const agents = Array.from(this.resourcePool.agents.values());
     return {
       total: agents.length,
@@ -662,7 +664,7 @@ export class OptimizedOrchestrator extends EventEmitter {
       error: number;
     };
     resourcePoolStats: { used: number; available: number; total: number };
-  } {
+    } {
     return {
       ...this.metrics,
       contextStats: this.contextManager.getStats(),

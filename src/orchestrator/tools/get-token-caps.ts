@@ -80,7 +80,7 @@ export const getTokenCapsTool: Tool = {
       // Get token caps data based on PRP-007 specifications
       const tokenCapsData = getTokenCapsData(typedParams.agentType);
 
-      logger.info('get_token_caps', `Retrieved token caps data`, {
+      logger.info('get_token_caps', 'Retrieved token caps data', {
         inspectorTotal: tokenCapsData.inspector.total,
         orchestratorTotal: tokenCapsData.orchestrator.total,
         systemUsage: `${tokenCapsData.system.overallUsage}%`
@@ -93,7 +93,7 @@ export const getTokenCapsTool: Tool = {
       };
 
     } catch (error) {
-      logger.error('get_token_caps', `Failed to retrieve token caps`, error instanceof Error ? error : new Error(String(error)));
+      logger.error('get_token_caps', 'Failed to retrieve token caps', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }

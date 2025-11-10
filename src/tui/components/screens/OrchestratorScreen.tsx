@@ -2,15 +2,17 @@
  * ♫ Orchestrator Screen Component
  *
  * Main orchestrator screen with agent cards, history, and PRP list
- * implementing the exact layout from the PRP specification
+ * Enhanced with PRP-007 signal system integration for real-time orchestration signals
  */
 
 import { Box, Text, useInput } from 'ink';
-import { TUIState, TUIConfig, TerminalLayout, ColorScheme } from '../../types/TUIConfig.js';
 import { SignalBar } from '../SignalBar.js';
 import { AgentCard } from '../AgentCard.js';
 import { HistoryItem } from '../HistoryItem.js';
 import { getRoleColors } from '../../config/TUIConfig.js';
+import { SignalDisplay } from '../SignalDisplay.js';
+import { SignalHistory } from '../SignalHistory.js';
+import { useSignalSubscription } from '../../hooks/useSignalSubscription.js';
 
 interface OrchestratorScreenProps {
   state: TUIState;
@@ -20,6 +22,28 @@ interface OrchestratorScreenProps {
 
 export function OrchestratorScreen({ state, config, terminalLayout }: OrchestratorScreenProps) {
   const { agents, prps, history, orchestrator } = state;
+
+  // Subscribe to orchestration-specific signals
+  const orchestrationSignals = useSignalSubscription(undefined, {
+    types: ['orchestrator', 'agent'],
+    sources: ['orchestrator', 'robo-system-analyst']
+  }, {
+    historySize: 50,
+    debounceDelay: 100
+  });
+
+  // Filter orchestration signals for display
+  const relevantOrchestrationSignals = orchestrationSignals.signals.filter(signal =>
+    signal.signal === '[oa]' || // Orchestrator Attention
+    signal.signal === '[pc]' || // Parallel Coordination
+    signal.signal === '[fo]' || // File Ownership
+    signal.signal === '[rp]' || // Ready for Preparation
+    signal.signal === '[ip]' || // Implementation Plan
+    signal.signal === '[dp]' || // Development Progress
+    signal.signal === '[br]' || // Blocker Resolved
+    signal.signal === '[mg]' || // Merged
+    signal.signal === '[rl]'    // Released
+  );
 
   // Handle keyboard input specific to this screen
   useInput((input, key) => {
@@ -107,51 +131,88 @@ export function OrchestratorScreen({ state, config, terminalLayout }: Orchestrat
     );
   };
 
-  // Orchestrator block
+  // Orchestrator block with signal integration
   const renderOrchestrator = () => {
-    if (!orchestrator) {
+    const orchestratorColors = getRoleColors('orchestrator', config.colors);
+    const hasOrchestrator = orchestrator || relevantOrchestrationSignals.length > 0;
+
+    if (!hasOrchestrator) {
       return null;
     }
 
-    const orchestratorColors = getRoleColors('orchestrator', config.colors);
-
     return (
       <Box flexDirection="column" marginBottom={1}>
-        <Box>
+        {/* Orchestrator header */}
+        <Box flexDirection="row" alignItems="center">
           <Text color={orchestratorColors.bg} backgroundColor={orchestratorColors.bg}>
             {' '}
           </Text>
           <Text color={orchestratorColors.active} bold>
-            {' '}Orchestrator · {orchestrator.status}{' '}
+            {' '}Orchestrator · {orchestrator?.status ?? 'IDLE'}{' '}
           </Text>
           <Text color={orchestratorColors.bg} backgroundColor={orchestratorColors.bg}>
             {' '}
           </Text>
           <Text color={config.colors.base_fg}>
-            {' '}{orchestrator.prp} [end]{' '}
+            {' '}{orchestrator?.prp ?? 'No active PRP'}{' '}
           </Text>
-          <SignalBar signals={orchestrator.signals} config={config as TUIConfig & ColorScheme} />
         </Box>
 
-        {orchestrator.cotLines.map((line, index) => (
-          <Box key={index}>
-            <Text color={config.colors.accent_orange}>
-              •{' '}
+        {/* Real-time orchestration signals */}
+        {relevantOrchestrationSignals.length > 0 && (
+          <Box flexDirection="column" marginBottom={1}>
+            <Text color={config.colors.accent_orange} dimColor>
+              Active Orchestration Signals:
             </Text>
-            <Text color={config.colors.base_fg}>
-              {line}
+            <Box flexDirection="row" flexWrap="wrap" marginLeft={2}>
+              {relevantOrchestrationSignals.slice(-5).map((signal, index) => (
+                <Box key={signal.id} marginRight={1}>
+                  <SignalDisplay
+                    signal={signal}
+                    compact={true}
+                    animated={true}
+                    config={config}
+                  />
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {/* Legacy signals (for backward compatibility) */}
+        {orchestrator && orchestrator.signals.length > 0 && (
+          <Box marginBottom={1}>
+            <SignalBar signals={orchestrator.signals} config={config} />
+          </Box>
+        )}
+
+        {/* Chain of Thought */}
+        {orchestrator && orchestrator.cotLines.length > 0 && (
+          <Box flexDirection="column" marginBottom={1}>
+            {orchestrator.cotLines.map((line, index) => (
+              <Box key={index}>
+                <Text color={config.colors.accent_orange}>
+                  •{' '}
+                </Text>
+                <Text color={config.colors.base_fg}>
+                  {line}
+                </Text>
+              </Box>
+            ))}
+          </Box>
+        )}
+
+        {/* Current tool call */}
+        {orchestrator?.toolCall && (
+          <Box>
+            <Text color={config.colors.accent_orange}>
+              ⇢{' '}
+            </Text>
+            <Text color={config.colors.muted}>
+              {orchestrator.toolCall}
             </Text>
           </Box>
-        ))}
-
-        <Box>
-          <Text color={config.colors.accent_orange}>
-            ⇢{' '}
-          </Text>
-          <Text color={config.colors.muted}>
-            {orchestrator.toolCall}
-          </Text>
-        </Box>
+        )}
       </Box>
     );
   };
@@ -174,10 +235,10 @@ export function OrchestratorScreen({ state, config, terminalLayout }: Orchestrat
               {/* PRP header line */}
               <Box justifyContent="flex-end">
                 <Text color={prp.status === 'IDLE' ? config.colors.muted :
-                           prp.status === 'RUNNING' ? config.colors.base_fg :
-                           prp.priority && prp.priority >= 9 ? config.colors.accent_orange :
-                           config.colors.base_fg}
-                      bold={prp.status === 'RUNNING'}>
+                  prp.status === 'RUNNING' ? config.colors.base_fg :
+                    prp.priority && prp.priority >= 9 ? config.colors.accent_orange :
+                      config.colors.base_fg}
+                bold={prp.status === 'RUNNING'}>
                   {prp.name}
                 </Text>
                 <Text color={config.colors.muted}>

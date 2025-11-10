@@ -2,14 +2,28 @@
  * ♫ TUI App Component
  *
  * Main application component handling screen routing and global state
+ * Enhanced with PRP-007 signal system integration for real-time updates
  */
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useApp } from 'ink';
-import { TUIConfig, TUIState, TerminalResizeEvent, SignalUpdateEvent, AgentUpdateEvent, HistoryUpdateEvent, IntroCompleteEvent, ScreenType, AgentCard, PRPItem, HistoryItem } from '../types/TUIConfig.js';
+import {
+  SignalEvent,
+  EventBusIntegration
+} from '../../types.js';
+import {
+  TUIConfig,
+  TUIState,
+  TerminalResizeEvent,
+  IntroCompleteEvent,
+  ScreenType,
+  AgentCard,
+  HistoryItem
+} from '../../shared/types/TUIConfig.js';
 import { EventBus } from '../../shared/events.js';
 import { VideoIntro } from './VideoIntro.js';
 import { OrchestratorScreen } from './screens/OrchestratorScreen.js';
+import { InfoScreen } from './screens/InfoScreen.js';
 import { PRPContextScreen } from './screens/PRPContextScreen.js';
 import { AgentScreen } from './screens/AgentScreen.js';
 import { TokenMetricsScreen } from './screens/TokenMetricsScreen.js';
@@ -18,36 +32,26 @@ import { Footer } from './Footer.js';
 import { InputBar } from './InputBar.js';
 import { getTerminalLayout } from '../config/TUIConfig.js';
 import { createLayerLogger } from '../../shared/logger.js';
+import { useSignalSubscription } from '../hooks/useSignalSubscription.js';
 
 const logger = createLayerLogger('tui');
 
-// Helper functions for real-time data conversion
-function getRoleForSignal(signal: any): string {
-  const category = signal.category;
-  const roleMap: Record<string, string> = {
-    'system': 'robo-system-analyst',
-    'development': 'robo-developer',
-    'analysis': 'robo-system-analyst',
-    'incident': 'robo-devops-sre',
-    'coordination': 'orchestrator',
-    'testing': 'robo-aqa',
-    'release': 'robo-devops-sre',
-    'design': 'robo-ux-ui-designer'
-  };
-  return roleMap[category] || 'robo-developer';
-}
 
-function getStatusForSignals(signals: any[]): string {
+function getStatusForSignals(signals: Array<{ state?: string; code?: string }>): string {
   const activeSignals = signals.filter(s => s.state === 'active' || s.state === 'progress');
   const highPrioritySignals = signals.filter(s => s.code === '[FF]' || s.code === '[bb]' || s.code === '[ff]');
 
-  if (highPrioritySignals.length > 0) return 'RUNNING';
-  if (activeSignals.length > 0) return 'SPAWNING';
+  if (highPrioritySignals.length > 0) {
+    return 'RUNNING';
+  }
+  if (activeSignals.length > 0) {
+    return 'SPAWNING';
+  }
   return 'IDLE';
 }
 
 function getStatusIcon(status: string): string {
-  switch (status?.toUpperCase()) {
+  switch (status.toUpperCase()) {
     case 'SPAWNING': return '♪';
     case 'RUNNING': return '♬';
     case 'IDLE': return '♫';
@@ -57,14 +61,18 @@ function getStatusIcon(status: string): string {
 }
 
 function formatTimeLeft(activeTime?: number): string {
-  if (!activeTime) return 'T--:--';
+  if (!activeTime) {
+    return 'T--:--';
+  }
   const minutes = Math.floor(activeTime / 60);
   const seconds = Math.floor(activeTime % 60);
   return `T-${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
 function formatActiveTime(activeTime?: number): string {
-  if (!activeTime) return '00:00:00';
+  if (!activeTime) {
+    return '00:00:00';
+  }
   const hours = Math.floor(activeTime / 3600);
   const minutes = Math.floor((activeTime % 3600) / 60);
   const seconds = Math.floor(activeTime % 60);
@@ -72,10 +80,53 @@ function formatActiveTime(activeTime?: number): string {
 }
 
 function formatTokenCount(tokens?: number): string {
-  if (!tokens) return '0';
-  if (tokens >= 1000) return `${(tokens / 1000).toFixed(1)}k`;
+  if (!tokens) {
+    return '0';
+  }
+  if (tokens >= 1000) {
+    return `${(tokens / 1000).toFixed(1)}k`;
+  }
   return tokens.toString();
 }
+
+// Convert EventBus to EventBusIntegration interface
+const eventBusToIntegration = (eventBus: EventBus): EventBusIntegration => ({
+  subscribe: (eventType: string, handler: (event: SignalEvent) => void) => {
+    return eventBus.subscribeToChannel(eventType, (event: unknown) => {
+      // Convert EventBus event to SignalEvent format
+      if (typeof event === 'object' && event !== null && 'type' in event) {
+        const signalEvent = event as SignalEvent;
+        handler(signalEvent);
+      }
+    });
+  },
+  unsubscribe: (subscriptionId: string) => {
+    eventBus.unsubscribe(subscriptionId);
+  },
+  emit: (event: SignalEvent) => {
+    eventBus.emit(event.type, event as unknown as Record<string, unknown>);
+  },
+  getRecentEvents: (count = 10) => {
+    const events = (eventBus.getEventHistory?.())?.slice(-count) ?? [];
+    return events.filter((event): event is SignalEvent =>
+      typeof event === 'object' && event !== null && 'signal' in event
+    );
+  },
+  getEventsByType: (type: string, count = 50) => {
+    const events = (eventBus.getEventHistory?.())?.filter(event =>
+      typeof event === 'object' && event !== null &&
+      (event).type === type
+    ).slice(-count) ?? [];
+    return events.filter((event): event is SignalEvent =>
+      typeof event === 'object' && event !== null && 'signal' in event
+    );
+  },
+  clearHistory: () => {
+    if (eventBus.clearEventHistory) {
+      eventBus.clearEventHistory();
+    }
+  }
+});
 
 interface TUIAppProps {
   config: TUIConfig;
@@ -90,8 +141,20 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
   const updateTimeoutRef = useRef<NodeJS.Timeout>();
   const lastUpdateRef = useRef<number>(0);
 
+  // Convert EventBus to integration interface
+  const eventBusIntegration = useMemo(() => eventBusToIntegration(eventBus), [eventBus]);
+
+  // Initialize signal subscription with global filter
+  const signalSubscription = useSignalSubscription(eventBusIntegration, {
+    types: ['agent', 'system', 'scanner', 'inspector', 'orchestrator']
+  }, {
+    historySize: 200,
+    debounceDelay: 50,
+    refreshInterval: 500
+  });
+
   const [state, setState] = useState<TUIState>(() => ({
-    currentScreen: 'orchestrator',
+    currentScreen: 'info',
     debugMode: false,
     introPlaying: config.animations.intro.enabled,
     agents: new Map(),
@@ -107,8 +170,6 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
 
   // Debounced state update to prevent excessive re-renders
   const debouncedSetState = useCallback((updater: (prev: TUIState) => TUIState) => {
-    const now = Date.now();
-
     // Clear existing timeout
     if (updateTimeoutRef.current) {
       clearTimeout(updateTimeoutRef.current);
@@ -126,6 +187,89 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
     return getTerminalLayout(config);
   }, [config]);
 
+  // Update state with signals from the new signal system
+  useEffect(() => {
+    if (signalSubscription.signals.length === 0) {
+      return;
+    }
+
+    try {
+      setState(prev => {
+        const newPRPs = new Map(prev.prps);
+        const newAgents = new Map(prev.agents);
+
+        // Process signal events and update TUI state
+        signalSubscription.signals.forEach((signalEvent) => {
+          if (signalEvent.prpId) {
+            // Update PRP with signal
+            const existingPRP = newPRPs.get(signalEvent.prpId);
+            const signals = existingPRP?.signals ?? [];
+
+            // Convert signal event to TUI signal format
+            const tuiSignal = {
+              code: signalEvent.signal,
+              state: signalEvent.state === 'active' ? 'active' : 'resolved',
+              role: signalEvent.source,
+              latest: true
+            };
+
+            // Update signals array
+            const updatedSignals = signals.filter(s => s.code !== tuiSignal.code);
+            updatedSignals.push(tuiSignal);
+
+            const updatedPRP = {
+              name: signalEvent.prpId,
+              status: getStatusForSignals(updatedSignals),
+              role: tuiSignal.role,
+              signals: updatedSignals.slice(-7), // Keep last 7 signals
+              lastUpdate: signalEvent.timestamp
+            };
+
+            newPRPs.set(signalEvent.prpId, updatedPRP);
+          }
+
+          if (signalEvent.agentId) {
+            // Update agent with signal data
+            const existingAgent = newAgents.get(signalEvent.agentId);
+
+            const tuiAgent: AgentCard = {
+              id: signalEvent.agentId,
+              statusIcon: getStatusIcon(signalEvent.state),
+              status: signalEvent.state === 'active' ? 'RUNNING' : 'IDLE',
+              prp: signalEvent.prpId ?? 'unknown-prp',
+              role: signalEvent.source,
+              task: signalEvent.title,
+              timeLeft: formatTimeLeft(signalEvent.metadata?.duration),
+              progress: signalEvent.state === 'active' ? 50 : 100,
+              output: signalEvent.description ? [signalEvent.description] : existingAgent?.output ?? ['Processing...'],
+              tokens: formatTokenCount(signalEvent.data?.tokensUsed as number),
+              active: formatActiveTime(signalEvent.metadata?.duration),
+              lastUpdate: signalEvent.timestamp
+            };
+
+            newAgents.set(signalEvent.agentId, tuiAgent);
+          }
+        });
+
+        // Add signal events to history
+        const historyItems: HistoryItem[] = signalSubscription.signals.slice(-10).map(signal => ({
+          source: signal.type,
+          timestamp: signal.timestamp.toISOString().replace('T', ' ').substring(0, 19),
+          data: signal as unknown as Record<string, unknown>
+        }));
+
+        return {
+          ...prev,
+          prps: newPRPs,
+          agents: newAgents,
+          history: [...prev.history.slice(-50), ...historyItems]
+        };
+      });
+    } catch (error) {
+      logger.error('tui', 'Error processing signal events:', error);
+    }
+  }, [signalSubscription.signals, logger]);
+
   // Setup real-time EventBus integration
   useEffect(() => {
     const handleTerminalResize = (...args: unknown[]) => {
@@ -137,96 +281,55 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
       logger.debug('resize', 'Terminal resized', event as unknown as Record<string, unknown>);
     };
 
-    // Handle real-time signal events from scanner with error handling
-    const handleSignalEvent = (event: any) => {
+    // Legacy signal event handling (kept for compatibility)
+    const handleLegacySignalEvent = (event: { type?: string; data?: Record<string, unknown> }) => {
       try {
-        if (event?.type === 'signal' && event?.data) {
+        if (event.type === 'signal' && event.data) {
           const signal = event.data;
 
-          // Validate signal data
-          if (!signal || typeof signal !== 'object') {
-            logger.warn('tui', 'Invalid signal data received', event);
-            return;
-          }
+          // Convert to new signal system format
+          const signalEvent: SignalEvent = {
+            id: `legacy-${Date.now()}`,
+            type: 'system',
+            signal: '[XX]',
+            title: 'Legacy Signal',
+            description: '',
+            timestamp: new Date(),
+            source: 'system',
+            priority: 'medium',
+            state: 'resolved',
+            data: signal
+          };
 
-          debouncedSetState(prev => {
-            // Extract PRP name from signal source or create default
-            const prpName = signal.source?.prpName || 'unknown-prp';
-
-            // Convert signal to TUI signal format
-            const tuiSignal = {
-              code: `[${signal.id || 'XX'}]`,
-              state: signal.priority >= 8 ? 'active' : 'resolved',
-              role: getRoleForSignal(signal),
-              latest: true
-            };
-
-            const existingPRP = prev.prps.get(prpName);
-            const signals = existingPRP?.signals || [];
-
-            // Update or add signal with race condition prevention
-            const updatedSignals = signals.filter(s => s.code !== tuiSignal.code);
-            updatedSignals.push(tuiSignal);
-
-            const updatedPRP = {
-              name: prpName,
-              status: getStatusForSignals(updatedSignals),
-              role: tuiSignal.role || 'robo-developer',
-              signals: updatedSignals.slice(-7), // Keep last 7 signals
-              lastUpdate: new Date()
-            };
-
-            const newPRPs = new Map(prev.prps);
-            newPRPs.set(prpName, updatedPRP);
-
-            return { ...prev, prps: newPRPs };
-          });
+          // Emit as new signal format
+          eventBusIntegration.emit(signalEvent);
         }
       } catch (error) {
-        logger.error('tui', 'Error in handleSignalEvent:', error);
+        logger.error('tui', 'Error in handleLegacySignalEvent:', error);
       }
     };
 
     // Handle real-time agent events from orchestrator with error handling
-    const handleAgentEvent = (event: any) => {
+    const handleAgentEvent = (event: { type?: string; data?: Record<string, unknown> }) => {
       try {
-        if (event?.type?.startsWith('agent_') && event?.data) {
-          const agentData = event.data;
-
-          // Validate agent data
-          if (!agentData || typeof agentData !== 'object') {
-            logger.warn('tui', 'Invalid agent data received', event);
-            return;
-          }
-
+        if (event.type?.startsWith('agent_') && event.data) {
           debouncedSetState(prev => {
-            const agentId = agentData.agentId || `agent-${Date.now()}`;
-            const existingAgent = prev.agents.get(agentId);
-
-            // Race condition prevention: only update if newer
-            const eventTime = new Date(agentData.lastUpdate || Date.now());
-            const existingTime = existingAgent?.lastUpdate;
-
-            if (existingTime && eventTime <= existingTime) {
-              return prev; // Skip outdated event
-            }
+            const agentId = `agent-${Date.now()}`;
 
             // Convert agent event to TUI agent format
             const tuiAgent: AgentCard = {
               id: agentId,
-              statusIcon: getStatusIcon(agentData.status),
-              status: agentData.status?.toUpperCase() || 'RUNNING',
-              prp: agentData.prpName || 'unknown-prp',
-              role: agentData.role || 'robo-developer',
-              task: agentData.task || agentData.description || 'Processing...',
-              timeLeft: agentData.timeLeft || formatTimeLeft(agentData.activeTime),
-              progress: agentData.progress || 0,
-              output: agentData.output ?
-                [agentData.output].slice(-3) : // Keep only last 3 output lines
-                existingAgent?.output || ['Initializing...'],
-              tokens: formatTokenCount(agentData.tokensUsed),
-              active: formatActiveTime(agentData.activeTime),
-              lastUpdate: eventTime
+              statusIcon: '♫',
+              status: 'RUNNING',
+              prp: 'unknown-prp',
+              role: 'robo-developer',
+              task: 'Processing...',
+              timeLeft: 'T--:--',
+              progress: 0,
+              output: ['Initializing...'],
+              tokens: '0',
+              active: '00:00:00',
+              lastUpdate: new Date()
             };
 
             const newAgents = new Map(prev.agents);
@@ -241,18 +344,13 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
     };
 
     // Handle real-time scanner events with error handling
-    const handleScannerEvent = (event: any) => {
+    const handleScannerEvent = (event: { type?: string; data?: Record<string, unknown> }) => {
       try {
-        if (event?.type?.startsWith('scanner_') && event?.data) {
-          // Validate scanner event data
-          if (!event.data || typeof event.data !== 'object') {
-            logger.warn('tui', 'Invalid scanner event data received', event);
-            return;
-          }
-
+        if (event.type?.startsWith('scanner_') && event.data) {
+  
           const historyItem: HistoryItem = {
             source: 'scanner',
-            timestamp: new Date().toISOString().replace('T', ' ').substr(0, 19),
+            timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
             data: event.data
           };
 
@@ -268,18 +366,13 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
     };
 
     // Handle real-time inspector events with error handling
-    const handleInspectorEvent = (event: any) => {
+    const handleInspectorEvent = (event: { type?: string; data?: Record<string, unknown> }) => {
       try {
-        if (event?.type?.startsWith('inspector_') && event?.data) {
-          // Validate inspector event data
-          if (!event.data || typeof event.data !== 'object') {
-            logger.warn('tui', 'Invalid inspector event data received', event);
-            return;
-          }
+        if (event.type?.startsWith('inspector_') && event.data) {
 
           const historyItem: HistoryItem = {
             source: 'inspector',
-            timestamp: new Date().toISOString().replace('T', ' ').substr(0, 19),
+            timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
             data: event.data
           };
 
@@ -295,24 +388,18 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
     };
 
     // Handle orchestrator events with error handling and debouncing
-    const handleOrchestratorEvent = (event: any) => {
+    const handleOrchestratorEvent = (event: { type?: string; data?: Record<string, unknown> }) => {
       try {
-        if (event?.type?.startsWith('orchestrator_') && event?.data) {
-          // Validate orchestrator event data
-          if (!event.data || typeof event.data !== 'object') {
-            logger.warn('tui', 'Invalid orchestrator event data received', event);
-            return;
-          }
-
+        if (event.type?.startsWith('orchestrator_') && event.data) {
           debouncedSetState(prev => ({
             ...prev,
             orchestrator: {
-              status: event.data.status || 'RUNNING',
-              prp: event.data.currentPRP || 'unknown-prp',
-              signals: prev.orchestrator?.signals || [],
+              status: 'RUNNING',
+              prp: 'unknown-prp',
+              signals: prev.orchestrator?.signals ?? [],
               latestSignalIndex: 0,
-              cotLines: event.data.cotLines || ['Processing...'],
-              toolCall: event.data.currentTool || '',
+              cotLines: ['Processing...'],
+              toolCall: '',
               lastUpdate: new Date()
             }
           }));
@@ -330,7 +417,7 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
     };
 
     // Subscribe to real-time EventBus channels
-    const unsubscribeSignal = eventBus.subscribeToChannel('signals', handleSignalEvent);
+    const unsubscribeSignal = eventBus.subscribeToChannel('signals', handleLegacySignalEvent);
     const unsubscribeAgent = eventBus.subscribeToChannel('agents', handleAgentEvent);
     const unsubscribeScanner = eventBus.subscribeToChannel('scanner', handleScannerEvent);
     const unsubscribeInspector = eventBus.subscribeToChannel('inspector', handleInspectorEvent);
@@ -357,15 +444,67 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
     };
   }, [config, eventBus, debouncedSetState]);
 
-  // Setup keyboard input handling
+  // Setup keyboard input handling - PRP spec: o|i|a|1..9
   useEffect(() => {
     const handleKeyPress = (data: Buffer) => {
       const key = data.toString();
 
       switch (key) {
-        case '\t': // Tab
+        // PRP spec tab navigation: o|i|a|1..9
+        case 'o':
+        case 'O':
+          setState(prev => ({ ...prev, currentScreen: 'orchestrator' }));
+          break;
+
+        case 'i':
+        case 'I':
+          setState(prev => ({ ...prev, currentScreen: 'info' }));
+          break;
+
+        case 'a':
+        case 'A':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '1':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '2':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '3':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '4':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '5':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '6':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '7':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '8':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '9':
+          setState(prev => ({ ...prev, currentScreen: 'agent' }));
+          break;
+
+        case '\t': // Tab - cycle through main screens
           setState(prev => {
-            const screens: ScreenType[] = ['orchestrator', 'prp-context', 'agent', 'token-metrics'];
+            const screens: ScreenType[] = ['orchestrator', 'info', 'prp-context', 'agent', 'token-metrics'];
             const currentScreen = prev.currentScreen;
             const currentIndex = screens.indexOf(currentScreen);
             const nextScreen = screens[(currentIndex + 1) % screens.length];
@@ -376,10 +515,6 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
         case 'd': // D key
         case 'D':
           setState(prev => ({ ...prev, debugMode: !prev.debugMode }));
-          break;
-
-        case '4': // 4 key - direct navigation to token metrics
-          setState(prev => ({ ...prev, currentScreen: 'token-metrics' }));
           break;
 
         case 'q': // Q key
@@ -427,7 +562,7 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
       // Add initial system startup message
       const startupHistory: HistoryItem = {
         source: 'system',
-        timestamp: new Date().toISOString().replace('T', ' ').substr(0, 19),
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
         data: { startup: true, prpCount: 0, readyToSpawn: true }
       };
 
@@ -465,6 +600,13 @@ export function TUIApp({ config, eventBus }: TUIAppProps) {
     <>
       {currentScreen === 'orchestrator' && (
         <OrchestratorScreen
+          state={state}
+          config={config}
+          terminalLayout={terminalLayout}
+        />
+      )}
+      {currentScreen === 'info' && (
+        <InfoScreen
           state={state}
           config={config}
           terminalLayout={terminalLayout}

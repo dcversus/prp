@@ -8,6 +8,9 @@
  * - Watch mode with live reload
  * - Development server with Browsersync
  * - Production-ready static generation
+ */
+
+// -- Need to update build-docs.js to process new documentation structure and implement Wiki.js integration [no] - robo-developer
  * - Multiple serving modes
  */
 

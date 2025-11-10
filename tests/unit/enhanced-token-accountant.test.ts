@@ -3,8 +3,7 @@
  */
 
 import { TokenAccountant } from '../../src/scanner/token-accountant';
-import { TokenUsageEvent, TokenAlert, TUIDashboardData } from '../../src/types/token-metrics';
-import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync } from 'fs-extra';
 import { join, dirname } from 'path';
 import { tmpdir } from 'os';
 

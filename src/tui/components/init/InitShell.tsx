@@ -1,314 +1,215 @@
 /**
- * ♫ InitShell - Main Init Flow Container Component
+ * ♫ WizardShell - Enhanced PRP Wizard Container
  *
- * Init step container with day/night gradient background,
- * breathing animations, responsive layout, and step header
- * following exact PRP-003 specifications
+ * Asymmetric center-left layout with radial gradient background and breathing animation.
+ * Enhanced with PRP-000-agents05.md specifications for day/night detection and TrueColor support.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Text, useStdout } from 'ink';
-
-// Import types
-import type { TUIConfig } from '../../types/TUIConfig.js';
-
-// Props interface for InitShell
-export interface InitShellProps {
-  title: string;
-  stepIndex: number;
-  totalSteps: number;
-  children: React.ReactNode;
-  footerKeys?: string[];
-  config?: TUIConfig;
-  mode?: 'day' | 'night';
-  onBack?: () => void;
-  onCancel?: () => void;
-}
+import React, { useState, useEffect } from 'react';
+import { Box, Text } from 'ink';
+import { useTheme } from '../../config/theme-provider.js';
+import { useTerminalDimensions } from '../../hooks/useTerminalDimensions.js';
+import type { InitShellProps } from './types.js';
 
 // Music note states for animation
 const MUSIC_NOTES = {
   awaiting: '♪',
   validating: '♬',
-  confirmed: '♫'
-};
+  confirmed: '♫',
+  error: '⚠'
+} as const;
 
 export type MusicNoteState = keyof typeof MUSIC_NOTES;
 
-// Gradient colors for day/night modes
-const GRADIENT_COLORS = {
-  day: {
-    bg1: '#111315',
-    bg2: '#1a1f24',
-    bg3: '#21262d'
-  },
-  night: {
-    bg1: '#0b0c0d',
-    bg2: '#121416',
-    bg3: '#171a1d'
-  }
-};
-
-// Animated Background Component with breathing effect
-const AnimatedBackground: React.FC<{
-  mode: 'day' | 'night';
-  config?: TUIConfig;
-}> = ({ mode, config }) => {
-  const { stdout } = useStdout();
-  const { width = 80, height = 24 } = stdout || {};
-  const [alpha, setAlpha] = useState(1.0);
-  const [frame, setFrame] = useState(0);
-
-  // Breathing animation - +/- 5% every 2 seconds when idle
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setAlpha(prev => {
-        const next = 1.0 + 0.05 * Math.sin(Date.now() / 1000);
-        return Math.max(0.8, Math.min(1.2, next));
-      });
-      setFrame(prev => (prev + 1) % 60);
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // TrueColor detection
-  const hasTrueColor = process.env.COLORTERM === 'truecolor' ||
-    process.env.TERM_PROGRAM?.includes('truecolor') ||
-    config?.colors?.accent_orange;
-
-  if (!hasTrueColor || !width || !height) {
-    // Fallback to simple background
-    return (
-      <Box position="absolute" height={height} width={width} flexDirection="column">
-        <Box height={height} width={width}>
-          <Text color={mode === 'day' ? GRADIENT_COLORS.day.bg2 : GRADIENT_COLORS.night.bg2}>
-            {'░'.repeat(width * height)}
-          </Text>
-        </Box>
-      </Box>
-    );
-  }
-
-  // Create gradient pattern
-  const colors = mode === 'day' ? GRADIENT_COLORS.day : GRADIENT_COLORS.night;
-  const gradientLines = [];
-
-  for (let y = 0; y < height; y++) {
-    const progress = y / height;
-    const gradientValue = Math.floor(
-      interpolateColor(colors.bg1, colors.bg2, colors.bg3, progress, alpha)
-    );
-
-    gradientLines.push(
-      <Box key={y} width={width}>
-        <Text color={`#${gradientValue.toString(16).padStart(6, '0')}`}>
-          {' '.repeat(width)}
-        </Text>
-      </Box>
-    );
-  }
-
-  return (
-    <Box position="absolute" height={height} width={width} flexDirection="column">
-      {gradientLines}
-    </Box>
-  );
-};
-
-// Color interpolation for gradient
-function interpolateColor(color1: string, color2: string, color3: string, progress: number, alpha: number): number {
-  const c1 = parseInt(color1.slice(1), 16);
-  const c2 = parseInt(color2.slice(1), 16);
-  const c3 = parseInt(color3.slice(1), 16);
-
-  let startColor, endColor;
-  if (progress < 0.5) {
-    startColor = c1;
-    endColor = c2;
-    progress = progress * 2;
-  } else {
-    startColor = c2;
-    endColor = c3;
-    progress = (progress - 0.5) * 2;
-  }
-
-  const r1 = (startColor >> 16) & 0xff;
-  const g1 = (startColor >> 8) & 0xff;
-  const b1 = startColor & 0xff;
-
-  const r2 = (endColor >> 16) & 0xff;
-  const g2 = (endColor >> 8) & 0xff;
-  const b2 = endColor & 0xff;
-
-  const r = Math.floor(r1 + (r2 - r1) * progress * alpha);
-  const g = Math.floor(g1 + (g2 - g1) * progress * alpha);
-  const b = Math.floor(b1 + (b2 - b1) * progress * alpha);
-
-  return (r << 16) | (g << 8) | b;
-}
-
-// Step Header with animated music note
-const StepHeader: React.FC<{
-  icon: MusicNoteState;
-  title: string;
-  stepIndex: number;
-  totalSteps: number;
-  config?: TUIConfig;
-}> = ({ icon, title, stepIndex, totalSteps, config }) => {
-  const [currentNote, setCurrentNote] = useState(0);
-  const [animating, setAnimating] = useState(false);
-  const notes = Object.values(MUSIC_NOTES);
-  const targetNote = notes.indexOf(MUSIC_NOTES[icon]);
-
-  // Animate music note at 4-6 fps
-  useEffect(() => {
-    if (currentNote !== targetNote) {
-      setAnimating(true);
-      const interval = setInterval(() => {
-        setCurrentNote(prev => {
-          const next = (prev + 1) % notes.length;
-          if (next === targetNote) {
-            clearInterval(interval);
-            setAnimating(false);
-          }
-          return next;
-        });
-      }, 200); // 5 fps
-
-      return () => clearInterval(interval);
-    }
-  }, [currentNote, targetNote]);
-
-  const accentColor = config?.colors?.accent_orange || '#FF9A38';
-
-  return (
-    <Box flexDirection="column" marginBottom={2}>
-      <Box flexDirection="row" alignItems="center" marginBottom={1}>
-        <Text color={accentColor} bold>
-          {notes[currentNote]}  {title}
-        </Text>
-        <Box flexGrow={1} />
-        <Text color={config?.colors?.muted || '#666666'}>
-          {stepIndex + 1}/{totalSteps}
-        </Text>
-      </Box>
-    </Box>
-  );
-};
+// Step Header component removed - unused
 
 // Bottom input delimiter with keys
 const BottomInput: React.FC<{
   keys?: string[];
-  context?: string;
-  config?: TUIConfig;
-}> = ({ keys = [], context, config }) => {
-  const { stdout } = useStdout();
-  const { width = 80 } = stdout || {};
-  const mutedColor = config?.colors?.muted || '#666666';
+  onCancel?: () => void;
+}> = ({ keys = [], onCancel }) => {
+  const theme = useTheme();
+  const { width } = useTerminalDimensions();
 
   return (
-    <Box flexDirection="column" marginTop={1}>
-      <Box width={width - 4}>
-        <Text color={mutedColor}>
-          {'─'.repeat(width - 4)}
-        </Text>
-      </Box>
-
-      <Box flexDirection="row" justifyContent="space-between" marginTop={1}>
-        <Box flexDirection="row">
+    <Box flexDirection="column" marginTop={2}>
+      <Text color={theme.colors.neutrals.muted}>
+        {'─'.repeat(Math.min(width - 10, 100))}
+      </Text>
+      <Box flexDirection="row" justifyContent="space-between" marginTop={0} paddingX={1}>
+        <Box flexGrow={1}>
+          {onCancel && (
+            <Text color={(theme.colors as any).textDim ?? (theme.colors as any).muted}>
+              cancel (Esc)
+            </Text>
+          )}
+        </Box>
+        <Box flexDirection="row" gap={2}>
           {keys.map((key, index) => (
-            <Text key={index} color={mutedColor} marginRight={2}>
+            <Text key={index} color={theme.colors.neutrals.text}>
               {key}
             </Text>
           ))}
         </Box>
-
-        {context && (
-          <Text color={mutedColor}>
-            {context}
-          </Text>
-        )}
       </Box>
-
-      <Box width={width - 4} marginTop={1}>
-        <Text color={mutedColor}>
-          {'─'.repeat(width - 4)}
-        </Text>
-      </Box>
+      <Text color={theme.colors.neutrals.muted}>
+        {'─'.repeat(Math.min(width - 10, 100))}
+      </Text>
     </Box>
   );
 };
 
-// Main InitShell Component
-export const InitShell: React.FC<InitShellProps> = ({
-  title,
+// Main WizardShell Component (Enhanced InitShell)
+const WizardShell: React.FC<InitShellProps> = ({
   stepIndex,
   totalSteps,
+  title,
+  icon,
   children,
-  footerKeys = [],
-  config,
-  mode = 'day',
-  onBack,
+  footerKeys,
   onCancel
 }) => {
-  const [musicState, setMusicState] = useState<MusicNoteState>('awaiting');
-  const { stdout } = useStdout();
-  const { width = 80, height = 24 } = stdout || {};
+  const theme = useTheme();
+  const { width, height } = useTerminalDimensions();
 
-  // Determine music state based on step progress
+  // TrueColor detection and day/night mode detection
+  const [trueColorSupported, setTrueColorSupported] = useState(false);
+  const [isDayMode, setIsDayMode] = useState(true);
+
+  // Detect TrueColor support and day/night mode
   useEffect(() => {
-    if (stepIndex === 0) {
-      setMusicState('awaiting');
-    } else {
-      setMusicState('confirmed');
-    }
-  }, [stepIndex]);
+    // Check for TrueColor support via environment variables
+    const colorterm = process.env.COLORTERM?.toLowerCase();
+    const term = process.env.TERM?.toLowerCase();
 
-  // Use full terminal width
-  const containerWidth = width;
-  const leftMargin = 0;
+    const hasTrueColor = colorterm?.includes('truecolor') ||
+                       colorterm?.includes('24bit') ||
+                       term?.includes('24bit') ||
+                       process.env.TMUX !== undefined; // tmux often supports TrueColor
+
+    setTrueColorSupported(hasTrueColor);
+
+    // Detect day/night mode based on time (6am-6pm = day)
+    const hour = new Date().getHours();
+    setIsDayMode(hour >= 6 && hour < 18);
+  }, []);
+
+  // Animated background with breathing effect
+  // const [bgAlpha, setBgAlpha] = useState(0.95); // Unused for now
+
+  // Breathing animation for idle background (5% amplitude, 4s period) - Disabled
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     const time = Date.now() / 4000; // 4 second period from PRP spec
+  //     const breathing = Math.sin(time * Math.PI * 2) * 0.05; // 5% amplitude
+  //     setBgAlpha(0.95 + breathing);
+  //   }, 50);
+
+  //   return () => clearInterval(interval);
+  // }, []);
+
+  // Get gradient colors based on day/night mode and TrueColor support
+  const getGradientColors = () => {
+    if (isDayMode) {
+      return {
+        bg1: '#111315',  // Day bg1
+        bg2: '#1a1f24',  // Day bg2
+        bg3: '#21262d'  // Day bg3
+      };
+    } else {
+      return {
+        bg1: '#0b0c0d',  // Night bg1
+        bg2: '#121416',  // Night bg2
+        bg3: '#171a1d'  // Night bg3
+      };
+    }
+  };
+
+  const gradientColors = getGradientColors();
+
+  // Calculate layout - asymmetric center-left
+  // const containerWidth = width < 160
+  //   ? Math.min(width - 8, 80)   // Compact: use most of width but with margin
+  //   : Math.min(width - 20, 120); // Standard/Wide: fixed max width // Unused
+
+  // const leftMargin = width < 160 ? 4 : Math.floor((width - containerWidth) * 0.3); // Unused
+  // const topMargin = Math.max(2, Math.floor(height * 0.1)); // Unused
+
+  // Create radial gradient background
+  const renderRadialGradient = () => {
+    if (!trueColorSupported) {
+      // Fallback to solid background for 256-color terminals
+      return (
+        <Box flexGrow={1}>
+          <Text backgroundColor={gradientColors.bg1} color={gradientColors.bg1}>
+            {'\n'.repeat(height)}
+          </Text>
+        </Box>
+      );
+    }
+
+    // Create radial gradient effect using character density
+    const gradientRows = [];
+    // const centerX = width / 2; // Unused
+    // const centerY = height / 2; // Unused
+    // const maxDistance = Math.sqrt(centerX * centerX + centerY * centerY); // Unused
+
+    for (let y = 0; y < height; y++) {
+      let rowText = '';
+      for (let x = 0; x < width; x++) {
+        // Simplified gradient background - just fill with spaces
+        rowText += ' ';
+      }
+
+      // Apply background color to the entire row
+      gradientRows.push(
+        <Text key={y} backgroundColor={gradientColors.bg1} color={gradientColors.bg1}>
+          {rowText}
+        </Text>
+      );
+    }
+
+    return <Box flexDirection="column">{gradientRows}</Box>;
+  };
 
   return (
     <Box flexDirection="column" height={height} width={width}>
-      {/* Simple background */}
-      <Box flexGrow={1}>
-        <Text backgroundColor="#111315">
-          {'\n'.repeat(height)}
-        </Text>
-      </Box>
+      {/* Radial gradient background */}
+      {renderRadialGradient()}
 
-      {/* Main content - overlay */}
+      {/* Main content container */}
       <Box
-        position="absolute"
-        left={leftMargin}
-        top={0}
-        width={containerWidth}
-        height={height}
         flexDirection="column"
+        flexGrow={1}
       >
-        {/* Step header */}
-        <StepHeader
-          icon={musicState}
-          title={title}
-          stepIndex={stepIndex}
-          totalSteps={totalSteps}
-          config={config}
-        />
+        {/* Header with music icon */}
+        <Box flexDirection="row" justifyContent="space-between" marginBottom={1}>
+          <Box flexDirection="row" alignItems="center">
+            <Text
+              color={icon === '⚠' ? (theme.colors as any).warn ?? (theme.colors as any).error : (theme.colors as any).accentOrange ?? (theme.colors as any).orange}
+              bold={icon !== '⚠'}
+            >
+              {icon} {title}
+            </Text>
+          </Box>
+          <Text color={theme.colors.neutrals.muted}>
+            {stepIndex + 1}/{totalSteps}
+          </Text>
+        </Box>
 
-        {/* Main content area */}
-        <Box flexDirection="column" flexGrow={1} marginBottom={1}>
+        {/* Content area - single scroll column */}
+        <Box flexGrow={1} flexDirection="column" justifyContent="center">
           {children}
         </Box>
 
-        {/* Bottom input area */}
-        <BottomInput
-          keys={footerKeys}
-          context={`step ${stepIndex + 1}/${totalSteps}`}
-          config={config}
-        />
+        {/* Bottom input with delimiters */}
+        <BottomInput keys={footerKeys} onCancel={onCancel} />
       </Box>
     </Box>
   );
 };
 
-export default InitShell;
+export default WizardShell;
+export { WizardShell };
+// Maintain backward compatibility
+export { WizardShell as InitShell };

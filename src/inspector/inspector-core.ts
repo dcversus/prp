@@ -4,7 +4,7 @@ import { join, resolve } from 'path';
 import { GuidelineAdapter } from './guideline-adapter';
 
 // For now, use a relative path approach
-const __dirname = resolve('.');
+const inspectorDirname = resolve('.');
 import { InspectorConfig, SignalProcessor, InspectorResult } from './types';
 import { Signal } from '../shared/types';
 import { createLayerLogger } from '../shared';
@@ -320,7 +320,7 @@ export class InspectorCore extends EventEmitter {
     const workerData = { workerId, config: this.config };
 
     return new Promise((resolve, reject) => {
-      const worker = new Worker(join(__dirname, 'inspector-worker.cjs'), {
+      const worker = new Worker(join(inspectorDirname, 'inspector-worker.cjs'), {
         workerData
       });
 
@@ -341,7 +341,7 @@ export class InspectorCore extends EventEmitter {
       });
 
       worker.on('exit', (code) => {
-            logger.debug('InspectorCore', `Inspector worker ${workerId} exited with code ${code}`);
+        logger.debug('InspectorCore', `Inspector worker ${workerId} exited with code ${code}`);
         this.metrics.activeWorkers = Math.max(0, this.metrics.activeWorkers - 1);
         this.emit('inspector:worker-exit', { workerId, code });
       });
@@ -508,7 +508,9 @@ export class InspectorCore extends EventEmitter {
   private calculateThroughput(): number {
     // Simple throughput calculation (results per minute)
     // In a real implementation, this would be more sophisticated
-    if (this.results.length === 0) return 0;
+    if (this.results.length === 0) {
+      return 0;
+    }
 
     const timeWindow = 60000; // 1 minute in milliseconds
     const now = Date.now();
@@ -527,7 +529,7 @@ export class InspectorCore extends EventEmitter {
     size: number;
     oldestSignal: Signal | null;
     newestSignal: Signal | null;
-  } {
+    } {
     return {
       size: this.processingQueue.length,
       oldestSignal: this.processingQueue.length > 0 && this.processingQueue[0]

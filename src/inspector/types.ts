@@ -4,7 +4,10 @@
  * Types for the analysis layer - GPT-5 mini classification and signal preparation.
  */
 
-import { Signal, GuidelineConfig, AgentRole } from '../shared/types';
+import { Signal, GuidelineConfiguration, AgentRole } from '../shared/types';
+
+// Re-export GuidelineConfig for backward compatibility
+export type GuidelineConfig = GuidelineConfiguration;
 
 // Enhanced type definitions for better type safety
 export interface JSONSchema {
@@ -53,6 +56,11 @@ export interface SignalClassification {
   deadline: Date;
   dependencies: string[];
   confidence: number;
+  urgency?: 'low' | 'medium' | 'high' | 'critical' | 'urgent';
+  suggestedRole?: string;
+  signal?: string;
+  suggestedActions?: string[];
+  reasoning?: string;
 }
 
 export interface EnhancedSignalClassification extends SignalClassification {
@@ -85,6 +93,7 @@ export interface PreparedContext {
   size: number;
   compressed: boolean;
   tokenCount: number;
+  summary?: string;
 }
 
 export interface InspectorPayload {
@@ -96,6 +105,7 @@ export interface InspectorPayload {
   timestamp: Date;
   size: number;
   compressed: boolean;
+  estimatedTokens?: number;
 }
 
 export interface SignalProcessor {
@@ -591,6 +601,30 @@ export interface TokenAnalysis {
   efficiency: number;
 }
 
+// Helper function for creating test signals
+export function createTestSignal(overrides: Partial<Signal> = {}): Signal {
+  return {
+    id: `test-signal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    type: 'test',
+    source: 'test',
+    timestamp: new Date(),
+    data: {},
+    priority: 5,
+    resolved: false,
+    relatedSignals: [],
+    ...overrides
+  };
+}
+
+// Missing interface that's being imported
+export interface InspectorAnalysisRequest {
+  id: string;
+  signal: Signal;
+  context: ProcessingContext;
+  guidelines: GuidelineConfig[];
+  requirements: ClassificationRequirements;
+}
+
 // Additional types for enhanced signal classification
 export interface SignalFeatures {
   type: string;
@@ -599,19 +633,4 @@ export interface SignalFeatures {
   timestamp: Date;
   data: unknown;
   metadata?: Record<string, unknown>;
-}
-
-export interface ProcessingContext {
-  signalId: string;
-  worktree?: string;
-  agent?: string;
-  relatedSignals: Signal[];
-  activePRPs: string[];
-  recentActivity: ActivityEntry[];
-  tokenStatus: TokenStatusInfo;
-  agentStatus: AgentStatusInfo[];
-  sharedNotes: SharedNoteInfo[];
-  environment: EnvironmentInfo | Record<string, string | number | boolean>;
-  guidelineContext: GuidelineContext;
-  historicalData: HistoricalData;
 }

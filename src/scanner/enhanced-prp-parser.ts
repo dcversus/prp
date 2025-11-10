@@ -608,7 +608,7 @@ export class EnhancedPRPParser {
       column: 0,
       context: '',
       timestamp: signal.timestamp,
-      agent: signal.metadata.agent,
+      agent: signal.metadata?.agent as string | undefined,
       resolved: false
     }));
 
@@ -818,9 +818,15 @@ export class EnhancedPRPParser {
    * Map signal priority to PRP priority
    */
   private mapSignalPriority(priority: number): PRPSignal['priority'] {
-    if (priority >= 9) return 'critical';
-    if (priority >= 7) return 'high';
-    if (priority >= 4) return 'medium';
+    if (priority >= 9) {
+      return 'critical';
+    }
+    if (priority >= 7) {
+      return 'high';
+    }
+    if (priority >= 4) {
+      return 'medium';
+    }
     return 'low';
   }
 
@@ -840,7 +846,7 @@ export class EnhancedPRPParser {
     maxSize: number;
     totalVersions: number;
     averageVersionsPerPRP: number;
-  } {
+    } {
     const totalVersions = Array.from(this.cache.values())
       .reduce((sum, entry) => sum + entry.versions.length, 0);
 

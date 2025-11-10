@@ -2,75 +2,7 @@
 
 > "The init command should create the perfect foundation for any PRP project, detecting existing environments and setting up comprehensive project structure with minimal friction"
 
-## progress
-[aa] Analyzed current init command implementation and identified enhancement opportunities | robo-system-analyst | 2025-11-06-19:15
-[dp] Development Progress: Implemented unified init interface in init-new.ts with enhanced project detection, intelligent template matching, and context-aware configuration generation | robo-developer | 2025-11-06-19:30
-[br] Blocker Resolved: Fixed TypeScript compilation errors and ESLint issues. All code now compiles and passes linting | robo-developer | 2025-11-06-19:25
-[tg] Tests Green: Comprehensive testing in /debug/ directory completed. All core functionality working: basic init, project detection, upgrade mode, force reinit, CI detection, and PRP generation | robo-aqa | 2025-11-06-20:30
-[bb] Blocker Identified: Template selection (--template flag) and CI non-interactive mode issues persist. Template mappings implemented but not working as expected. CI detection improved but still blocks with --template and --yes flags | robo-developer | 2025-11-06-20:30
-[ap] Admin Preview Ready: PRP-003 implementation substantially complete with 85% success rate. Core PRP initialization flow working perfectly. Minor issues with template selection and CI flag recognition documented for future iteration | robo-system-analyst | 2025-11-06-20:35
-[dp] LLM Integration Complete: Successfully implemented OpenAI GPT-5 integration with --prompt --ci --force workflow. Added --openai-api-key parameter support and 3-request generation pipeline (README, first PRP, agents.md user section). Fallback mechanism ensures graceful degradation when API key unavailable | robo-developer | 2025-11-06-21:08
-[br] CLI Flags Resolved: Removed --yes option completely, redesigned --force to use defaults with minimal template, updated CI detection to recognize --prompt and --force as non-interactive flags | robo-developer | 2025-11-06-21:08
-[tg] LLM Flow Tested: Comprehensive testing in /debug/ai-task-manager-2 completed. Command `prp init --prompt "..." --ci --force --openai-api-key` working correctly with proper fallback to basic template generation when API key invalid/unavailable | robo-aqa | 2025-11-06-21:08
-[aa] PRP-003 COMPLETE: Full LLM-powered init flow implemented and tested. 100% core functionality working with intelligent fallbacks. Ready for production use | robo-system-analyst | 2025-11-06-21:08
-
-## description
-Comprehensive analysis and enhancement of the init command (`src/commands/init.ts`) to create a robust, user-friendly initialization flow that supports both new project creation and existing project upgrades with proper interactive and non-interactive modes, template detection, and complete project structure setup.
-
-## dor
-- [ ] Review current init command implementation and wizard integration
-- [ ] Analyze template system and detection mechanisms
-- [ ] Identify specific areas for enhancement and standardization
-- [ ] Define comprehensive requirements for improved init flow
-- [ ] Create detailed implementation plan with validation criteria
-
-## dod
-- [ ] Comprehensive init command analysis completed
-- [ ] Current implementation strengths and weaknesses documented
-- [ ] Detailed enhancement requirements defined
-- [ ] Implementation plan created with clear success criteria
-- [ ] Validation strategy established for testing improvements
-- [ ] Performance requirements and benchmarks defined
-
-## plan
-
-### Phase 1: Integration and Standardization
-- [ ] Analyze wizard.ts integration possibilities with init.ts
-- [ ] Create unified initialization interface that delegates to appropriate wizard
-- [ ] Standardize configuration generation across all initialization modes
-- [ ] Implement consistent error handling and user feedback
-
-### Phase 2: Enhanced Detection and Analysis
-- [ ] Improve existing project detection with content analysis
-- [ ] Add hybrid project detection (multi-language projects)
-- [ ] Implement existing PRP structure detection
-- [ ] Create intelligent template matching based on project characteristics
-
-### Phase 3: Advanced Configuration Generation
-- [ ] Develop context-aware .prprc generation
-- [ ] Add environment-specific configuration templates
-- [ ] Implement integration with existing project configuration
-- [ ] Create dynamic agent configuration based on project needs
-
-### Phase 4: Enhanced PRP Generation
-- [ ] Implement intelligent PRP generation from user prompts
-- [ ] Add automatic PRP numbering and organization
-- [ ] Create PRP templates specific to project types
-- [ ] Add PRP validation and structure checking
-
-### Phase 5: User Experience and Error Handling
-- [ ] Implement comprehensive error handling with recovery options
-- [ ] Add progress indicators for long-running operations
-- [ ] Create help system and guidance for new users
-- [ ] Add validation and pre-flight checks
-
-### Phase 6: Testing and Validation
-- [ ] Create comprehensive test suite for init command
-- [ ] Add integration tests with various project types
-- [ ] Implement performance benchmarks and validation
-- [ ] Create end-to-end testing scenarios
-
-## research
+## init flow
 Below is the final Wizard screen spec (Ink/React CLI), with animated interactions, exact renders, component APIs, and implementation notes. It reuses the established palette, music-note semantics, spacing, and bottom-input rules from your TUI spec. Where terminal capabilities are environment-dependent (24-bit gradients, ANSI layers), I cite sources and provide 256-color fallbacks.
 
 I used Ink’s official docs and ecosystem packages for forms, focus, and responsiveness; TrueColor/ANSI research for gradients; and ASCII/ANSI video tooling for overlay pipelines.  ￼
@@ -155,7 +87,7 @@ Step 2 — Connections (LLM providers for orchestration/inspection)
 ♪  Connections
 
   Provider
-  [carousel]  [ OpenAI ]   Anthrop ic   Custom  [/carousel]
+  [carousel]  [ OpenAI ]   Anthropic   Custom  [/carousel]
 
   Auth
   [focused]  OAuth (default)  [/focused]   API key
@@ -168,7 +100,7 @@ Step 2 — Connections (LLM providers for orchestration/inspection)
   [end]
 
   [section-when-Custom]
-    Type               [ OpenAI | Anthrop ic ]
+    Type               [ OpenAI | Anthropic ]
     Base URL           [ https://llm.company.local/v1 ]
     API token          [ *************** ]
     Custom args (JSON) [ { "timeout": 45_000, "seed": 7 } ]  [json-ok]
@@ -432,3 +364,70 @@ Notes on sources
 	•	ANSI video conversion.  ￼
 
 This is the final wizard design: screens, renders, components, interactions, and implementation plan conforming to your TUI rules.
+
+## dor
+- [ ] Extract TUI wizard components from PRP-000 specification
+- [ ] Implement responsive layout with day/night themes
+- [ ] Create field components with validation
+- [ ] Add generation progress with real-time feedback
+
+## dod
+- [ ] All 6 wizard steps implemented and functional
+- [ ] Intro sequence with ASCII animation works
+- [ ] Form validation with real-time feedback
+- [ ] File tree with checkbox selection
+- [ ] Agent configuration system
+- [ ] Generation progress with diff snapshots
+- [ ] | VERIFIED with (e2e test)[tests/e2e/init-wizard.test.ts] confirming full wizard flow
+- [ ] | VERIFIED with (component tests)[src/tui/components/__tests__/] verifying each component
+
+## init flow files
+- `/src/tui/init-flow.tsx` | Main init wizard entry point that imports wizard components (currently broken - missing wizard directory) | [bb]
+- `/src/tui/components/init/InitFlow.tsx` | Complete 6-step flow component implementing PRP-003 wizard specifications | [dp]
+- `/src/tui/components/init/InitShell.tsx` | Wizard shell wrapper with animated background and step navigation | [dp]
+- `/src/tui/components/init/IntroScreen.tsx` | Intro screen with ASCII animation and welcome message | [dp]
+- `/src/tui/components/init/IntroSequence.tsx` | Animated intro sequence component | [dp]
+- `/src/tui/components/init/ProjectScreen.tsx` | Project configuration screen with name and prompt inputs | [dp]
+- `/src/tui/components/init/ConnectionsScreen.tsx` | LLM provider configuration screen | [dp]
+- `/src/tui/components/init/AgentsScreen.tsx` | Agent configuration screen with add/remove functionality | [dp]
+- `/src/tui/components/init/IntegrationsScreen.tsx` | GitHub/npm integrations configuration screen | [dp]
+- `/src/tui/components/init/TemplateScreen.tsx` | Template selection and file tree configuration screen | [dp]
+- `/src/tui/components/init/WizardShell.tsx` | Core wizard shell component with step headers and navigation | [dp]
+- `/src/tui/components/init/FieldText.tsx` | Single-line text input field component | [dp]
+- `/src/tui/components/init/FieldTextBlock.tsx` | Multi-line text area component | [dp]
+- `/src/tui/components/init/FieldSecret.tsx` | Secret field component for API keys and passwords | [dp]
+- `/src/tui/components/init/FieldSelectCarousel.tsx` | Horizontal carousel selector component | [dp]
+- `/src/tui/components/init/FieldToggle.tsx` | Boolean toggle switch component | [dp]
+- `/src/tui/components/init/FieldJSON.tsx` | JSON editor with validation and syntax highlighting | [dp]
+- `/src/tui/components/init/FileTreeChecks.tsx` | File tree with checkbox selection for template files | [dp]
+- `/src/tui/components/init/AgentEditor.tsx` | Agent configuration form with advanced settings | [dp]
+- `/src/tui/components/init/GenerationProgress.tsx` | Progress component with diff snapshots and real-time updates | [dp]
+- `/src/tui/components/init/ConfigIntegration.tsx` | Configuration integration utilities | [dp]
+- `/src/tui/components/init/types.ts` | TypeScript type definitions for init flow | [dp]
+- `/src/tui/components/init/index.ts` | Export barrel for init components | [dp]
+- `/src/commands/tui-init.ts` | TUI init command handler with CI mode support and strict TypeScript compliance | [dp]
+- `/src/commands/init.ts` | Main init command that delegates to tui-init | [dp]
+
+### Missing Implementations Identified by E2E Tests (2025-11-10)
+- [ ] **E2E Test Missing Implementations** | Comprehensive test suite identifies missing wizard components and TUI integration | [er]
+- [ ] **6-step wizard flow implementation** | Complete wizard flow with all steps from intro to generation progress | [ip]
+- [ ] **TUI component integration** | All 17 wizard field components need implementation and integration | [ip]
+- [ ] **Animated background system** | Day/night gradient background with breathing animation (TrueColor/256 fallback) | [ip]
+- [ ] **Music note state indicators** | Step header status animations (♪ → ♬ → ♫) with 4-6 fps timing | [ip]
+- [ ] **Input validation system** | Real-time field validation with visual feedback and error handling | [ip]
+- [ ] **File tree navigation** | Interactive file selection with sub-tree expansion and checkbox controls | [ip]
+- [ ] **Generation progress visualization** | Real-time diff snapshots and CoT visualization during project generation | [ip]
+- [ ] **Keyboard navigation system** | Complete keyboard shortcuts (Enter, Esc, arrows, Tab, space) with focus management | [ip]
+- [ ] **Responsive layout system** | Asymmetric center-left layout with proper spacing and responsive design | [ip]
+- [ ] **Template preview system** | Live template preview with file tree and selection feedback | [ip]
+- [ ] **Configuration validation** | Real-time .prprc validation with schema checking and error reporting | [ip]
+- [ ] **Agent configuration UI** | Complete agent setup with add/remove functionality and advanced settings | [ip]
+- [ ] **Integration setup flow** | GitHub and npm integration with OAuth and API key management | [ip]
+
+### backup files (cleanup needed)
+- `/src/tui/components/init/InitFlow.tsx.bak` | Backup file - needs deletion | [cd]
+- `/src/tui/components/init/ConfigIntegration.tsx.backup` | Backup file - needs deletion | [cd]
+- `/src/tui/components/init/ConfigIntegration.tsx.bak` | Backup file - needs deletion | [cd]
+- `/src/tui/components/init/types.ts.bak` | Backup file - needs deletion | [cd]
+- `/src/tui/components/IntroSequence.tsx.bak` | Backup file in parent directory - needs deletion | [cd]
+- `/src/tui/components/VideoIntro.tsx.bak` | Backup file in parent directory - needs deletion | [cd]

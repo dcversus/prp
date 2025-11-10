@@ -6,55 +6,111 @@
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { dirname, resolve } from 'path';
-import { logger } from '../utils/logger.js';
-import { ConfigUtils } from '../shared/utils.js';
-import type { PrpRc, ConfigMergeResult, ConfigValidationResult } from '../types/prprc.js';
-import { DEFAULT_PRPRC, REQUIRED_PRPRC_FIELDS } from '../types/prprc.js';
-import { validateConfig } from './schema-validator.js';
+import { dirname, resolve, join } from 'path';
+import { homedir } from 'os';
+import { ConfigUtils } from '../shared/utils';
+import { logger } from '../shared/utils/logger';
+import type { PrpRc, ConfigMergeResult, ConfigValidationResult, ConfigPaths, WriteOptions } from '../shared/types/prprc';
+import { DEFAULT_PRPRC, REQUIRED_PRPRC_FIELDS } from '../shared/types/prprc';
+import { validateConfig } from './schema-validator';
+
+// Singleton instance
+let instance: PrpRcManager | null = null;
 
 /**
  * PrpRc Configuration Manager
- * Implements proper configuration merging and validation
+ * Singleton implementing PRP-001 hierarchy: ~/.prprc < .prp/.prprc < ./.prprc
  */
 export class PrpRcManager {
   private workingDirectory: string;
-  private userConfigPath: string;
-  private secretsConfigPath: string;
+  private paths: ConfigPaths;
+  private config: PrpRc | null = null;
 
-  constructor(workingDirectory: string = process.cwd()) {
+  private constructor(workingDirectory: string = process.cwd()) {
     this.workingDirectory = workingDirectory;
-    this.userConfigPath = resolve(workingDirectory, '.prprc');
-    this.secretsConfigPath = resolve(workingDirectory, '.prp/.prprc');
+    this.paths = this.resolveConfigPaths(workingDirectory);
+    this.config = null;
+  }
+
+  /**
+   * Get singleton instance
+   */
+  static getInstance(workingDirectory?: string): PrpRcManager {
+    if (!instance) {
+      instance = new PrpRcManager(workingDirectory);
+    }
+    return instance;
+  }
+
+  /**
+   * Reset singleton (for testing)
+   */
+  static resetInstance(): void {
+    instance = null;
+  }
+
+  /**
+   * Resolve all config file paths following PRP-001 hierarchy
+   * Priority: ~/.prprc < .prprc < .prp/.prprc
+   */
+  private resolveConfigPaths(workingDirectory: string): ConfigPaths {
+    return {
+      global: join(homedir(), '.prprc'),
+      local: resolve(workingDirectory, '.prprc'),
+      secrets: resolve(workingDirectory, '.prp/.prprc')
+    };
   }
 
   /**
    * Load configuration with proper merging hierarchy
-   * Hierarchy: defaults < .prprc < .prp/.prprc
+   * Hierarchy: defaults < ~/.prprc < ./.prprc < .prp/.prprc
    */
-  async load(): Promise<ConfigMergeResult> {
+  async load(refresh = false): Promise<ConfigMergeResult> {
+    if (this.config && !refresh) {
+      return {
+        merged: this.config,
+        sources: {
+          defaults: this.config,
+          user: undefined,
+          secrets: undefined
+        },
+        metadata: {
+          merged_at: new Date().toISOString(),
+          config_paths: this.paths
+        }
+      };
+    }
+
     try {
       // Load defaults
       const defaults = { ...DEFAULT_PRPRC } as PrpRc;
 
-      // Load user config (.prprc)
-      let userConfig: Partial<PrpRc> = {};
-      if (existsSync(this.userConfigPath)) {
-        const userConfigData = readFileSync(this.userConfigPath, 'utf8');
-        userConfig = JSON.parse(userConfigData);
-        logger.info('config', 'PrpRcManager', `Loaded user config from ${this.userConfigPath}`);
+      // Load global config (~/.prprc) - lowest priority
+      let globalConfig: Partial<PrpRc> = {};
+      if (existsSync(this.paths.global)) {
+        const globalConfigData = readFileSync(this.paths.global, 'utf8');
+        globalConfig = JSON.parse(globalConfigData);
+        logger.info('config', 'PrpRcManager', `Loaded global config from ${this.paths.global}`);
       }
 
-      // Load secrets config (.prp/.prprc)
+      // Load local config (./.prprc) - medium priority
+      let localConfig: Partial<PrpRc> = {};
+      if (existsSync(this.paths.local)) {
+        const localConfigData = readFileSync(this.paths.local, 'utf8');
+        localConfig = JSON.parse(localConfigData);
+        logger.info('config', 'PrpRcManager', `Loaded local config from ${this.paths.local}`);
+      }
+
+      // Load secrets config (.prp/.prprc) - highest priority
       let secretsConfig: Partial<PrpRc> = {};
-      if (existsSync(this.secretsConfigPath)) {
-        const secretsConfigData = readFileSync(this.secretsConfigPath, 'utf8');
+      if (existsSync(this.paths.secrets)) {
+        const secretsConfigData = readFileSync(this.paths.secrets, 'utf8');
         secretsConfig = JSON.parse(secretsConfigData);
-        logger.info('config', 'PrpRcManager', `Loaded secrets config from ${this.secretsConfigPath}`);
+        logger.info('config', 'PrpRcManager', `Loaded secrets config from ${this.paths.secrets}`);
       }
 
-      // Merge configurations: defaults < user < secrets
-      const merged = this.mergeConfigs(defaults, userConfig, secretsConfig);
+      // Merge configurations: defaults < global < local < secrets
+      const merged = this.mergeConfigs(defaults, globalConfig, localConfig, secretsConfig);
 
       // Validate final configuration
       const validation = this.validate(merged);
@@ -62,18 +118,20 @@ export class PrpRcManager {
         throw new Error(`Configuration validation failed: ${validation.errors.map(e => e.message).join(', ')}`);
       }
 
+      this.config = merged;
+
       const result: ConfigMergeResult = {
         merged,
         sources: {
           defaults,
-          user: Object.keys(userConfig).length > 0 ? userConfig as PrpRc : undefined,
+          user: Object.keys(localConfig).length > 0 ? localConfig as PrpRc : undefined,
           secrets: Object.keys(secretsConfig).length > 0 ? secretsConfig as PrpRc : undefined
         },
         metadata: {
           merged_at: new Date().toISOString(),
           config_paths: {
-            user: existsSync(this.userConfigPath) ? this.userConfigPath : undefined,
-            secrets: existsSync(this.secretsConfigPath) ? this.secretsConfigPath : undefined
+            user: existsSync(this.paths.local) ? this.paths.local : undefined,
+            secrets: existsSync(this.paths.secrets) ? this.paths.secrets : undefined
           }
         }
       };
@@ -88,45 +146,69 @@ export class PrpRcManager {
   }
 
   /**
-   * Save user configuration (.prprc)
-   * Only saves non-secret values to .prprc
+   * Write configuration to specific location
    */
-  async saveUserConfig(config: Partial<PrpRc>): Promise<void> {
-    try {
-      // Filter out secrets that should go to .prp/.prprc
-      const filteredConfig = this.filterSecrets(config);
+  async write(options: WriteOptions = {}): Promise<void> {
+    const location = options.location ?? 'local';
+    const createIfMissing = options.createIfMissing ?? true;
 
-      // Ensure directory exists
-      mkdirSync(dirname(this.userConfigPath), { recursive: true });
-
-      // Write user config
-      writeFileSync(this.userConfigPath, JSON.stringify(filteredConfig, null, 2), 'utf8');
-      logger.info('config', 'PrpRcManager', `User config saved to ${this.userConfigPath}`);
-    } catch (error) {
-      logger.error('config', 'PrpRcManager', 'Failed to save user configuration', error instanceof Error ? error : new Error(String(error)));
-      throw error;
+    if (!this.config) {
+      throw new Error('Configuration not loaded. Call load() first.');
     }
+
+    let configPath: string;
+    switch (location) {
+      case 'global':
+        configPath = this.paths.global;
+        break;
+      case 'secrets':
+        configPath = this.paths.secrets;
+        if (createIfMissing && !existsSync(dirname(configPath))) {
+          mkdirSync(dirname(configPath), { recursive: true });
+        }
+        break;
+      case 'local':
+      default:
+        configPath = this.paths.local;
+        break;
+    }
+
+    // Ensure directory exists
+    if (createIfMissing && !existsSync(dirname(configPath))) {
+      mkdirSync(dirname(configPath), { recursive: true });
+    }
+
+    // Prepare config to write (filter secrets for non-secrets location)
+    let configToWrite: Partial<PrpRc> = this.config;
+    if (location !== 'secrets') {
+      configToWrite = this.filterSecrets(this.config);
+    }
+
+    // Write file
+    const configJson = JSON.stringify(configToWrite, null, 2);
+    writeFileSync(configPath, configJson, 'utf8');
+
+    logger.info('config', 'PrpRcManager', `Wrote config to ${configPath}`);
   }
 
   /**
-   * Save secrets configuration (.prp/.prprc)
-   * Only saves secret values to .prp/.prprc
+   * Write only secrets to .prp/.prprc
    */
-  async saveSecretsConfig(config: Partial<PrpRc>): Promise<void> {
-    try {
-      // Filter only secrets
-      const secretsConfig = this.extractSecrets(config);
-
-      // Ensure directory exists
-      mkdirSync(dirname(this.secretsConfigPath), { recursive: true });
-
-      // Write secrets config
-      writeFileSync(this.secretsConfigPath, JSON.stringify(secretsConfig, null, 2), 'utf8');
-      logger.info('config', 'PrpRcManager', `Secrets config saved to ${this.secretsConfigPath}`);
-    } catch (error) {
-      logger.error('config', 'PrpRcManager', 'Failed to save secrets configuration', error instanceof Error ? error : new Error(String(error)));
-      throw error;
+  async writeSecrets(): Promise<void> {
+    if (!this.config) {
+      throw new Error('Configuration not loaded. Call load() first.');
     }
+
+    const secretsPath = this.paths.secrets;
+    if (!existsSync(dirname(secretsPath))) {
+      mkdirSync(dirname(secretsPath), { recursive: true });
+    }
+
+    const secrets = this.extractSecrets(this.config);
+    const secretsJson = JSON.stringify(secrets, null, 2);
+    writeFileSync(secretsPath, secretsJson, 'utf8');
+
+    logger.info('config', 'PrpRcManager', `Wrote secrets to ${secretsPath}`);
   }
 
   /**
@@ -216,16 +298,72 @@ export class PrpRcManager {
 
   /**
    * Merge configurations with proper precedence
-   * defaults < user < secrets
+   * defaults < global < local < secrets
    */
-  private mergeConfigs(defaults: PrpRc, user: Partial<PrpRc>, secrets: Partial<PrpRc>): PrpRc {
+  private mergeConfigs(defaults: PrpRc, global: Partial<PrpRc>, local: Partial<PrpRc>, secrets: Partial<PrpRc>): PrpRc {
     // Start with defaults
-    let merged = ConfigUtils.mergeDeep(defaults as unknown as Record<string, unknown>, user as unknown as Record<string, unknown>) as unknown as PrpRc;
+    let merged = ConfigUtils.mergeDeep(defaults as unknown as Record<string, unknown>, global as unknown as Record<string, unknown>) as unknown as PrpRc;
+
+    // Apply local config on top
+    merged = ConfigUtils.mergeDeep(merged as unknown as Record<string, unknown>, local as unknown as Record<string, unknown>) as unknown as PrpRc;
 
     // Apply secrets on top (highest precedence)
     merged = ConfigUtils.mergeDeep(merged as unknown as Record<string, unknown>, secrets as unknown as Record<string, unknown>) as unknown as PrpRc;
 
     return merged;
+  }
+
+  /**
+   * Get configuration value using dot notation
+   * Example: get('project.name') or get('providers.0.id')
+   */
+  get(path?: string): unknown {
+    if (!this.config) {
+      throw new Error('Configuration not loaded. Call load() first.');
+    }
+
+    if (!path) {
+      return this.config;
+    }
+
+    // Navigate nested properties
+    const keys = path.split('.');
+    let current: unknown = this.config;
+
+    for (const key of keys) {
+      if (current === null || current === undefined) {
+        return undefined;
+      }
+      current = (current as Record<string, unknown>)[key];
+    }
+
+    return current;
+  }
+
+  /**
+   * Set configuration value using dot notation
+   */
+  set(path: string, value: unknown): void {
+    if (!this.config) {
+      throw new Error('Configuration not loaded. Call load() first.');
+    }
+
+    const keys = path.split('.');
+    const lastKey = keys.pop();
+    if (!lastKey) {
+      throw new Error('Invalid path provided');
+    }
+    let current: unknown = this.config;
+
+    // Navigate to parent
+    for (const key of keys) {
+      if (!(key in (current as Record<string, unknown>))) {
+        (current as Record<string, unknown>)[key] = {};
+      }
+      current = (current as Record<string, unknown>)[key];
+    }
+
+    (current as Record<string, unknown>)[lastKey] = value;
   }
 
   /**
@@ -236,24 +374,26 @@ export class PrpRcManager {
 
     // Remove connection tokens (should be in .prp/.prprc)
     if (filtered.connections) {
-      const connections: any = { ...filtered.connections };
+      const connections: Record<string, unknown> = { ...filtered.connections };
       if (connections.github) {
-        const { token, ...github } = connections.github;
-        connections.github = github;
+        const githubRecord = connections.github as Record<string, unknown>;
+        const { token: _token, ...githubRest } = githubRecord;
+        connections.github = githubRest;
       }
       if (connections.npm) {
-        const { token, ...npm } = connections.npm;
-        connections.npm = npm;
+        const npmRecord = connections.npm as Record<string, unknown>;
+        const { token: _token, ...npmRest } = npmRecord;
+        connections.npm = npmRest;
       }
-      filtered.connections = connections;
+      filtered.connections = connections as Partial<PrpRc>['connections'];
     }
 
     // Remove provider auth values (should be in .prp/.prprc)
     if (filtered.providers) {
       filtered.providers = filtered.providers.map(provider => {
-        const { auth, ...p } = provider;
-        return p;
-      }) as any;
+        const { auth: _auth, ...providerRest } = provider;
+        return providerRest;
+      }) as Partial<PrpRc>['providers'];
     }
 
     return filtered;
@@ -267,7 +407,7 @@ export class PrpRcManager {
 
     // Extract connection tokens
     if (config.connections) {
-      const connections: any = {};
+      const connections: Record<string, unknown> = {};
       if (config.connections.github?.token) {
         connections.github = { token: config.connections.github.token };
       }
@@ -275,7 +415,7 @@ export class PrpRcManager {
         connections.npm = { token: config.connections.npm.token };
       }
       if (Object.keys(connections).length > 0) {
-        secrets.connections = connections;
+        secrets.connections = connections as Partial<PrpRc>['connections'];
       }
     }
 
@@ -288,7 +428,7 @@ export class PrpRcManager {
           auth: provider.auth
         }));
       if (providersWithAuth.length > 0) {
-        secrets.providers = providersWithAuth as any;
+        secrets.providers = providersWithAuth as Partial<PrpRc>['providers'];
       }
     }
 
@@ -307,24 +447,27 @@ export class PrpRcManager {
   /**
    * Get configuration file paths
    */
-  getPaths() {
-    return {
-      user: this.userConfigPath,
-      secrets: this.secretsConfigPath,
-      working: this.workingDirectory
-    };
+  getPaths(): ConfigPaths {
+    return { ...this.paths };
+  }
+
+  /**
+   * Get current working directory
+   */
+  getWorkingDirectory(): string {
+    return this.workingDirectory;
   }
 }
 
 /**
  * Global PrpRc manager instance
  */
-export const prpRcManager = new PrpRcManager();
+export const prpRcManager = PrpRcManager.getInstance();
 
 /**
  * Initialize and load PrpRc configuration
  */
 export async function initializePrpRc(workingDirectory?: string): Promise<ConfigMergeResult> {
-  const manager = workingDirectory ? new PrpRcManager(workingDirectory) : prpRcManager;
-  return await manager.load();
+  const manager = workingDirectory ? PrpRcManager.getInstance(workingDirectory) : prpRcManager;
+  return manager.load();
 }

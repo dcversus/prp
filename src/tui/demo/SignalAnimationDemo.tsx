@@ -90,7 +90,7 @@ function SignalAnimationDemo() {
               {state.signals.map((signal, index) => {
                 const animation = SignalAnimation({
                   code: signal.code,
-                  state: signal.state as "active" | "placeholder" | "progress" | "resolved",
+                  state: signal.state as 'active' | 'placeholder' | 'progress' | 'resolved',
                   animate: state.isRunning
                 });
                 return (
@@ -115,7 +115,7 @@ function SignalAnimationDemo() {
               {state.signals.map((signal, index) => {
                 const animation = SignalAnimation({
                   code: signal.code,
-                  state: signal.state as "active" | "placeholder" | "progress" | "resolved",
+                  state: signal.state as 'active' | 'placeholder' | 'progress' | 'resolved',
                   animate: state.isRunning
                 });
                 return (
@@ -140,7 +140,7 @@ function SignalAnimationDemo() {
               {state.signals.map((signal, index) => {
                 const animation = SignalAnimation({
                   code: signal.code,
-                  state: signal.state as "active" | "placeholder" | "progress" | "resolved",
+                  state: signal.state as 'active' | 'placeholder' | 'progress' | 'resolved',
                   animate: state.isRunning
                 });
                 return (
@@ -165,7 +165,7 @@ function SignalAnimationDemo() {
               {state.signals.map((signal, index) => {
                 const animation = SignalAnimation({
                   code: signal.code,
-                  state: signal.state as "active" | "placeholder" | "progress" | "resolved",
+                  state: signal.state as 'active' | 'placeholder' | 'progress' | 'resolved',
                   animate: state.isRunning
                 });
                 return (

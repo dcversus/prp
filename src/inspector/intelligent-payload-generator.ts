@@ -121,7 +121,7 @@ export class IntelligentPayloadGenerator extends EventEmitter {
       const payloadSections = await this.generatePayloadSections(
         classification,
         context,
-        tokenAllocation,
+        tokenAllocation
       );
 
       // Step 6: Apply compression if needed
@@ -137,7 +137,7 @@ export class IntelligentPayloadGenerator extends EventEmitter {
 
       const processingTime = Date.now() - startTime;
 
-      logger.info('IntelligentPayloadGenerator', `Payload generation completed`, {
+      logger.info('IntelligentPayloadGenerator', 'Payload generation completed', {
         payloadId,
         processingTime,
         totalTokens: finalPayload.estimatedTokens,
@@ -163,7 +163,7 @@ export class IntelligentPayloadGenerator extends EventEmitter {
    */
   private async analyzeContent(
     classification: EnhancedSignalClassification,
-    context: ProcessingContext,
+    context: ProcessingContext
   ): Promise<ContentAnalysis> {
     const sections = [];
 
@@ -352,17 +352,19 @@ export class IntelligentPayloadGenerator extends EventEmitter {
   private async generatePayloadSections(
     _classification: EnhancedSignalClassification,
     _context: ProcessingContext,
-    tokenAllocation: TokenAllocation,
+    tokenAllocation: TokenAllocation
   ): Promise<PayloadSection[]> {
     const sections: PayloadSection[] = [];
 
     for (const allocation of tokenAllocation.allocations) {
       const originalSection = tokenAllocation.sections.find(s => s.section.id === allocation.sectionId);
-      if (!originalSection) continue;
+      if (!originalSection) {
+        continue;
+      }
 
       const section = await this.createPayloadSection(
         originalSection.section,
-        allocation.allocatedTokens,
+        allocation.allocatedTokens
       );
 
       if (section) {
@@ -378,7 +380,7 @@ export class IntelligentPayloadGenerator extends EventEmitter {
    */
   private async createPayloadSection(
     section: ContentAnalysis['sections'][0],
-    targetTokens: number,
+    targetTokens: number
   ): Promise<PayloadSection | null> {
     try {
       let content = section.content;
@@ -438,7 +440,7 @@ export class IntelligentPayloadGenerator extends EventEmitter {
    * Compress individual section
    */
   private async compressSection(
-    section: PayloadSection,
+    section: PayloadSection
   ): Promise<PayloadSection> {
     const applicableStrategies = Array.from(this.compressionStrategies.values())
       .filter((strategy: CompressionStrategy) => strategy.applicability(section.content))

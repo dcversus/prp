@@ -264,7 +264,7 @@ export class ContextManager extends EventEmitter {
     }
 
     // Generate new summary
-    return await this.generateSummary(start, end);
+    return this.generateSummary(start, end);
   }
 
   /**
@@ -336,7 +336,7 @@ export class ContextManager extends EventEmitter {
       ratio: number;
     }>;
     summaryCount: number;
-  } {
+    } {
     const entries = Array.from(this.entries.values());
     const entriesByType: Record<string, number> = {};
     const entriesByPriority: Record<string, number> = {};
@@ -403,7 +403,7 @@ export class ContextManager extends EventEmitter {
     const cutoffTime = new Date(now.getTime() - this.config.maxAge);
     let removed = 0;
 
-    for (const [id, entry] of this.entries) {
+    for (const [id, entry] of Array.from(this.entries.entries())) {
       if (entry.timestamp < cutoffTime && entry.type !== 'summary') {
         this.entries.delete(id);
         this.totalTokens -= entry.tokenCount;
@@ -436,7 +436,9 @@ export class ContextManager extends EventEmitter {
     const targetSize = this.config.maxSize * 0.7; // Target 70% of max size
 
     for (const entry of entries) {
-      if (this.totalTokens <= targetSize) break;
+      if (this.totalTokens <= targetSize) {
+        break;
+      }
 
       // Don't remove high priority or recent entries
       if (entry.priority >= 4 ||
@@ -494,8 +496,10 @@ export class ContextManager extends EventEmitter {
   private async applySemanticCompression(): Promise<number> {
     let compressed = 0;
 
-    for (const [, entry] of this.entries) {
-      if (entry.compressed) continue;
+    for (const [, entry] of Array.from(this.entries.entries())) {
+      if (entry.compressed) {
+        continue;
+      }
 
       // Compress text-based entries
       if (typeof entry.data === 'string' && entry.data.length > 1000) {
@@ -611,7 +615,7 @@ export class ContextManager extends EventEmitter {
       .filter(e => this.hasPrpId(e.data))
       .map(e => (e.data as { prpId: string }).prpId);
 
-    return [...new Set(prpRefs)]; // Remove duplicates
+    return Array.from(new Set(prpRefs)); // Remove duplicates
   }
 
   /**
@@ -714,10 +718,18 @@ export class ContextManager extends EventEmitter {
    * Get priority range string
    */
   private getPriorityRange(priority: number): string {
-    if (priority >= 9) return 'critical';
-    if (priority >= 7) return 'high';
-    if (priority >= 5) return 'medium';
-    if (priority >= 3) return 'low';
+    if (priority >= 9) {
+      return 'critical';
+    }
+    if (priority >= 7) {
+      return 'high';
+    }
+    if (priority >= 5) {
+      return 'medium';
+    }
+    if (priority >= 3) {
+      return 'low';
+    }
     return 'info';
   }
 

@@ -5,7 +5,7 @@
  * message prioritization, and orchestrator coordination protocols.
  */
 
-import { createAgentNudgeIntegration } from '../nudge/agent-integration';
+import { createAgentNudgeIntegration } from '../shared/nudge/agent-integration';
 import { createLayerLogger } from '../shared';
 
 const logger = createLayerLogger('orchestrator');
@@ -195,10 +195,10 @@ export class OrchestratorMessageHandlingGuidelines {
       },
       context: {
         ...data.context,
-        relatedFiles: data.context?.relatedFiles || [],
-        dependentTasks: data.context?.dependentTasks || [],
-        blockingIssues: data.context?.blockingIssues || [],
-        options: data.context?.options || [],
+        relatedFiles: data.context?.relatedFiles ?? [],
+        dependentTasks: data.context?.dependentTasks ?? [],
+        blockingIssues: data.context?.blockingIssues ?? [],
+        options: data.context?.options ?? [],
         recommendation: data.context?.recommendation
       }
     };
@@ -311,7 +311,7 @@ export class OrchestratorMessageHandlingGuidelines {
           agentType: message.agentType,
           blockerDescription: message.subject,
           impact: message.content,
-          neededAction: message.actionRequired || 'Immediate attention required',
+          neededAction: message.actionRequired ?? 'Immediate attention required',
           attemptedSolutions: message.context.dependentTasks,
           urgency: this.mapPriorityToUrgency(message.priority)
         });
@@ -323,8 +323,8 @@ export class OrchestratorMessageHandlingGuidelines {
           agentType: message.agentType,
           topic: message.subject,
           summary: message.content,
-          details: message.context.recommendation || 'No additional details',
-          actionRequired: message.actionRequired || 'Please review and approve',
+          details: message.context.recommendation ?? 'No additional details',
+          actionRequired: message.actionRequired ?? 'Please review and approve',
           priority: this.mapPriorityToUrgency(message.priority)
         });
         break;
@@ -476,11 +476,11 @@ export class OrchestratorMessageHandlingGuidelines {
       return false;
     }
 
-    const followUpInterval = message.metadata.followUpInterval ||
+    const followUpInterval = message.metadata.followUpInterval ??
       this.config.escalationThresholds[message.priority] * 60000; // convert to milliseconds
 
     const timeSinceSent = Date.now() - message.metadata.sentAt.getTime();
-    const lastFollowUpTime = message.metadata.lastFollowUpAt?.getTime() || 0;
+    const lastFollowUpTime = message.metadata.lastFollowUpAt?.getTime() ?? 0;
 
     return timeSinceSent > followUpInterval && (Date.now() - lastFollowUpTime) > followUpInterval;
   }
@@ -496,7 +496,7 @@ This message requires your attention and was sent on ${message.metadata.sentAt?.
 
 Original message: ${message.content}
 
-Please review and take the required action: ${message.actionRequired || 'Please respond to this message'}`;
+Please review and take the required action: ${message.actionRequired ?? 'Please respond to this message'}`;
 
       await this.agentNudge.sendAdminAttention({
         prpId: message.prpId,
@@ -552,7 +552,7 @@ Current escalation level: ${message.metadata.escalationLevel}
 
 ${message.content}
 
-URGENT ACTION REQUIRED: ${message.actionRequired || 'Immediate admin attention required'}`;
+URGENT ACTION REQUIRED: ${message.actionRequired ?? 'Immediate admin attention required'}`;
 
     await this.agentNudge.sendAdminAttention({
       prpId: message.prpId,
@@ -580,7 +580,7 @@ URGENT ACTION REQUIRED: ${message.actionRequired || 'Immediate admin attention r
     pendingCritical: number;
     overdue: number;
     averageResponseTime?: number;
-  } {
+    } {
     const messages = Array.from(this.messageQueue.values());
 
     const byStatus: Record<MessageStatus, number> = {

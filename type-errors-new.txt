@@ -1,0 +1,72 @@
+
+> @dcversus/prp@0.4.9 typecheck
+> tsc --noEmit
+
+tests/e2e/cloud-journey.test.ts(1063,24): error TS1127: Invalid character.
+tests/e2e/cloud-journey.test.ts(1063,34): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1063,40): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1063,44): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1063,47): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1063,58): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1076,22): error TS1127: Invalid character.
+tests/e2e/cloud-journey.test.ts(1076,23): error TS1127: Invalid character.
+tests/e2e/cloud-journey.test.ts(1076,32): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1076,38): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1076,43): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1076,46): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1083,18): error TS1127: Invalid character.
+tests/e2e/cloud-journey.test.ts(1083,27): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1083,40): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1083,46): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1083,49): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1101,20): error TS1127: Invalid character.
+tests/e2e/cloud-journey.test.ts(1101,22): error TS1135: Argument expression expected.
+tests/e2e/cloud-journey.test.ts(1101,35): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1101,47): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1101,56): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1101,60): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1101,63): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1128,18): error TS1127: Invalid character.
+tests/e2e/cloud-journey.test.ts(1128,29): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1128,44): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1128,47): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1128,48): error TS1136: Property assignment expected.
+tests/e2e/cloud-journey.test.ts(1128,50): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1128,64): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1128,65): error TS1128: Declaration or statement expected.
+tests/e2e/cloud-journey.test.ts(1128,73): error TS1434: Unexpected keyword or identifier.
+tests/e2e/cloud-journey.test.ts(1128,91): error TS1128: Declaration or statement expected.
+tests/e2e/cloud-journey.test.ts(1128,103): error TS1434: Unexpected keyword or identifier.
+tests/e2e/cloud-journey.test.ts(1139,18): error TS1127: Invalid character.
+tests/e2e/cloud-journey.test.ts(1139,20): error TS1434: Unexpected keyword or identifier.
+tests/e2e/cloud-journey.test.ts(1139,32): error TS1434: Unexpected keyword or identifier.
+tests/e2e/cloud-journey.test.ts(1139,46): error TS1434: Unexpected keyword or identifier.
+tests/e2e/cloud-journey.test.ts(1139,67): error TS1434: Unexpected keyword or identifier.
+tests/e2e/cloud-journey.test.ts(1178,22): error TS1127: Invalid character.
+tests/e2e/cloud-journey.test.ts(1178,24): error TS1434: Unexpected keyword or identifier.
+tests/e2e/cloud-journey.test.ts(1178,40): error TS1128: Declaration or statement expected.
+tests/e2e/cloud-journey.test.ts(1178,52): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1178,58): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1178,72): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1178,75): error TS1443: Module declaration names may only use ' or " quoted strings.
+tests/e2e/cloud-journey.test.ts(1180,22): error TS1127: Invalid character.
+tests/e2e/cloud-journey.test.ts(1180,22): error TS1128: Declaration or statement expected.
+tests/e2e/cloud-journey.test.ts(1180,24): error TS1434: Unexpected keyword or identifier.
+tests/e2e/cloud-journey.test.ts(1180,40): error TS1128: Declaration or statement expected.
+tests/e2e/cloud-journey.test.ts(1180,59): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1180,62): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1180,68): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1180,77): error TS1443: Module declaration names may only use ' or " quoted strings.
+tests/e2e/cloud-journey.test.ts(1184,18): error TS1127: Invalid character.
+tests/e2e/cloud-journey.test.ts(1184,18): error TS1128: Declaration or statement expected.
+tests/e2e/cloud-journey.test.ts(1184,21): error TS1434: Unexpected keyword or identifier.
+tests/e2e/cloud-journey.test.ts(1184,29): error TS1434: Unexpected keyword or identifier.
+tests/e2e/cloud-journey.test.ts(1184,45): error TS1434: Unexpected keyword or identifier.
+tests/e2e/cloud-journey.test.ts(1184,63): error TS1161: Unterminated regular expression literal.
+tests/e2e/cloud-journey.test.ts(1184,104): error TS1005: ';' expected.
+tests/e2e/cloud-journey.test.ts(1187,7): error TS1005: ',' expected.
+tests/e2e/cloud-journey.test.ts(1191,3): error TS1128: Declaration or statement expected.
+tests/e2e/cloud-journey.test.ts(1191,4): error TS1128: Declaration or statement expected.
+tests/e2e/cloud-journey.test.ts(1191,11): error TS1005: ';' expected.
+tests/e2e/cloud-journey.test.ts(1456,1): error TS1128: Declaration or statement expected.
+tests/e2e/cloud-journey.test.ts(1456,2): error TS1128: Declaration or statement expected.

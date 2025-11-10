@@ -109,7 +109,7 @@ export const DEFAULT_CONFIG: PRPConfig = {
     keychainFile: '.prp/keychain.json',
     persistFile: '.prp/state.json',
     maxCacheSize: 100 * 1024 * 1024, // 100MB
-    retentionPeriod: 30 * 24 * 60 * 60 * 1000, // 30 days
+    retentionPeriod: 30 * 24 * 60 * 60 * 1000 // 30 days
   },
   agents: [],
   guidelines: [],
@@ -124,7 +124,7 @@ export const DEFAULT_CONFIG: PRPConfig = {
     activeScreen: 'main',
     followEvents: true,
     autoRefresh: true,
-    refreshInterval: 5000,
+    refreshInterval: 5000
   },
 
   // Feature flags
@@ -134,7 +134,7 @@ export const DEFAULT_CONFIG: PRPConfig = {
     orchestrator: true,
     tui: true,
     mcp: true,
-    worktrees: true,
+    worktrees: true
   },
 
   // System limits
@@ -143,7 +143,7 @@ export const DEFAULT_CONFIG: PRPConfig = {
     maxWorktrees: 50,
     maxPRPsPerWorktree: 20,
     tokenAlertThreshold: 0.8,
-    tokenCriticalThreshold: 0.95,
+    tokenCriticalThreshold: 0.95
   },
 
   // Logging configuration
@@ -152,21 +152,21 @@ export const DEFAULT_CONFIG: PRPConfig = {
     enableFileLogging: true,
     enableTokenTracking: true,
     enablePerformanceTracking: true,
-    logRetentionDays: 7,
+    logRetentionDays: 7
   },
 
   // Security settings
   security: {
     enablePinProtection: false,
     encryptSecrets: true,
-    sessionTimeout: 60, // 1 hour
+    sessionTimeout: 60 // 1 hour
   },
 
   // Settings for backwards compatibility
   settings: {},
 
   // Optional scripts
-  scripts: undefined,
+  scripts: undefined
 };
 
 /**
@@ -348,8 +348,7 @@ export class ConfigManager {
       Validator.isValidAgentId(guideline.id) &&
       guideline.name.length > 0 &&
       typeof guideline.enabled === 'boolean' &&
-      guideline.protocol &&
-      guideline.protocol.steps &&
+      guideline.protocol?.steps &&
       guideline.protocol.steps.length > 0
     );
   }
@@ -372,7 +371,7 @@ export class ConfigManager {
       const exportData = {
         config: this.config as Record<string, unknown>,
         exportedAt: new Date().toISOString(),
-        version: this.config.version,
+        version: this.config.version
       };
 
       await ConfigUtils.saveConfigFile(exportPath, exportData);
@@ -445,6 +444,6 @@ export function validateConfig(config: PRPConfig): { valid: boolean; errors: str
 
   return {
     valid: errors.length === 0,
-    errors,
+    errors
   };
 }

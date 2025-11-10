@@ -20,6 +20,7 @@ export interface OrchestratorConfig {
   agents: AgentManagementConfig;
   prompts: OrchestratorPrompts;
   decisionThresholds: DecisionThresholds;
+  self?: SelfConfig;
 }
 
 export interface ContextPreservationConfig {
@@ -88,6 +89,15 @@ export interface DecisionThresholds {
   processingTime: number; // Maximum processing time in milliseconds
   agentResponse: number; // Maximum time to wait for agent response
   errorRate: number; // Maximum acceptable error rate
+}
+
+export interface SelfConfig {
+  enabled: boolean;
+  identity: string; // Raw self string from CLI
+  selfName?: string; // Extracted from self reasoning
+  selfSummary?: string; // Extracted from self reasoning
+  selfGoal?: string; // Extracted from self reasoning
+  lastUpdated?: Date;
 }
 
 export interface OrchestratorState {

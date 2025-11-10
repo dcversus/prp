@@ -6,7 +6,6 @@
  */
 
 import { Text } from 'ink';
-import { RoboRolePillProps, ColorScheme } from '../types/TUIConfig.js';
 import { getRoleColors } from '../config/TUIConfig.js';
 
 export function RoboRolePill({ role, state = 'idle', size = 'normal' }: RoboRolePillProps) {

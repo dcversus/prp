@@ -2,8 +2,8 @@
  * ♫ AgentEditor - Comprehensive agent configuration component
  *
  * Full agent configuration with all fields from PRP-003 specs:
- * id, limit, cv, warning_limit, provider, yolo, instructions_path,
- * sub_agents, max_parallel, mcp, compact_prediction subfields
+ * id, limit, cv, warning_limit, provider, yolo, sub_agents, max_parallel,
+ * mcp, compact_prediction subfields
  */
 
 import React, { useState, useCallback } from 'react';
@@ -14,41 +14,13 @@ import FieldText from './FieldText.js';
 import FieldTextBlock from './FieldTextBlock.js';
 import FieldSelectCarousel from './FieldSelectCarousel.js';
 import FieldToggle from './FieldToggle.js';
-import FieldJSON from './FieldJSON.js';
 
 // Import types
-import type { TUIConfig } from '../../types/TUIConfig.js';
+import type { AgentConfig, AgentEditorProps } from './types.js';
 
-export interface AgentConfig {
-  id: string;
-  type: string;
-  limit: string;
-  cv: string;
-  warning_limit?: string;
-  provider?: string;
-  yolo?: boolean;
-  instructions_path?: string;
-  sub_agents?: boolean;
-  max_parallel?: number;
-  mcp?: string;
-  compact_prediction?: {
-    percent_threshold?: number;
-    auto_adjust?: boolean;
-    cap?: number;
-  };
-}
+export { AgentEditorProps };
 
-export interface AgentEditorProps {
-  agent: AgentConfig;
-  agentIndex: number;
-  onUpdate: (agent: AgentConfig) => void;
-  onRemove: () => void;
-  config?: TUIConfig;
-  disabled?: boolean;
-  showAdvanced?: boolean;
-}
-
-export const AgentEditor: React.FC<AgentEditorProps> = ({
+export const AgentEditor = ({
   agent,
   agentIndex,
   onUpdate,
@@ -56,8 +28,8 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({
   config,
   disabled = false,
   showAdvanced = false
-}) => {
-  const [expanded, setExpanded] = useState(true);
+}: AgentEditorProps) => {
+  const [expanded] = useState(true);
   const [currentField, setCurrentField] = useState(0);
 
   // Provider options
@@ -65,14 +37,18 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({
   const agentTypes = ['system-analyst', 'developer', 'quality-control', 'ux-ui-designer', 'devops-sre'];
 
   // Handle field updates
-  const handleFieldUpdate = useCallback((field: keyof AgentConfig, value: any) => {
-    if (disabled) return;
+  const handleFieldUpdate = useCallback((field: keyof AgentConfig, value: AgentConfig[keyof AgentConfig]) => {
+    if (disabled) {
+      return;
+    }
     onUpdate({ ...agent, [field]: value });
   }, [disabled, agent, onUpdate]);
 
   // Handle nested compact_prediction updates
-  const handleCompactPredictionUpdate = useCallback((field: keyof AgentConfig['compact_prediction'], value: any) => {
-    if (disabled) return;
+  const handleCompactPredictionUpdate = useCallback((field: keyof AgentConfig['compact_prediction'], value: AgentConfig['compact_prediction'][keyof AgentConfig['compact_prediction']]) => {
+    if (disabled) {
+      return;
+    }
     onUpdate({
       ...agent,
       compact_prediction: {
@@ -82,15 +58,12 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({
     });
   }, [disabled, agent, onUpdate]);
 
-  // Toggle expand/collapse
-  const toggleExpanded = useCallback(() => {
-    if (disabled) return;
-    setExpanded(!expanded);
-  }, [disabled, expanded]);
-
+  
   // Keyboard navigation for fields
   useInput((input, key) => {
-    if (disabled || !expanded) return;
+    if (disabled || !expanded) {
+      return;
+    }
 
     if (key.tab && !key.shift) {
       setCurrentField((prev) => (prev + 1) % 10); // 10 main fields
@@ -119,27 +92,33 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({
         padding={1}
       >
         <Box flexDirection="row" alignItems="center">
-          <Text color={headerColor} bold>
+          <Text color={headerColor} bold={true}>
             Agent #{agentIndex + 1}: {agent.id || 'unnamed'}
           </Text>
           {agent.yolo && (
-            <Text color={colors?.warn} marginLeft={1}>
-              ⚡ YOLO
-            </Text>
+            <Box marginLeft={1}>
+              <Text color={colors?.warn} bold={false}>
+                ⚡ YOLO
+              </Text>
+            </Box>
           )}
         </Box>
 
         <Box flexDirection="row" alignItems="center">
-          <Text color={colors?.muted} marginRight={1}>
-            [{expanded ? '▼' : '▶'}]
-          </Text>
-          <Text
-            color={colors?.error}
-            backgroundColor={`${colors?.error}20`}
-            marginRight={1}
-          >
-            [R] Remove
-          </Text>
+          <Box marginRight={1}>
+            <Text color={colors?.muted} bold={false}>
+              [{expanded ? '▼' : '▶'}]
+            </Text>
+          </Box>
+          <Box marginRight={1}>
+            <Text
+              color={colors?.error}
+              backgroundColor={colors?.error ? `${colors.error}20` : undefined}
+              bold={false}
+            >
+              [R] Remove
+            </Text>
+          </Box>
         </Box>
       </Box>
 
@@ -148,9 +127,11 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({
         <Box flexDirection="column" marginLeft={2} borderStyle="single" borderColor={colors?.gray} padding={1}>
           {/* Basic Configuration */}
           <Box flexDirection="column" marginBottom={1}>
-            <Text color={colors?.accent_orange} bold marginBottom={1}>
-              Basic Configuration
-            </Text>
+            <Box marginBottom={1}>
+              <Text color={colors?.accent_orange} bold={true}>
+                Basic Configuration
+              </Text>
+            </Box>
 
             <Box flexDirection="row" marginBottom={1}>
               <Box flexGrow={1} marginRight={2}>
@@ -169,7 +150,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({
                 <FieldSelectCarousel
                   label="Type"
                   items={agentTypes}
-                  selectedIndex={agentTypes.indexOf(agent.type) || 0}
+                  selectedIndex={agentTypes.indexOf(agent.type) ?? 0}
                   onChange={(index) => handleFieldUpdate('type', agentTypes[index])}
                   config={config}
                   disabled={disabled}
@@ -217,28 +198,19 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({
 
           {/* Provider Configuration */}
           <Box flexDirection="column" marginBottom={1}>
-            <Text color={colors?.accent_orange} bold marginBottom={1}>
-              Provider Configuration
-            </Text>
+            <Box marginBottom={1}>
+              <Text color={colors?.accent_orange} bold>
+                Provider Configuration
+              </Text>
+            </Box>
 
             <Box flexDirection="row" marginBottom={1}>
               <Box flexGrow={1} marginRight={2}>
                 <FieldSelectCarousel
                   label="Provider"
                   items={providerOptions}
-                  selectedIndex={providerOptions.indexOf(agent.provider || '') || 0}
+                  selectedIndex={providerOptions.indexOf(agent.provider ?? 'OpenAI') ?? 0}
                   onChange={(index) => handleFieldUpdate('provider', providerOptions[index])}
-                  config={config}
-                  disabled={disabled}
-                />
-              </Box>
-
-              <Box flexGrow={1}>
-                <FieldText
-                  label="Instructions Path"
-                  value={agent.instructions_path || ''}
-                  onChange={(value) => handleFieldUpdate('instructions_path', value)}
-                  placeholder="AGENTS.md"
                   config={config}
                   disabled={disabled}
                 />
@@ -260,7 +232,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({
               <Box flexGrow={1}>
                 <FieldText
                   label="Max Parallel"
-                  value={agent.max_parallel?.toString() || ''}
+                  value={agent.max_parallel?.toString() ?? ''}
                   onChange={(value) => handleFieldUpdate('max_parallel', parseInt(value, 10) || 5)}
                   placeholder="5"
                   config={config}
@@ -301,15 +273,17 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({
             {/* Compact Prediction */}
             {showAdvanced && (
               <Box flexDirection="column" marginTop={1}>
-                <Text color={colors?.accent_orange} bold marginBottom={1}>
-                  Compact Prediction Settings
-                </Text>
+                <Box marginBottom={1}>
+                  <Text color={colors?.accent_orange} bold>
+                    Compact Prediction Settings
+                  </Text>
+                </Box>
 
                 <Box flexDirection="row" marginBottom={1}>
                   <Box flexGrow={1} marginRight={2}>
                     <FieldText
                       label="Percent Threshold"
-                      value={agent.compact_prediction?.percent_threshold?.toString() || ''}
+                      value={(agent.compact_prediction?.percent_threshold ?? 0.82).toString()}
                       onChange={(value) => handleCompactPredictionUpdate('percent_threshold', parseFloat(value) || 0.82)}
                       placeholder="0.82"
                       config={config}
@@ -320,7 +294,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({
                   <Box flexGrow={1}>
                     <FieldText
                       label="Token Cap"
-                      value={agent.compact_prediction?.cap?.toString() || ''}
+                      value={agent.compact_prediction.cap?.toString() ?? ''}
                       onChange={(value) => handleCompactPredictionUpdate('cap', parseInt(value, 10) || 24000)}
                       placeholder="24000"
                       config={config}
@@ -331,7 +305,7 @@ export const AgentEditor: React.FC<AgentEditorProps> = ({
 
                 <FieldToggle
                   label="Auto Adjust"
-                  value={agent.compact_prediction?.auto_adjust || false}
+                  value={agent.compact_prediction?.auto_adjust ?? false}
                   onChange={(value) => handleCompactPredictionUpdate('auto_adjust', value)}
                   config={config}
                   disabled={disabled}

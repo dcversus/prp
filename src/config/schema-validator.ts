@@ -4,358 +4,358 @@
 
 import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
-import { logger } from '../utils/logger';
-import { ConfigurationError } from '../utils/error-handler';
+import { ConfigurationError } from '../shared/utils/error-handler';
 import { readFile } from 'fs/promises';
+import { logger } from '../shared/utils/logger';
 
 // Embed JSON schema directly to avoid path resolution issues
 const schema: Record<string, unknown> = {
-  "$id": "https://prp.dev/schemas/prp-config.schema.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "PRP Configuration",
-  "description": "PRP (Product Requirement Prompts) CLI configuration",
-  "type": "object",
-  "properties": {
-    "name": {
-      "type": "string",
-      "description": "Project name",
-      "default": "prp-project",
-      "pattern": "^[a-z][a-z0-9-_]*$",
-      "minLength": 1,
-      "maxLength": 100
+  '$id': 'https://prp.dev/schemas/prp-config.schema.json',
+  '$schema': 'http://json-schema.org/draft-07/schema#',
+  'title': 'PRP Configuration',
+  'description': 'PRP (Product Requirement Prompts) CLI configuration',
+  'type': 'object',
+  'properties': {
+    'name': {
+      'type': 'string',
+      'description': 'Project name',
+      'default': 'prp-project',
+      'pattern': '^[a-z][a-z0-9-_]*$',
+      'minLength': 1,
+      'maxLength': 100
     },
-    "description": {
-      "type": "string",
-      "description": "Project description",
-      "default": "",
-      "maxLength": 500
+    'description': {
+      'type': 'string',
+      'description': 'Project description',
+      'default': '',
+      'maxLength': 500
     },
-    "version": {
-      "type": "string",
-      "description": "Project version",
-      "default": "0.1.0",
-      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-z0-9.-]+)?$"
+    'version': {
+      'type': 'string',
+      'description': 'Project version',
+      'default': '0.1.0',
+      'pattern': '^\\d+\\.\\d+\\.\\d+(-[a-z0-9.-]+)?$'
     },
-    "authors": {
-      "type": "array",
-      "description": "Project authors",
-      "items": {
-        "type": "string",
-        "format": "email"
+    'authors': {
+      'type': 'array',
+      'description': 'Project authors',
+      'items': {
+        'type': 'string',
+        'format': 'email'
       },
-      "default": []
+      'default': []
     },
-    "license": {
-      "type": "string",
-      "description": "Project license",
-      "default": "MIT",
-      "enum": ["MIT", "Apache-2.0", "GPL-3.0", "BSD-3-Clause", "ISC", "UNLICENSED"]
+    'license': {
+      'type': 'string',
+      'description': 'Project license',
+      'default': 'MIT',
+      'enum': ['MIT', 'Apache-2.0', 'GPL-3.0', 'BSD-3-Clause', 'ISC', 'UNLICENSED']
     },
-    "repository": {
-      "type": "object",
-      "description": "Repository configuration",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": ["git", "svn", "hg"],
-          "default": "git"
+    'repository': {
+      'type': 'object',
+      'description': 'Repository configuration',
+      'properties': {
+        'type': {
+          'type': 'string',
+          'enum': ['git', 'svn', 'hg'],
+          'default': 'git'
         },
-        "url": {
-          "type": "string",
-          "format": "uri",
-          "description": "Repository URL"
+        'url': {
+          'type': 'string',
+          'format': 'uri',
+          'description': 'Repository URL'
         }
       },
-      "additionalProperties": false
+      'additionalProperties': false
     },
-    "features": {
-      "type": "object",
-      "description": "Feature flags",
-      "properties": {
-        "orchestrator": {
-          "type": "boolean",
-          "description": "Enable orchestrator",
-          "default": true
+    'features': {
+      'type': 'object',
+      'description': 'Feature flags',
+      'properties': {
+        'orchestrator': {
+          'type': 'boolean',
+          'description': 'Enable orchestrator',
+          'default': true
         },
-        "scanner": {
-          "type": "boolean",
-          "description": "Enable scanner",
-          "default": true
+        'scanner': {
+          'type': 'boolean',
+          'description': 'Enable scanner',
+          'default': true
         },
-        "inspector": {
-          "type": "boolean",
-          "description": "Enable inspector",
-          "default": true
+        'inspector': {
+          'type': 'boolean',
+          'description': 'Enable inspector',
+          'default': true
         },
-        "tui": {
-          "type": "boolean",
-          "description": "Enable TUI",
-          "default": true
+        'tui': {
+          'type': 'boolean',
+          'description': 'Enable TUI',
+          'default': true
         },
-        "templates": {
-          "type": "boolean",
-          "description": "Enable templates",
-          "default": true
+        'templates': {
+          'type': 'boolean',
+          'description': 'Enable templates',
+          'default': true
         },
-        "nudge": {
-          "type": "boolean",
-          "description": "Enable nudge system",
-          "default": false
+        'nudge': {
+          'type': 'boolean',
+          'description': 'Enable nudge system',
+          'default': false
         }
       },
-      "additionalProperties": false,
-      "default": {}
+      'additionalProperties': false,
+      'default': {}
     },
-    "agents": {
-      "type": "array",
-      "description": "Agent configuration",
-      "items": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Agent name"
+    'agents': {
+      'type': 'array',
+      'description': 'Agent configuration',
+      'items': {
+        'type': 'object',
+        'properties': {
+          'name': {
+            'type': 'string',
+            'description': 'Agent name'
           },
-          "type": {
-            "type": "string",
-            "enum": ["robo-developer", "robo-aqa", "robo-ux-ui-designer", "robo-devops-sre", "robo-system-analyst", "robo-quality-control"],
-            "description": "Agent type"
+          'type': {
+            'type': 'string',
+            'enum': ['robo-developer', 'robo-aqa', 'robo-ux-ui-designer', 'robo-devops-sre', 'robo-system-analyst', 'robo-quality-control'],
+            'description': 'Agent type'
           },
-          "enabled": {
-            "type": "boolean",
-            "description": "Agent enabled",
-            "default": true
+          'enabled': {
+            'type': 'boolean',
+            'description': 'Agent enabled',
+            'default': true
           },
-          "config": {
-            "type": "object",
-            "description": "Agent-specific configuration",
-            "additionalProperties": true,
-            "default": {}
+          'config': {
+            'type': 'object',
+            'description': 'Agent-specific configuration',
+            'additionalProperties': true,
+            'default': {}
           }
         },
-        "required": ["name", "type"],
-        "additionalProperties": false
+        'required': ['name', 'type'],
+        'additionalProperties': false
       },
-      "default": []
+      'default': []
     },
-    "templates": {
-      "type": "array",
-      "description": "Template configuration",
-      "items": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Template name"
+    'templates': {
+      'type': 'array',
+      'description': 'Template configuration',
+      'items': {
+        'type': 'object',
+        'properties': {
+          'name': {
+            'type': 'string',
+            'description': 'Template name'
           },
-          "type": {
-            "type": "string",
-            "enum": ["typescript", "react", "nestjs", "fastapi", "nextjs", "nuxt"],
-            "description": "Template type"
+          'type': {
+            'type': 'string',
+            'enum': ['typescript', 'react', 'nestjs', 'fastapi', 'nextjs', 'nuxt'],
+            'description': 'Template type'
           },
-          "enabled": {
-            "type": "boolean",
-            "description": "Template enabled",
-            "default": true
+          'enabled': {
+            'type': 'boolean',
+            'description': 'Template enabled',
+            'default': true
           },
-          "path": {
-            "type": "string",
-            "description": "Template path"
+          'path': {
+            'type': 'string',
+            'description': 'Template path'
           }
         },
-        "required": ["name", "type"],
-        "additionalProperties": false
+        'required': ['name', 'type'],
+        'additionalProperties': false
       },
-      "default": []
+      'default': []
     },
-    "connections": {
-      "type": "object",
-      "description": "External connections",
-      "properties": {
-        "github": {
-          "type": "object",
-          "description": "GitHub connection",
-          "properties": {
-            "enabled": {
-              "type": "boolean",
-              "default": false
+    'connections': {
+      'type': 'object',
+      'description': 'External connections',
+      'properties': {
+        'github': {
+          'type': 'object',
+          'description': 'GitHub connection',
+          'properties': {
+            'enabled': {
+              'type': 'boolean',
+              'default': false
             },
-            "token": {
-              "type": "string",
-              "description": "GitHub token"
+            'token': {
+              'type': 'string',
+              'description': 'GitHub token'
             },
-            "defaultBranch": {
-              "type": "string",
-              "default": "main",
-              "enum": ["main", "master"]
+            'defaultBranch': {
+              'type': 'string',
+              'default': 'main',
+              'enum': ['main', 'master']
             }
           },
-          "additionalProperties": false
+          'additionalProperties': false
         },
-        "registry": {
-          "type": "object",
-          "description": "Package registry connection",
-          "properties": {
-            "enabled": {
-              "type": "boolean",
-              "default": false
+        'registry': {
+          'type': 'object',
+          'description': 'Package registry connection',
+          'properties': {
+            'enabled': {
+              'type': 'boolean',
+              'default': false
             },
-            "url": {
-              "type": "string",
-              "format": "uri",
-              "description": "Registry URL"
+            'url': {
+              'type': 'string',
+              'format': 'uri',
+              'description': 'Registry URL'
             },
-            "auth": {
-              "type": "object",
-              "description": "Authentication configuration",
-              "properties": {
-                "type": {
-                  "type": "string",
-                  "enum": ["basic", "bearer", "token"],
-                  "description": "Auth type"
+            'auth': {
+              'type': 'object',
+              'description': 'Authentication configuration',
+              'properties': {
+                'type': {
+                  'type': 'string',
+                  'enum': ['basic', 'bearer', 'token'],
+                  'description': 'Auth type'
                 },
-                "credentials": {
-                  "type": "string",
-                  "description": "Authentication credentials"
+                'credentials': {
+                  'type': 'string',
+                  'description': 'Authentication credentials'
                 }
               },
-              "additionalProperties": false
+              'additionalProperties': false
             }
           },
-          "additionalProperties": false
+          'additionalProperties': false
         }
       },
-      "additionalProperties": false,
-      "default": {}
+      'additionalProperties': false,
+      'default': {}
     },
-    "settings": {
-      "type": "object",
-      "description": "Global settings",
-      "properties": {
-        "debug": {
-          "type": "object",
-          "description": "Debug settings",
-          "properties": {
-            "enabled": {
-              "type": "boolean",
-              "default": false
+    'settings': {
+      'type': 'object',
+      'description': 'Global settings',
+      'properties': {
+        'debug': {
+          'type': 'object',
+          'description': 'Debug settings',
+          'properties': {
+            'enabled': {
+              'type': 'boolean',
+              'default': false
             },
-            "level": {
-              "type": "string",
-              "enum": ["error", "warn", "info", "debug", "trace"],
-              "default": "info"
+            'level': {
+              'type': 'string',
+              'enum': ['error', 'warn', 'info', 'debug', 'trace'],
+              'default': 'info'
             },
-            "output": {
-              "type": "string",
-              "enum": ["console", "file", "both"],
-              "default": "console"
+            'output': {
+              'type': 'string',
+              'enum': ['console', 'file', 'both'],
+              'default': 'console'
             }
           },
-          "additionalProperties": false
+          'additionalProperties': false
         },
-        "development": {
-          "type": "object",
-          "description": "Development settings",
-          "properties": {
-            "watch": {
-              "type": "boolean",
-              "default": false
+        'development': {
+          'type': 'object',
+          'description': 'Development settings',
+          'properties': {
+            'watch': {
+              'type': 'boolean',
+              'default': false
             },
-            "hotReload": {
-              "type": "boolean",
-              "default": false
+            'hotReload': {
+              'type': 'boolean',
+              'default': false
             },
-            "port": {
-              "type": "number",
-              "default": 3000,
-              "minimum": 1024,
-              "maximum": 65535
+            'port': {
+              'type': 'number',
+              'default': 3000,
+              'minimum': 1024,
+              'maximum': 65535
             }
           },
-          "additionalProperties": false
+          'additionalProperties': false
         },
-        "test": {
-          "type": "object",
-          "description": "Test settings",
-          "properties": {
-            "environment": {
-              "type": "string",
-              "enum": ["node", "browser", "both"],
-              "default": "node"
+        'test': {
+          'type': 'object',
+          'description': 'Test settings',
+          'properties': {
+            'environment': {
+              'type': 'string',
+              'enum': ['node', 'browser', 'both'],
+              'default': 'node'
             },
-            "coverage": {
-              "type": "boolean",
-              "default": true
+            'coverage': {
+              'type': 'boolean',
+              'default': true
             },
-            "timeout": {
-              "type": "number",
-              "default": 5000,
-              "minimum": 1000
+            'timeout': {
+              'type': 'number',
+              'default': 5000,
+              'minimum': 1000
             }
           },
-          "additionalProperties": false
+          'additionalProperties': false
         }
       },
-      "additionalProperties": false,
-      "default": {}
+      'additionalProperties': false,
+      'default': {}
     },
-    "security": {
-      "type": "object",
-      "description": "Security settings",
-      "properties": {
-        "enablePinProtection": {
-          "type": "boolean",
-          "default": false
+    'security': {
+      'type': 'object',
+      'description': 'Security settings',
+      'properties': {
+        'enablePinProtection': {
+          'type': 'boolean',
+          'default': false
         },
-        "encryptSecrets": {
-          "type": "boolean",
-          "default": true
+        'encryptSecrets': {
+          'type': 'boolean',
+          'default': true
         },
-        "allowedOrigins": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "uri"
+        'allowedOrigins': {
+          'type': 'array',
+          'items': {
+            'type': 'string',
+            'format': 'uri'
           },
-          "default": []
+          'default': []
         }
       },
-      "additionalProperties": false
+      'additionalProperties': false
     },
-    "limits": {
-      "type": "object",
-      "description": "Resource limits",
-      "properties": {
-        "maxConcurrentAgents": {
-          "type": "number",
-          "default": 5,
-          "minimum": 1,
-          "maximum": 20
+    'limits': {
+      'type': 'object',
+      'description': 'Resource limits',
+      'properties': {
+        'maxConcurrentAgents': {
+          'type': 'number',
+          'default': 5,
+          'minimum': 1,
+          'maximum': 20
         },
-        "maxProjects": {
-          "type": "number",
-          "default": 100,
-          "minimum": 1,
-          "maximum": 1000
+        'maxProjects': {
+          'type': 'number',
+          'default': 100,
+          'minimum': 1,
+          'maximum': 1000
         },
-        "tokenAlertThreshold": {
-          "type": "number",
-          "default": 0.8,
-          "minimum": 0,
-          "maximum": 1
+        'tokenAlertThreshold': {
+          'type': 'number',
+          'default': 0.8,
+          'minimum': 0,
+          'maximum': 1
         },
-        "maxFileSize": {
-          "type": "number",
-          "default": 10485760,
-          "minimum": 1024,
-          "description": "Maximum file size in bytes"
+        'maxFileSize': {
+          'type': 'number',
+          'default': 10485760,
+          'minimum': 1024,
+          'description': 'Maximum file size in bytes'
         }
       },
-      "additionalProperties": false
+      'additionalProperties': false
     }
   },
-  "required": ["name"],
-  "additionalProperties": false
+  'required': ['name'],
+  'additionalProperties': false
 };
 
 /**
@@ -421,7 +421,7 @@ export interface ValidationWarning {
 function formatErrors(errors: ErrorObject[]): ValidationError[] {
   return errors.map(error => {
     const field = error.instancePath || error.schemaPath || 'unknown';
-    const message = error.message || 'Unknown validation error';
+    const message = error.message ?? 'Unknown validation error';
 
     // Extract value from the error data
     let value: unknown = undefined;

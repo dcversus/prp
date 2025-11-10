@@ -4,48 +4,25 @@
  * Hierarchical file tree with checkboxes, expand/collapse,
  * right-arrow navigation, and bulk operations
  */
-
 import React, { useState, useCallback } from 'react';
 import { Box, Text, useInput } from 'ink';
 
 // Import types
-import type { TUIConfig } from '../../types/TUIConfig.js';
+import type { TemplateFile, FileTreeChecksProps } from './types.js';
 
-export interface TreeNode {
-  id: string;
-  name: string;
-  type: 'file' | 'directory';
-  checked: boolean;
-  children?: TreeNode[];
-  description?: string;
-  required?: boolean;
-}
-
-export interface FileTreeChecksProps {
-  nodes: TreeNode[];
-  onToggle: (nodeId: string, checked: boolean) => void;
-  config?: TUIConfig;
-  disabled?: boolean;
-  showLineNumbers?: boolean;
-  maxHeight?: number;
-  expandOnFocus?: boolean;
-}
+// Use TemplateFile from types.ts as TreeNode
+export type TreeNode = TemplateFile;
 
 export const FileTreeChecks: React.FC<FileTreeChecksProps> = ({
   nodes,
   onToggle,
-  config,
-  disabled = false,
-  showLineNumbers = true,
-  maxHeight = 10,
-  expandOnFocus = true
+  focused = false
 }) => {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const [selectedPath, setSelectedPath] = useState<string[]>([]);
 
   // Toggle node expansion
-  const toggleExpand = useCallback((nodeId: string, path: string[] = []) => {
+  const toggleExpand = useCallback((nodeId: string) => {
     setExpanded(prev => {
       const newSet = new Set(prev);
       if (newSet.has(nodeId)) {
@@ -58,73 +35,69 @@ export const FileTreeChecks: React.FC<FileTreeChecksProps> = ({
   }, []);
 
   // Toggle node selection
-  const handleToggle = useCallback((nodeId: string, checked: boolean, path: string[] = []) => {
-    if (disabled) return;
-    onToggle(nodeId, checked);
+  const handleToggle = useCallback((nodeId: string, _checked: boolean) => {
+    onToggle(nodeId);
     setSelectedNode(nodeId);
-    setSelectedPath(path);
-  }, [disabled, onToggle]);
+  }, [onToggle]);
 
   // Navigate through tree
   const navigateTree = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
-    if (disabled) return;
-
     // Simple navigation implementation
-    // In a full implementation, this would traverse the tree structure
     if (direction === 'right' && selectedNode) {
-      // Expand if it's a directory
-      const findNode = (nodes: TreeNode[], path: string[]): { node: TreeNode; path: string[] } | null => {
-        for (let i = 0; i < nodes.length; i++) {
-          const node = nodes[i];
-          const currentPath = [...path, node.id];
-
-          if (node.id === selectedNode) {
-            return { node, path: currentPath };
+      const findNode = (nodes: TreeNode[]): TreeNode | null => {
+        for (const node of nodes) {
+          if (node.path === selectedNode) {
+            return node;
           }
-
           if (node.children) {
-            const found = findNode(node.children, currentPath);
-            if (found) return found;
+            const found = findNode(node.children);
+            if (found) {
+              return found;
+            }
           }
         }
         return null;
       };
 
-      const found = findNode(nodes, []);
-      if (found?.node.type === 'directory' && found.node.children) {
-        toggleExpand(found.node.id, found.path);
+      const found = findNode(nodes);
+      if (found?.children && found.children.length > 0) {
+        toggleExpand(found.path);
       }
     }
-  }, [disabled, selectedNode, nodes, toggleExpand]);
+  }, [selectedNode, nodes, toggleExpand]);
 
   // Handle space to toggle checkbox
   const handleSpace = useCallback(() => {
-    if (disabled || !selectedNode) return;
-    const findNode = (nodes: TreeNode[], path: string[]): { node: TreeNode; path: string[] } | null => {
-      for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i];
-        const currentPath = [...path, node.id];
-
-        if (node.id === selectedNode) {
-          return { node, path: currentPath };
+    if (!selectedNode) {
+      return;
+    }
+    const findNode = (nodes: TreeNode[]): TreeNode | null => {
+      for (const node of nodes) {
+        if (node.path === selectedNode) {
+          return node;
         }
-
         if (node.children) {
-          const found = findNode(node.children, currentPath);
-          if (found) return found;
+          const found = findNode(node.children);
+          if (found) {
+            return found;
+          }
         }
       }
       return null;
     };
 
-    const found = findNode(nodes, []);
-    if (found && !found.node.required) {
-      handleToggle(found.node.id, !found.node.checked, found.path);
+    const found = findNode(nodes);
+    if (found && !found.required) {
+      handleToggle(found.path, !found.checked);
     }
-  }, [disabled, selectedNode, nodes, handleToggle]);
+  }, [selectedNode, nodes, handleToggle]);
 
   // Keyboard navigation
   useInput((input, key) => {
+    if (!focused) {
+      return;
+    }
+
     if (key.upArrow) {
       navigateTree('up');
     } else if (key.downArrow) {
@@ -136,7 +109,7 @@ export const FileTreeChecks: React.FC<FileTreeChecksProps> = ({
     } else if (input === ' ') {
       handleSpace();
     }
-  }, { isActive: !disabled });
+  });
 
   // Calculate tree statistics
   const calculateStats = useCallback((nodes: TreeNode[]): { total: number; checked: number; partial: number } => {
@@ -146,10 +119,12 @@ export const FileTreeChecks: React.FC<FileTreeChecksProps> = ({
 
     const traverse = (nodeList: TreeNode[]) => {
       for (const node of nodeList) {
-        if (node.type === 'file') {
+        if (!node.children || node.children.length === 0) {
           total++;
-          if (node.checked) checked++;
-        } else if (node.children) {
+          if (node.checked) {
+            checked++;
+          }
+        } else {
           const childStats = traverse(node.children);
           total += childStats.total;
 
@@ -169,51 +144,49 @@ export const FileTreeChecks: React.FC<FileTreeChecksProps> = ({
   const stats = calculateStats(nodes);
 
   // Render tree node
-  const renderNode = (node: TreeNode, depth: number = 0, path: string[] = []): JSX.Element => {
-    const isExpanded = expanded.has(node.id);
-    const isSelected = selectedNode === node.id;
+  const renderNode = (node: TreeNode, depth: number = 0): JSX.Element => {
+    const isExpanded = expanded.has(node.path);
+    const isSelected = selectedNode === node.path;
     const hasChildren = node.children && node.children.length > 0;
-    const currentPath = [...path, node.id];
 
     // Calculate checkbox state for directories
     let checkboxState = '□';
-    let checkboxColor = config?.colors?.muted;
+    let checkboxColor = '#666666';
 
-    if (node.type === 'directory' && node.children) {
-      const childStats = calculateStats(node.children);
+    if (hasChildren) {
+      const childStats = calculateStats(node.children ?? []);
       if (childStats.checked === childStats.total && childStats.total > 0) {
         checkboxState = '✓';
-        checkboxColor = config?.colors?.ok || '#00FF00';
+        checkboxColor = '#00FF00';
       } else if (childStats.checked > 0) {
         checkboxState = '◐';
-        checkboxColor = config?.colors?.warn || '#FFCC66';
+        checkboxColor = '#FFCC66';
       }
     } else if (node.checked) {
       checkboxState = '✓';
-      checkboxColor = config?.colors?.ok || '#00FF00';
+      checkboxColor = '#00FF00';
     }
 
     const nodeColor = isSelected
-      ? config?.colors?.accent_orange
+      ? '#FF8C00'
       : hasChildren
-        ? config?.colors?.accent_orange
-        : config?.colors?.base_fg;
+        ? '#FF8C00'
+        : '#FFFFFF';
 
     const indent = '  '.repeat(depth);
 
     return (
-      <Box key={node.id} flexDirection="column">
+      <Box key={node.path} flexDirection="column">
         <Box flexDirection="row">
           {/* Checkbox */}
           <Text
-            color={node.required ? config?.colors?.warn : checkboxColor}
-            onClick={() => !node.required && handleToggle(node.id, !node.checked, currentPath)}
+            color={node.required ? '#FFCC66' : checkboxColor}
           >
             [{checkboxState}]
           </Text>
 
           {/* Indentation */}
-          <Text color={config?.colors?.gray}>
+          <Text color="#666666">
             {indent}
           </Text>
 
@@ -221,7 +194,6 @@ export const FileTreeChecks: React.FC<FileTreeChecksProps> = ({
           {hasChildren && (
             <Text
               color={nodeColor}
-              onClick={() => toggleExpand(node.id, currentPath)}
             >
               {isExpanded ? '▼' : '▶'}
             </Text>
@@ -231,33 +203,33 @@ export const FileTreeChecks: React.FC<FileTreeChecksProps> = ({
           <Text
             color={nodeColor}
             bold={isSelected}
-            onClick={() => {
-              setSelectedNode(node.id);
-              setSelectedPath(currentPath);
-            }}
           >
             {node.name}
           </Text>
 
           {/* Required indicator */}
           {node.required && (
-            <Text color={config?.colors?.warn} marginLeft={1}>
-              *
-            </Text>
+            <Box marginLeft={1}>
+              <Text color="#FFCC66">
+                *
+              </Text>
+            </Box>
           )}
 
           {/* Description */}
           {node.description && (
-            <Text color={config?.colors?.muted} dimColor marginLeft={1}>
-              - {node.description}
-            </Text>
+            <Box marginLeft={1}>
+              <Text color="#666666" dimColor>
+                - {node.description}
+              </Text>
+            </Box>
           )}
         </Box>
 
         {/* Children (expanded) */}
         {isExpanded && hasChildren && (
           <Box marginLeft={3}>
-            {node.children?.map((child) => renderNode(child, depth + 1, currentPath))}
+            {node.children?.map((child) => renderNode(child, depth + 1))}
           </Box>
         )}
       </Box>
@@ -268,18 +240,18 @@ export const FileTreeChecks: React.FC<FileTreeChecksProps> = ({
     <Box flexDirection="column" marginBottom={1}>
       {/* Header with statistics */}
       <Box flexDirection="row" justifyContent="space-between" marginBottom={1}>
-        <Text color={config?.colors?.accent_orange} bold>
+        <Text color="#FF8C00" bold>
           Files & Directories
         </Text>
-        <Text color={config?.colors?.muted}>
+        <Text color="#666666">
           {stats.checked}/{stats.total} selected
         </Text>
       </Box>
 
       {/* Tree structure */}
-      <Box flexDirection="column" maxHeight={maxHeight} borderStyle="single" borderColor={config?.colors?.gray} padding={1}>
+      <Box flexDirection="column" borderStyle="single" borderColor="#666666" padding={1}>
         {nodes.length === 0 ? (
-          <Text color={config?.colors?.muted}>
+          <Text color="#666666">
             No files or directories
           </Text>
         ) : (
@@ -289,10 +261,10 @@ export const FileTreeChecks: React.FC<FileTreeChecksProps> = ({
 
       {/* Legend and help */}
       <Box flexDirection="column" marginTop={1}>
-        <Text color={config?.colors?.muted} dimColor>
+        <Text color="#666666" dimColor>
           Legend: [□] empty • [✓] selected • [◐] partial • * = required
         </Text>
-        <Text color={config?.colors?.muted} dimColor>
+        <Text color="#666666" dimColor>
           [↑/↓] navigate • [→] open • [←] close • [Space] toggle • [Tab] next field
         </Text>
       </Box>

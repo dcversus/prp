@@ -284,7 +284,9 @@ export class AgentConfigManager extends EventEmitter {
     try {
       const exists = await FileUtils.pathExists(path);
       if (!exists) {
-        logger.info('AgentConfigManager', `No config file found at ${path}, using defaults`, { path });
+        logger.info('AgentConfigManager', `No config file found at ${path}, using defaults`, {
+          path
+        });
         return this.createDefaultConfig();
       }
 
@@ -303,12 +305,19 @@ export class AgentConfigManager extends EventEmitter {
         }
       }
 
-      logger.info('AgentConfigManager', `Loaded ${agents.length} agent configurations`, { count: agents.length, path });
+      logger.info('AgentConfigManager', `Loaded ${agents.length} agent configurations`, {
+        count: agents.length,
+        path
+      });
       this.emit('config-loaded', agents);
       return agents;
-
     } catch (error) {
-      logger.error('AgentConfigManager', 'Failed to load configuration', error instanceof Error ? error : new Error(String(error)), { path });
+      logger.error(
+        'AgentConfigManager',
+        'Failed to load configuration',
+        error instanceof Error ? error : new Error(String(error)),
+        { path }
+      );
       return this.createDefaultConfig();
     }
   }
@@ -328,11 +337,18 @@ export class AgentConfigManager extends EventEmitter {
       };
 
       await FileUtils.writeTextFile(path, JSON.stringify(configData, null, 2));
-      logger.info('AgentConfigManager', `Saved ${agents.length} agent configurations to ${path}`, { count: agents.length, path });
+      logger.info('AgentConfigManager', `Saved ${agents.length} agent configurations to ${path}`, {
+        count: agents.length,
+        path
+      });
       this.emit('config-saved', agents);
-
     } catch (error) {
-      logger.error('AgentConfigManager', 'Failed to save configuration', error instanceof Error ? error : new Error(String(error)), { path });
+      logger.error(
+        'AgentConfigManager',
+        'Failed to save configuration',
+        error instanceof Error ? error : new Error(String(error)),
+        { path }
+      );
       throw error;
     }
   }
@@ -355,21 +371,21 @@ export class AgentConfigManager extends EventEmitter {
    * Get agents by type
    */
   getAgentsByType(type: AgentType): AgentConfig[] {
-    return this.getAllAgentConfigs().filter(agent => agent.type === type);
+    return this.getAllAgentConfigs().filter((agent) => agent.type === type);
   }
 
   /**
    * Get agents by role
    */
   getAgentsByRole(role: AgentRole): AgentConfig[] {
-    return this.getAllAgentConfigs().filter(agent => agent.role === role);
+    return this.getAllAgentConfigs().filter((agent) => agent.role === role);
   }
 
   /**
    * Get enabled agents
    */
   getEnabledAgents(): AgentConfig[] {
-    return this.getAllAgentConfigs().filter(agent => agent.enabled);
+    return this.getAllAgentConfigs().filter((agent) => agent.enabled);
   }
 
   /**
@@ -378,7 +394,9 @@ export class AgentConfigManager extends EventEmitter {
   async setAgentConfig(agent: AgentConfig): Promise<void> {
     const validation = this.validateAgentConfig(agent);
     if (!validation.valid) {
-      throw new Error(`Invalid agent configuration: ${validation.errors.map(e => e.message).join(', ')}`);
+      throw new Error(
+        `Invalid agent configuration: ${validation.errors.map((e) => e.message).join(', ')}`
+      );
     }
 
     // Normalize and sanitize
@@ -393,7 +411,9 @@ export class AgentConfigManager extends EventEmitter {
     await this.saveConfig(this.getAllAgentConfigs());
 
     this.emit('agent-updated', normalizedAgent);
-    logger.info('AgentConfigManager', `Agent configuration saved: ${normalizedAgent.id}`, { agentId: normalizedAgent.id });
+    logger.info('AgentConfigManager', `Agent configuration saved: ${normalizedAgent.id}`, {
+      agentId: normalizedAgent.id
+    });
   }
 
   /**
@@ -428,7 +448,10 @@ export class AgentConfigManager extends EventEmitter {
     await this.saveConfig(this.getAllAgentConfigs());
 
     this.emit('agent-toggled', { agentId, enabled });
-    logger.info('AgentConfigManager', `Agent ${agentId} ${enabled ? 'enabled' : 'disabled'}`, { agentId, enabled });
+    logger.info('AgentConfigManager', `Agent ${agentId} ${enabled ? 'enabled' : 'disabled'}`, {
+      agentId,
+      enabled
+    });
     return true;
   }
 
@@ -505,7 +528,10 @@ export class AgentConfigManager extends EventEmitter {
     // Validate capabilities
     if (agentObj['capabilities'] && typeof agentObj['capabilities'] === 'object') {
       const capabilities = agentObj['capabilities'] as Record<string, unknown>;
-      if (typeof capabilities['maxContextLength'] !== 'number' || (capabilities['maxContextLength']) <= 0) {
+      if (
+        typeof capabilities['maxContextLength'] !== 'number' ||
+        capabilities['maxContextLength'] <= 0
+      ) {
         errors.push({
           field: 'capabilities.maxContextLength',
           message: 'Max context length must be a positive number',
@@ -514,7 +540,12 @@ export class AgentConfigManager extends EventEmitter {
         });
       }
 
-      if (capabilities['supportsTools'] === true && (!agentObj['tools'] || !Array.isArray(agentObj['tools']) || (agentObj['tools'] as unknown[]).length === 0)) {
+      if (
+        capabilities['supportsTools'] === true &&
+        (!agentObj['tools'] ||
+          !Array.isArray(agentObj['tools']) ||
+          (agentObj['tools'] as unknown[]).length === 0)
+      ) {
         warnings.push({
           field: 'tools',
           message: 'Agent supports tools but no tools are configured',
@@ -526,7 +557,7 @@ export class AgentConfigManager extends EventEmitter {
     // Validate limits
     if (agentObj['limits'] && typeof agentObj['limits'] === 'object') {
       const limits = agentObj['limits'] as Record<string, unknown>;
-      if (typeof limits['maxTokensPerRequest'] !== 'number' || (limits['maxTokensPerRequest']) <= 0) {
+      if (typeof limits['maxTokensPerRequest'] !== 'number' || limits['maxTokensPerRequest'] <= 0) {
         errors.push({
           field: 'limits.maxTokensPerRequest',
           message: 'Max tokens per request must be greater than 0',
@@ -535,7 +566,7 @@ export class AgentConfigManager extends EventEmitter {
         });
       }
 
-      if (typeof limits['maxCostPerDay'] !== 'number' || (limits['maxCostPerDay']) < 0) {
+      if (typeof limits['maxCostPerDay'] !== 'number' || limits['maxCostPerDay'] < 0) {
         errors.push({
           field: 'limits.maxCostPerDay',
           message: 'Max cost per day cannot be negative',
@@ -570,11 +601,20 @@ export class AgentConfigManager extends EventEmitter {
     }
 
     // Suggestions
-    if (!agentObj['personality'] || typeof agentObj['personality'] !== 'object' || !(agentObj['personality'] as Record<string, unknown>)['customInstructions']) {
+    if (
+      !agentObj['personality'] ||
+      typeof agentObj['personality'] !== 'object' ||
+      !(agentObj['personality'] as Record<string, unknown>)['customInstructions']
+    ) {
       suggestions.push('Consider adding custom instructions to personalize agent behavior');
     }
 
-    if ((!agentObj['preferences'] || typeof agentObj['preferences'] !== 'object' || !(agentObj['preferences'] as Record<string, unknown>)['autoSave']) && agentObj['role'] === 'robo-developer') {
+    if (
+      (!agentObj['preferences'] ||
+        typeof agentObj['preferences'] !== 'object' ||
+        !(agentObj['preferences'] as Record<string, unknown>)['autoSave']) &&
+      agentObj['role'] === 'robo-developer'
+    ) {
       suggestions.push('Consider enabling auto-save for developer agents');
     }
 
@@ -595,10 +635,18 @@ export class AgentConfigManager extends EventEmitter {
     try {
       const validation = this.validateAgentConfig(agentData);
       if (!validation.valid) {
-        logger.error('AgentConfigManager', 'Invalid agent configuration', new Error('Validation failed'), {
-          errors: validation.errors.map(e => e.message).join(', '),
-          agentId: agentData && typeof agentData === 'object' ? String((agentData as Record<string, unknown>)['id'] ?? 'unknown') : 'unknown'
-        });
+        logger.error(
+          'AgentConfigManager',
+          'Invalid agent configuration',
+          new Error('Validation failed'),
+          {
+            errors: validation.errors.map((e) => e.message).join(', '),
+            agentId:
+              agentData && typeof agentData === 'object'
+                ? String((agentData as Record<string, unknown>)['id'] ?? 'unknown')
+                : 'unknown'
+          }
+        );
         return null;
       }
 
@@ -612,133 +660,655 @@ export class AgentConfigManager extends EventEmitter {
       const agent: AgentConfig = {
         id: String(data['id'] ?? ''),
         name: String(data['name'] ?? ''),
-        type: (data['type'] as AgentType) ?? 'claude-code-anthropic',
-        role: (data['role'] as AgentRole) ?? 'orchestrator-agent',
-        provider: (data['provider'] as ProviderType) ?? 'anthropic',
+        type: (data['type'] as AgentType) || 'claude-code-anthropic',
+        role: (data['role'] as AgentRole) || 'orchestrator-agent',
+        provider: (data['provider'] as ProviderType) || 'anthropic',
         enabled: Boolean(data['enabled'] ?? true),
         capabilities: {
-          supportsTools: data['capabilities'] && typeof data['capabilities'] === 'object' ? Boolean((data['capabilities'] as Record<string, unknown>)['supportsTools'] ?? true) : true,
-          supportsImages: data['capabilities'] && typeof data['capabilities'] === 'object' ? Boolean((data['capabilities'] as Record<string, unknown>)['supportsImages'] ?? false) : false,
-          supportsSubAgents: data['capabilities'] && typeof data['capabilities'] === 'object' ? Boolean((data['capabilities'] as Record<string, unknown>)['supportsSubAgents'] ?? false) : false,
-          supportsParallel: data['capabilities'] && typeof data['capabilities'] === 'object' ? Boolean((data['capabilities'] as Record<string, unknown>)['supportsParallel'] ?? false) : false,
-          supportsCodeExecution: data['capabilities'] && typeof data['capabilities'] === 'object' ? Boolean((data['capabilities'] as Record<string, unknown>)['supportsCodeExecution'] ?? false) : false,
-          maxContextLength: data['capabilities'] && typeof data['capabilities'] === 'object' ? Number((data['capabilities'] as Record<string, unknown>)['maxContextLength'] ?? 4000) : 4000,
-          supportedModels: data['capabilities'] && typeof data['capabilities'] === 'object' ? ((data['capabilities'] as Record<string, unknown>)['supportedModels'] as string[] | undefined) ?? [] : [],
-          supportedFileTypes: data['capabilities'] && typeof data['capabilities'] === 'object' ? ((data['capabilities'] as Record<string, unknown>)['supportedFileTypes'] as string[] | undefined) ?? ['*'] : ['*'],
-          canAccessInternet: data['capabilities'] && typeof data['capabilities'] === 'object' ? Boolean((data['capabilities'] as Record<string, unknown>)['canAccessInternet'] ?? true) : true,
-          canAccessFileSystem: data['capabilities'] && typeof data['capabilities'] === 'object' ? Boolean((data['capabilities'] as Record<string, unknown>)['canAccessFileSystem'] ?? true) : true,
-          canExecuteCommands: data['capabilities'] && typeof data['capabilities'] === 'object' ? Boolean((data['capabilities'] as Record<string, unknown>)['canExecuteCommands'] ?? false) : false,
-          ...(data['capabilities'] as Record<string, unknown> ?? {})
+          supportsTools:
+            data['capabilities'] && typeof data['capabilities'] === 'object'
+              ? Boolean((data['capabilities'] as Record<string, unknown>)['supportsTools'] ?? true)
+              : true,
+          supportsImages:
+            data['capabilities'] && typeof data['capabilities'] === 'object'
+              ? Boolean(
+                (data['capabilities'] as Record<string, unknown>)['supportsImages'] ?? false
+              )
+              : false,
+          supportsSubAgents:
+            data['capabilities'] && typeof data['capabilities'] === 'object'
+              ? Boolean(
+                (data['capabilities'] as Record<string, unknown>)['supportsSubAgents'] ?? false
+              )
+              : false,
+          supportsParallel:
+            data['capabilities'] && typeof data['capabilities'] === 'object'
+              ? Boolean(
+                (data['capabilities'] as Record<string, unknown>)['supportsParallel'] ?? false
+              )
+              : false,
+          supportsCodeExecution:
+            data['capabilities'] && typeof data['capabilities'] === 'object'
+              ? Boolean(
+                (data['capabilities'] as Record<string, unknown>)['supportsCodeExecution'] ??
+                    false
+              )
+              : false,
+          maxContextLength:
+            data['capabilities'] && typeof data['capabilities'] === 'object'
+              ? Number(
+                (data['capabilities'] as Record<string, unknown>)['maxContextLength'] || 4000
+              )
+              : 4000,
+          supportedModels:
+            data['capabilities'] && typeof data['capabilities'] === 'object'
+              ? ((data['capabilities'] as Record<string, unknown>)['supportedModels'] as
+                  | string[]
+                  | undefined) || []
+              : [],
+          supportedFileTypes:
+            data['capabilities'] && typeof data['capabilities'] === 'object'
+              ? ((data['capabilities'] as Record<string, unknown>)['supportedFileTypes'] as
+                  | string[]
+                  | undefined) || ['*']
+              : ['*'],
+          canAccessInternet:
+            data['capabilities'] && typeof data['capabilities'] === 'object'
+              ? Boolean(
+                (data['capabilities'] as Record<string, unknown>)['canAccessInternet'] || true
+              )
+              : true,
+          canAccessFileSystem:
+            data['capabilities'] && typeof data['capabilities'] === 'object'
+              ? Boolean(
+                (data['capabilities'] as Record<string, unknown>)['canAccessFileSystem'] || true
+              )
+              : true,
+          canExecuteCommands:
+            data['capabilities'] && typeof data['capabilities'] === 'object'
+              ? Boolean(
+                (data['capabilities'] as Record<string, unknown>)['canExecuteCommands'] || false
+              )
+              : false,
+          ...((data['capabilities'] as Record<string, unknown>) || {})
         },
         limits: {
-          maxTokensPerRequest: data['limits'] && typeof data['limits'] === 'object' ? Number((data['limits'] as Record<string, unknown>)['maxTokensPerRequest'] ?? 4000) : 4000,
-          maxRequestsPerHour: data['limits'] && typeof data['limits'] === 'object' ? Number((data['limits'] as Record<string, unknown>)['maxRequestsPerHour'] ?? 100) : 100,
-          maxRequestsPerDay: data['limits'] && typeof data['limits'] === 'object' ? Number((data['limits'] as Record<string, unknown>)['maxRequestsPerDay'] ?? 1000) : 1000,
-          maxCostPerDay: data['limits'] && typeof data['limits'] === 'object' ? Number((data['limits'] as Record<string, unknown>)['maxCostPerDay'] ?? 10.0) : 10.0,
-          maxExecutionTime: data['limits'] && typeof data['limits'] === 'object' ? Number((data['limits'] as Record<string, unknown>)['maxExecutionTime'] ?? 300000) : 300000,
-          maxMemoryUsage: data['limits'] && typeof data['limits'] === 'object' ? Number((data['limits'] as Record<string, unknown>)['maxMemoryUsage'] ?? 1024) : 1024,
-          maxConcurrentTasks: data['limits'] && typeof data['limits'] === 'object' ? Number((data['limits'] as Record<string, unknown>)['maxConcurrentTasks'] ?? 1) : 1,
-          cooldownPeriod: data['limits'] && typeof data['limits'] === 'object' ? Number((data['limits'] as Record<string, unknown>)['cooldownPeriod'] ?? 1000) : 1000,
-          ...(data['limits'] as Record<string, unknown> ?? {})
+          maxTokensPerRequest:
+            data['limits'] && typeof data['limits'] === 'object'
+              ? Number((data['limits'] as Record<string, unknown>)['maxTokensPerRequest'] || 4000)
+              : 4000,
+          maxRequestsPerHour:
+            data['limits'] && typeof data['limits'] === 'object'
+              ? Number((data['limits'] as Record<string, unknown>)['maxRequestsPerHour'] || 100)
+              : 100,
+          maxRequestsPerDay:
+            data['limits'] && typeof data['limits'] === 'object'
+              ? Number((data['limits'] as Record<string, unknown>)['maxRequestsPerDay'] || 1000)
+              : 1000,
+          maxCostPerDay:
+            data['limits'] && typeof data['limits'] === 'object'
+              ? Number((data['limits'] as Record<string, unknown>)['maxCostPerDay'] || 10.0)
+              : 10.0,
+          maxExecutionTime:
+            data['limits'] && typeof data['limits'] === 'object'
+              ? Number((data['limits'] as Record<string, unknown>)['maxExecutionTime'] || 300000)
+              : 300000,
+          maxMemoryUsage:
+            data['limits'] && typeof data['limits'] === 'object'
+              ? Number((data['limits'] as Record<string, unknown>)['maxMemoryUsage'] || 1024)
+              : 1024,
+          maxConcurrentTasks:
+            data['limits'] && typeof data['limits'] === 'object'
+              ? Number((data['limits'] as Record<string, unknown>)['maxConcurrentTasks'] || 1)
+              : 1,
+          cooldownPeriod:
+            data['limits'] && typeof data['limits'] === 'object'
+              ? Number((data['limits'] as Record<string, unknown>)['cooldownPeriod'] || 1000)
+              : 1000,
+          ...((data['limits'] as Record<string, unknown>) || {})
         },
         authentication: {
-          type: data['authentication'] && typeof data['authentication'] === 'object' ? ((data['authentication'] as Record<string, unknown>)['type'] as 'token' | 'basic' | 'certificate' | 'api-key' | 'oauth') ?? 'api-key' : 'api-key',
-          credentials: data['authentication'] && typeof data['authentication'] === 'object' ? ((data['authentication'] as Record<string, unknown>)['credentials'] as Record<string, unknown> | undefined) ?? {} : {},
-          headers: data['authentication'] && typeof data['authentication'] === 'object' ? ((data['authentication'] as Record<string, unknown>)['headers'] as Record<string, string> | undefined) ?? {} : {},
-          endpoints: data['authentication'] && typeof data['authentication'] === 'object' ? ((data['authentication'] as Record<string, unknown>)['endpoints'] as Record<string, string> | undefined) ?? {} : {},
-          encrypted: data['authentication'] && typeof data['authentication'] === 'object' ? Boolean((data['authentication'] as Record<string, unknown>)['encrypted'] ?? false) : false,
-          ...(data['authentication'] as Record<string, unknown> ?? {})
+          type:
+            data['authentication'] && typeof data['authentication'] === 'object'
+              ? ((data['authentication'] as Record<string, unknown>)['type'] as
+                  | 'token'
+                  | 'basic'
+                  | 'certificate'
+                  | 'api-key'
+                  | 'oauth') || 'api-key'
+              : 'api-key',
+          credentials:
+            data['authentication'] && typeof data['authentication'] === 'object'
+              ? ((data['authentication'] as Record<string, unknown>)['credentials'] as
+                  | Record<string, unknown>
+                  | undefined) || {}
+              : {},
+          headers:
+            data['authentication'] && typeof data['authentication'] === 'object'
+              ? ((data['authentication'] as Record<string, unknown>)['headers'] as
+                  | Record<string, string>
+                  | undefined) || {}
+              : {},
+          endpoints:
+            data['authentication'] && typeof data['authentication'] === 'object'
+              ? ((data['authentication'] as Record<string, unknown>)['endpoints'] as
+                  | Record<string, string>
+                  | undefined) || {}
+              : {},
+          encrypted:
+            data['authentication'] && typeof data['authentication'] === 'object'
+              ? Boolean((data['authentication'] as Record<string, unknown>)['encrypted'] || false)
+              : false,
+          ...((data['authentication'] as Record<string, unknown>) || {})
         },
         personality: {
-          tone: data['personality'] && typeof data['personality'] === 'object' ? ((data['personality'] as Record<string, unknown>)['tone'] as 'professional' | 'friendly' | 'casual' | 'technical' | 'creative') ?? 'professional' : 'professional',
-          language: data['personality'] && typeof data['personality'] === 'object' ? ((data['personality'] as Record<string, unknown>)['language'] as string) ?? 'en' : 'en',
-          responseStyle: data['personality'] && typeof data['personality'] === 'object' ? ((data['personality'] as Record<string, unknown>)['responseStyle'] as 'technical' | 'concise' | 'detailed' | 'conversational') ?? 'detailed' : 'detailed',
-          verbosity: data['personality'] && typeof data['personality'] === 'object' ? ((data['personality'] as Record<string, unknown>)['verbosity'] as 'minimal' | 'detailed' | 'balanced') ?? 'balanced' : 'balanced',
-          creativity: data['personality'] && typeof data['personality'] === 'object' ? Number((data['personality'] as Record<string, unknown>)['creativity'] ?? 0.7) : 0.7,
-          strictness: data['personality'] && typeof data['personality'] === 'object' ? Number((data['personality'] as Record<string, unknown>)['strictness'] ?? 0.5) : 0.5,
-          proactivity: data['personality'] && typeof data['personality'] === 'object' ? Number((data['personality'] as Record<string, unknown>)['proactivity'] ?? 0.3) : 0.3,
-          customInstructions: data['personality'] && typeof data['personality'] === 'object' ? ((data['personality'] as Record<string, unknown>)['customInstructions'] as string) ?? '' : '',
+          tone:
+            data['personality'] && typeof data['personality'] === 'object'
+              ? (((data['personality'] as Record<string, unknown>)['tone'] as
+                  | 'professional'
+                  | 'friendly'
+                  | 'casual'
+                  | 'technical'
+                  | 'creative') ?? 'professional')
+              : 'professional',
+          language:
+            data['personality'] && typeof data['personality'] === 'object'
+              ? (((data['personality'] as Record<string, unknown>)['language'] as string) ?? 'en')
+              : 'en',
+          responseStyle:
+            data['personality'] && typeof data['personality'] === 'object'
+              ? (((data['personality'] as Record<string, unknown>)['responseStyle'] as
+                  | 'technical'
+                  | 'concise'
+                  | 'detailed'
+                  | 'conversational') ?? 'detailed')
+              : 'detailed',
+          verbosity:
+            data['personality'] && typeof data['personality'] === 'object'
+              ? (((data['personality'] as Record<string, unknown>)['verbosity'] as
+                  | 'minimal'
+                  | 'detailed'
+                  | 'balanced') ?? 'balanced')
+              : 'balanced',
+          creativity:
+            data['personality'] && typeof data['personality'] === 'object'
+              ? Number((data['personality'] as Record<string, unknown>)['creativity'] ?? 0.7)
+              : 0.7,
+          strictness:
+            data['personality'] && typeof data['personality'] === 'object'
+              ? Number((data['personality'] as Record<string, unknown>)['strictness'] ?? 0.5)
+              : 0.5,
+          proactivity:
+            data['personality'] && typeof data['personality'] === 'object'
+              ? Number((data['personality'] as Record<string, unknown>)['proactivity'] ?? 0.3)
+              : 0.3,
+          customInstructions:
+            data['personality'] && typeof data['personality'] === 'object'
+              ? (((data['personality'] as Record<string, unknown>)[
+                'customInstructions'
+              ] as string) ?? '')
+              : '',
           communicationStyle: {
-            useEmojis: data['personality'] && typeof data['personality'] === 'object' && (data['personality'] as Record<string, unknown>)['communicationStyle'] && typeof ((data['personality'] as Record<string, unknown>)['communicationStyle']) === 'object' ? Boolean(((data['personality'] as Record<string, unknown>)['communicationStyle'] as Record<string, unknown>)['useEmojis'] ?? false) : false,
-            useFormatting: data['personality'] && typeof data['personality'] === 'object' && (data['personality'] as Record<string, unknown>)['communicationStyle'] && typeof ((data['personality'] as Record<string, unknown>)['communicationStyle']) === 'object' ? Boolean(((data['personality'] as Record<string, unknown>)['communicationStyle'] as Record<string, unknown>)['useFormatting'] ?? true) : true,
-            includeCodeBlocks: data['personality'] && typeof data['personality'] === 'object' && (data['personality'] as Record<string, unknown>)['communicationStyle'] && typeof ((data['personality'] as Record<string, unknown>)['communicationStyle']) === 'object' ? Boolean(((data['personality'] as Record<string, unknown>)['communicationStyle'] as Record<string, unknown>)['includeCodeBlocks'] ?? true) : true,
-            includeExplanations: data['personality'] && typeof data['personality'] === 'object' && (data['personality'] as Record<string, unknown>)['communicationStyle'] && typeof ((data['personality'] as Record<string, unknown>)['communicationStyle']) === 'object' ? Boolean(((data['personality'] as Record<string, unknown>)['communicationStyle'] as Record<string, unknown>)['includeExplanations'] ?? true) : true,
-            ...(data['personality'] && typeof data['personality'] === 'object' ? ((data['personality'] as Record<string, unknown>)['communicationStyle'] as Record<string, unknown>) || {} : {})
+            useEmojis:
+              data['personality'] &&
+              typeof data['personality'] === 'object' &&
+              (data['personality'] as Record<string, unknown>)['communicationStyle'] &&
+              typeof (data['personality'] as Record<string, unknown>)['communicationStyle'] ===
+                'object'
+                ? Boolean(
+                  (
+                      (data['personality'] as Record<string, unknown>)[
+                        'communicationStyle'
+                      ] as Record<string, unknown>
+                  )['useEmojis'] ?? false
+                )
+                : false,
+            useFormatting:
+              data['personality'] &&
+              typeof data['personality'] === 'object' &&
+              (data['personality'] as Record<string, unknown>)['communicationStyle'] &&
+              typeof (data['personality'] as Record<string, unknown>)['communicationStyle'] ===
+                'object'
+                ? Boolean(
+                  (
+                      (data['personality'] as Record<string, unknown>)[
+                        'communicationStyle'
+                      ] as Record<string, unknown>
+                  )['useFormatting'] ?? true
+                )
+                : true,
+            includeCodeBlocks:
+              data['personality'] &&
+              typeof data['personality'] === 'object' &&
+              (data['personality'] as Record<string, unknown>)['communicationStyle'] &&
+              typeof (data['personality'] as Record<string, unknown>)['communicationStyle'] ===
+                'object'
+                ? Boolean(
+                  (
+                      (data['personality'] as Record<string, unknown>)[
+                        'communicationStyle'
+                      ] as Record<string, unknown>
+                  )['includeCodeBlocks'] ?? true
+                )
+                : true,
+            includeExplanations:
+              data['personality'] &&
+              typeof data['personality'] === 'object' &&
+              (data['personality'] as Record<string, unknown>)['communicationStyle'] &&
+              typeof (data['personality'] as Record<string, unknown>)['communicationStyle'] ===
+                'object'
+                ? Boolean(
+                  (
+                      (data['personality'] as Record<string, unknown>)[
+                        'communicationStyle'
+                      ] as Record<string, unknown>
+                  )['includeExplanations'] ?? true
+                )
+                : true,
+            ...(data['personality'] && typeof data['personality'] === 'object'
+              ? ((data['personality'] as Record<string, unknown>)['communicationStyle'] as Record<
+                  string,
+                  unknown
+                >) || {}
+              : {})
           },
-          ...(data['personality'] as Record<string, unknown> ?? {})
+          ...((data['personality'] as Record<string, unknown>) ?? {})
         },
-        tools: Array.isArray(data['tools']) ? data['tools'] as AgentTool[] : [],
+        tools: Array.isArray(data['tools']) ? (data['tools'] as AgentTool[]) : [],
         environment: {
-          workingDirectory: data['environment'] && typeof data['environment'] === 'object' ? ((data['environment'] as Record<string, unknown>)['workingDirectory'] as string) ?? process.cwd() : process.cwd(),
-          shell: data['environment'] && typeof data['environment'] === 'object' ? ((data['environment'] as Record<string, unknown>)['shell'] as string) ?? '/bin/bash' : '/bin/bash',
-          envVars: data['environment'] && typeof data['environment'] === 'object' ? ((data['environment'] as Record<string, unknown>)['envVars'] as Record<string, string> | undefined) ?? {} : {},
-          nodeVersion: data['environment'] && typeof data['environment'] === 'object' ? ((data['environment'] as Record<string, unknown>)['nodeVersion'] as string) ?? '18' : '18',
-          pythonVersion: data['environment'] && typeof data['environment'] === 'object' ? ((data['environment'] as Record<string, unknown>)['pythonVersion'] as string) ?? '3.9' : '3.9',
-          allowedCommands: data['environment'] && typeof data['environment'] === 'object' ? ((data['environment'] as Record<string, unknown>)['allowedCommands'] as string[] | undefined) ?? [] : [],
-          blockedCommands: data['environment'] && typeof data['environment'] === 'object' ? ((data['environment'] as Record<string, unknown>)['blockedCommands'] as string[] | undefined) ?? ['rm -rf', 'sudo', 'chmod 777'] : ['rm -rf', 'sudo', 'chmod 777'],
+          workingDirectory:
+            data['environment'] && typeof data['environment'] === 'object'
+              ? (((data['environment'] as Record<string, unknown>)['workingDirectory'] as string) ??
+                process.cwd())
+              : process.cwd(),
+          shell:
+            data['environment'] && typeof data['environment'] === 'object'
+              ? (((data['environment'] as Record<string, unknown>)['shell'] as string) ??
+                '/bin/bash')
+              : '/bin/bash',
+          envVars:
+            data['environment'] && typeof data['environment'] === 'object'
+              ? (((data['environment'] as Record<string, unknown>)['envVars'] as
+                  | Record<string, string>
+                  | undefined) ?? {})
+              : {},
+          nodeVersion:
+            data['environment'] && typeof data['environment'] === 'object'
+              ? (((data['environment'] as Record<string, unknown>)['nodeVersion'] as string) ??
+                '18')
+              : '18',
+          pythonVersion:
+            data['environment'] && typeof data['environment'] === 'object'
+              ? (((data['environment'] as Record<string, unknown>)['pythonVersion'] as string) ??
+                '3.9')
+              : '3.9',
+          allowedCommands:
+            data['environment'] && typeof data['environment'] === 'object'
+              ? (((data['environment'] as Record<string, unknown>)['allowedCommands'] as
+                  | string[]
+                  | undefined) ?? [])
+              : [],
+          blockedCommands:
+            data['environment'] && typeof data['environment'] === 'object'
+              ? (((data['environment'] as Record<string, unknown>)['blockedCommands'] as
+                  | string[]
+                  | undefined) ?? ['rm -rf', 'sudo', 'chmod 777'])
+              : ['rm -rf', 'sudo', 'chmod 777'],
           networkAccess: {
-            allowedDomains: data['environment'] && typeof data['environment'] === 'object' && (data['environment'] as Record<string, unknown>)['networkAccess'] && typeof ((data['environment'] as Record<string, unknown>)['networkAccess']) === 'object' ? ((data['environment'] as Record<string, unknown>)['networkAccess'] as Record<string, unknown>)['allowedDomains'] as string[] | undefined ?? [] : [],
-            blockedDomains: data['environment'] && typeof data['environment'] === 'object' && (data['environment'] as Record<string, unknown>)['networkAccess'] && typeof ((data['environment'] as Record<string, unknown>)['networkAccess']) === 'object' ? ((data['environment'] as Record<string, unknown>)['networkAccess'] as Record<string, unknown>)['blockedDomains'] as string[] | undefined ?? [] : [],
-            allowExternalRequests: data['environment'] && typeof data['environment'] === 'object' && (data['environment'] as Record<string, unknown>)['networkAccess'] && typeof ((data['environment'] as Record<string, unknown>)['networkAccess']) === 'object' ? Boolean(((data['environment'] as Record<string, unknown>)['networkAccess'] as Record<string, unknown>)['allowExternalRequests'] ?? true) : true,
-            ...(data['environment'] && typeof data['environment'] === 'object' ? ((data['environment'] as Record<string, unknown>)['networkAccess'] as Record<string, unknown>) || {} : {})
+            allowedDomains:
+              data['environment'] &&
+              typeof data['environment'] === 'object' &&
+              (data['environment'] as Record<string, unknown>)['networkAccess'] &&
+              typeof (data['environment'] as Record<string, unknown>)['networkAccess'] === 'object'
+                ? (((
+                    (data['environment'] as Record<string, unknown>)['networkAccess'] as Record<
+                      string,
+                      unknown
+                    >
+                  )['allowedDomains'] as string[] | undefined) ?? [])
+                : [],
+            blockedDomains:
+              data['environment'] &&
+              typeof data['environment'] === 'object' &&
+              (data['environment'] as Record<string, unknown>)['networkAccess'] &&
+              typeof (data['environment'] as Record<string, unknown>)['networkAccess'] === 'object'
+                ? (((
+                    (data['environment'] as Record<string, unknown>)['networkAccess'] as Record<
+                      string,
+                      unknown
+                    >
+                  )['blockedDomains'] as string[] | undefined) ?? [])
+                : [],
+            allowExternalRequests:
+              data['environment'] &&
+              typeof data['environment'] === 'object' &&
+              (data['environment'] as Record<string, unknown>)['networkAccess'] &&
+              typeof (data['environment'] as Record<string, unknown>)['networkAccess'] === 'object'
+                ? Boolean(
+                  (
+                      (data['environment'] as Record<string, unknown>)['networkAccess'] as Record<
+                        string,
+                        unknown
+                      >
+                  )['allowExternalRequests'] ?? true
+                )
+                : true,
+            ...(data['environment'] && typeof data['environment'] === 'object'
+              ? ((data['environment'] as Record<string, unknown>)['networkAccess'] as Record<
+                  string,
+                  unknown
+                >) || {}
+              : {})
           },
           fileSystem: {
-            allowedPaths: data['environment'] && typeof data['environment'] === 'object' && (data['environment'] as Record<string, unknown>)['fileSystem'] && typeof ((data['environment'] as Record<string, unknown>)['fileSystem']) === 'object' ? ((data['environment'] as Record<string, unknown>)['fileSystem'] as Record<string, unknown>)['allowedPaths'] as string[] | undefined ?? [] : [],
-            blockedPaths: data['environment'] && typeof data['environment'] === 'object' && (data['environment'] as Record<string, unknown>)['fileSystem'] && typeof ((data['environment'] as Record<string, unknown>)['fileSystem']) === 'object' ? ((data['environment'] as Record<string, unknown>)['fileSystem'] as Record<string, unknown>)['blockedPaths'] as string[] | undefined ?? ['/etc', '/usr/bin', '/bin'] : ['/etc', '/usr/bin', '/bin'],
-            maxFileSize: data['environment'] && typeof data['environment'] === 'object' && (data['environment'] as Record<string, unknown>)['fileSystem'] && typeof ((data['environment'] as Record<string, unknown>)['fileSystem']) === 'object' ? Number(((data['environment'] as Record<string, unknown>)['fileSystem'] as Record<string, unknown>)['maxFileSize'] ?? 10485760) : 10485760,
-            allowWrite: data['environment'] && typeof data['environment'] === 'object' && (data['environment'] as Record<string, unknown>)['fileSystem'] && typeof ((data['environment'] as Record<string, unknown>)['fileSystem']) === 'object' ? Boolean(((data['environment'] as Record<string, unknown>)['fileSystem'] as Record<string, unknown>)['allowWrite'] ?? true) : true,
-            allowDelete: data['environment'] && typeof data['environment'] === 'object' && (data['environment'] as Record<string, unknown>)['fileSystem'] && typeof ((data['environment'] as Record<string, unknown>)['fileSystem']) === 'object' ? Boolean(((data['environment'] as Record<string, unknown>)['fileSystem'] as Record<string, unknown>)['allowDelete'] ?? false) : false,
-            ...(data['environment'] && typeof data['environment'] === 'object' ? ((data['environment'] as Record<string, unknown>)['fileSystem'] as Record<string, unknown>) || {} : {})
+            allowedPaths:
+              data['environment'] &&
+              typeof data['environment'] === 'object' &&
+              (data['environment'] as Record<string, unknown>)['fileSystem'] &&
+              typeof (data['environment'] as Record<string, unknown>)['fileSystem'] === 'object'
+                ? (((
+                    (data['environment'] as Record<string, unknown>)['fileSystem'] as Record<
+                      string,
+                      unknown
+                    >
+                  )['allowedPaths'] as string[] | undefined) ?? [])
+                : [],
+            blockedPaths:
+              data['environment'] &&
+              typeof data['environment'] === 'object' &&
+              (data['environment'] as Record<string, unknown>)['fileSystem'] &&
+              typeof (data['environment'] as Record<string, unknown>)['fileSystem'] === 'object'
+                ? (((
+                    (data['environment'] as Record<string, unknown>)['fileSystem'] as Record<
+                      string,
+                      unknown
+                    >
+                  )['blockedPaths'] as string[] | undefined) ?? ['/etc', '/usr/bin', '/bin'])
+                : ['/etc', '/usr/bin', '/bin'],
+            maxFileSize:
+              data['environment'] &&
+              typeof data['environment'] === 'object' &&
+              (data['environment'] as Record<string, unknown>)['fileSystem'] &&
+              typeof (data['environment'] as Record<string, unknown>)['fileSystem'] === 'object'
+                ? Number(
+                  (
+                      (data['environment'] as Record<string, unknown>)['fileSystem'] as Record<
+                        string,
+                        unknown
+                      >
+                  )['maxFileSize'] ?? 10485760
+                )
+                : 10485760,
+            allowWrite:
+              data['environment'] &&
+              typeof data['environment'] === 'object' &&
+              (data['environment'] as Record<string, unknown>)['fileSystem'] &&
+              typeof (data['environment'] as Record<string, unknown>)['fileSystem'] === 'object'
+                ? Boolean(
+                  (
+                      (data['environment'] as Record<string, unknown>)['fileSystem'] as Record<
+                        string,
+                        unknown
+                      >
+                  )['allowWrite'] ?? true
+                )
+                : true,
+            allowDelete:
+              data['environment'] &&
+              typeof data['environment'] === 'object' &&
+              (data['environment'] as Record<string, unknown>)['fileSystem'] &&
+              typeof (data['environment'] as Record<string, unknown>)['fileSystem'] === 'object'
+                ? Boolean(
+                  (
+                      (data['environment'] as Record<string, unknown>)['fileSystem'] as Record<
+                        string,
+                        unknown
+                      >
+                  )['allowDelete'] ?? false
+                )
+                : false,
+            ...(data['environment'] && typeof data['environment'] === 'object'
+              ? ((data['environment'] as Record<string, unknown>)['fileSystem'] as Record<
+                  string,
+                  unknown
+                >) || {}
+              : {})
           },
-          ...(data['environment'] as Record<string, unknown> ?? {})
+          ...((data['environment'] as Record<string, unknown>) ?? {})
         },
         preferences: {
-          autoSave: data['preferences'] && typeof data['preferences'] === 'object' ? Boolean((data['preferences'] as Record<string, unknown>)['autoSave'] ?? true) : true,
-          autoCommit: data['preferences'] && typeof data['preferences'] === 'object' ? Boolean((data['preferences'] as Record<string, unknown>)['autoCommit'] ?? false) : false,
-          preferAsync: data['preferences'] && typeof data['preferences'] === 'object' ? Boolean((data['preferences'] as Record<string, unknown>)['preferAsync'] ?? true) : true,
-          useCache: data['preferences'] && typeof data['preferences'] === 'object' ? Boolean((data['preferences'] as Record<string, unknown>)['useCache'] ?? true) : true,
-          debugMode: data['preferences'] && typeof data['preferences'] === 'object' ? Boolean((data['preferences'] as Record<string, unknown>)['debugMode'] ?? false) : false,
-          logLevel: data['preferences'] && typeof data['preferences'] === 'object' ? ((data['preferences'] as Record<string, unknown>)['logLevel'] as 'error' | 'debug' | 'info' | 'warn') ?? 'info' : 'info',
+          autoSave:
+            data['preferences'] && typeof data['preferences'] === 'object'
+              ? Boolean((data['preferences'] as Record<string, unknown>)['autoSave'] ?? true)
+              : true,
+          autoCommit:
+            data['preferences'] && typeof data['preferences'] === 'object'
+              ? Boolean((data['preferences'] as Record<string, unknown>)['autoCommit'] ?? false)
+              : false,
+          preferAsync:
+            data['preferences'] && typeof data['preferences'] === 'object'
+              ? Boolean((data['preferences'] as Record<string, unknown>)['preferAsync'] ?? true)
+              : true,
+          useCache:
+            data['preferences'] && typeof data['preferences'] === 'object'
+              ? Boolean((data['preferences'] as Record<string, unknown>)['useCache'] ?? true)
+              : true,
+          debugMode:
+            data['preferences'] && typeof data['preferences'] === 'object'
+              ? Boolean((data['preferences'] as Record<string, unknown>)['debugMode'] ?? false)
+              : false,
+          logLevel:
+            data['preferences'] && typeof data['preferences'] === 'object'
+              ? (((data['preferences'] as Record<string, unknown>)['logLevel'] as
+                  | 'error'
+                  | 'debug'
+                  | 'info'
+                  | 'warn') ?? 'info')
+              : 'info',
           notifications: {
-            enabled: data['preferences'] && typeof data['preferences'] === 'object' && (data['preferences'] as Record<string, unknown>)['notifications'] && typeof ((data['preferences'] as Record<string, unknown>)['notifications']) === 'object' ? Boolean(((data['preferences'] as Record<string, unknown>)['notifications'] as Record<string, unknown>)['enabled'] ?? true) : true,
-            types: data['preferences'] && typeof data['preferences'] === 'object' && (data['preferences'] as Record<string, unknown>)['notifications'] && typeof ((data['preferences'] as Record<string, unknown>)['notifications']) === 'object' ? ((data['preferences'] as Record<string, unknown>)['notifications'] as Record<string, unknown>)['types'] as ('error' | 'info' | 'success' | 'warning')[] | undefined ?? ['error', 'warning'] : ['error', 'warning'],
-            channels: data['preferences'] && typeof data['preferences'] === 'object' && (data['preferences'] as Record<string, unknown>)['notifications'] && typeof ((data['preferences'] as Record<string, unknown>)['notifications']) === 'object' ? ((data['preferences'] as Record<string, unknown>)['notifications'] as Record<string, unknown>)['channels'] as ('file' | 'console' | 'email' | 'slack')[] | undefined ?? ['console'] : ['console'],
-            ...(data['preferences'] && typeof data['preferences'] === 'object' ? ((data['preferences'] as Record<string, unknown>)['notifications'] as Record<string, unknown>) || {} : {})
+            enabled:
+              data['preferences'] &&
+              typeof data['preferences'] === 'object' &&
+              (data['preferences'] as Record<string, unknown>)['notifications'] &&
+              typeof (data['preferences'] as Record<string, unknown>)['notifications'] === 'object'
+                ? Boolean(
+                  (
+                      (data['preferences'] as Record<string, unknown>)['notifications'] as Record<
+                        string,
+                        unknown
+                      >
+                  )['enabled'] ?? true
+                )
+                : true,
+            types:
+              data['preferences'] &&
+              typeof data['preferences'] === 'object' &&
+              (data['preferences'] as Record<string, unknown>)['notifications'] &&
+              typeof (data['preferences'] as Record<string, unknown>)['notifications'] === 'object'
+                ? (((
+                    (data['preferences'] as Record<string, unknown>)['notifications'] as Record<
+                      string,
+                      unknown
+                    >
+                  )['types'] as ('error' | 'info' | 'success' | 'warning')[] | undefined) ?? [
+                  'error',
+                  'warning'
+                ])
+                : ['error', 'warning'],
+            channels:
+              data['preferences'] &&
+              typeof data['preferences'] === 'object' &&
+              (data['preferences'] as Record<string, unknown>)['notifications'] &&
+              typeof (data['preferences'] as Record<string, unknown>)['notifications'] === 'object'
+                ? (((
+                    (data['preferences'] as Record<string, unknown>)['notifications'] as Record<
+                      string,
+                      unknown
+                    >
+                  )['channels'] as ('file' | 'console' | 'email' | 'slack')[] | undefined) ?? [
+                  'console'
+                ])
+                : ['console'],
+            ...(data['preferences'] && typeof data['preferences'] === 'object'
+              ? ((data['preferences'] as Record<string, unknown>)['notifications'] as Record<
+                  string,
+                  unknown
+                >) || {}
+              : {})
           },
           git: {
-            autoStage: data['preferences'] && typeof data['preferences'] === 'object' && (data['preferences'] as Record<string, unknown>)['git'] && typeof ((data['preferences'] as Record<string, unknown>)['git']) === 'object' ? Boolean(((data['preferences'] as Record<string, unknown>)['git'] as Record<string, unknown>)['autoStage'] ?? true) : true,
-            commitMessageFormat: data['preferences'] && typeof data['preferences'] === 'object' && (data['preferences'] as Record<string, unknown>)['git'] && typeof ((data['preferences'] as Record<string, unknown>)['git']) === 'object' ? ((data['preferences'] as Record<string, unknown>)['git'] as Record<string, unknown>)['commitMessageFormat'] as string | undefined ?? 'feat: {description}' : 'feat: {description}',
-            branchNaming: data['preferences'] && typeof data['preferences'] === 'object' && (data['preferences'] as Record<string, unknown>)['git'] && typeof ((data['preferences'] as Record<string, unknown>)['git']) === 'object' ? ((data['preferences'] as Record<string, unknown>)['git'] as Record<string, unknown>)['branchNaming'] as string | undefined ?? 'feature/{name}' : 'feature/{name}',
-            ...(data['preferences'] && typeof data['preferences'] === 'object' ? ((data['preferences'] as Record<string, unknown>)['git'] as Record<string, unknown>) || {} : {})
+            autoStage:
+              data['preferences'] &&
+              typeof data['preferences'] === 'object' &&
+              (data['preferences'] as Record<string, unknown>)['git'] &&
+              typeof (data['preferences'] as Record<string, unknown>)['git'] === 'object'
+                ? Boolean(
+                  (
+                      (data['preferences'] as Record<string, unknown>)['git'] as Record<
+                        string,
+                        unknown
+                      >
+                  )['autoStage'] ?? true
+                )
+                : true,
+            commitMessageFormat:
+              data['preferences'] &&
+              typeof data['preferences'] === 'object' &&
+              (data['preferences'] as Record<string, unknown>)['git'] &&
+              typeof (data['preferences'] as Record<string, unknown>)['git'] === 'object'
+                ? (((
+                    (data['preferences'] as Record<string, unknown>)['git'] as Record<
+                      string,
+                      unknown
+                    >
+                  )['commitMessageFormat'] as string | undefined) ?? 'feat: {description}')
+                : 'feat: {description}',
+            branchNaming:
+              data['preferences'] &&
+              typeof data['preferences'] === 'object' &&
+              (data['preferences'] as Record<string, unknown>)['git'] &&
+              typeof (data['preferences'] as Record<string, unknown>)['git'] === 'object'
+                ? (((
+                    (data['preferences'] as Record<string, unknown>)['git'] as Record<
+                      string,
+                      unknown
+                    >
+                  )['branchNaming'] as string | undefined) ?? 'feature/{name}')
+                : 'feature/{name}',
+            ...(data['preferences'] && typeof data['preferences'] === 'object'
+              ? ((data['preferences'] as Record<string, unknown>)['git'] as Record<
+                  string,
+                  unknown
+                >) || {}
+              : {})
           },
-          ...(data['preferences'] as Record<string, unknown> ?? {})
+          ...((data['preferences'] as Record<string, unknown>) ?? {})
         },
         metadata: {
-          version: data['metadata'] && typeof data['metadata'] === 'object' ? ((data['metadata'] as Record<string, unknown>)['version'] as string) ?? '1.0.0' : '1.0.0',
-          author: data['metadata'] && typeof data['metadata'] === 'object' ? ((data['metadata'] as Record<string, unknown>)['author'] as string) ?? 'system' : 'system',
-          createdAt: data['metadata'] && typeof data['metadata'] === 'object' && ((data['metadata'] as Record<string, unknown>)['createdAt']) ? new Date(String((data['metadata'] as Record<string, unknown>)['createdAt'])) : new Date(),
+          version:
+            data['metadata'] && typeof data['metadata'] === 'object'
+              ? (((data['metadata'] as Record<string, unknown>)['version'] as string) ?? '1.0.0')
+              : '1.0.0',
+          author:
+            data['metadata'] && typeof data['metadata'] === 'object'
+              ? (((data['metadata'] as Record<string, unknown>)['author'] as string) ?? 'system')
+              : 'system',
+          createdAt:
+            data['metadata'] &&
+            typeof data['metadata'] === 'object' &&
+            (data['metadata'] as Record<string, unknown>)['createdAt']
+              ? new Date(String((data['metadata'] as Record<string, unknown>)['createdAt']))
+              : new Date(),
           lastModified: new Date(),
-          tags: data['metadata'] && typeof data['metadata'] === 'object' ? ((data['metadata'] as Record<string, unknown>)['tags'] as string[] | undefined) ?? [] : [],
-          category: data['metadata'] && typeof data['metadata'] === 'object' ? ((data['metadata'] as Record<string, unknown>)['category'] as string) ?? 'general' : 'general',
-          description: data['metadata'] && typeof data['metadata'] === 'object' ? ((data['metadata'] as Record<string, unknown>)['description'] as string) ?? '' : '',
-          documentation: data['metadata'] && typeof data['metadata'] === 'object' ? ((data['metadata'] as Record<string, unknown>)['documentation'] as string) ?? '' : '',
-          examples: data['metadata'] && typeof data['metadata'] === 'object' ? ((data['metadata'] as Record<string, unknown>)['examples'] as string[] | undefined) ?? [] : [],
-          dependencies: data['metadata'] && typeof data['metadata'] === 'object' ? ((data['metadata'] as Record<string, unknown>)['dependencies'] as string[] | undefined) ?? [] : [],
+          tags:
+            data['metadata'] && typeof data['metadata'] === 'object'
+              ? (((data['metadata'] as Record<string, unknown>)['tags'] as string[] | undefined) ??
+                [])
+              : [],
+          category:
+            data['metadata'] && typeof data['metadata'] === 'object'
+              ? (((data['metadata'] as Record<string, unknown>)['category'] as string) ?? 'general')
+              : 'general',
+          description:
+            data['metadata'] && typeof data['metadata'] === 'object'
+              ? (((data['metadata'] as Record<string, unknown>)['description'] as string) ?? '')
+              : '',
+          documentation:
+            data['metadata'] && typeof data['metadata'] === 'object'
+              ? (((data['metadata'] as Record<string, unknown>)['documentation'] as string) ?? '')
+              : '',
+          examples:
+            data['metadata'] && typeof data['metadata'] === 'object'
+              ? (((data['metadata'] as Record<string, unknown>)['examples'] as
+                  | string[]
+                  | undefined) ?? [])
+              : [],
+          dependencies:
+            data['metadata'] && typeof data['metadata'] === 'object'
+              ? (((data['metadata'] as Record<string, unknown>)['dependencies'] as
+                  | string[]
+                  | undefined) ?? [])
+              : [],
           compatibility: {
-            platforms: data['metadata'] && typeof data['metadata'] === 'object' && (data['metadata'] as Record<string, unknown>)['compatibility'] && typeof ((data['metadata'] as Record<string, unknown>)['compatibility']) === 'object' ? ((data['metadata'] as Record<string, unknown>)['compatibility'] as Record<string, unknown>)['platforms'] as string[] | undefined ?? ['linux', 'macos', 'windows'] : ['linux', 'macos', 'windows'],
-            nodeVersions: data['metadata'] && typeof data['metadata'] === 'object' && (data['metadata'] as Record<string, unknown>)['compatibility'] && typeof ((data['metadata'] as Record<string, unknown>)['compatibility']) === 'object' ? ((data['metadata'] as Record<string, unknown>)['compatibility'] as Record<string, unknown>)['nodeVersions'] as string[] | undefined ?? ['16', '18', '20'] : ['16', '18', '20'],
-            pythonVersions: data['metadata'] && typeof data['metadata'] === 'object' && (data['metadata'] as Record<string, unknown>)['compatibility'] && typeof ((data['metadata'] as Record<string, unknown>)['compatibility']) === 'object' ? ((data['metadata'] as Record<string, unknown>)['compatibility'] as Record<string, unknown>)['pythonVersions'] as string[] | undefined ?? ['3.8', '3.9', '3.10', '3.11'] : ['3.8', '3.9', '3.10', '3.11'],
-            ...(data['metadata'] && typeof data['metadata'] === 'object' ? ((data['metadata'] as Record<string, unknown>)['compatibility'] as Record<string, unknown>) || {} : {})
+            platforms:
+              data['metadata'] &&
+              typeof data['metadata'] === 'object' &&
+              (data['metadata'] as Record<string, unknown>)['compatibility'] &&
+              typeof (data['metadata'] as Record<string, unknown>)['compatibility'] === 'object'
+                ? (((
+                    (data['metadata'] as Record<string, unknown>)['compatibility'] as Record<
+                      string,
+                      unknown
+                    >
+                  )['platforms'] as string[] | undefined) ?? ['linux', 'macos', 'windows'])
+                : ['linux', 'macos', 'windows'],
+            nodeVersions:
+              data['metadata'] &&
+              typeof data['metadata'] === 'object' &&
+              (data['metadata'] as Record<string, unknown>)['compatibility'] &&
+              typeof (data['metadata'] as Record<string, unknown>)['compatibility'] === 'object'
+                ? (((
+                    (data['metadata'] as Record<string, unknown>)['compatibility'] as Record<
+                      string,
+                      unknown
+                    >
+                  )['nodeVersions'] as string[] | undefined) ?? ['16', '18', '20'])
+                : ['16', '18', '20'],
+            pythonVersions:
+              data['metadata'] &&
+              typeof data['metadata'] === 'object' &&
+              (data['metadata'] as Record<string, unknown>)['compatibility'] &&
+              typeof (data['metadata'] as Record<string, unknown>)['compatibility'] === 'object'
+                ? (((
+                    (data['metadata'] as Record<string, unknown>)['compatibility'] as Record<
+                      string,
+                      unknown
+                    >
+                  )['pythonVersions'] as string[] | undefined) ?? ['3.8', '3.9', '3.10', '3.11'])
+                : ['3.8', '3.9', '3.10', '3.11'],
+            ...(data['metadata'] && typeof data['metadata'] === 'object'
+              ? ((data['metadata'] as Record<string, unknown>)['compatibility'] as Record<
+                  string,
+                  unknown
+                >) || {}
+              : {})
           },
-          ...(data['metadata'] as Record<string, unknown> || {})
+          ...((data['metadata'] as Record<string, unknown>) || {})
         }
       };
 
       return agent;
-
     } catch (error) {
-      const agentId = agentData && typeof agentData === 'object' ? (agentData as Record<string, unknown>)['id'] : 'unknown';
-      logger.error('AgentConfigManager', 'Failed to validate agent', error instanceof Error ? error : new Error(String(error)), { agentId: String(agentId) });
+      const agentId =
+        agentData && typeof agentData === 'object'
+          ? (agentData as Record<string, unknown>)['id']
+          : 'unknown';
+      logger.error(
+        'AgentConfigManager',
+        'Failed to validate agent',
+        error instanceof Error ? error : new Error(String(error)),
+        { agentId: String(agentId) }
+      );
       return null;
     }
   }
@@ -801,7 +1371,9 @@ export class AgentConfigManager extends EventEmitter {
    * Create default configuration
    */
   private async createDefaultConfig(): Promise<AgentConfig[]> {
-    logger.info('AgentConfigManager', 'Creating default agent configuration', { timestamp: new Date().toISOString() });
+    logger.info('AgentConfigManager', 'Creating default agent configuration', {
+      timestamp: new Date().toISOString()
+    });
 
     const defaultAgents: AgentConfig[] = [
       {
@@ -837,7 +1409,7 @@ export class AgentConfigManager extends EventEmitter {
         authentication: {
           type: 'api-key',
           credentials: {
-            apiKey: process['env']['ANTHROPIC_API_KEY'] || ''
+            apiKey: process['env']['ANTHROPIC_API_KEY'] ?? ''
           },
           encrypted: true
         },
@@ -849,7 +1421,8 @@ export class AgentConfigManager extends EventEmitter {
           creativity: 0.7,
           strictness: 0.6,
           proactivity: 0.4,
-          customInstructions: 'You are Claude Code, an AI assistant specialized in software development.',
+          customInstructions:
+            'You are Claude Code, an AI assistant specialized in software development.',
           communicationStyle: {
             useEmojis: false,
             useFormatting: true,
@@ -997,7 +1570,9 @@ export class AgentConfigManager extends EventEmitter {
       requiredFeatures: ['anthropic-api-access']
     });
 
-    logger.debug('AgentConfigManager', 'Default templates initialized', { templateCount: this.templates.size });
+    logger.debug('AgentConfigManager', 'Default templates initialized', {
+      templateCount: this.templates.size
+    });
   }
 
   /**
@@ -1017,20 +1592,33 @@ export class AgentConfigManager extends EventEmitter {
   /**
    * Create agent from template
    */
-  createAgentFromTemplate(templateId: string, variables: Record<string, unknown>): AgentConfig | null {
+  createAgentFromTemplate(
+    templateId: string,
+    variables: Record<string, unknown>
+  ): AgentConfig | null {
     const template = this.templates.get(templateId);
     if (!template) {
-      logger.error('AgentConfigManager', `Template not found: ${templateId}`, new Error(`Template not found: ${templateId}`), { templateId });
+      logger.error(
+        'AgentConfigManager',
+        `Template not found: ${templateId}`,
+        new Error(`Template not found: ${templateId}`),
+        { templateId }
+      );
       return null;
     }
 
     // Validate variables
     for (const variable of template.variables) {
       if (variable.required && !variables[variable.name]) {
-        logger.error('AgentConfigManager', 'Required variable missing', new Error('Template validation failed'), {
-          templateId,
-          variableName: variable.name
-        });
+        logger.error(
+          'AgentConfigManager',
+          'Required variable missing',
+          new Error('Template validation failed'),
+          {
+            templateId,
+            variableName: variable.name
+          }
+        );
         return null;
       }
     }

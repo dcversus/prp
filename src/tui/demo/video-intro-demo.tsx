@@ -7,7 +7,6 @@
 import React from 'react';
 import { render } from 'ink';
 import { VideoIntro } from '../VideoIntro.js';
-import { TUIConfig } from '../../types/TUIConfig.js';
 
 // Demo configuration
 const demoConfig: TUIConfig = {

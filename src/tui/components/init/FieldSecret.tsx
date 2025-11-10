@@ -1,204 +1,200 @@
 /**
- * ♫ FieldSecret - Secret input field with masking
+ * ♫ Field Secret - Password/secret input component
  *
- * Password/secret field with masking, paste support,
- * and visual feedback according to PRP-003 specifications
+ * Text input that masks content for passwords, API keys, and secrets.
+ * Follows PRP-003 specifications for secure input handling.
  */
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
-import TextInput from 'ink-text-input';
+import { useTheme } from '../../config/theme-provider.js';
+import type { FieldSecretProps } from './types.js';
 
-// Import types
-import type { TUIConfig } from '../../types/TUIConfig.js';
-
-export interface FieldSecretProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  config?: TUIConfig;
-  disabled?: boolean;
-  placeholder?: string;
-  notice?: string;
-  onFocus?: () => void;
-  onBlur?: () => void;
-  onSubmit?: () => void;
-  mask?: (value: string) => string;
-  reveal?: boolean;
-  showToggle?: boolean;
-}
-
-export const FieldSecret: React.FC<FieldSecretProps> = ({
+const FieldSecret: React.FC<FieldSecretProps> = ({
   label,
   value,
   onChange,
-  config,
-  disabled = false,
   placeholder = '',
-  notice,
-  onFocus,
-  onBlur,
-  onSubmit,
-  mask = (val) => val.replace(/./g, '*'),
-  reveal = false,
-  showToggle = true
+  notice = '',
+  tip = '',
+  error = '',
+  required = false,
+  disabled = false,
+  focused = false,
+  reveal = false
+  // onRevealChange // TODO: Implement reveal change handler
 }) => {
-  const [focused, setFocused] = useState(false);
-  const [showValue, setShowValue] = useState(false);
-  const [pasted, setPasted] = useState(false);
-  const inputRef = useRef<any>(null);
+  const theme = useTheme();
+  const [isFocused, setIsFocused] = useState(focused);
+  const [internalValue, setInternalValue] = useState(value);
+  const [isRevealed, setIsRevealed] = useState(reveal);
 
-  // Handle focus
-  const handleFocus = useCallback(() => {
-    if (disabled) return;
-    setFocused(true);
-    onFocus?.();
-  }, [disabled, onFocus]);
+  // Sync external value changes
+  useEffect(() => {
+    setInternalValue(value);
+  }, [value]);
 
-  // Handle blur
-  const handleBlur = useCallback(() => {
-    setFocused(false);
-    onBlur?.();
-  }, [onBlur]);
+  // Sync focus state
+  useEffect(() => {
+    setIsFocused(focused);
+  }, [focused]);
 
-  // Handle value change
-  const handleChange = useCallback((newValue: string) => {
-    if (disabled) return;
-    onChange(newValue);
+  // Sync reveal state
+  useEffect(() => {
+    setIsRevealed(reveal);
+  }, [reveal]);
 
-    // Clear paste indicator after a delay
-    if (pasted) {
-      setTimeout(() => setPasted(false), 1000);
-    }
-  }, [disabled, onChange, pasted]);
-
-  // Handle paste (Ctrl+V)
-  const handlePaste = useCallback(() => {
-    // In a real implementation, this would read from clipboard
-    // For now, just show that paste was attempted
-    setPasted(true);
-    handleFocus();
-  }, [handleFocus]);
-
-  // Toggle visibility
-  const handleToggleVisibility = useCallback(() => {
-    setShowValue(!showValue);
-    handleFocus();
-  }, [showValue, handleFocus]);
-
-  // Handle input submission
-  const handleSubmit = useCallback(() => {
-    onSubmit?.();
-  }, [onSubmit]);
-
-  // Keyboard navigation
+  // Handle input
   useInput((input, key) => {
-    if (!focused || disabled) return;
+    if (!isFocused || disabled) {
+      return;
+    }
+
+    if (key.escape) {
+      setIsFocused(false);
+      return;
+    }
 
     if (key.return) {
-      handleSubmit();
-    } else if (key.tab) {
-      handleBlur();
-    } else if (key.ctrl && input === 'v') {
-      handlePaste();
-    } else if (input === ' ') {
-      handleToggleVisibility();
+      setIsFocused(false);
+      return;
     }
-  }, { isActive: focused && !disabled });
 
-  // Color scheme
-  const colors = config?.colors;
-  const labelColor = disabled
-    ? colors?.gray
-    : focused
-      ? colors?.accent_orange
-      : colors?.muted;
+    if (key.backspace || key.delete) {
+      const newValue = internalValue.slice(0, -1);
+      setInternalValue(newValue);
+      onChange(newValue);
+      return;
+    }
 
-  const inputColor = disabled
-    ? colors?.gray
-    : focused
-      ? colors?.base_fg
-      : colors?.muted;
+    // Ctrl+V to paste (common in terminals)
+    if (key.ctrl && input === 'v') {
+      // In a real implementation, you'd access clipboard here
+      // For now, just indicate paste ability
+      return;
+    }
 
-  const placeholderColor = colors?.muted;
-  const noticeColor = colors?.gray;
-  const indicatorColor = colors?.accent_orange;
+    if (input) {
+      const newValue = internalValue + input;
+      setInternalValue(newValue);
+      onChange(newValue);
+    }
+  }, { isActive: isFocused });
 
-  // Display value (masked or revealed)
-  const displayValue = reveal || showValue ? value : mask(value);
+  // const handleFocus = useCallback(() => {
+  //   if (!disabled) {
+  //     setIsFocused(true);
+  //   }
+  // }, [disabled]); // TODO: Handle focus events
+
+  // const toggleReveal = useCallback(() => {
+  //   const newReveal = !isRevealed;
+  //   setIsRevealed(newReveal);
+  //   onRevealChange?.(newReveal);
+  // }, [isRevealed, onRevealChange]); // TODO: Handle reveal toggle
+
+  // Mask the value unless revealed
+  const displayValue = isRevealed
+    ? internalValue
+    : internalValue
+      ? '*'.repeat(internalValue.length)
+      : (isFocused ? '' : placeholder);
+
+  const isEmpty = !internalValue && !isFocused;
+  const hasError = !!error;
 
   return (
     <Box flexDirection="column" marginBottom={1}>
-      {/* Label with notice */}
-      <Box flexDirection="row" alignItems="center" marginBottom={1}>
-        <Text color={labelColor} bold={focused}>
+      {/* Label */}
+      <Box flexDirection="row" marginBottom={1}>
+        <Text color={theme.colors.neutrals.text} bold>
           {label}
         </Text>
+        {required && (
+          <Text color={(theme.colors.status as any)?.error ?? theme.colors.status.error}> *</Text>
+        )}
+      </Box>
 
-        {notice && (
+      {/* Input field */}
+      <Box flexDirection="row" alignItems="center">
+        <Box
+          flexDirection="row"
+          paddingX={1}
+          paddingY={0}
+          flexGrow={1}
+        >
+          <Text
+            color={
+              hasError
+                ? (theme.colors.status as any)?.error ?? theme.colors.status.error
+                : isEmpty
+                  ? theme.colors.neutrals.muted
+                  : disabled
+                    ? theme.colors.neutrals.muted
+                    : theme.colors.neutrals.text
+            }
+            dimColor={isEmpty || disabled}
+          >
+            {displayValue}
+            {isFocused && <Text color={(theme.colors.accent as any)?.orange ?? theme.colors.accent.orange}>█</Text>}
+          </Text>
+        </Box>
+
+        {/* Reveal toggle */}
+        {internalValue && (
           <Box marginLeft={1}>
-            <Text color={noticeColor} dimColor italic>
+            <Text
+              color={isRevealed ? (theme.colors.accent as any)?.orange : theme.colors.neutrals.muted}
+            >
+              {isRevealed ? '👁️' : '🔒'}
+            </Text>
+          </Box>
+        )}
+
+        {/* Notice */}
+        {notice && !isFocused && (
+          <Box marginLeft={1}>
+            <Text color={theme.colors.neutrals.muted} italic>
               {notice}
             </Text>
           </Box>
         )}
       </Box>
 
-      {/* Input field */}
-      <Box flexDirection="row" alignItems="center">
-        <Text color={inputColor}>
-          [
-        </Text>
-
-        <TextInput
-          value={value}
-          onChange={handleChange}
-          placeholder={placeholder}
-          focus={focused}
-          disabled={disabled}
-          mask={reveal || showValue ? undefined : mask}
-          onSubmit={handleSubmit}
-        />
-
-        <Text color={inputColor}>
-          ]
-        </Text>
-
-        {/* Visibility toggle */}
-        {showToggle && !disabled && (
-          <Box marginLeft={1}>
-            <Text
-              color={focused ? indicatorColor : colors?.muted}
-              dimColor={!focused}
-              backgroundColor={focused ? `${indicatorColor}20` : undefined}
-            >
-              {showValue ? '👁' : '🔒'}
-            </Text>
-          </Box>
-        )}
-
-        {/* Paste indicator */}
-        {pasted && (
-          <Box marginLeft={1}>
-            <Text color={indicatorColor}>
-              Pasted!
-            </Text>
-          </Box>
-        )}
-      </Box>
-
-      {/* Status indicators */}
-      {focused && (
-        <Text color={colors?.muted} dimColor>
-          [Space] toggle visibility • [Ctrl+V] paste • [Enter] submit • [Tab] next field
-        </Text>
+      {/* Error message */}
+      {hasError && (
+        <Box marginTop={0}>
+          <Text color={(theme.colors.status as any)?.error ?? theme.colors.status.error}>
+            {error}
+          </Text>
+        </Box>
       )}
 
-      {/* Helper text when not focused */}
-      {!focused && value.length > 0 && (
-        <Text color={colors?.muted} dimColor>
-          Secret: {'*'.repeat(Math.min(value.length, 8))}${value.length > 8 ? '...' : ''}
-        </Text>
+      {/* Tip */}
+      {tip && !hasError && (
+        <Box marginTop={0}>
+          <Text color={theme.colors.neutrals.muted} italic>
+            {tip}
+          </Text>
+        </Box>
+      )}
+
+      {/* Help text when focused */}
+      {isFocused && (
+        <Box marginTop={0}>
+          <Text color={theme.colors.neutrals.muted}>
+            [Type] to enter • [Enter] done • [Esc] cancel • [Click eye] to {isRevealed ? 'hide' : 'show'}
+          </Text>
+        </Box>
+      )}
+
+      {/* Paste hint when empty and focused */}
+      {isFocused && !internalValue && (
+        <Box marginTop={0}>
+          <Text color={theme.colors.neutrals.muted} italic>
+            💡 Tip: Use Ctrl+V to paste secrets from clipboard
+          </Text>
+        </Box>
       )}
     </Box>
   );

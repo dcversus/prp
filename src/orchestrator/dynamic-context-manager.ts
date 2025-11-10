@@ -254,7 +254,9 @@ export class DynamicContextManager extends EventEmitter {
     let remainingReduction = excessTokens;
 
     for (const section of compressibleSections) {
-      if (remainingReduction <= 0) break;
+      if (remainingReduction <= 0) {
+        break;
+      }
 
       const currentAllocation = compressed[section.key as keyof DynamicTokenLimits];
       const maxReduction = Math.floor(currentAllocation * 0.7); // Don't compress more than 70%
@@ -309,7 +311,9 @@ export class DynamicContextManager extends EventEmitter {
       .filter(agent => agent.signalsHandled.includes(signalType) || agent.signalsHandled.includes('all'))
       .filter(agent => requiredTools.every(tool => agent.toolsAvailable.includes(tool)));
 
-    if (activeAgents.length === 0) return null;
+    if (activeAgents.length === 0) {
+      return null;
+    }
 
     // Sort by token availability and performance
     activeAgents.sort((a, b) => {
@@ -417,7 +421,7 @@ export class DynamicContextManager extends EventEmitter {
       context += `- **Token Usage**: ${agent.tokenLimits.current.toLocaleString()}/${agent.tokenLimits.daily.toLocaleString()} (${agent.tokenLimits.percentage.toFixed(1)}%)\n`;
       context += `- **Current Task**: ${agent.lastActivity.toISOString()}\n`;
       context += `- **Performance**: ${agent.performance.successRate.toFixed(1)}% success rate, ${agent.performance.avgResponseTime}ms avg response\n`;
-      context += `\n`;
+      context += '\n';
     }
 
     context += '## Current Blockers\n';

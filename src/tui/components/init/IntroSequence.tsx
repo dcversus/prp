@@ -5,12 +5,12 @@
  * With smooth transitions, fade effects, and brand presentation
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import { useTerminalDimensions } from '../../hooks/useTerminalDimensions.js';
 
 // Import types
-import type { TUIConfig } from '../../types/TUIConfig.js';
+import type { TUIConfig } from '../../../shared/types/TUIConfig.js';
 
 export interface IntroSequenceProps {
   duration?: number; // ms
@@ -154,12 +154,14 @@ export const IntroSequence: React.FC<IntroSequenceProps> = ({
   }, [duration, onComplete, totalFrames.length, frameDuration, showQuote]);
 
   // Calculate positioning for centered display
-  const centerX = Math.max(0, Math.floor((width - 50) / 2));
-  const centerY = Math.max(0, Math.floor((height - 15) / 2));
+  // const centerX = Math.max(0, Math.floor((width - 50) / 2)); // Unused
+  // const centerY = Math.max(0, Math.floor((height - 15) / 2)); // Unused
 
   // Apply alpha transparency to colors
   const applyAlpha = (color: string, alphaValue: number): string => {
-    if (alphaValue >= 1.0) return color;
+    if (alphaValue >= 1.0) {
+      return color;
+    }
     return color + Math.floor(alphaValue * 255).toString(16).padStart(2, '0');
   };
 
@@ -174,7 +176,7 @@ export const IntroSequence: React.FC<IntroSequenceProps> = ({
       {showLogo && (
         <Box flexDirection="column" alignItems="center">
           <Text color={accentColor} bold>
-            {currentFrameData.ascii.split('\n').map((line, index) => (
+            {(currentFrameData?.ascii ?? '').split('\n').map((line, index) => (
               <Text key={index}>
                 {line}
               </Text>
@@ -196,15 +198,15 @@ export const IntroSequence: React.FC<IntroSequenceProps> = ({
       )}
 
       {/* Music note animation at bottom */}
-      <Box position="absolute" bottom={3}>
+      <Box marginBottom={1}>
         <Text color={accentColor} bold>
-          {currentFrameData.note}
+          {currentFrameData?.note ?? '♪'}
         </Text>
       </Box>
 
       {/* Loading indicator */}
-      <Box position="absolute" bottom={1}>
-        <Text color={borderColor} dimColor>
+      <Box>
+        <Text color={borderColor}>
           Loading workspace setup... {Math.round((currentFrame / totalFrames.length) * 100)}%
         </Text>
       </Box>
@@ -212,15 +214,10 @@ export const IntroSequence: React.FC<IntroSequenceProps> = ({
       {/* Fade out overlay */}
       {fadeOut && (
         <Box
-          position="absolute"
-          top={0}
-          left={0}
-          height={height}
-          width={width}
           flexDirection="column"
           justifyContent="center"
           alignItems="center"
-          style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}
+          height={height}
         >
           <Text color={config?.colors?.accent_orange} bold>
             ♫ Initializing...

@@ -254,8 +254,15 @@ export class GuidelinesExecutor extends EventEmitter {
 
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
-      if (!step) continue;
-      const stepExecution = await this.executeStep(execution, step, i);
+      if (!step) {
+        continue;
+      }
+      // Convert GuidelineStep to StepDefinition
+      const stepDef: StepDefinition = {
+        ...step,
+        required: step.required ?? true // Default to required if not specified
+      };
+      const stepExecution = await this.executeStep(execution, stepDef, i);
 
       execution.steps.push(stepExecution);
 
@@ -440,28 +447,50 @@ export class GuidelinesExecutor extends EventEmitter {
     // Prepare Inspector payload
     const payload: InspectorPayload = {
       id: HashUtils.generateId(),
-      timestamp: TimeUtils.now(),
-      sourceSignals: [execution.triggerSignal],
-      classification: [],
-      recommendations: [],
-      context: {
-        summary: `Guideline execution for ${execution.guidelineId}`,
-        activePRPs: [],
-        blockedItems: [],
-        recentActivity: [],
-        tokenStatus: {
-          used: 0,
-          totalUsed: 0,
-          totalLimit: 100000,
-          approachingLimit: false,
-          criticalLimit: false,
-          agentBreakdown: {}
-        },
-        agentStatus: [],
-        sharedNotes: []
+      signalId: execution.triggerSignal.id,
+      classification: {
+        category: 'guideline_execution',
+        subcategory: guideline.category,
+        priority: guideline.priority === 'critical' ? 1 : 5,
+        confidence: 0.8,
+        urgency: guideline.priority,
+        suggestedRole: 'robo-system-analyst',
+        agentRole: 'robo-system-analyst',
+        reasoning: `Executing guideline: ${guideline.name}`,
+        suggestedActions: ['analyze', 'execute', 'validate'],
+        signal: execution.triggerSignal.id,
+        escalationLevel: 1,
+        deadline: new Date(Date.now() + 3600000), // 1 hour from now
+        dependencies: guideline.metadata.dependencies || []
       },
-      estimatedTokens: 1000,
-      priority: guideline.priority === 'critical' ? 1 : 5
+      context: {
+        id: HashUtils.generateId(),
+        signalId: execution.triggerSignal.id,
+        content: {
+          signalContent: JSON.stringify(execution.triggerSignal.data) || '',
+          agentContext: {
+            guidelineId: execution.guidelineId,
+            stepId: step.id,
+            stepName: step.name,
+            guidelineName: guideline.name
+          },
+          worktreeState: {
+            worktree: execution.context.worktree || '.',
+            environment: execution.context.additionalContext.environment
+          },
+          relevantFiles: [],
+          environment: execution.context.additionalContext.environment.constraints || {}
+        },
+        size: 1000,
+        compressed: false,
+        tokenCount: 1000,
+        summary: `Guideline execution for ${execution.guidelineId}`
+      },
+      recommendations: [],
+      timestamp: TimeUtils.now(),
+      size: 1000,
+      compressed: false,
+      estimatedTokens: 1000
     };
 
     // Get Inspector prompt for this guideline
@@ -773,10 +802,18 @@ export class GuidelinesExecutor extends EventEmitter {
     const criticalCount = classification.priorityIssues.filter((issue: Issue) => issue.severity === 'critical').length;
     const highCount = classification.priorityIssues.filter((issue: Issue) => issue.severity === 'high').length;
 
-    if (criticalCount > 0) return 'critical';
-    if (highCount > 0) return 'high';
-    if (classification.riskAssessment['security'] === 'high') return 'high';
-    if (classification.priorityIssues.length > 0) return 'medium';
+    if (criticalCount > 0) {
+      return 'critical';
+    }
+    if (highCount > 0) {
+      return 'high';
+    }
+    if (classification.riskAssessment['security'] === 'high') {
+      return 'high';
+    }
+    if (classification.priorityIssues.length > 0) {
+      return 'medium';
+    }
     return 'low';
   }
 
@@ -789,7 +826,7 @@ export class GuidelinesExecutor extends EventEmitter {
     switch (action.type) {
       case 'approve-pr':
         if (action.prNumber && action.message) {
-          return await this.approvePR(action.prNumber, action.message);
+          return this.approvePR(action.prNumber, action.message);
         }
         break;
       case 'request-changes':
@@ -801,13 +838,13 @@ export class GuidelinesExecutor extends EventEmitter {
             impact: 'Medium',
             severity: 'medium' as const
           }));
-          return await this.requestChanges(action.prNumber, action.message, issues);
+          return this.requestChanges(action.prNumber, action.message, issues);
         }
         break;
       case 'add-comments':
         if (action.prNumber && action.comments) {
           const stringComments = action.comments.map(comment => comment.body);
-          return await this.addComments(action.prNumber, stringComments);
+          return this.addComments(action.prNumber, stringComments);
         }
         break;
       case 'create-review':
@@ -816,16 +853,16 @@ export class GuidelinesExecutor extends EventEmitter {
           const reviewData = {
             body: action.review.body,
             event: action.review.state === 'APPROVED' ? 'APPROVE' as const :
-                  action.review.state === 'CHANGES_REQUESTED' ? 'REQUEST_CHANGES' as const :
+              action.review.state === 'CHANGES_REQUESTED' ? 'REQUEST_CHANGES' as const :
                   'COMMENT' as const,
             comments: [] // Could be populated from review comments if needed
           };
-          return await this.createReview(action.prNumber, reviewData);
+          return this.createReview(action.prNumber, reviewData);
         }
         break;
       case 'escalate':
         if (action.prNumber && action.reason) {
-          return await this.escalateReview(action.prNumber, action.reason);
+          return this.escalateReview(action.prNumber, action.reason);
         }
         break;
       default:
@@ -840,7 +877,7 @@ export class GuidelinesExecutor extends EventEmitter {
    */
   private async approvePR(prNumber: number, message: string): Promise<unknown> {
     const gitHubClient = getGitHubClient();
-    return await gitHubClient.createReview(prNumber, {
+    return gitHubClient.createReview(prNumber, {
       body: message,
       event: 'APPROVE'
     });
@@ -861,7 +898,7 @@ export class GuidelinesExecutor extends EventEmitter {
         body: `${issue.description}\n\n**Suggested Fix:** ${issue.suggested_fix || 'No suggested fix provided'}`
       }));
 
-    return await gitHubClient.createReview(prNumber, {
+    return gitHubClient.createReview(prNumber, {
       body: message,
       event: 'REQUEST_CHANGES' as const,
       comments: reviewComments
@@ -888,7 +925,7 @@ export class GuidelinesExecutor extends EventEmitter {
    */
   private async createReview(prNumber: number, review: { body: string; event: 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT' | 'PENDING'; comments?: { path: string; line: number; body: string; }[] }): Promise<unknown> {
     const gitHubClient = getGitHubClient();
-    return await gitHubClient.createReview(prNumber, review);
+    return gitHubClient.createReview(prNumber, review);
   }
 
   /**
@@ -897,7 +934,7 @@ export class GuidelinesExecutor extends EventEmitter {
   private async escalateReview(prNumber: number, reason: string): Promise<unknown> {
     const gitHubClient = getGitHubClient();
     const message = `🚨 ESCALATION REQUIRED 🚨\n\n${reason}\n\nThis PR requires human review and decision.`;
-    return await gitHubClient.postComment(prNumber, message);
+    return gitHubClient.postComment(prNumber, message);
   }
 
   /**
@@ -1068,7 +1105,32 @@ export class GuidelinesExecutor extends EventEmitter {
    */
   private async saveExecution(execution: GuidelineExecution): Promise<void> {
     try {
-      await storageManager.saveData(`executions/${execution.id}.json`, execution);
+      // Save as a signal to track execution
+      await storageManager.saveSignal({
+        id: execution.id,
+        type: 'guideline_execution_completed',
+        priority: 5,
+        source: 'guidelines-executor',
+        timestamp: execution.completedAt || TimeUtils.now(),
+        data: {
+          guidelineId: execution.guidelineId,
+          status: execution.status,
+          duration: execution.performance.totalDuration,
+          tokenUsage: execution.performance.tokenUsage,
+          result: execution.result
+        },
+        metadata: {
+          worktree: execution.context.worktree,
+          guideline: execution.guidelineId,
+          agent: 'guidelines-executor',
+          resolved: execution.status === 'completed',
+          resolvedAt: execution.completedAt,
+          resolution: execution.status
+        },
+        relatedSignals: [execution.triggerSignal.id],
+        childSignals: [],
+        parentSignal: execution.triggerSignal.id
+      });
       logger.debug('GuidelinesExecutor', `Execution ${execution.id} saved`);
     } catch (error) {
       logger.error('GuidelinesExecutor', 'Failed to save execution', error instanceof Error ? error : new Error(String(error)));

@@ -163,8 +163,9 @@ describe('Enhanced Signal Detector', () => {
       const signals = await detector.detectSignals(content);
 
       expect(signals).toHaveLength(1);
-      expect(signals[0].data.category).toBe('development');
-      expect(signals[0].type).toBe('dp');
+      const firstSignal = signals[0];
+      expect(firstSignal?.data?.category).toBe('development');
+      expect(firstSignal?.type).toBe('dp');
     });
 
     test('should categorize testing signals correctly', async () => {
@@ -172,8 +173,9 @@ describe('Enhanced Signal Detector', () => {
       const signals = await detector.detectSignals(content);
 
       expect(signals).toHaveLength(1);
-      expect(signals[0].data.category).toBe('testing');
-      expect(signals[0].type).toBe('tg');
+      const firstSignal = signals[0];
+      expect(firstSignal?.data?.category).toBe('testing');
+      expect(firstSignal?.type).toBe('tg');
     });
 
     test('should categorize release signals correctly', async () => {
@@ -181,8 +183,9 @@ describe('Enhanced Signal Detector', () => {
       const signals = await detector.detectSignals(content);
 
       expect(signals).toHaveLength(1);
-      expect(signals[0].data.category).toBe('release');
-      expect(signals[0].type).toBe('rl');
+      const firstSignal = signals[0];
+      expect(firstSignal?.data?.category).toBe('release');
+      expect(firstSignal?.type).toBe('rl');
     });
 
     test('should categorize coordination signals correctly', async () => {
@@ -190,8 +193,9 @@ describe('Enhanced Signal Detector', () => {
       const signals = await detector.detectSignals(content);
 
       expect(signals).toHaveLength(1);
-      expect(signals[0].data.category).toBe('coordination');
-      expect(signals[0].type).toBe('oa');
+      const firstSignal = signals[0];
+      expect(firstSignal?.data?.category).toBe('coordination');
+      expect(firstSignal?.type).toBe('oa');
     });
   });
 
@@ -228,9 +232,10 @@ describe('Enhanced Signal Detector', () => {
       const signals = await detector.detectSignals(content);
 
       expect(signals).toHaveLength(1);
-      expect(signals[0].type).toBe('CS');
-      expect(signals[0].data.category).toBe('custom');
-      expect(signals[0].priority).toBe(5);
+      const firstSignal = signals[0];
+      expect(firstSignal?.type).toBe('CS');
+      expect(firstSignal?.data?.category).toBe('custom');
+      expect(firstSignal?.priority).toBe(5);
     });
 
     test('should remove custom patterns', () => {
@@ -313,7 +318,7 @@ describe('Enhanced Signal Detector', () => {
     test('should reject invalid patterns', () => {
       const invalidPattern = {
         name: '', // Empty name
-        pattern: 'not-a-regex', // Not a RegExp
+        pattern: /not-a-regex/, // RegExp but invalid pattern format
         category: '', // Empty category
         priority: 15, // Invalid priority
         description: '', // Empty description
@@ -388,7 +393,8 @@ describe('Enhanced Signal Detector', () => {
       const signals = await detector.detectSignals(content);
 
       expect(signals).toHaveLength(1);
-      expect(signals[0].type).toBe('dp');
+      const firstSignal = signals[0];
+      expect(firstSignal?.type).toBe('dp');
     });
   });
 });

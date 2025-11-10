@@ -4,7 +4,13 @@
  * DevOps and Site Reliability Engineering agent.
  */
 
-import { BaseAgent, AgentCapabilities, AgentLimits, AgentStatus, AgentMetrics } from './base-agent.js';
+import {
+  BaseAgent,
+  AgentCapabilities,
+  AgentLimits,
+  AgentStatus,
+  AgentMetrics
+} from './base-agent.js';
 
 export class RoboDevOpsSRE implements BaseAgent {
   id = 'robo-devops-sre';
@@ -78,7 +84,7 @@ export class RoboDevOpsSRE implements BaseAgent {
 
       this.metrics.tasksCompleted++;
       this.status.status = 'idle';
-      this.status.currentTask = undefined;
+      delete this.status.currentTask;
       this.status.lastActivity = new Date();
 
       return result;

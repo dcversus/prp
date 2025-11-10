@@ -88,7 +88,7 @@ export class ContextBrokerImpl implements AgentContextBroker {
         session.lastActivity = new Date();
       }
 
-      logger.info('shareContext', `Context shared successfully`, {
+      logger.info('shareContext', 'Context shared successfully', {
         fromAgent,
         toAgent,
         contextId,
@@ -130,7 +130,7 @@ export class ContextBrokerImpl implements AgentContextBroker {
       selectedContext.accessCount++;
       selectedContext.lastAccessed = new Date();
 
-      logger.info('requestContext', `Context provided to agent`, {
+      logger.info('requestContext', 'Context provided to agent', {
         agent,
         contextType,
         contextId: selectedContext.id
@@ -168,7 +168,7 @@ export class ContextBrokerImpl implements AgentContextBroker {
       // Store session
       this.activeSessions.set(session.id, session);
 
-      logger.info('establishContextSession', `Context session established`, {
+      logger.info('establishContextSession', 'Context session established', {
         sessionId: session.id,
         participants: participants.length
       });
@@ -244,7 +244,7 @@ export class ContextBrokerImpl implements AgentContextBroker {
       // Mark as expired
       shareRecord.expiresAt = new Date();
 
-      logger.info('revokeContext', `Context share revoked`, {
+      logger.info('revokeContext', 'Context share revoked', {
         shareRecordId,
         revokingAgent,
         contextId: shareRecord.contextId
@@ -302,7 +302,7 @@ export class ContextBrokerImpl implements AgentContextBroker {
     }
 
     if (cleanedSessions > 0 || cleanedShares > 0) {
-      logger.info('cleanup', `Cleanup completed`, {
+      logger.info('cleanup', 'Cleanup completed', {
         cleanedSessions,
         cleanedShares
       });

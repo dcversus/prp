@@ -2,15 +2,14 @@
  * VideoIntro Component Tests
  */
 
-import { renderHook, act } from '@testing-library/react';
-import { useState } from 'react';
-import { VideoIntro } from '../VideoIntro.js';
-import { TUIConfig } from '../../types/TUIConfig.js';
+import type { TUIConfig } from '../../../shared/types/TUIConfig.js';
 
+// Import will be used when component is properly exported
+// import { VideoIntro } from '../VideoIntro.js';
 // Mock ink components
 jest.mock('ink', () => ({
   Text: ({ children, color }: { children: React.ReactNode; color?: string }) =>
-    `<Text color="${color || 'default'}">${children}</Text>`,
+    `<Text color="${color || 'default'}">${children}</Text>`
 }));
 
 // Mock process.stdin for tests
@@ -72,7 +71,7 @@ describe('VideoIntro', () => {
         fps: 12
       }
     }
-  } as TUIConfig;
+  } as unknown as TUIConfig;
 
   let mockOnComplete: jest.Mock;
 
@@ -112,9 +111,15 @@ describe('VideoIntro', () => {
 
     // Test symbol progression logic
     const getSymbolForProgress = (progress: number): typeof symbols[number] => {
-      if (progress < 0.3) return '♪';
-      if (progress < 0.6) return '♩';
-      if (progress < 0.8) return '♬';
+      if (progress < 0.3) {
+        return '♪';
+      }
+      if (progress < 0.6) {
+        return '♩';
+      }
+      if (progress < 0.8) {
+        return '♬';
+      }
       return '♫';
     };
 
@@ -126,8 +131,12 @@ describe('VideoIntro', () => {
 
   it('should handle radial vignette alpha calculations correctly', () => {
     const getRadialAlpha = (progress: number): number => {
-      if (progress < 0.1) return progress / 0.1;
-      if (progress > 0.9) return (1 - progress) / 0.1;
+      if (progress < 0.1) {
+        return progress / 0.1;
+      }
+      if (progress > 0.9) {
+        return (1 - progress) / 0.1;
+      }
       return 1;
     };
 
@@ -163,8 +172,6 @@ describe('VideoIntro', () => {
   });
 
   it('should handle orbit note rotation calculations', () => {
-    const orbitRadius = Math.min(120, 34) / 6; // ~5.67
-
     // Test orbit angle progression
     const getOrbitAngle = (progress: number): number => {
       return progress * Math.PI * 2; // Full rotation
@@ -181,7 +188,8 @@ describe('VideoIntro', () => {
     // Test ramp index calculation
     const getRampChar = (alpha: number): string => {
       const rampIndex = Math.floor(alpha * (asciiRamp.length - 1));
-      return asciiRamp[Math.min(rampIndex, asciiRamp.length - 1)];
+      const index = Math.min(Math.max(0, rampIndex), asciiRamp.length - 1);
+      return asciiRamp[index] || ' ';
     };
 
     expect(getRampChar(0)).toBe('  ');
@@ -219,8 +227,12 @@ describe('VideoIntro', () => {
 
     // Test morph symbol selection
     const getMorphSymbol = (progress: number): string => {
-      if (progress < 0.3) return '♪';
-      if (progress < 0.6) return '♬';
+      if (progress < 0.3) {
+        return '♪';
+      }
+      if (progress < 0.6) {
+        return '♬';
+      }
       return '♫';
     };
 
@@ -253,21 +265,87 @@ describe('VideoIntro Performance', () => {
 describe('VideoIntro Integration', () => {
   it('should work with TUI config system', () => {
     const config: TUIConfig = {
+      enabled: true,
+      theme: 'dark',
       colors: {
         base_fg: '#FFFFFF',
         accent_orange: '#FF9A38',
-        role_colors: {
-          'robo-aqa': '#B48EAD'
-        }
+        accent_orange_dim: '#E67E00',
+        accent_orange_bg: '#FF9A38',
+        robo_aqa: '#B48EAD',
+        robo_quality_control: '#F7B267',
+        robo_system_analyst: '#F4A261',
+        robo_developer: '#E76F51',
+        robo_devops_sre: '#2A9D8F',
+        robo_ux_ui: '#E9C46A',
+        robo_legal_compliance: '#264653',
+        orchestrator: '#FF9A38',
+        robo_aqa_dim: '#8B7396',
+        robo_quality_control_dim: '#C8944D',
+        robo_system_analyst_dim: '#C8804D',
+        robo_developer_dim: '#B8573F',
+        robo_devops_sre_dim: '#1D7569',
+        robo_ux_ui_dim: '#B8944F',
+        robo_legal_compliance_dim: '#1C3439',
+        orchestrator_dim: '#C8944D',
+        robo_aqa_bg: '#B48EAD',
+        robo_quality_control_bg: '#F7B267',
+        robo_system_analyst_bg: '#F4A261',
+        robo_developer_bg: '#E76F51',
+        robo_devops_sre_bg: '#2A9D8F',
+        robo_ux_ui_bg: '#E9C46A',
+        robo_legal_compliance_bg: '#264653',
+        orchestrator_bg: '#FF9A38',
+        base_bg: '#000000',
+        muted: '#666666',
+        error: '#FF6B6B',
+        warn: '#FFA726',
+        ok: '#66BB6A',
+        gray: '#9E9E9E',
+        signal_braces: '#FF9A38',
+        signal_placeholder: '#666666'
       },
       animations: {
+        enabled: true,
         intro: {
           enabled: true,
           duration: 10000,
           fps: 12
+        },
+        status: {
+          enabled: true,
+          fps: 4
+        },
+        signals: {
+          enabled: true,
+          waveSpeed: 200,
+          blinkSpeed: 500
         }
+      },
+      layout: {
+        responsive: true,
+        breakpoints: {
+          compact: 80,
+          normal: 100,
+          wide: 120,
+          ultrawide: 160
+        },
+        padding: {
+          horizontal: 2,
+          vertical: 1
+        }
+      },
+      input: {
+        maxTokens: 100000,
+        tokenReserve: 0.1,
+        pasteTimeout: 5000
+      },
+      debug: {
+        enabled: false,
+        maxLogLines: 100,
+        showFullJSON: false
       }
-    } as TUIConfig;
+    };
 
     expect(config.animations.intro.enabled).toBe(true);
     expect(config.animations.intro.duration).toBe(10000);

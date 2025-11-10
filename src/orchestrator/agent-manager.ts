@@ -141,7 +141,7 @@ export class AgentManager extends EventEmitter {
 
       // Terminate all agent processes
       const stopPromises = Array.from(this.activeSessions.entries()).map(
-        async ([sessionId,]) => {
+        async ([sessionId]) => {
           try {
             await this.terminateAgent(sessionId);
           } catch (error) {
@@ -174,8 +174,8 @@ export class AgentManager extends EventEmitter {
         id: sessionId,
         name: agentProcess.session.agentConfig.name,
         status: agentProcess.session.status === 'idle' ? 'idle' :
-                agentProcess.session.status === 'busy' ? 'busy' :
-                agentProcess.session.status === 'error' ? 'error' : 'offline',
+          agentProcess.session.status === 'busy' ? 'busy' :
+            agentProcess.session.status === 'error' ? 'error' : 'offline',
         currentTask: agentProcess.session.currentTask?.description,
         lastActivity: agentProcess.session.lastActivity,
         tokenUsage: {
@@ -311,7 +311,7 @@ export class AgentManager extends EventEmitter {
     }
 
     // Create new session
-    return await this.createAgentSession(agentConfig);
+    return this.createAgentSession(agentConfig);
   }
 
   /**

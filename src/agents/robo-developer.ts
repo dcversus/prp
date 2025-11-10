@@ -4,7 +4,13 @@
  * Software development and implementation agent.
  */
 
-import { BaseAgent, AgentCapabilities, AgentLimits, AgentStatus, AgentMetrics } from './base-agent.js';
+import {
+  BaseAgent,
+  AgentCapabilities,
+  AgentLimits,
+  AgentStatus,
+  AgentMetrics
+} from './base-agent.js';
 
 export class RoboDeveloper implements BaseAgent {
   id = 'robo-developer';
@@ -74,7 +80,7 @@ export class RoboDeveloper implements BaseAgent {
 
       this.metrics.tasksCompleted++;
       this.status.status = 'idle';
-      this.status.currentTask = undefined;
+      delete this.status.currentTask;
       this.status.lastActivity = new Date();
 
       return result;

@@ -16,6 +16,7 @@ export class EnsembleClassifier {
 
   constructor(name: string, _method: string = 'rule-based') {
     this.name = name;
+    // Store method for future use when implementing multiple classification methods
   }
 
   /**
@@ -36,16 +37,33 @@ export class EnsembleClassifier {
       subcategory,
       confidence,
       categoryConfidence: confidence,
-      categoryAlternatives: this.getAlternatives(category),
+      categoryAlternatives: this.getAlternatives(category).map(alt => alt.category),
       successfulClassifiers: 1,
-      priorityReasoning: this.generateReasoning(signal, features, category)
-    } as EnsembleResult;
+      priorityReasoning: this.generateReasoning(signal, features, category),
+      classifications: [
+        {
+          category,
+          subcategory,
+          confidence,
+          reasoning: this.generateReasoning(signal, features, category)
+        }
+      ],
+      consensus: {
+        achieved: true,
+        confidence,
+        agreementRatio: 1,
+        conflictingClassifiers: 0,
+        selectedCategory: category
+      },
+      timestamp: new Date()
+    } as unknown as EnsembleResult;
   }
 
   /**
    * Determine primary category based on signal type and features
    */
   private determineCategory(signal: Signal, _features: SignalFeatures): string {
+    // Features parameter will be used for more sophisticated classification in future
     const signalTypeMap: Record<string, string> = {
       'dp': 'development',
       'tg': 'quality',        // Test green signals
@@ -79,6 +97,7 @@ export class EnsembleClassifier {
    * Determine subcategory based on signal details
    */
   private determineSubcategory(signal: Signal, _features: SignalFeatures): string {
+    // Features parameter will be used for more sophisticated classification in future
     const subcategoryMap: Record<string, string> = {
       'dp': 'progress',
       'tg': 'testing',
@@ -169,7 +188,7 @@ export class EnsembleClassifier {
       `Signal type '${signal.type}' maps to category '${category}'`,
       `Linguistic clarity score: ${features.linguistic.clarity.toFixed(2)}`,
       `Signal contains ${features.linguistic.keywords.length} keywords`,
-      `Historical patterns support this classification`
+      'Historical patterns support this classification'
     ];
 
     return reasons.join('; ');

@@ -42,7 +42,7 @@ export const useTerminalDimensions = (): TerminalDimensions => {
 
   useEffect(() => {
     // Listen for terminal resize events
-    if (process.stdout && typeof process.stdout.on === 'function') {
+    if (process.stdout?.on) {
       process.stdout.on('resize', updateDimensions);
       process.stderr.on('resize', updateDimensions);
 
@@ -73,84 +73,94 @@ export const useTerminalDimensionsWithColumns = (): TerminalDimensionsWithColumn
  * Fallback function to get terminal width with reasonable defaults
  */
 function getTerminalWidth(): number {
-  try {
-    // Try process.stdout.getWindowSize first (most reliable)
-    if (process.stdout && typeof process.stdout.getWindowSize === 'function') {
-      const [width] = process.stdout.getWindowSize();
-      if (width && width > 0) return width;
-    }
-
-    // Try process.stdout.columns
-    if (process.stdout && process.stdout.columns && process.stdout.columns > 0) {
-      return process.stdout.columns;
-    }
-
-    // Try environment variables
-    const cols = process.env.COLUMNS;
-    if (cols && !isNaN(parseInt(cols, 10))) {
-      return parseInt(cols, 10);
-    }
-
-    // Try to parse from tput command (fallback)
-    const { execSync } = require('child_process');
+  // Try process.stdout.getWindowSize first (most reliable)
+  if (process.stdout && typeof process.stdout.getWindowSize === 'function') {
     try {
-      const output = execSync('tput cols 2>/dev/null', {
-        encoding: 'utf8',
-        timeout: 1000
-      }).trim();
-      const parsed = parseInt(output, 10);
-      if (parsed && parsed > 0) return parsed;
+      const [width] = process.stdout.getWindowSize();
+      if (width && width > 0) {
+        return width;
+      }
     } catch {
-      // Ignore errors from tput
+      // Continue to next method
     }
-
-    // Return reasonable default
-    return 80;
-  } catch {
-    return 80; // Safe default
   }
+
+  // Try process.stdout.columns
+  if (process.stdout && process.stdout.columns && process.stdout.columns > 0) {
+    return process.stdout.columns;
+  }
+
+  // Try environment variables
+  const cols = process.env.COLUMNS;
+  if (cols && !isNaN(parseInt(cols, 10))) {
+    return parseInt(cols, 10);
+  }
+
+  // Try to parse from tput command (fallback)
+  try {
+     
+    const { execSync } = require('child_process');
+    const output = execSync('tput cols 2>/dev/null', {
+      encoding: 'utf8',
+      timeout: 1000
+    }).trim();
+    const parsed = parseInt(output, 10);
+    if (parsed && parsed > 0) {
+      return parsed;
+    }
+  } catch {
+    // Ignore errors from tput
+  }
+
+  // Return reasonable default
+  return 80;
 }
 
 /**
  * Fallback function to get terminal height with reasonable defaults
  */
 function getTerminalHeight(): number {
-  try {
-    // Try process.stdout.getWindowSize first (most reliable)
-    if (process.stdout && typeof process.stdout.getWindowSize === 'function') {
-      const [, height] = process.stdout.getWindowSize();
-      if (height && height > 0) return height;
-    }
-
-    // Try process.stdout.rows
-    if (process.stdout && process.stdout.rows && process.stdout.rows > 0) {
-      return process.stdout.rows;
-    }
-
-    // Try environment variables
-    const rows = process.env.LINES;
-    if (rows && !isNaN(parseInt(rows, 10))) {
-      return parseInt(rows, 10);
-    }
-
-    // Try to parse from tput command (fallback)
-    const { execSync } = require('child_process');
+  // Try process.stdout.getWindowSize first (most reliable)
+  if (process.stdout && typeof process.stdout.getWindowSize === 'function') {
     try {
-      const output = execSync('tput lines 2>/dev/null', {
-        encoding: 'utf8',
-        timeout: 1000
-      }).trim();
-      const parsed = parseInt(output, 10);
-      if (parsed && parsed > 0) return parsed;
+      const [, height] = process.stdout.getWindowSize();
+      if (height && height > 0) {
+        return height;
+      }
     } catch {
-      // Ignore errors from tput
+      // Continue to next method
     }
-
-    // Return reasonable default
-    return 24;
-  } catch {
-    return 24; // Safe default
   }
+
+  // Try process.stdout.rows
+  if (process.stdout && process.stdout.rows && process.stdout.rows > 0) {
+    return process.stdout.rows;
+  }
+
+  // Try environment variables
+  const rows = process.env.LINES;
+  if (rows && !isNaN(parseInt(rows, 10))) {
+    return parseInt(rows, 10);
+  }
+
+  // Try to parse from tput command (fallback)
+  try {
+     
+    const { execSync } = require('child_process');
+    const output = execSync('tput lines 2>/dev/null', {
+      encoding: 'utf8',
+      timeout: 1000
+    }).trim();
+    const parsed = parseInt(output, 10);
+    if (parsed && parsed > 0) {
+      return parsed;
+    }
+  } catch {
+    // Ignore errors from tput
+  }
+
+  // Return reasonable default
+  return 24;
 }
 
 /**

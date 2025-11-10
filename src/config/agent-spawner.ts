@@ -7,14 +7,10 @@
 
 import { EventEmitter } from 'events';
 import { spawn, ChildProcess } from 'child_process';
-import { createLayerLogger, HashUtils } from '../shared';
-import {
-  AgentConfig,
-  AgentType,
-  AgentRole,
-  } from './agent-config';
+import { createLayerLogger, HashUtils } from '../shared/index.js';
+import { AgentConfig, AgentType, AgentRole } from './agent-config';
 import { AgentDiscovery, DiscoveredAgent } from './agent-discovery';
-import { AgentValidator, ValidationResult } from './agent-validator';
+import type { ValidationResult } from './config-validator';
 
 const logger = createLayerLogger('config');
 
@@ -80,7 +76,16 @@ export interface SpawnedAgent {
 }
 
 export interface AgentLifecycleStatus {
-  state: 'initializing' | 'starting' | 'running' | 'busy' | 'idle' | 'stopping' | 'stopped' | 'error' | 'crashed';
+  state:
+    | 'initializing'
+    | 'starting'
+    | 'running'
+    | 'busy'
+    | 'idle'
+    | 'stopping'
+    | 'stopped'
+    | 'error'
+    | 'crashed';
   progress: number; // 0-100
   message: string;
   lastStateChange: Date;
@@ -224,9 +229,9 @@ export class AgentSpawner extends EventEmitter {
   private maxConcurrentSpawns: number = 10;
   private currentSpawns: number = 0;
 
-  constructor(discovery?: AgentDiscovery, _validator?: AgentValidator) {
+  constructor(discovery?: AgentDiscovery) {
     super();
-    this.discovery = discovery || new AgentDiscovery();
+    this.discovery = discovery ?? new AgentDiscovery();
     this.pool = {
       agents: new Map(),
       byRole: new Map(),
@@ -241,11 +246,13 @@ export class AgentSpawner extends EventEmitter {
   /**
    * Start the spawner system
    */
-  async start(options: {
-    cleanupInterval?: number; // milliseconds
-    healthCheckInterval?: number; // milliseconds
-    maxConcurrentSpawns?: number;
-  } = {}): Promise<void> {
+  async start(
+    options: {
+      cleanupInterval?: number; // milliseconds
+      healthCheckInterval?: number; // milliseconds
+      maxConcurrentSpawns?: number;
+    } = {}
+  ): Promise<void> {
     logger.info('AgentSpawner', 'Starting agent spawner system');
 
     const {
@@ -258,14 +265,14 @@ export class AgentSpawner extends EventEmitter {
 
     // Start cleanup interval
     this.cleanupInterval = setInterval(() => {
-      this.performCleanup().catch(error => {
+      this.performCleanup().catch((error) => {
         logger.error('AgentSpawner', 'Cleanup failed', error);
       });
     }, cleanupInterval);
 
     // Start health check interval
     this.healthCheckInterval = setInterval(() => {
-      this.performHealthChecks().catch(error => {
+      this.performHealthChecks().catch((error) => {
         logger.error('AgentSpawner', 'Health checks failed', error);
       });
     }, healthCheckInterval);
@@ -283,7 +290,7 @@ export class AgentSpawner extends EventEmitter {
     logger.info('AgentSpawner', 'Stopping agent spawner system');
 
     // Stop all agents
-    const stopPromises = Array.from(this.pool.agents.values()).map(agent =>
+    const stopPromises = Array.from(this.pool.agents.values()).map((agent) =>
       this.stopAgent(agent.id)
     );
 
@@ -323,7 +330,7 @@ export class AgentSpawner extends EventEmitter {
           success: false,
           error: {
             code: 'INVALID_REQUEST',
-            message: validation.errors.map(e => e.message).join(', '),
+            message: validation.errors.map((e) => e.message).join(', '),
             timestamp: new Date(),
             recoverable: false
           },
@@ -368,7 +375,7 @@ export class AgentSpawner extends EventEmitter {
         requiredCapabilities: request.requirements.capabilities,
         preferredRole: request.role,
         maxCost: request.requirements.maxCost,
-        minHealth: request.requirements.minPerformance || 80,
+        minHealth: request.requirements.minPerformance ?? 80,
         excludeBusy: true
       });
 
@@ -403,13 +410,17 @@ export class AgentSpawner extends EventEmitter {
         agent: spawnedAgent,
         duration: Date.now() - startTime
       };
-
     } catch (error) {
       const duration = Date.now() - startTime;
-      logger.error('AgentSpawner', 'Spawn failed', error instanceof Error ? error : new Error(String(error)), {
-        requestId: request.id,
-        duration
-      });
+      logger.error(
+        'AgentSpawner',
+        'Spawn failed',
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          requestId: request.id,
+          duration
+        }
+      );
 
       return {
         success: false,
@@ -428,11 +439,14 @@ export class AgentSpawner extends EventEmitter {
   /**
    * Stop an agent
    */
-  async stopAgent(agentId: string, options: {
-    graceful?: boolean;
-    timeout?: number;
-    force?: boolean;
-  } = {}): Promise<boolean> {
+  async stopAgent(
+    agentId: string,
+    options: {
+      graceful?: boolean;
+      timeout?: number;
+      force?: boolean;
+    } = {}
+  ): Promise<boolean> {
     const agent = this.pool.agents.get(agentId);
     if (!agent) {
       return false;
@@ -446,7 +460,7 @@ export class AgentSpawner extends EventEmitter {
 
       if (agent.process && !agent.process.killed) {
         if (options.graceful || options.force) {
-          const timeout = options.timeout || agent.request.options.gracefulShutdownTimeout || 10000;
+          const timeout = options.timeout ?? agent.request.options.gracefulShutdownTimeout ?? 10000;
 
           // Try graceful shutdown first
           if (!options.force) {
@@ -457,7 +471,7 @@ export class AgentSpawner extends EventEmitter {
                 resolve();
               }, timeout);
 
-              agent.process!.once('exit', () => {
+              agent.process?.once('exit', () => {
                 clearTimeout(timer);
                 resolve();
               });
@@ -467,9 +481,7 @@ export class AgentSpawner extends EventEmitter {
           }
 
           // Force kill if still running
-          if (!agent.process.killed) {
-            agent.process.kill('SIGKILL');
-          }
+          agent.process.kill('SIGKILL');
         } else {
           agent.process.kill();
         }
@@ -482,11 +494,15 @@ export class AgentSpawner extends EventEmitter {
       this.emit('agent-stopped', { agentId, agent });
 
       return true;
-
     } catch (error) {
-      logger.error('AgentSpawner', 'Failed to stop agent', error instanceof Error ? error : new Error(String(error)), {
-        agentId
-      });
+      logger.error(
+        'AgentSpawner',
+        'Failed to stop agent',
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          agentId
+        }
+      );
       return false;
     }
   }
@@ -504,19 +520,17 @@ export class AgentSpawner extends EventEmitter {
 
     if (filter) {
       if (filter.role) {
-        agents = agents.filter(agent => agent.config.role === filter.role);
+        agents = agents.filter((agent) => agent.config.role === filter.role);
       }
       if (filter.type) {
-        agents = agents.filter(agent => agent.config.type === filter.type);
+        agents = agents.filter((agent) => agent.config.type === filter.type);
       }
       if (filter.status) {
-        agents = agents.filter(agent => agent.status.state === filter.status);
+        agents = agents.filter((agent) => agent.status.state === filter.status);
       }
       if (filter.healthy !== undefined) {
-        agents = agents.filter(agent =>
-          filter.healthy ?
-          agent.health.overall === 'healthy' :
-          agent.health.overall !== 'healthy'
+        agents = agents.filter((agent) =>
+          filter.healthy ? agent.health.overall === 'healthy' : agent.health.overall !== 'healthy'
         );
       }
     }
@@ -568,22 +582,34 @@ export class AgentSpawner extends EventEmitter {
     totalResources: AllocatedResources;
     averageUptime: number;
     successRate: number;
-  } {
+    } {
     const agents = Array.from(this.pool.agents.values());
 
     const stats = {
       totalAgents: agents.length,
-      runningAgents: agents.filter(a => a.status.state === 'running').length,
-      idleAgents: agents.filter(a => a.status.state === 'idle').length,
-      failedAgents: agents.filter(a => a.status.state === 'error' || a.status.state === 'crashed').length,
+      runningAgents: agents.filter((a) => a.status.state === 'running').length,
+      idleAgents: agents.filter((a) => a.status.state === 'idle').length,
+      failedAgents: agents.filter((a) => a.status.state === 'error' || a.status.state === 'crashed')
+        .length,
       queuedRequests: this.spawnQueue.length,
       totalResources: this.pool.totalResources,
-      averageUptime: agents.length > 0
-        ? agents.reduce((sum, a) => sum + a.performance.uptime, 0) / agents.length
-        : 0,
-      successRate: agents.length > 0
-        ? agents.reduce((sum, a) => sum + (a.performance.requestCount > 0 ? a.performance.successCount / a.performance.requestCount : 1), 0) / agents.length * 100
-        : 100
+      averageUptime:
+        agents.length > 0
+          ? agents.reduce((sum, a) => sum + a.performance.uptime, 0) / agents.length
+          : 0,
+      successRate:
+        agents.length > 0
+          ? (agents.reduce(
+            (sum, a) =>
+              sum +
+                (a.performance.requestCount > 0
+                  ? a.performance.successCount / a.performance.requestCount
+                  : 1),
+            0
+          ) /
+              agents.length) *
+            100
+          : 100
     };
 
     return stats;
@@ -602,7 +628,10 @@ export class AgentSpawner extends EventEmitter {
 
     try {
       while (this.spawnQueue.length > 0 && this.currentSpawns < this.maxConcurrentSpawns) {
-        const request = this.spawnQueue.shift()!;
+        const request = this.spawnQueue.shift();
+        if (!request) {
+          break;
+        }
         this.currentSpawns++;
 
         // Process spawn request asynchronously
@@ -625,12 +654,14 @@ export class AgentSpawner extends EventEmitter {
     if (!request.agentId || !request.requester) {
       return {
         valid: false,
-        errors: [{
-          field: 'request',
-          message: 'Missing required fields',
-          code: 'INVALID_REQUEST',
-          severity: 'error'
-        }],
+        errors: [
+          {
+            field: 'request',
+            message: 'Missing required fields',
+            code: 'INVALID_REQUEST',
+            severity: 'error'
+          }
+        ],
         warnings: [],
         suggestions: [],
         securityScore: 0,
@@ -652,15 +683,36 @@ export class AgentSpawner extends EventEmitter {
       };
     }
 
-    return { valid: true, errors: [], warnings: [], suggestions: [], securityScore: 100, performanceScore: 100, compatibilityScore: 100, recommendations: [], estimatedCosts: { perRequest: { min: 0, max: 0, average: 0 }, perDay: { min: 0, max: 0, average: 0 }, perMonth: { min: 0, max: 0, average: 0 }, currency: 'USD' }, resourceUsage: { memory: { min: 0, max: 0, recommended: 0 }, cpu: { min: 0, max: 0, recommended: 0 }, storage: { temp: 0, persistent: 0 }, network: { bandwidth: 0, requests: 0 } } };
+    return {
+      valid: true,
+      errors: [],
+      warnings: [],
+      suggestions: [],
+      securityScore: 100,
+      performanceScore: 100,
+      compatibilityScore: 100,
+      recommendations: [],
+      estimatedCosts: {
+        perRequest: { min: 0, max: 0, average: 0 },
+        perDay: { min: 0, max: 0, average: 0 },
+        perMonth: { min: 0, max: 0, average: 0 },
+        currency: 'USD'
+      },
+      resourceUsage: {
+        memory: { min: 0, max: 0, recommended: 0 },
+        cpu: { min: 0, max: 0, recommended: 0 },
+        storage: { temp: 0, persistent: 0 },
+        network: { bandwidth: 0, requests: 0 }
+      }
+    };
   }
 
   private async findReusableAgent(request: SpawnRequest): Promise<SpawnedAgent | undefined> {
     const agents = Array.from(this.pool.agents.values());
 
     // Find running agents that match requirements
-    const candidates = agents.filter(agent =>
-      agent.status.state === 'running' || agent.status.state === 'idle'
+    const candidates = agents.filter(
+      (agent) => agent.status.state === 'running' || agent.status.state === 'idle'
     );
 
     for (const candidate of candidates) {
@@ -670,13 +722,13 @@ export class AgentSpawner extends EventEmitter {
       }
 
       // Check capabilities
-      const hasAllCapabilities = request.requirements.capabilities.every(cap => {
+      const hasAllCapabilities = request.requirements.capabilities.every((cap) => {
         // Check against various capability properties
         const capabilityMap = {
-          'tools': candidate.config.capabilities.supportsTools,
-          'images': candidate.config.capabilities.supportsImages,
+          tools: candidate.config.capabilities.supportsTools,
+          images: candidate.config.capabilities.supportsImages,
           'sub-agents': candidate.config.capabilities.supportsSubAgents,
-          'parallel': candidate.config.capabilities.supportsParallel,
+          parallel: candidate.config.capabilities.supportsParallel,
           'code-execution': candidate.config.capabilities.supportsCodeExecution,
           'file-system': candidate.config.capabilities.canAccessFileSystem,
           'command-execution': candidate.config.capabilities.canExecuteCommands
@@ -702,7 +754,10 @@ export class AgentSpawner extends EventEmitter {
     return undefined;
   }
 
-  private async doSpawnAgent(discoveredAgent: DiscoveredAgent, request: SpawnRequest): Promise<SpawnedAgent> {
+  private async doSpawnAgent(
+    discoveredAgent: DiscoveredAgent,
+    request: SpawnRequest
+  ): Promise<SpawnedAgent> {
     const spawnId = HashUtils.generateId();
     const agentId = `${discoveredAgent.config.id}-${spawnId.slice(0, 8)}`;
 
@@ -721,7 +776,7 @@ export class AgentSpawner extends EventEmitter {
         lastStateChange: new Date(),
         errors: [],
         restartCount: 0,
-        maxRestarts: request.options.maxRetries || 3
+        maxRestarts: request.options.maxRetries ?? 3
       },
       resources: this.createEmptyResources(),
       performance: {
@@ -745,7 +800,7 @@ export class AgentSpawner extends EventEmitter {
       metadata: {
         spawnId,
         environment: { ...discoveredAgent.config.environment.envVars },
-        workingDirectory: discoveredAgent.config.environment.workingDirectory || process.cwd(),
+        workingDirectory: discoveredAgent.config.environment.workingDirectory ?? process.cwd(),
         command: 'node',
         args: ['src/index.js', '--agent', agentId],
         endpoints: [],
@@ -763,10 +818,14 @@ export class AgentSpawner extends EventEmitter {
       spawnedAgent.status.message = 'Starting agent process...';
 
       const processArgs = [
-        '--agent-id', agentId,
-        '--config', discoveredAgent.config.id,
-        '--role', request.role || discoveredAgent.config.role,
-        '--spawn-id', spawnId
+        '--agent-id',
+        agentId,
+        '--config',
+        discoveredAgent.config.id,
+        '--role',
+        request.role ?? discoveredAgent.config.role,
+        '--spawn-id',
+        spawnId
       ];
 
       if (request.options.debugMode) {
@@ -839,7 +898,7 @@ export class AgentSpawner extends EventEmitter {
       });
 
       // Set up stdout/stderr handlers
-      childProcess.stdout?.on('data', (data) => {
+      childProcess.stdout.on('data', (data) => {
         const message = data.toString().trim();
         if (message) {
           spawnedAgent.metadata.logs.push({
@@ -851,7 +910,7 @@ export class AgentSpawner extends EventEmitter {
         }
       });
 
-      childProcess.stderr?.on('data', (data) => {
+      childProcess.stderr.on('data', (data) => {
         const message = data.toString().trim();
         if (message) {
           spawnedAgent.metadata.logs.push({
@@ -870,7 +929,7 @@ export class AgentSpawner extends EventEmitter {
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
           reject(new Error('Agent startup timeout'));
-        }, request.options.timeout || 30000);
+        }, request.options.timeout ?? 30000);
 
         childProcess.once('spawn', () => {
           clearTimeout(timeout);
@@ -884,7 +943,6 @@ export class AgentSpawner extends EventEmitter {
       });
 
       return spawnedAgent;
-
     } catch (error) {
       spawnedAgent.status.state = 'error';
       spawnedAgent.status.message = `Spawn failed: ${error instanceof Error ? error.message : String(error)}`;
@@ -919,11 +977,15 @@ export class AgentSpawner extends EventEmitter {
       this.updateIndexes(result);
 
       this.emit('agent-restarted', { oldAgentId: agentId, newAgent: result });
-
     } catch (error) {
-      logger.error('AgentSpawner', 'Agent restart failed', error instanceof Error ? error : new Error(String(error)), {
-        agentId
-      });
+      logger.error(
+        'AgentSpawner',
+        'Agent restart failed',
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          agentId
+        }
+      );
     }
   }
 
@@ -944,7 +1006,8 @@ export class AgentSpawner extends EventEmitter {
     agent.resources.disk.allocated = 100; // 100MB for temporary files
     agent.resources.network.bandwidth = 10; // 10 Mbps
 
-    agent.resources.tokens.allocated = config.limits.maxTokensPerRequest * config.limits.maxRequestsPerDay;
+    agent.resources.tokens.allocated =
+      config.limits.maxTokensPerRequest * config.limits.maxRequestsPerDay;
     agent.resources.cost.allocated = config.limits.maxCostPerDay;
 
     // Update total resources
@@ -993,7 +1056,7 @@ export class AgentSpawner extends EventEmitter {
 
     for (const [agentId, agent] of this.pool.agents) {
       // Remove agents with expired TTL
-      if (agent.ttl && (now.getTime() - agent.createdAt.getTime()) > agent.ttl) {
+      if (agent.ttl && now.getTime() - agent.createdAt.getTime() > agent.ttl) {
         agentsToRemove.push(agentId);
         continue;
       }
@@ -1001,7 +1064,8 @@ export class AgentSpawner extends EventEmitter {
       // Remove idle agents for too long
       if (agent.status.state === 'idle') {
         const idleTime = now.getTime() - agent.lastActivity.getTime();
-        if (idleTime > 600000) { // 10 minutes
+        if (idleTime > 600000) {
+          // 10 minutes
           agentsToRemove.push(agentId);
           continue;
         }
@@ -1010,7 +1074,8 @@ export class AgentSpawner extends EventEmitter {
       // Remove crashed agents
       if (agent.status.state === 'crashed' || agent.status.state === 'error') {
         const errorTime = now.getTime() - agent.status.lastStateChange.getTime();
-        if (errorTime > 300000) { // 5 minutes
+        if (errorTime > 300000) {
+          // 5 minutes
           agentsToRemove.push(agentId);
           continue;
         }
@@ -1070,7 +1135,6 @@ export class AgentSpawner extends EventEmitter {
           agent.health.consecutiveFailures = 0;
           agent.health.overall = 'healthy';
         }
-
       } catch (error) {
         healthCheck.status = 'fail';
         healthCheck.message = `Health check failed: ${error instanceof Error ? error.message : String(error)}`;
@@ -1092,16 +1156,39 @@ export class AgentSpawner extends EventEmitter {
 
   private initializeIndexes(): void {
     const types: AgentType[] = [
-      'claude-code-anthropic', 'claude-code-glm', 'codex', 'gemini',
-      'amp', 'aider', 'github-copilot', 'custom'
+      'claude-code-anthropic',
+      'claude-code-glm',
+      'codex',
+      'gemini',
+      'amp',
+      'aider',
+      'github-copilot',
+      'custom'
     ];
     const roles: AgentRole[] = [
-      'robo-developer', 'robo-system-analyst', 'robo-aqa', 'robo-security-expert',
-      'robo-performance-engineer', 'robo-ui-designer', 'robo-devops', 'robo-documenter',
-      'orchestrator-agent', 'task-agent', 'specialist-agent', 'conductor'
+      'robo-developer',
+      'robo-system-analyst',
+      'robo-aqa',
+      'robo-security-expert',
+      'robo-performance-engineer',
+      'robo-ui-designer',
+      'robo-devops',
+      'robo-documenter',
+      'orchestrator-agent',
+      'task-agent',
+      'specialist-agent',
+      'conductor'
     ];
     const statuses: AgentLifecycleStatus['state'][] = [
-      'initializing', 'starting', 'running', 'busy', 'idle', 'stopping', 'stopped', 'error', 'crashed'
+      'initializing',
+      'starting',
+      'running',
+      'busy',
+      'idle',
+      'stopping',
+      'stopped',
+      'error',
+      'crashed'
     ];
 
     for (const type of types) {

@@ -10,10 +10,10 @@
 
 ## 🚀 SACRED RULES (Never Violate)
 
-1. **PRP-First Development**: Read related PRP first, DONT TRUST state, manual check, verify, then leave actual comment signal in progress you made; PRP is a place where we share and organise requirements and what need always then sync to real code with progress reporting after. First Quote and all req: in PRP is a ABSOLUTE MONDATORY source of truth, always the rest align with all req: AND first quote PRP have;
-2. **Signal-Driven Progress**: not confident in next step to 100% and some work what you can verify would become valuable? Then leave signal in related PRP progress with comment. Explain what do you think about work done, what you wold love in it? whats was wrong and can help us veriy and 
-3. **LOOPMODE-workflow**: Related PRP always have a plan / dod / dor and signals, corresponding to signal priority. choose most important and start work as sub-agent with all related prp content with detailed instructions how to resolve this exact highest signal, choose best suitable robo-role for task. always comment with next signal right after work done; Next your message should contain after reflect exact changes we made list - what was expected - how we verified - what we recieved - what exact need do next - ⚠️ BLOCKERS - 💥 INCIDENT - 🎶 COMMENT AND SIGNAL LEFT, IDLE
-4. **No orphan files**: Never create tmp/scripts/md files without deleting them right after. All tmp files - write about it in PRP first!
+1. **PRP-First Development**: Read related PRP first, compare feature request with implementation if task clear - implement, implemented - verify, next step uncertan - research, and always update PRP you working on with line for each file we working on. Always actualise and add missing - xxx or - [ ] xxx and NEVER touch -- or > or paragraphs; ABSOLUTE MONDATORY keep prp as most recent actual state source of truth after actual code implementation, ALWAYS implemened ALL from -- or > or paragraphs the rest align with all requrements: AND first quote PRP have;
+2. **Signal-Driven Progress**: not confident in next step and some work what you can verify would become valuable? Then leave signal in related PRP to line about file/dod/dor or just with -- and research with question-details for orchestrator or admin signals A/a/O/o. And always then update file/dor/dod/checlist to latest comment include what do you think about work done, what you wold love to do next and what is wrong and what needed;
+3. **LOOPMODE-workflow**: Related PRP should always have a full list of files we working on with their current statuses and next steps we need make with file and checklists of dod / dor / pre-post release to be done before we align requirements with implementation. Each file can have a | comment with [XX] signal, analyse or next steps we need to be done and make a implementation step until you can verify work can done with llm-judge tests and user confirmation, until you need always plan ONE SMALL STEP to implement WITH VERIFICATION. To start work use sub-agent with all related prp content with detailed instructions how to resolve problem related to most important signal. always update file line in PRP to new comment with next signal right after work done; Then select another file need work on. make work, update comment-signal or add/remove file list related to PRP - what was done - problems we have - what exact need do next AND for - [ ] xxx - what was expected - how we verified - verification profs; And AGAIN AGAIN, until user will stop or where will be no space to scale and improvment;
+4. **No orphan files**: Never create files without accounting them in PRP. Your responsibility is to make synced each file lines with it's actual state of implementation or need in PRP! ALWAYS keep a single file mention per prp file;
 5. **No Paperovers**: Never use `--no-verify`, `--force`, or disable linting. Instead, comment signal describing the issue and work on solution. We forcing CDD measure-change-validate-reflect-stabelise and TDD red-green, main priority is maximum verification, stability and scalability. Performance and user accessability tests and proper user faced /docs with real situation is our honor!  
 6. **Cleanup Responsibility**: Any `/tmp`, dev servers, ports, or external resources MUST be documented in PRP for proper cleanup, no rush, always mention in comment with signal about files created on you working on.
 7. **Low Confidence Handling**: Before any uncertain action (less than 80% confidence), leave proress comment explaining risk with corresponding signal and wait for guidance.
@@ -71,74 +71,57 @@
 
 ## 🎵 ♫ SIGNAL SYSTEM
 
-> reg: PRP is a place where we keeping our actual work progress status and next steps. We using special signals to communicate and push forward work. ALWAYS after some progress done leave details as comments and signal related to situation in PRP you workin on;
+> reg: PRP is a place where we keeping our actual work progress status and next steps. We using special signals to communicate and push forward work. ALWAYS UPDATE files and checklists with latest status, next steps, your comment and signal related to situation in PRP you workin on;
+
 
 ALL PRPs/*.md should satisfy following structure:
-```
+```md
 # PRP-XXX: [Title]
+> our goal of user quote with all user req: all prp always should be aligned with all req. THIS section should be just dump of user quotes on single line to align with
+> our goal of user quote with all user req: (READ-ONLY)
+> can be many AND MOST IMPORTANT! works same with lower priority for --
+or just description, BUT ALWAYS THE SAME! FORBIDDEN TO EDIT!
 
-> our goal of user quote with all user req: all prp always should be aligned with all req:
+## feature name
+to achive goal we need analyse how it can be measure and achive and then system-analyst drop-down PRP into feature requests (vertical slice of prp requirements) by name;
+inside should be brief description on WHAT we doing, HOW we doing and HOW we prof what we achive WHAT we doing; keep only high-level here;
 
-## progress (mondatory)
-signal | comment | time | role-name (model name)
-[AA] what have been done, what was expected, how did you can prof that? what you mood is? now admin-1 (user)
--- ALWAYS PUT HERE RESULT OF YOUR WORK AS PORGRESS COMMENT --
-
-## description
-[Clear description perfectly matched quote of what needs to be done]
-
-## dor
+- `/src/each.file` we worked with prp on SHOULD be mentioned with list, quite path AND comment contained what we doing here and what status | NEED LINT CHECK! [lc];
+- `/another.f` SO always we delete/update/create file, each file should have own unique line with description from system-analyst first, then after updates made, we put here ACTUAL BEHAVIOR and NEXT STEPS | and we leave after work with file done update to comment with proper sognal [AA]
+- [ ] each checklist, including dor/dod/pre-post-release checks here, for each own line and actual status corresponding to it's actual state in file system, should be always synced
+- [x] then we can | VERIFICATION with (unit test)[/tests/units/feature_behavioral_not_syntetic_clear_business_goal_prof.test.lang] or another prof (link preview)[prp.theedgestory.org/docs] what actualy here, then we mark this checklist done! with all profs and original expectation
 - [ ] always check lint/test/other code quality status and fix problems first to trivial-* branch with trivial PR
-- [ ] Checklist items
-
-## dod
-- [ ] Checklist items perfectly matches description and quote what we can measure
-- [ ] and actual measure and prof with working links to /docs.md what always contain user-faced feature list with actual details with profs to our repo
-- [ ] or any big step with feature needed to be confirmed by user
-- [ ] Checklist items
-
-## pre-release checklist
-- [ ] cleanup completed
-- [ ] all lint / code style and tests passed
-- [ ] no problems paperovered or supressed
+- [ ] cleanup before commit completed
+- [ ] all lint / code style and tests before commit passed
+- [ ] no problems paperovered or supressed before commit
 - [ ] manual confirmation with visual comparison with prp compare done
-- [ ] CHANGELOG.md updated with verified items and actualised
-- [ ] PRP satisfy this structure contain pre release comment and signal and all synced before last commit
+- [ ] CHANGELOG.md updated with verified items and actualised before PR merged
+- [ ] PRP satisfy this structure all checklists in feature done
 - [ ] llm as judge test updated
-- [ ] More checklist items
-
-## post-release checklist
 - [ ] admin menioned with details
 - [ ] prod vorking with all new features confirmed with llm as judge tests
-- [ ] verify each DoD status
-- [ ] reflect if all DoD done
-- [ ] Checklist items
+- [ ] all checklist status verified
+- [ ] reflect about release after here below
+- [ ] More checklist items
 
-## plan
-- [ ] One line per file change with actual file name and expectation after change
-- [ ] ALWAYS VERIFICATION STEP with e2e/unit tests our visual/manual after!
-- [ ] all not listed here will be and should be deleted with cleanup! keep track
-- [ ] pre-release! with ...
-
-### if needed release flow in between PRP
-- [ ] create additional section with actions
-- [ ] and virifications we need make!
-
-### Details (optional)
-
-## research materials
-### research date/time
+--
+reference and requirements materials (READ-ONLY ALWAYS!)
+--
+Large PRP require many features and if requested can be splitted to several releases, but mostly PRP=release, IF big then with X.X.N updates per feature for each feature-release; ALSO system analyst BEFORE work should put after -- for each feature a research materials/links, to actual libraries we refer to or paper we implement with:
 > summary with research value, we need later keep link here to prof our solution
 ```
 // exact code snippets we need refer to
-// always preserve source link OR ⚠️ inference marker with confident score
+// always preserve ORIGINAL FULL source link OR add ⚠️ inference marker with confident score
 ```
 - Links/references
 ```
-
+this -- sections BEFORE implementation start should be filled by developer some code snippets and component interfaces and relations drop-down with updating actual we will work on file list in feature section; after feature released here we need in same format put our reflection on how did we achive and confirm feature in production and satisfy requirements. YOU SHOULD put here signals and comments for [AA] - ALERT admin attention, [OO] - orchestrator request to help resolve conflict/problem, [aa] - to ask user opinion on preview with link/instructions on how to. OR another signals if there need to take action from here to make; if signal/request/research not actual for us - it should be cleared. always only actual statuses, always put to prp and preserve it to this format; always clean the rest or align to this format, never compress or perephrase. ONLY put or DELETE as is LINES!;
+--
+THIS IS REFEERENCE RESOURCE MATERIAL! READONLY
 
 ### **System Signals (Using internaly)**
 **[HF]** - Health Feedback (orchestration cycle start)
+[HS] - Start with self (cycle to prepare selfName and selfSummary and selfGoal)
 **[pr]** - Pull Request Preparation (optimization pre-catch)
 **[PR]** - Pull Request Created (PR activity detected)
 **[FF]** - System Fatal Error (corruption/unrecoverable errors)
@@ -337,465 +320,6 @@ signal | comment | time | role-name (model name)
 - **WHO**: robo-system-analyst/robo-aqa
 - **WHEN**: Comprehensive report, analysis, or review ready for admin preview with how-to guide
 - **WHAT**: Provide preview package with summary, guide, and admin instructions for review
-
----
-
-## 🧪 COMPREHENSIVE TESTING FRAMEWORK
-
-### **Robo-AQA Testing Infrastructure Crisis Analysis (Updated 2025-11-05)**
-
-**Current State**: CRITICAL INFRASTRUCTURE FAILURE 🚨
-- **Overall Coverage**: 0.12% Statements (16/13,270 lines) - CATASTROPHIC
-- **Test Files**: 35 test files, 8 major suites failing
-- **Source Files**: 147 TypeScript files, 0.1% function coverage
-- **Core Issue**: Systemic test infrastructure breakdown preventing meaningful quality assurance
-
-### **Critical Infrastructure Failures Identified**
-
-#### 1. **Jest ES Module Configuration Breakdown** 🔥🔥🔥
-- **Signal**: `[tr]` Tests Red - Complete configuration failure
-- **Root Cause**: `__filename` declared multiple times across multiple files
-- **Affected Files**: `src/utils/version.ts`, `src/nonInteractive.ts`, `src/config/schema-validator.ts`, `src/inspector/parallel-executor.ts`
-- **Impact**: Complete test execution failure, entire wizard test suite blocked
-- **Error Pattern**: `SyntaxError: Identifier '__filename' has already been declared`
-- **Jest Status**: Cannot parse TypeScript files with ESM imports
-
-#### 2. **Signal Detection RegExp Implementation Bug** 🔥🔥🔥
-- **Signal**: `[tr]` Tests Red - Core algorithm failure
-- **Location**: `src/scanner/signal-detector.ts:1026`
-- **Root Cause**: `RegExp.exec()` returns array, code expects string
-- **Error**: `TypeError: match.substring is not a function`
-- **Impact**: 10+ test methods failing, entire signal detection system broken
-- **Affected Tests**: enhanced-signal-detector.test.ts, scanner integration tests
-
-#### 3. **Test Infrastructure Systemic Issues** 🔥🔥
-- **DynamicContextManager**: Token distribution calculations completely wrong
-- **Scanner Reactive**: Console spam flooding test output (14,000+ lines)
-- **TokenAccountant**: Invalid JSON handling causing initialization failures
-- **Scanner Full System**: Missing `subscribe` method causing interface mismatches
-- **Signal Detection Logic**: Expecting strings, receiving complex objects
-
-#### 4. **CLI Testing Infrastructure Nonexistent** 🔥🔥🔥
-- **CLI Entry Points**: 0% coverage, no tests for `src/cli.ts`
-- **Template Engine**: 0% coverage, `src/templateEngine.ts` completely untested
-- **Non-Interactive Mode**: 0% coverage, `src/nonInteractive.ts` no test infrastructure
-- **Command Handlers**: <1% coverage across entire `src/commands/` directory
-- **Error Handling**: No testing for CLI error conditions or user interactions
-
-### **Test Infrastructure Analysis**
-
-#### **Coverage Breakdown**:
-- **Statements**: 0.12% (16/13,270) - CATASTROPHIC FAILURE
-- **Branches**: 0.17% (11/6,341) - CATASTROPHIC FAILURE
-- **Functions**: 0.1% (3/2,854) - CATASTROPHIC FAILURE
-- **Lines**: 0.12% (16/12,806) - CATASTROPHIC FAILURE
-
-#### **Critical Components with 0% Coverage**:
-1. **CLI Entry Points** (`src/cli.ts`) - 0% coverage, completely untested
-2. **Template Engine** (`src/templateEngine.ts`) - 0% coverage, core functionality missing
-3. **Non-Interactive Mode** (`src/nonInteractive.ts`) - 0% coverage, production workflows untested
-4. **Command Handlers** (`src/commands/`) - <1% coverage, entire command system broken
-5. **Scanner Core** - Partial coverage with 14,000+ lines of console spam
-6. **Signal Processing** - Broken due to RegExp implementation bug
-7. **Error Handling** - 0% coverage across entire codebase
-8. **User Interactions** - No testing for interactive CLI components
-
-#### **Root Cause Analysis**:
-- **Configuration Crisis**: Jest cannot handle ES modules with multiple `__filename` declarations
-- **Implementation Bugs**: Core signal detection algorithm fundamentally broken
-- **Test Design**: Tests expecting wrong data types and incorrect business logic
-- **Infrastructure**: No CLI testing framework or mock systems in place
-- **Quality Gates**: No functional test infrastructure preventing broken deployments
-
-### **Comprehensive Testing Strategy**
-
-#### **Emergency CLI Testing Framework**:
-```typescript
-// Critical CLI command testing infrastructure
-import { execAsync } from 'child_process';
-import { createMockStdin, createMockStdout } from './helpers/cli-mocks';
-
-describe('CLI Command Execution', () => {
-  beforeEach(async () => {
-    testDir = await createTempDirectory();
-  });
-
-  afterEach(async () => {
-    await cleanupDirectory(testDir);
-  });
-
-  it('should handle prp create command with validation', async () => {
-    const result = await execAsync(`node dist/cli.js prp create ${testDir}/test-project`);
-    expect(result.stdout).toContain('PRP created successfully');
-    expect(fs.existsSync(`${testDir}/test-project/PRP-001.md`)).toBe(true);
-  });
-
-  it('should handle invalid commands with proper error messages', async () => {
-    await expect(execAsync('node dist/cli.js invalid-command'))
-      .rejects.toThrow('Unknown command: invalid-command');
-  });
-
-  it('should handle missing required arguments', async () => {
-    await expect(execAsync('node dist/cli.js prp create'))
-      .rejects.toThrow('Required: --name argument');
-  });
-});
-
-// Interactive mode testing with proper mocking
-describe('Interactive CLI Mode', () => {
-  it('should handle user input prompts correctly', async () => {
-    const mockInput = createMockStdin(['test-project\n', 'fastapi\n', 'y\n']);
-    const mockOutput = createMockStdout();
-
-    const result = await runInteractiveCLI(mockInput, mockOutput);
-    expect(result.exitCode).toBe(0);
-    expect(mockOutput.getOutput()).toContain('Project created: test-project');
-  });
-
-  it('should handle user cancellation gracefully', async () => {
-    const mockInput = createMockStdin(['test-project\n', '\x03']); // Ctrl+C
-    const result = await runInteractiveCLI(mockInput);
-    expect(result.exitCode).toBe(130); // SIGINT exit code
-  });
-});
-
-// Template engine testing
-describe('Template Engine Operations', () => {
-  it('should generate FastAPI project correctly', async () => {
-    const project = await generateTemplate('fastapi', testDir, options);
-    expect(fs.existsSync(`${testDir}/main.py`)).toBe(true);
-    expect(fs.existsSync(`${testDir}/requirements.txt`)).toBe(true);
-    expect(fs.existsSync(`${testDir}/README.md`)).toBe(true);
-  });
-
-  it('should handle template errors gracefully', async () => {
-    await expect(generateTemplate('invalid-template', testDir, options))
-      .rejects.toThrow('Unknown template: invalid-template');
-  });
-});
-```
-
-#### **ES Module Configuration Fixes**:
-```javascript
-// Fixed jest.config.js for ES modules
-export default {
-  preset: 'ts-jest/presets/default-esm',
-  testEnvironment: 'node',
-  extensionsToTreatAsEsm: ['.ts', '.tsx'],
-  moduleNameMapper: {
-    '^(\\.{1,2}/.*)\\.js$': '$1',
-    '^axios$': 'axios/dist/node/axios.cjs'
-  },
-  transform: {
-    '^.+\\.tsx?$': ['ts-jest', {
-      useESM: true,
-      tsconfig: {
-        module: 'ESNext',
-        target: 'ES2022'
-      }
-    }]
-  },
-  transformIgnorePatterns: [
-    'node_modules/(?!(axios)/)'
-  ],
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  globals: {
-    'ts-jest': {
-      useESM: true
-    }
-  }
-};
-```
-
-#### **Signal Detection Bug Fix**:
-```typescript
-// Fixed signal detection in signal-detector.ts
-private extractSignalInfo(match: RegExpExecArray, content: string, lineNum: number): SignalInfo | null {
-  if (!match || !match[0]) return null;
-
-  const signalText = match[0]; // FIX: Use match[0] instead of match directly
-  const signalMatch = signalText.match(/^\[([a-zA-Z]{1,4})\]/);
-
-  if (!signalMatch) return null;
-
-  return {
-    signal: signalMatch[1],
-    context: content.substring(match.index, match.index + 100),
-    line: lineNum,
-    column: match.index,
-    type: this.classifySignal(signalMatch[1]),
-    timestamp: new Date()
-  };
-}
-```
-
-### **Test Automation Improvements**
-
-#### **Parallel Test Execution**:
-```json
-// jest.config.js
-{
-  "maxWorkers": 4,
-  "testTimeout": 30000,
-  "collectCoverageFrom": [
-    "src/**/*.{ts,tsx}",
-    "!src/**/*.d.ts",
-    "!src/**/*.test.ts"
-  ],
-  "coverageThreshold": {
-    "global": {
-      "branches": 80,
-      "functions": 80,
-      "lines": 80,
-      "statements": 80
-    }
-  }
-}
-```
-
-#### **CI/CD Pipeline Integration**:
-```yaml
-# .github/workflows/test.yml
-name: Test Suite
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18, 20]
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-      - name: Install dependencies
-        run: npm ci
-      - name: Run tests
-        run: npm test -- --coverage
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-```
-
-### **Emergency Test Infrastructure Recovery Roadmap**
-
-#### **Phase 1: Critical Infrastructure Stabilization (Week 1)**
-**IMMEDIATE ACTIONS REQUIRED - BLOCKING ALL DEVELOPMENT**
-
-1. **Fix Jest ES Module Configuration** 🔥🔥🔥
-   - `[tr]` → `[cq]` Resolve `__filename` declaration conflicts across 5 files
-   - `[tr]` → `[cq]` Update Jest config for proper ES module handling
-   - `[tr]` → `[cq]` Add Node.js `--experimental-vm-modules` support
-   - **Success Criteria**: All test files can be parsed and loaded
-
-2. **Fix Signal Detection RegExp Bug** 🔥🔥🔥
-   - `[tr]` → `[cq]` Fix `match.substring is not a function` in signal-detector.ts:1026
-   - `[tr]` → `[cq]` Update all signal detection methods to handle RegExp arrays properly
-   - `[tr]` → `[cq]` Add proper null checking and error handling
-   - **Success Criteria**: Signal detection tests pass without TypeError
-
-3. **Correct Test Assertion Logic** 🔥🔥
-   - `[tr]` → `[cq]` Fix DynamicContextManager token distribution calculations
-   - `[tr]` → `[cq]` Update scanner behavior tests to expect objects instead of strings
-   - `[tr]` → `[cq]` Correct TokenAccountant alert type and percentage expectations
-   - **Success Criteria**: All existing test suites run without assertion errors
-
-4. **Eliminate Console Spam** 🔥
-   - `[tr]` → `[cq]` Fix TokenAccountant invalid JSON handling
-   - `[tr]` → `[cq]` Add proper test environment isolation
-   - `[tr]` → `[cq]` Implement mock logger for test execution
-   - **Success Criteria**: Test output under 100 lines, no console warnings
-
-**TARGET BY END OF WEEK 1**: 20% coverage, all critical infrastructure bugs resolved
-
-#### **Phase 2: Core CLI Testing Infrastructure (Week 2-3)**
-**BUILDING FOUNDATIONAL TEST COVERAGE**
-
-1. **CLI Command Testing Framework** 🎯
-   - `[cq]` Implement CLI process spawning and execution testing
-   - `[cq]` Create mock stdin/stdout for interactive testing
-   - `[cq]` Add command validation and error handling tests
-   - **Success Criteria**: All CLI commands have basic coverage
-
-2. **Template Engine Test Suite** 🎯
-   - `[cq]` Create template generation and validation tests
-   - `[cq]` Add template error handling and edge case testing
-   - `[cq]` Implement template file structure verification
-   - **Success Criteria**: All templates tested, 90% template engine coverage
-
-3. **File System Operations Testing** 🎯
-   - `[cq]` Create temp directory management for test isolation
-   - `[cq]` Add project creation and cleanup testing
-   - `[cq]` Implement file permission and validation tests
-   - **Success Criteria**: All file operations have comprehensive coverage
-
-4. **Non-Interactive Mode Testing** 🎯
-   - `[cq]` Create non-interactive CLI execution tests
-   - `[cq]` Add argument validation and error handling tests
-   - `[cq]` Implement project generation workflow testing
-   - **Success Criteria**: Non-interactive mode 80% coverage
-
-**TARGET BY END OF WEEK 3**: 50% coverage, core functionality fully tested
-
-#### **Phase 3: Advanced Testing Capabilities (Week 4-6)**
-**COMPREHENSIVE QUALITY ASSURANCE**
-
-1. **E2E Workflow Testing** 🎯
-   - `[tg]` Create end-to-end project generation scenarios
-   - `[tg]` Add user journey testing for all template types
-   - `[tg]` Implement integration testing with real file systems
-   - **Success Criteria**: 10+ E2E scenarios, all user paths tested
-
-2. **Performance Testing Suite** 🎯
-   - `[tg]` Add CLI startup time benchmarks (< 2 seconds)
-   - `[tg]` Implement memory usage monitoring (< 50MB)
-   - `[tg]` Create template generation performance tests
-   - **Success Criteria**: Performance regression detection, benchmark tracking
-
-3. **Signal System Integration Testing** 🎯
-   - `[tg]` Create comprehensive signal detection and processing tests
-   - `[tg]` Add scanner-reactive integration testing
-   - `[tg]` Implement signal workflow validation
-   - **Success Criteria**: Signal system 95% coverage, all workflows tested
-
-4. **Error Handling and Edge Cases** 🎯
-   - `[tg]` Add comprehensive error condition testing
-   - `[tg]` Create network failure and file system error scenarios
-   - `[tg]` Implement graceful degradation testing
-   - **Success Criteria**: All error paths tested, proper error messages
-
-**TARGET BY END OF WEEK 6**: 80% coverage, production-ready test suite
-
-#### **Phase 4: CI/CD Pipeline Integration (Week 7-8)**
-**AUTOMATED QUALITY GATES**
-
-1. **Automated Testing Pipeline** 🎯
-   - `[cp]` Configure GitHub Actions test workflows
-   - `[cp]` Add multi-node version testing (Node 18, 20, 22)
-   - `[cp]` Implement parallel test execution optimization
-   - **Success Criteria**: All tests run on every PR, < 5 minute execution time
-
-2. **Coverage Reporting and Quality Gates** 🎯
-   - `[cp]` Set up Codecov integration for coverage tracking
-   - `[cp]` Implement minimum coverage requirements (80% new code)
-   - `[cp]` Add critical path coverage validation (100% required)
-   - **Success Criteria**: Coverage trend tracking, quality gate enforcement
-
-3. **Test Performance Monitoring** 🎯
-   - `[cp]` Add test execution time monitoring
-   - `[cp]` Implement flaky test detection and alerting
-   - `[cp]` Create test stability metrics dashboard
-   - **Success Criteria**: < 2% flaky test rate, performance regression alerts
-
-4. **Release Readiness Validation** 🎯
-   - `[pc]` Create comprehensive pre-release test checklist
-   - `[pc]` Add automated smoke testing for releases
-   - `[pc]` Implement post-deployment validation testing
-   - **Success Criteria**: Zero critical bugs in production, automated release validation
-
-**TARGET BY END OF WEEK 8**: 90% coverage, fully automated quality pipeline
-
-### **Quality Gates and Success Metrics**
-
-#### **Coverage Targets**:
-- **Week 1**: 20% statement coverage (fix critical failures)
-- **Week 3**: 50% statement coverage (basic functionality)
-- **Week 6**: 80% statement coverage (comprehensive testing)
-- **Week 8**: 90% statement coverage (production ready)
-
-#### **Quality Requirements**:
-- All tests must pass before merge (`[tg]` signal)
-- Minimum 80% coverage for new code
-- Critical paths must have 100% coverage
-- Performance tests must meet baseline benchmarks
-- CLI workflows must have E2E test coverage
-
-### **Test File Organization**
-
-#### **Recommended Test Structure**:
-```
-tests/
-├── unit/                    # 70% - Fast, isolated tests
-│   ├── commands/
-│   ├── scanner/
-│   ├── utils/
-│   └── templates/
-├── integration/             # 20% - Component interactions
-│   ├── cli-workflows/
-│   ├── file-operations/
-│   └── scanner-system/
-├── e2e/                     # 10% - Complete user journeys
-│   ├── scenarios/
-│   ├── user-flows/
-│   └── regression/
-├── fixtures/                # Test data and templates
-├── helpers/                 # Test utilities and mocks
-└── coverage/                # Coverage reports
-```
-
-### **Testing Signals Integration**
-
-#### **Quality Assurance Workflow**:
-1. **Pre-flight**: `[cq]` Code quality validation
-2. **Testing**: `[tr]` → `[tg]` Test execution and results
-3. **CI/CD**: `[cf]` → `[cp]` Pipeline validation
-4. **Release**: `[pc]` Pre-release checklist completion
-5. **Deployment**: `[rl]` Release and post-validation
-
-#### **Parallel Testing Coordination**:
-- Use `[oa]` signal for orchestrator coordination during parallel test execution
-- Coordinate with Robo-QC for visual testing handoff using QC agent signals
-- Apply `[bb]` signal when test dependencies block progress
-- Use `[br]` signal when testing blockers are resolved
-
-### **Current Test Infrastructure Crisis Summary**
-
-**🚨 CRITICAL INFRASTRUCTURE BREAKDOWN - PRODUCTION AT RISK**:
-- **Coverage**: 0.12% statements (16/13,270 lines) - COMPLETE FAILURE
-- **Test Status**: 8/35 test suites failing with critical infrastructure bugs
-- **CLI Coverage**: 0% - All core functionality completely untested
-- **Signal System**: Broken - RegExp implementation bug blocking all signal detection
-- **Quality Gates**: Non-existent - No functional test infrastructure
-
-**🔥 IMMEDIATE BLOCKERS REQUIRING EMERGENCY INTERVENTION**:
-1. **Jest Configuration Crisis**: Cannot parse TypeScript files with ES modules
-2. **Signal Detection Bug**: TypeError preventing core system functionality
-3. **Console Spam Flood**: 14,000+ lines of output blocking test execution
-4. **Assertion Logic Errors**: Tests expecting wrong data types and calculations
-
-**📊 ROOT CAUSE ANALYSIS**:
-- **Technical Debt**: Accumulated without proper test infrastructure
-- **Configuration Drift**: Jest config incompatible with ES modules
-- **Implementation Bugs**: Core algorithms fundamentally broken
-- **Quality Process Failure**: No validation preventing broken deployments
-
-**⚡ IMMEDIATE ACTIONS REQUIRED (Next 24 Hours)**:
-1. **EMERGENCY**: Fix Jest ES module configuration for basic test parsing
-2. **EMERGENCY**: Resolve RegExp bug in signal-detector.ts:1026
-3. **URGENT**: Correct DynamicContextManager token distribution logic
-4. **URGENT**: Implement test environment isolation to eliminate console spam
-
-**📈 RECOVERY PROJECTIONS**:
-- **Week 1**: Stabilize infrastructure, achieve 20% coverage
-- **Week 3**: Core functionality testing, achieve 50% coverage
-- **Week 6**: Comprehensive testing, achieve 80% coverage
-- **Week 8**: Production-ready pipeline, achieve 90% coverage
-
-**🚨 RISK ASSESSMENT**:
-- **Deployment Risk**: CRITICAL - No functional test coverage
-- **Regression Risk**: CRITICAL - Cannot detect breaking changes
-- **Production Stability**: AT RISK - Core functionality unvalidated
-- **User Experience**: DEGRADED - CLI errors not caught before release
-
-**📋 COMPREHENSIVE ANALYSIS DOCUMENTATION**:
-- Detailed test failure analysis available in project issue tracker
-- Performance benchmarks and quality metrics dashboard
-- CI/CD pipeline integration specifications
-- Emergency response procedures for test infrastructure failures
-
-**Status**: CRITICAL INFRASTRUCTURE FAILURE - IMMEDIATE ACTION REQUIRED
-**Priority**: BLOCKING ALL DEVELOPMENT UNTIL RESOLVED
-**Escalation**: PROJECT MANAGEMENT AWARE - QUALITY GATES FAILED
-*Comprehensive analysis completed by Robo-AQA on 2025-11-05T04:50:00Z*
 
 #### [cc] Cleanup Complete
 - **WHO**: robo-developer
@@ -1071,11 +595,159 @@ tests/
 - **Shared Roadmap**: Regular coordination through `[oa]` signal maintains alignment
 - **Resource Allocation**: Orchestrator manages competing priorities through `[pc]` signal
 
+## Work Recommendations to User
+
+### One-Liner Patterns for Agent Efficiency
+
+1. **logger.debug() instead of console.log()** - Always use proper logging with context, never console for debugging output
+2. **Read PRP first, implement second** - Never write code without reading the PRP requirements section first
+3. **One file per PRP line** - Track each file individually in PRP with | comments and status signals
+4. **Small steps with verification** - Implement one verifiable change at a time, then update PRP before continuing
+5. **No orphan files** - Every file created must be documented in PRP before implementation
+6. **Signals over comments** - Use [XX] signals for action items, not plain comments in PRP
+7. **Test before commit** - Always run tests and fix linting before any commit attempt
+8. **Research gaps, don't assume** - When uncertain, create [rr] signal and research before implementing
+9. **Update DOD/DOR checklists** - Mark verification proofs when completing checklist items
+10. **Clean up before PR** - Remove temp files, kill background processes, and document cleanup
+
 ---
 
 > SYSTEM PART END! NEVER EDIT ABOVE
 
 ## USER SECTION!
+
+
+### Comprehensive Testing Strategy
+
+#### CLI Testing Best Practices:
+```typescript
+// Command execution testing
+describe('CLI Commands', () => {
+  it('should handle prp create command', async () => {
+    const result = await execAsync('node dist/cli.js prp create test-project');
+    expect(result.stdout).toContain('PRP created successfully');
+  });
+});
+
+// Error handling testing
+describe('CLI Error Handling', () => {
+  it('should handle invalid commands gracefully', async () => {
+    await expect(execAsync('node dist/cli.js invalid-command'))
+      .rejects.toThrow('Unknown command');
+  });
+});
+```
+
+#### Interactive Mode Testing:
+```typescript
+// Mock stdin/stdout for interactive testing
+describe('Interactive Mode', () => {
+  it('should handle user input prompts', async () => {
+    const mockStdin = createMockStdin(['test-project\n', 'y\n']);
+    const result = await runInteractiveCLI(mockStdin);
+    expect(result).toContain('Project created: test-project');
+  });
+});
+```
+
+#### File System Operations Testing:
+```typescript
+describe('File Operations', () => {
+  beforeEach(async () => {
+    testDir = await createTempDirectory();
+  });
+
+  afterEach(async () => {
+    await cleanupDirectory(testDir);
+  });
+
+  it('should create project files correctly', async () => {
+    await createProject(testDir, 'test-project');
+    expect(fs.existsSync(path.join(testDir, 'test-project'))).toBe(true);
+  });
+});
+```
+
+### Test Automation Improvements
+
+#### Parallel Test Execution:
+```json
+// jest.config.js
+{
+  "maxWorkers": 4,
+  "testTimeout": 30000,
+  "collectCoverageFrom": [
+    "src/**/*.{ts,tsx}",
+    "!src/**/*.d.ts",
+    "!src/**/*.test.ts"
+  ],
+  "coverageThreshold": {
+    "global": {
+      "branches": 80,
+      "functions": 80,
+      "lines": 80,
+      "statements": 80
+    }
+  }
+}
+```
+
+#### CI/CD Pipeline Integration:
+```yaml
+# .github/workflows/test.yml
+name: Test Suite
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm test -- --coverage
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+```
+
+### Quality Requirements:
+- All tests must pass before merge (`[tg]` signal)
+- Minimum 80% coverage for new code
+- Critical paths must have 100% coverage
+- Performance tests must meet baseline benchmarks
+- CLI workflows must have E2E test coverage
+
+### Test File Organization
+
+#### Recommended Test Structure:
+```
+tests/
+├── unit/                    # 70% - Fast, isolated tests
+├── e2e/                     # 30% - Complete user journeys, NO MOCKS! REAL RUNS in /tmp or /debug
+├── helpers/                 # Test utilities and mocks
+└── coverage/                # Coverage reports
+```
+
+### Testing Signals Integration
+
+#### Quality Assurance Workflow:
+1. Pre-flight: `[cq]` Code quality validation
+2. Testing: `[tr]` → `[tg]` Test execution and results
+3. CI/CD: `[cf]` → `[cp]` Pipeline validation
+4. Release: `[pc]` Pre-release checklist completion
+5. Deployment: `[rl]` Release and post-validation
+
+#### Parallel Testing Coordination:
+- Use `[oa]` signal for orchestrator coordination during parallel test execution
+- Coordinate with Robo-QC for visual testing handoff using QC agent signals
+- Apply `[bb]` signal when test dependencies block progress
+- Use `[br]` signal when testing blockers are resolved
+
 
 ### release flow
 TBD
@@ -1083,250 +755,113 @@ TBD
 ### landing gh-pages deploy
 TBD
 
-## 🚀 PERFORMANCE REQUIREMENTS & GUIDELINES
 
-### **Performance Standards**
-All agents and components MUST adhere to the following performance requirements:
+### 📦 PROJECT DEPENDENCIES & TECHNICAL STACK
 
-#### **CLI Performance Requirements**
-- **Startup Time**: < 2 seconds (target: 1.5 seconds)
-- **Memory Usage**: < 50MB during normal operations (target: 30MB)
-- **Command Response**: < 100ms for basic commands, < 5 seconds for complex operations
-- **File Operations**: < 50ms for small files, < 1s for large files (>1MB)
-- **Cache Hit Rate**: > 80% for repeated operations
-
-#### **Scanner Performance Requirements**
-- **File Watching**: < 100ms latency from file change to event emission
-- **Signal Parsing**: < 10ms per file for typical PRP files
-- **Batch Processing**: Handle 100+ files in < 2 seconds
-- **Memory Efficiency**: < 100MB for projects with 1000+ files
-- **Cache Performance**: > 90% hit rate for unchanged files
-
-#### **Orchestrator Performance Requirements**
-- **Decision Making**: < 500ms for cached decisions, < 5s for new decisions
-- **Agent Spawning**: < 2 seconds to spawn and initialize agents
-- **Context Management**: < 50ms to load cached contexts
-- **Memory Usage**: < 200MB for full orchestrator with agents
-- **Concurrent Operations**: Support 10+ concurrent agent sessions
-
-### **Performance Monitoring & Metrics**
-
-#### **Required Performance Signals**
-Agents must emit these performance-related signals when thresholds are exceeded:
-
-**[pm] Performance Monitoring** - General performance issue detected
-- **WHO**: Any agent
-- **WHEN**: Performance metrics exceed acceptable thresholds
-- **WHAT**: Document performance metrics, identify bottlenecks, request optimization
-
-**[po] Performance Optimized** - Performance improvement implemented
-- **WHO**: robo-developer
-- **WHEN**: Performance optimizations implemented and verified
-- **WHAT**: Document improvements, before/after metrics, optimization techniques used
-
-**[ps] Performance Regression** - Performance degradation detected
-- **WHO**: Any agent
-- **WHEN**: Performance metrics show degradation from baseline
-- **WHAT**: Document regression, identify cause, request investigation
-
-### **Performance Optimization Techniques**
-
-#### **Lazy Loading Implementation**
-```typescript
-// ✅ GOOD: Use lazy loading for heavy dependencies
-const heavyDependency = new LazyLoader(() => import('./heavy-module'));
-
-// ❌ BAD: Load everything at startup
-import { HeavyModule } from './heavy-module';
-```
-
-#### **Caching Strategies**
-```typescript
-// ✅ GOOD: Implement intelligent caching
-const cached = await performanceManager.cached(key, () => expensiveOperation());
-
-// ❌ BAD: Repeated expensive operations without caching
-const result = expensiveOperation(); // Called every time
-```
-
-#### **Memory Management**
-```typescript
-// ✅ GOOD: Clean up resources properly
-class Resource {
-  private cleanup = new Set<() => void>();
-
-  addCleanup(fn: () => void) {
-    this.cleanup.add(fn);
-  }
-
-  dispose() {
-    this.cleanup.forEach(fn => fn());
-    this.cleanup.clear();
-  }
-}
-
-// ❌ BAD: Memory leaks from event emitters
-const emitter = new EventEmitter();
-// Never removing listeners causes memory leaks
-```
-
-#### **Batch Processing**
-```typescript
-// ✅ GOOD: Process items in batches
-for (const batch of chunkArray(items, batchSize)) {
-  await processBatch(batch);
-  await new Promise(resolve => setImmediate(resolve)); // Allow event loop
-}
-
-// ❌ BAD: Process all items at once
-items.forEach(item => processItem(item)); // Blocks event loop
-```
-
-### **Performance Testing Requirements**
-
-#### **Mandatory Performance Tests**
-All PRPs MUST include performance tests for:
-
-1. **CLI Operations**: Startup time, command execution, memory usage
-2. **File Operations**: Reading, writing, watching, parsing
-3. **Agent Operations**: Spawning, communication, cleanup
-4. **Cache Operations**: Hit rates, eviction policies, memory usage
-5. **Memory Management**: Leak detection, cleanup verification
-
-#### **Performance Test Execution**
+#### Current Dependencies (npm list --depth=0)
 ```bash
-# Run performance test suite
-npm run test:performance
-
-# Run specific performance tests
-npm run test:performance:cli
-npm run test:performance:scanner
-npm run test:performance:orchestrator
-
-# Generate performance report
-npm run perf:report
+@dcversus/prp@0.4.9
+├── @babel/core@7.28.5
+├── @babel/preset-env@7.28.5
+├── @babel/preset-react@7.28.5
+├── @babel/preset-typescript@7.28.5
+├── @testing-library/jest-dom@6.9.1
+├── @testing-library/react@16.3.0
+├── @testing-library/user-event@14.6.1
+├── @types/boxen@2.1.0
+├── @types/chokidar@1.7.5
+├── @types/cors@2.8.19
+├── @types/express@4.17.25
+├── @types/figlet@1.7.0
+├── @types/fs-extra@11.0.4
+├── @types/inquirer@9.0.9
+├── @types/jest@30.0.0
+├── @types/jsonschema@0.0.5
+├── @types/jsonwebtoken@9.0.10
+├── @types/lru-cache@7.10.9
+├── @types/lz-string@1.3.34
+├── @types/node@22.18.12
+├── @types/react@18.3.26
+├── @types/semver@7.7.1
+├── @typescript-eslint/eslint-plugin@8.46.2
+├── @typescript-eslint/parser@8.46.2
+├── ajv-formats@3.0.1
+├── ajv@8.17.1
+├── axios@1.13.1
+├── boxen@8.0.1
+├── browser-sync@3.0.4
+├── chalk@5.6.2
+├── chokidar@4.0.3
+├── commander@12.1.0
+├── cors@2.8.5
+├── eslint-config-prettier@9.1.2
+├── eslint-formatter-compact@9.0.1
+├── eslint-plugin-prettier@5.5.4
+├── eslint-plugin-react-hooks@5.2.0
+├── eslint-plugin-react@7.37.5
+├── eslint@9.38.0
+├── execa@9.6.0
+├── express-rate-limit@7.5.1
+├── express@4.21.2
+├── figlet@1.9.3
+├── fs-extra@11.3.2
+├── glob@11.0.3
+├── handlebars@4.7.8
+├── helmet@8.1.0
+├── highlight.js@11.11.1
+├── husky@9.1.7
+├── ink-big-text@2.0.0
+├── ink-divider@4.1.1
+├── ink-gradient@3.0.0
+├── ink-select-input@6.2.0
+├── ink-spinner@5.0.0
+├── ink-testing-library@4.0.0
+├── ink-text-input@6.0.0
+├── ink@5.2.1
+├── inquirer@9.3.8
+├── jest-environment-jsdom@30.2.0
+├── jest@29.7.0
+├── jsonschema@1.5.0
+├── jsonwebtoken@9.0.2
+├── lint-staged@16.2.6
+├── lru-cache@11.2.2
+├── lz-string@1.5.0
+├── marked@16.4.1
+├── nanoid@5.1.6
+├── openai@6.8.1
+├── ora@8.2.0
+├── prettier@3.6.2
+├── react-dom@18.3.1
+├── react@18.3.1
+├── semver@7.7.3
+├── socket.io@4.8.1
+├── ts-jest@29.4.5
+├── tsup@8.5.0
+├── tsx@4.20.6
+├── typescript-eslint@8.46.2
+├── typescript@5.9.3
+├── validate-npm-package-name@5.0.1
+└── yaml@2.8.1
 ```
 
-#### **Performance Benchmarking**
-- Baseline metrics established for each component
-- Regression testing for performance changes
-- Automated performance gates in CI/CD pipeline
-- Performance monitoring in production environments
+#### Core Technology Stack
+- **Runtime**: Node.js 20.11.0+
+- **Language**: TypeScript 5.9.3 with strict ESLint configuration
+- **CLI Framework**: Ink (React for CLI)
+- **Testing**: Jest with Testing Library
+- **Build Tool**: tsup for fast TypeScript compilation
+- **Package Manager**: npm 10.0.0+
+- **Code Quality**: ESLint + Prettier + Husky + lint-staged
 
-### **Performance Optimization Workflow**
-
-#### **Performance Issue Detection**
-1. **Monitor metrics** - Real-time performance monitoring
-2. **Identify bottlenecks** - Profile and analyze slow operations
-3. **Document findings** - Use `[pm]` signal with detailed metrics
-4. **Prioritize optimizations** - Focus on high-impact improvements
-
-#### **Optimization Implementation**
-1. **Research solutions** - Identify proven optimization techniques
-2. **Implement changes** - Apply optimizations with proper testing
-3. **Measure impact** - Verify improvements with before/after metrics
-4. **Document results** - Use `[po]` signal with performance gains
-
-#### **Performance Validation**
-1. **Run test suite** - Execute comprehensive performance tests
-2. **Verify benchmarks** - Ensure all performance requirements met
-3. **Update baselines** - Adjust target metrics if needed
-4. **Monitor production** - Continuously track performance in production
-
-### **Performance Signals in PRPs**
-
-#### **Required Performance Documentation**
-Every PRP MUST include performance requirements in the DoD section:
-
-```markdown
-## dod - Performance Requirements
-- [ ] CLI startup time < 2 seconds
-- [ ] Memory usage < 50MB during normal operations
-- [ ] File watching latency < 100ms
-- [ ] Signal parsing < 10ms per file
-- [ ] All performance tests passing
-- [ ] Performance benchmarks met
-```
-
-#### **Performance Progress Tracking**
-Use performance signals to track optimization progress:
-
-```markdown
-## progress
-[pm] Performance issue identified: CLI startup taking 3.5 seconds, exceeding 2 second target | robo-developer | 2025-01-01-10:00
-[po] Performance optimized: CLI startup reduced to 1.2 seconds through lazy loading and caching | robo-developer | 2025-01-01-12:00
-```
-
-### **Performance Monitoring Tools**
-
-#### **Built-in Performance Manager**
-```typescript
-import { performanceManager } from '../performance/index.js';
-
-// Start timing an operation
-performanceManager.startOperation('my-operation');
-
-// End timing and record metrics
-performanceManager.endOperation('my-operation');
-
-// Get performance report
-const report = performanceManager.getReport();
-```
-
-#### **Memory Monitoring**
-```typescript
-import { MemoryMonitor } from '../performance/index.js';
-
-const monitor = new MemoryMonitor();
-monitor.startMonitoring(5000); // Check every 5 seconds
-
-const trend = monitor.getTrend();
-if (trend.increasing) {
-  console.warn(`Memory increasing at ${trend.rate}MB/s`);
-}
-```
-
-### **Performance Best Practices**
-
-#### **DO ✅**
-- Use lazy loading for heavy dependencies
-- Implement intelligent caching with TTL
-- Clean up resources and event listeners
-- Process items in batches to avoid blocking
-- Monitor memory usage and implement cleanup
-- Profile before optimizing
-- Use performance decorators for measurement
-- Implement proper error handling to avoid crashes
-
-#### **DON'T ❌**
-- Load all modules at startup
-- Ignore memory leaks
-- Block the event loop with long operations
-- Skip performance testing
-- Use synchronous I/O operations
-- Forget to clean up event listeners
-- Ignore performance warnings
-- Optimize without measuring first
-
-### **Performance Emergency Procedures**
-
-#### **When Performance Issues Occur**
-1. **Immediate Response**: Document issue with `[pm]` signal
-2. **Assessment**: Determine impact on user experience
-3. **Temporary Measures**: Implement workarounds if needed
-4. **Investigation**: Profile and identify root cause
-5. **Resolution**: Implement and test optimizations
-6. **Verification**: Confirm fix and update documentation
-
-#### **Performance Regression Response**
-1. **Detection**: Automated alerts or user reports
-2. **Documentation**: Use `[ps]` signal with regression details
-3. **Analysis**: Compare with baseline performance
-4. **Rollback**: Consider rollback if regression is severe
-5. **Fix**: Address root cause of performance degradation
-6. **Validation**: Ensure performance restored to acceptable levels
-
----
+#### Key Dependencies by Category
+- **CLI/UI**: `ink`, `ink-*` components, `react`, `react-dom`
+- **CLI Utilities**: `commander`, `inquirer`, `chalk`, `boxen`, `figlet`, `ora`
+- **File System**: `fs-extra`, `glob`, `handlebars`, `chokidar`
+- **API/Network**: `axios`, `express`, `cors`, `helmet`, `socket.io`
+- **Validation**: `ajv`, `ajv-formats`, `jsonschema`, `validate-npm-package-name`
+- **Security**: `jsonwebtoken`, `helmet`, `express-rate-limit`
+- **Performance**: `lru-cache`, `lz-string`
+- **AI Integration**: `openai`
 
 ### mondatory project rules!
 - NEVER git stash or play with git branch or history! NEVER! i need you always ask confirmation

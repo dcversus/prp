@@ -7,10 +7,8 @@
 import { spawn, ChildProcess, exec as execCallback } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs/promises';
-import * as fsSync from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { EventEmitter } from 'events';
 
 const exec = promisify(execCallback);
 
@@ -352,7 +350,7 @@ export async function sendInput(
         reject(error);
       } else {
         const currentProcess = getCurrentProcess();
-        if ('env' in currentProcess && currentProcess.env?.DEBUG_CLI_TESTS) {
+        if ('env' in currentProcess && (currentProcess.env as Record<string, string | undefined>)?.DEBUG_CLI_TESTS) {
           console.log(`[INPUT:${control.pid}] ${data.trim()}`);
         }
         resolve();
@@ -378,7 +376,6 @@ export async function killProcess(
       return;
     }
 
-    const startTime = Date.now();
     let killed = false;
 
     const cleanup = () => {
@@ -406,7 +403,7 @@ export async function killProcess(
       control.process.kill(signal);
 
       const currentProcess = getCurrentProcess();
-      if ('env' in currentProcess && currentProcess.env?.DEBUG_CLI_TESTS) {
+      if ('env' in currentProcess && (currentProcess.env as Record<string, string | undefined>)?.DEBUG_CLI_TESTS) {
         console.log(`[KILL:${control.pid}] Signal: ${signal}, Force: ${force}`);
       }
     } catch (error) {
@@ -426,7 +423,7 @@ export async function createTempDirectory(prefix: string = 'prp-test-'): Promise
     try {
       await fs.rm(tempPath, { recursive: true, force: true });
       const currentProcess = getCurrentProcess();
-      if ('env' in currentProcess && currentProcess.env?.DEBUG_CLI_TESTS) {
+      if ('env' in currentProcess && (currentProcess.env as Record<string, string | undefined>)?.DEBUG_CLI_TESTS) {
         console.log(`[CLEANUP] Removed temp directory: ${tempPath}`);
       }
     } catch (error) {
@@ -496,7 +493,7 @@ export async function waitForFile(
 
     const checkFile = async () => {
       try {
-        const stats = await fs.stat(filePath);
+        await fs.stat(filePath);
 
         if (checkContent) {
           // Check if file has content
@@ -621,7 +618,7 @@ export const PlatformUtils = {
   getShell(): string {
     const currentProcess = getCurrentProcess();
     if ('platform' in currentProcess && currentProcess.platform === 'win32') {
-      return ('env' in currentProcess && currentProcess.env?.COMSPEC) || 'cmd.exe';
+      return ((currentProcess.env as Record<string, string | undefined>)?.COMSPEC) || 'cmd.exe';
     }
     return '/bin/bash';
   },
@@ -810,7 +807,7 @@ export const TestUtils = {
     expectedError?: string
   ): Promise<{ stdout: string; stderr: string }> {
     try {
-      const result = await executeCommand(command, options);
+      await executeCommand(command, options);
       throw new Error(`Command succeeded when expected to fail: ${command}`);
     } catch (error: any) {
       if (expectedError && !error.message.includes(expectedError)) {

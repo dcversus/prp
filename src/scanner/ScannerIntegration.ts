@@ -4,11 +4,10 @@
  */
 
 import { ScannerCore, ScannerOptions } from './ScannerCore';
-import { ScannerEvent } from './event-bus/EventBus';
+import { ScannerEvent } from '../shared/scanner/event-bus.js';
 import { GitAdapter } from './adapters/GitAdapter';
 import { TmuxAdapter } from './adapters/TmuxAdapter';
 import * as path from 'path';
-import { logger } from '../utils/logger';
 
 export interface InspectorPayload {
   signal: string;
@@ -104,7 +103,7 @@ export class ScannerIntegration {
       });
     }
 
-    logger.success('✅ Scanner Integration started successfully');
+    logger.info('✅ Scanner Integration started successfully');
   }
 
   /**
@@ -114,7 +113,7 @@ export class ScannerIntegration {
     logger.info('🛑 Stopping Scanner Integration...');
     this.scanner.stop();
     this.tmuxAdapter.stopWatching();
-    logger.success('✅ Scanner Integration stopped');
+    logger.info('✅ Scanner Integration stopped');
   }
 
   /**
@@ -281,7 +280,7 @@ export class ScannerIntegration {
     tmux: Record<string, unknown>;
     pendingSignals: number;
     deduplicationCacheSize: number;
-  } {
+    } {
     return {
       scanner: this.scanner.getStats(),
       git: {

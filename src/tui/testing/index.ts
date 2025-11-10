@@ -38,24 +38,44 @@ export type {
   ComponentTestResult
 } from './ComponentTestHelpers.js';
 
-// Re-export commonly used types
-export type {
-  TUIConfig,
-  SignalTag,
-  AgentCard,
-  AgentStatus,
-  Theme,
-  LayoutMode
-} from '../types/TUIConfig.js';
+// Re-export commonly used types - TUIConfig types may not exist yet, commenting out
+// export type {
+//   TUIConfig,
+//   SignalTag,
+//   AgentCard,
+//   AgentStatus,
+//   Theme,
+//   LayoutMode
+// } from ../../shared/types/TUIConfig.js';
 
 /**
  * Default export with all utilities
  */
+import {
+  TUITestEnvironment,
+  MockTerminal,
+  AnimationController,
+  defaultTestEnvironment,
+  renderTUI,
+  VisualRegression
+} from './TUITestEnvironment.js';
+
+import {
+  ComponentAssertions,
+  MockComponents,
+  TestDataGenerators,
+  PerformanceTester,
+  IntegrationTester,
+  renderComponentForTesting,
+  expectComponent
+} from './ComponentTestHelpers.js';
+
 export default {
   // Environment
   TUITestEnvironment,
   MockTerminal,
   AnimationController,
+  defaultTestEnvironment,
   renderTUI,
   VisualRegression,
 

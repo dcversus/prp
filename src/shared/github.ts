@@ -249,9 +249,9 @@ export class GitHubClient {
     };
 
     // Get token from config or environment
-    const token = config?.token ||
-      prpConfig.agents.find(a => a.type.includes('github'))?.configuration?.['token'] as string ||
-      process['env']['GITHUB_TOKEN'];
+    const token = config?.token ??
+      prpConfig.agents.find(a => a.type.includes('github'))?.configuration?.['token'] as string ??
+      process.env.GITHUB_TOKEN;
 
     if (!token) {
       logger.warn('GitHubClient', 'No GitHub token found, API rate limits will apply');
@@ -337,7 +337,7 @@ export class GitHubClient {
     return {
       id: data.id,
       title: data.title,
-      description: data.body || '',
+      description: data.body ?? '',
       state: data.state as 'open' | 'closed' | 'merged',
       author: {
         login: data.user.login,
@@ -354,7 +354,7 @@ export class GitHubClient {
       changedFiles: data.changed_files,
       labels: data.labels.map((label: GitHubLabel) => label.name),
       assignees: data.assignees.map((assignee: GitHubAssignee) => assignee.login),
-      requestedReviewers: data.requested_reviewers?.map((reviewer: GitHubReviewer) => reviewer.login) || [],
+      requestedReviewers: data.requested_reviewers?.map((reviewer: GitHubReviewer) => reviewer.login) ?? [],
       milestone: data.milestone?.title
     };
   }
@@ -365,7 +365,7 @@ export class GitHubClient {
   async getCIStatus(prNumber: number): Promise<CIStatus> {
     // First get the head commit
     const prResponse = await this.client.get<GitHubPR>('/repos/' + this.config.defaultOwner + '/' + this.config.defaultRepo + '/pulls/' + prNumber);
-    const headSha = prResponse.data.head.sha || prResponse.data.head.ref;
+    const headSha = prResponse.data.head.sha ?? prResponse.data.head.ref;
 
     // Get combined status
     const statusResponse = await this.client.get<GitHubStatusResponse>('/repos/' + this.config.defaultOwner + '/' + this.config.defaultRepo + '/commits/' + headSha + '/status');
@@ -412,7 +412,7 @@ export class GitHubClient {
       id: review.id,
       author: review.user.login,
       state: review.state.toLowerCase() as 'approved' | 'changes_requested' | 'commented' | 'dismissed',
-      body: review.body || '',
+      body: review.body ?? '',
       createdAt: new Date(review.submitted_at),
       commitId: review.commit_id
     }));
@@ -445,7 +445,7 @@ export class GitHubClient {
       message: commit.commit.message,
       author: commit.commit.author.name,
       date: new Date(commit.commit.author.date),
-      files: commit.files?.map((f: GitHubFile) => f.filename) || []
+      files: commit.files?.map((f: GitHubFile) => f.filename) ?? []
     }));
   }
 
@@ -462,10 +462,10 @@ export class GitHubClient {
     const repoData = repoResponse.data;
 
     return {
-      isDraft: prData.draft || false,
-      isRebaseable: prData.rebaseable || false,
-      maintainerCanModify: prData.maintainer_can_modify || false,
-      locked: prData.locked || false,
+      isDraft: prData.draft ?? false,
+      isRebaseable: prData.rebaseable ?? false,
+      maintainerCanModify: prData.maintainer_can_modify ?? false,
+      locked: prData.locked ?? false,
       activeLockReason: prData.active_lock_reason,
       repository: {
         name: repoData.name,
@@ -566,7 +566,7 @@ export class GitHubClient {
       id: data.id,
       author: data.user.login,
       state: data.state.toLowerCase(),
-      body: data.body || '',
+      body: data.body ?? '',
       createdAt: new Date(data.submitted_at),
       commitId: data.commit_id
     };
@@ -590,7 +590,7 @@ export class GitHubClient {
     return response.data.items.map((item: GitHubSearchItem) => ({
       id: item.id,
       title: item.title,
-      description: item.body || '',
+      description: item.body ?? '',
       state: item.state as 'open' | 'closed' | 'merged',
       author: {
         login: item.user.login,
@@ -604,7 +604,7 @@ export class GitHubClient {
       deletions: 0,
       changedFiles: 0,
       labels: item.labels.map((label: GitHubLabel) => label.name),
-      assignees: item.assignees?.map((assignee: GitHubAssignee) => assignee.login) || [],
+      assignees: item.assignees?.map((assignee: GitHubAssignee) => assignee.login) ?? [],
       requestedReviewers: []
     }));
   }
@@ -617,9 +617,7 @@ let gitHubClient: GitHubClient | null = null;
  * Get GitHub client instance
  */
 export function getGitHubClient(config?: Partial<GitHubConfig>): GitHubClient {
-  if (!gitHubClient) {
-    gitHubClient = new GitHubClient(config);
-  }
+  gitHubClient ??= new GitHubClient(config);
   return gitHubClient;
 }
 

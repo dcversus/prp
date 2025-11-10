@@ -5,6 +5,45 @@
  * Provides real-time audio feedback for agent status transitions with <100ms latency.
  */
 
+import { logger } from '../shared/logger.js';
+
+// Simple audio logger to avoid external dependencies
+class AudioLogger {
+  constructor(private readonly context: string) {}
+
+  info(message: string, ...args: unknown[]): void {
+    const metadata = args.length > 0 ? { args } : undefined;
+    logger.info('shared', 'SignalOrchestra', message, metadata);
+  }
+
+  warn(message: string, ...args: unknown[]): void {
+    const metadata = args.length > 0 ? { args } : undefined;
+    logger.warn('shared', 'SignalOrchestra', message, metadata);
+  }
+
+  error(message: string, ...args: unknown[]): void {
+    const metadata = args.length > 0 ? { args } : undefined;
+    logger.error('shared', 'SignalOrchestra', message, undefined, metadata);
+  }
+
+  debug(message: string, ...args: unknown[]): void {
+    if (process.env['NODE_ENV'] === 'development' || process.env['DEBUG']) {
+      const metadata = args.length > 0 ? { args } : undefined;
+      logger.debug('shared', 'SignalOrchestra', message, metadata);
+    }
+  }
+}
+
+const audioLogger = new AudioLogger('SignalOrchestra');
+
+// Interface for global window with AudioContext support
+declare global {
+  interface Window {
+    AudioContext?: typeof AudioContext;
+    webkitAudioContext?: typeof AudioContext;
+  }
+}
+
 export interface SignalNoteMapping {
   [signal: string]: {
     note: MusicalNote;
@@ -28,7 +67,19 @@ export interface MelodyPattern {
   instrument: InstrumentType;
 }
 
-export type MusicalNote = 'C' | 'C#' | 'D' | 'D#' | 'E' | 'F' | 'F#' | 'G' | 'G#' | 'A' | 'A#' | 'B';
+export type MusicalNote =
+  | 'C'
+  | 'C#'
+  | 'D'
+  | 'D#'
+  | 'E'
+  | 'F'
+  | 'F#'
+  | 'G'
+  | 'G#'
+  | 'A'
+  | 'A#'
+  | 'B';
 export type InstrumentType = 'piano' | 'strings' | 'brass' | 'woodwinds' | 'percussion' | 'synth';
 
 export interface OrchestraConfig {
@@ -63,7 +114,7 @@ export class SignalOrchestra {
 
   // Performance tracking
   private metrics: AudioMetrics;
-    private signalHistory: SignalTransition[] = [];
+  private signalHistory: SignalTransition[] = [];
 
   constructor(config?: Partial<OrchestraConfig>) {
     this.config = {
@@ -78,7 +129,7 @@ export class SignalOrchestra {
         'robo-system-analyst': 'brass',
         'robo-devops-sre': 'percussion',
         'robo-ux-ui-designer': 'woodwinds',
-        'orchestrator': 'synth'
+        orchestrator: 'synth'
       },
       ...config
     };
@@ -97,11 +148,15 @@ export class SignalOrchestra {
    * Initialize the audio system
    */
   async initialize(): Promise<void> {
-    if (!this.config.enabled) return;
+    if (!this.config.enabled) {
+      return;
+    }
 
     try {
       // Create audio context with low latency
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
+      // Use webkitAudioContext for Safari compatibility
+      const AudioContextCtor = window.AudioContext ?? window.webkitAudioContext;
+      this.audioContext = new AudioContextCtor({
         latencyHint: 'interactive',
         sampleRate: 44100
       });
@@ -119,9 +174,9 @@ export class SignalOrchestra {
         await this.setupReverb();
       }
 
-      console.log('🎵 Signal Orchestra initialized successfully');
+      audioLogger.info('🎵 Signal Orchestra initialized successfully');
     } catch (error) {
-      console.warn('Failed to initialize audio system:', error);
+      audioLogger.warn('Failed to initialize audio system:', error);
       this.config.enabled = false;
     }
   }
@@ -130,13 +185,17 @@ export class SignalOrchestra {
    * Play a signal as a musical note
    */
   async playSignal(signal: string, agentType: string = 'unknown'): Promise<void> {
-    if (!this.config.enabled || !this.audioContext) return;
+    if (!this.config.enabled || !this.audioContext) {
+      return;
+    }
 
     const startTime = performance.now();
 
     try {
       const mapping = this.signalMappings[signal];
-      if (!mapping) return;
+      if (!mapping) {
+        return;
+      }
 
       // Stop any existing note for this agent
       this.stopAgentVoice(agentType);
@@ -144,8 +203,8 @@ export class SignalOrchestra {
       // Create instrument voice
       const voice = this.createVoice(mapping.instrument, mapping.note, mapping.volume);
 
-      if (voice) {
-        voice.connect(this.gainNode!);
+      if (voice && this.gainNode) {
+        voice.connect(this.gainNode);
         voice.start();
 
         // Store active voice
@@ -161,10 +220,12 @@ export class SignalOrchestra {
         this.metrics.latency = performance.now() - startTime;
         this.metrics.activeVoices = this.activeVoices.size;
 
-        console.log(`🎵 Playing signal ${signal} for ${agentType} as ${mapping.note} (${mapping.instrument})`);
+        audioLogger.debug(
+          `🎵 Playing signal ${signal} for ${agentType} as ${mapping.note} (${mapping.instrument})`
+        );
       }
     } catch (error) {
-      console.error('Failed to play signal:', error);
+      audioLogger.error('Failed to play signal:', error);
       this.metrics.bufferUnderruns++;
     }
   }
@@ -173,7 +234,9 @@ export class SignalOrchestra {
    * Play a melody pattern for an agent state transition
    */
   async playMelody(pattern: MelodyPattern, agentType: string): Promise<void> {
-    if (!this.config.enabled || !this.audioContext) return;
+    if (!this.config.enabled || !this.audioContext) {
+      return;
+    }
 
     const startTime = performance.now();
 
@@ -187,11 +250,11 @@ export class SignalOrchestra {
       pattern.notes.forEach((note, index) => {
         const voice = this.createVoice(pattern.instrument, note, 0.3);
 
-        if (voice) {
-          voice.connect(this.gainNode!);
+        if (voice !== null && this.gainNode && this.audioContext) {
+          voice.connect(this.gainNode);
 
-          const startTime = this.audioContext!.currentTime + (index * noteTime);
-          const duration = (pattern.durations[index] || 100) / 1000;
+          const startTime = this.audioContext.currentTime + index * noteTime;
+          const duration = (pattern.durations[index] ?? 100) / 1000;
 
           voice.start(startTime);
           voice.stop(startTime + duration);
@@ -201,9 +264,9 @@ export class SignalOrchestra {
       // Update metrics
       this.metrics.latency = performance.now() - startTime;
 
-      console.log(`🎵 Playing melody for ${agentType} (${pattern.notes.length} notes)`);
+      audioLogger.debug(`🎵 Playing melody for ${agentType} (${pattern.notes.length} notes)`);
     } catch (error) {
-      console.error('Failed to play melody:', error);
+      audioLogger.error('Failed to play melody:', error);
       this.metrics.bufferUnderruns++;
     }
   }
@@ -217,7 +280,7 @@ export class SignalOrchestra {
       try {
         voice.stop();
         voice.disconnect();
-      } catch (error) {
+      } catch {
         // Voice might have already stopped
       }
       this.activeVoices.delete(agentType);
@@ -271,6 +334,7 @@ export class SignalOrchestra {
     this.stopAll();
 
     if (this.audioContext) {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       this.audioContext.close();
       this.audioContext = null;
     }
@@ -286,7 +350,9 @@ export class SignalOrchestra {
    * Setup audio processing chain
    */
   private setupAudioChain(): void {
-    if (!this.audioContext) return;
+    if (!this.audioContext) {
+      return;
+    }
 
     // Create master gain node
     this.gainNode = this.audioContext.createGain();
@@ -316,7 +382,9 @@ export class SignalOrchestra {
    * Setup reverb effect
    */
   private async setupReverb(): Promise<void> {
-    if (!this.audioContext) return;
+    if (!this.audioContext) {
+      return;
+    }
 
     try {
       this.convolver = this.audioContext.createConvolver();
@@ -338,22 +406,30 @@ export class SignalOrchestra {
       if (this.compressor) {
         this.compressor.disconnect();
         this.compressor.connect(this.convolver);
-        this.convolver.connect(this.gainNode!);
-      } else {
-        this.gainNode!.disconnect();
-        this.gainNode!.connect(this.convolver);
+        if (this.gainNode) {
+          this.convolver.connect(this.gainNode);
+        }
+      } else if (this.gainNode) {
+        this.gainNode.disconnect();
+        this.gainNode.connect(this.convolver);
         this.convolver.connect(this.audioContext.destination);
       }
     } catch (error) {
-      console.warn('Failed to setup reverb:', error);
+      audioLogger.warn('Failed to setup reverb:', error);
     }
   }
 
   /**
    * Create instrument voice
    */
-  private createVoice(instrument: InstrumentType, note: MusicalNote, volume: number): OscillatorNode | null {
-    if (!this.audioContext) return null;
+  private createVoice(
+    instrument: InstrumentType,
+    note: MusicalNote,
+    volume: number
+  ): OscillatorNode | null {
+    if (!this.audioContext) {
+      return null;
+    }
 
     const oscillator = this.audioContext.createOscillator();
     const gainNode = this.audioContext.createGain();
@@ -369,7 +445,11 @@ export class SignalOrchestra {
 
     // Connect nodes
     oscillator.connect(gainNode);
-    gainNode.connect(this.compressor || this.gainNode!);
+    if (this.compressor) {
+      gainNode.connect(this.compressor);
+    } else if (this.gainNode) {
+      gainNode.connect(this.gainNode);
+    }
 
     return oscillator;
   }
@@ -379,21 +459,21 @@ export class SignalOrchestra {
    */
   private noteToFrequency(note: MusicalNote): number {
     const noteFrequencies: Record<MusicalNote, number> = {
-      'C': 261.63,
+      C: 261.63,
       'C#': 277.18,
-      'D': 293.66,
+      D: 293.66,
       'D#': 311.13,
-      'E': 329.63,
-      'F': 349.23,
+      E: 329.63,
+      F: 349.23,
       'F#': 369.99,
-      'G': 392.00,
-      'G#': 415.30,
-      'A': 440.00,
+      G: 392.0,
+      'G#': 415.3,
+      A: 440.0,
       'A#': 466.16,
-      'B': 493.88
+      B: 493.88
     };
 
-    return noteFrequencies[note] || 440.00;
+    return noteFrequencies[note] || 440.0;
   }
 
   /**
@@ -401,22 +481,26 @@ export class SignalOrchestra {
    */
   private getWaveform(instrument: InstrumentType): OscillatorType {
     const waveforms: Record<InstrumentType, OscillatorType> = {
-      'piano': 'triangle',
-      'strings': 'sawtooth',
-      'brass': 'square',
-      'woodwinds': 'sine',
-      'percussion': 'square',
-      'synth': 'sawtooth'
+      piano: 'triangle',
+      strings: 'sawtooth',
+      brass: 'square',
+      woodwinds: 'sine',
+      percussion: 'square',
+      synth: 'sawtooth'
     };
 
-    return waveforms[instrument] || 'sine';
+    return waveforms[instrument];
   }
 
   /**
    * Apply instrument-specific envelope
    */
-  private applyInstrumentEnvelope(gainNode: GainNode, instrument: InstrumentType, volume: number): void {
-    const now = this.audioContext!.currentTime;
+  private applyInstrumentEnvelope(
+    gainNode: GainNode,
+    instrument: InstrumentType,
+    volume: number
+  ): void {
+    const now = this.audioContext?.currentTime ?? 0;
 
     switch (instrument) {
       case 'piano':
@@ -505,15 +589,20 @@ export class SignalOrchestra {
    * Track signal transitions for analysis
    */
   private trackSignalTransition(signal: string, agentType: string): void {
+    const lastTransition =
+      this.signalHistory.length > 0 ? this.signalHistory[this.signalHistory.length - 1] : undefined;
     const transition: SignalTransition = {
-      fromSignal: this.signalHistory.length > 0 ? this.signalHistory[this.signalHistory.length - 1]?.toSignal : undefined,
       toSignal: signal,
       agentType,
       timestamp: Date.now()
     };
 
+    if (lastTransition) {
+      transition.fromSignal = lastTransition.toSignal;
+    }
+
     this.signalHistory.push(transition);
-    
+
     // Keep only recent history
     if (this.signalHistory.length > 1000) {
       this.signalHistory = this.signalHistory.slice(-500);

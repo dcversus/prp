@@ -7,9 +7,9 @@
 
 import { useState, useEffect } from 'react';
 import { Text } from 'ink';
-import { TUIConfig } from '../types/TUIConfig.js';
-import { createLayerLogger } from '../../shared/logger.js';
-import { getVersion } from '../../utils/version.js';
+import type { TUIConfig } from '../../../shared/types/TUIConfig.js';
+import { createLayerLogger } from '../../../shared/logger.js';
+import { getVersion } from '../../../shared/utils/version.js';
 
 const logger = createLayerLogger('tui');
 
@@ -24,7 +24,7 @@ interface Frame {
 }
 
 export function IntroSequence({ config, onComplete }: IntroSequenceProps) {
-    const [frame, setFrame] = useState(0);
+  const [frame, setFrame] = useState(0);
   const [frames, setFrames] = useState<Frame[]>([]);
 
   // Generate intro frames
@@ -36,7 +36,9 @@ export function IntroSequence({ config, onComplete }: IntroSequenceProps) {
 
   // Frame animation loop
   useEffect(() => {
-    if (frames.length === 0) return;
+    if (frames.length === 0) {
+      return;
+    }
 
     const timer = setTimeout(() => {
       if (frame < frames.length - 1) {
@@ -132,7 +134,9 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
             const char = asciiRamp[Math.min(rampIndex, asciiRamp.length - 1)];
             if (content[y] && char !== undefined) {
               const row = content[y];
-              if (row) row[x] = char;
+              if (row) {
+                row[x] = char;
+              }
             }
           }
         }
@@ -140,7 +144,9 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
 
       if (alpha > 0.5) {
         const centerRow = content[centerY];
-        if (centerRow) centerRow[centerX] = symbol;
+        if (centerRow) {
+          centerRow[centerX] = symbol;
+        }
       }
     }
 
@@ -158,7 +164,9 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
           const y = centerY + dy;
           if (x >= 0 && x < columns && y >= 0 && y < rows) {
             const row = content[y];
-            if (row) row[x] = symbol;
+            if (row) {
+              row[x] = symbol;
+            }
           }
         }
       }
@@ -169,7 +177,9 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
         const x = Math.floor(Math.random() * columns);
         const y = Math.floor(Math.random() * rows);
         const row = content[y];
-        if (row) row[x] = Math.random() > 0.5 ? '·' : '*';
+        if (row) {
+          row[x] = Math.random() > 0.5 ? '·' : '*';
+        }
       }
     }
 
@@ -196,7 +206,9 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
 
       // Center symbol
       const centerRow = content[centerY];
-      if (centerRow) centerRow[centerX] = '♫';
+      if (centerRow) {
+        centerRow[centerX] = '♫';
+      }
     }
 
     // Phase 4: 6.0-8.0s - Morph trail: ♪ trails → ♬ → resolves to ♫ (hold)
@@ -221,13 +233,17 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
             symbol = '♫';
           }
           const row = content[y];
-          if (row) row[x] = symbol;
+          if (row) {
+            row[x] = symbol;
+          }
         }
       }
 
       // Center final symbol
       const finalCenterRow = content[centerY];
-      if (finalCenterRow) finalCenterRow[centerX] = '♫';
+      if (finalCenterRow) {
+        finalCenterRow[centerX] = '♫';
+      }
 
       // Radial glow effect
       for (let y = 0; y < rows; y++) {
@@ -253,7 +269,9 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
 
       // Final symbol at center
       const finalSymbolRow = content[centerY];
-      if (finalSymbolRow) finalSymbolRow[centerX] = '♫';
+      if (finalSymbolRow) {
+        finalSymbolRow[centerX] = '♫';
+      }
 
       // Title lines
       const titleLines = [
@@ -276,7 +294,9 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
           const char = visibleLine[i];
           if (x >= 0 && x < columns && y >= 0 && y < rows && char !== undefined) {
             const row = content[y];
-            if (row) row[x] = char;
+            if (row) {
+              row[x] = char;
+            }
           }
         }
       });

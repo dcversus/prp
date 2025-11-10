@@ -6,8 +6,6 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Text } from 'ink';
-import { MusicIconProps, AgentStatus } from '../types/TUIConfig.js';
 import { useAnimationEngine, AnimationType } from '../animation/AnimationEngine.js';
 
 // Animation frame definitions for different agent states
@@ -48,11 +46,13 @@ export function MusicIcon({ status, animate = true, size = 'normal' }: MusicIcon
   const isMountedRef = useRef<boolean>(true);
 
   // Generate unique animation ID for this component instance
-  const animationId = `music-icon-${status}-${Math.random().toString(36).substr(2, 9)}`;
+  const animationId = `music-icon-${status}-${Math.random().toString(36).substring(2, 11)}`;
 
   // Register animation with the global engine
   useEffect(() => {
-    if (!isMountedRef.current) return;
+    if (!isMountedRef.current) {
+      return;
+    }
 
     animationIdRef.current = animationId;
 
@@ -167,7 +167,7 @@ export function useMusicIcon(
   // Register custom animation if needed
   useEffect(() => {
     if (customFrames && animate) {
-      const customAnimationId = `custom-music-${Math.random().toString(36).substr(2, 9)}`;
+      const customAnimationId = `custom-music-${Math.random().toString(36).substring(2, 11)}`;
 
       // Create custom animation with user-defined frames
       const state = {

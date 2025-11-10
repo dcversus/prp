@@ -1,7 +1,6 @@
-# PRP - Product Requirement Prompts 🚀
+# ♫ @dcversus/prp - Product Requirement Prompts 🚀
 
-> **Bootstrap context-driven development workflow with AI agent orchestration and signal-driven progress tracking**
->
+> **Autonomous Development Orchestration, scored to code.**
 > By Vasilisa Versus
 
 [![npm version](https://img.shields.io/npm/v/@dcversus/prp)](https://www.npmjs.com/package/@dcversus/prp)

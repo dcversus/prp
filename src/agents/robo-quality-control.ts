@@ -4,7 +4,13 @@
  * Quality assurance and testing agent.
  */
 
-import { BaseAgent, AgentCapabilities, AgentLimits, AgentStatus, AgentMetrics } from './base-agent.js';
+import {
+  BaseAgent,
+  AgentCapabilities,
+  AgentLimits,
+  AgentStatus,
+  AgentMetrics
+} from './base-agent.js';
 
 export class RoboQualityControl implements BaseAgent {
   id = 'robo-quality-control';
@@ -81,7 +87,7 @@ export class RoboQualityControl implements BaseAgent {
 
       this.metrics.tasksCompleted++;
       this.status.status = 'idle';
-      this.status.currentTask = undefined;
+      delete this.status.currentTask;
       this.status.lastActivity = new Date();
 
       return result;

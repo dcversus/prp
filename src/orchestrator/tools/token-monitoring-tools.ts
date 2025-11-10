@@ -108,16 +108,6 @@ interface TimeSeriesDataPoint {
   cost: number;
 }
 
-interface ScannerMetricsResponse {
-  timeRange: string;
-  totalSignals: number;
-  totalTokens: number;
-  totalCost: number;
-  averagePerSignal: number;
-  signalsPerMinute: number;
-  signalBreakdown?: SignalBreakdown;
-  timeSeriesData: TimeSeriesDataPoint[];
-}
 
 // Interface for distribution analysis
 interface DistributionEntry {
@@ -143,17 +133,6 @@ interface TrendData {
   secondHalfUsage: number;
 }
 
-interface DistributionResponse {
-  timeRange: string;
-  groupBy: string;
-  totalTokens: number;
-  distribution: DistributionData;
-  summary: {
-    topConsumer: string | null;
-    efficiency: EfficiencyMetrics | null;
-    trends: TrendData;
-  };
-}
 
 // Interface for real-time monitoring
 interface ComponentData {
@@ -522,7 +501,7 @@ export class TokenMonitoringTools {
             alerts,
             status: this.getSystemStatus(realTimeData),
             projections: this.getProjectedUsage(realTimeData),
-            tuiDisplay: tuiFormat ? this.formatForTUI(realTimeData, alerts) : undefined
+            tuiDisplay: tuiFormat ? this.formatForTUI(realTimeData, alerts, updateInterval) : undefined
           };
 
           logger.info('real_time_token_monitoring', 'Generated real-time monitoring data', {
@@ -617,7 +596,10 @@ export class TokenMonitoringTools {
       if (!agentUsage.has(metric.agentType)) {
         agentUsage.set(metric.agentType, []);
       }
-      agentUsage.get(metric.agentType).push(metric);
+      const usageArray = agentUsage.get(metric.agentType);
+      if (usageArray) {
+        usageArray.push(metric);
+      }
     }
 
     const agentData: AgentCapsResponse = {};
@@ -645,12 +627,20 @@ export class TokenMonitoringTools {
    * Get cap status based on usage percentage
    */
   private getCapStatus(metric: TokenMetrics | undefined, limit: number): string {
-    if (!metric) return 'no_data';
+    if (!metric) {
+      return 'no_data';
+    }
     const percentage = (metric.currentUsage / limit) * 100;
 
-    if (percentage >= 95) return 'critical';
-    if (percentage >= 80) return 'warning';
-    if (percentage >= 60) return 'moderate';
+    if (percentage >= 95) {
+      return 'critical';
+    }
+    if (percentage >= 80) {
+      return 'warning';
+    }
+    if (percentage >= 60) {
+      return 'moderate';
+    }
     return 'healthy';
   }
 
@@ -719,7 +709,7 @@ export class TokenMonitoringTools {
    * Calculate token distribution
    */
   private calculateDistribution(metrics: TokenMetrics[], groupBy: string, includePercentages: boolean): DistributionData {
-    const distribution: Record<string, any> = {};
+    const distribution: Record<string, number> = {};
     const total = metrics.reduce((sum, m) => sum + m.currentUsage, 0);
 
     for (const metric of metrics) {
@@ -743,16 +733,18 @@ export class TokenMonitoringTools {
     }
 
     if (includePercentages && total > 0) {
+      const distributionWithPercentages: DistributionData = {};
       for (const key in distribution) {
-        const tokenValue = distribution[key];
-        distribution[key] = {
+        const tokenValue = distribution[key] as number;
+        distributionWithPercentages[key] = {
           tokens: tokenValue,
           percentage: (tokenValue / total) * 100
         };
       }
+      return distributionWithPercentages;
     }
 
-    return distribution;
+    return distribution as DistributionData;
   }
 
   /**
@@ -777,7 +769,9 @@ export class TokenMonitoringTools {
    * Calculate efficiency metrics
    */
   private calculateEfficiency(metrics: TokenMetrics[]): EfficiencyMetrics | null {
-    if (metrics.length === 0) return null;
+    if (metrics.length === 0) {
+      return null;
+    }
 
     const totalTokens = metrics.reduce((sum, m) => sum + m.currentUsage, 0);
     const totalSignals = metrics.length;
@@ -850,7 +844,9 @@ export class TokenMonitoringTools {
   private getComponentData(component: string, data: Map<string, TokenMetrics>): ComponentData | null {
     const componentData = Array.from(data.values()).filter(m => m.component === component);
 
-    if (componentData.length === 0) return null;
+    if (componentData.length === 0) {
+      return null;
+    }
 
     const totalUsage = componentData.reduce((sum, m) => sum + m.currentUsage, 0);
     const avgUsage = totalUsage / componentData.length;
@@ -929,9 +925,15 @@ export class TokenMonitoringTools {
   private getSystemStatus(data: RealTimeResponseData): string {
     const avgLoad = data.summary.averageLoad;
 
-    if (avgLoad > 0.9) return 'critical';
-    if (avgLoad > 0.7) return 'warning';
-    if (avgLoad > 0.4) return 'moderate';
+    if (avgLoad > 0.9) {
+      return 'critical';
+    }
+    if (avgLoad > 0.7) {
+      return 'warning';
+    }
+    if (avgLoad > 0.4) {
+      return 'moderate';
+    }
     return 'healthy';
   }
 
@@ -953,7 +955,7 @@ export class TokenMonitoringTools {
   /**
    * Format data for TUI display
    */
-  private formatForTUI(data: RealTimeResponseData, alerts: AlertData[]): TUIDisplayData {
+  private formatForTUI(data: RealTimeResponseData, alerts: AlertData[], updateInterval: number): TUIDisplayData {
     const systemStatus = data.summary.totalActive > 0 ? 'ACTIVE' : 'IDLE';
     return {
       header: `Token Monitor - ${data.timestamp.toLocaleTimeString()}`,
@@ -982,7 +984,7 @@ export class TokenMonitoringTools {
           color: 'red'
         }] : [])
       ],
-      footer: `Next update in ${data.updateInterval}s`
+      footer: `Next update in ${updateInterval}s`
     };
   }
 }

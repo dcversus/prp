@@ -6,9 +6,12 @@
  */
 
 import { EventEmitter } from 'events';
-import type { BaseAgent } from './base-agent.js';
-import { TokenMetricsStream } from '../monitoring/TokenMetricsStream.js';
-import { TokenDataPoint } from '../types/token-metrics.js';
+import type { BaseAgent } from './base-agent';
+import { TokenMetricsStream } from '../shared/monitoring/TokenMetricsStream.js';
+import { TokenDataPoint } from '../shared/types/token-metrics.js';
+import { logger } from '../shared/utils/logger';
+
+const agentLogger = logger.child('AgentLifecycleManager');
 
 export interface AgentConfig {
   id: string;
@@ -50,10 +53,12 @@ export interface TokenLimits {
 
 export interface AgentInstance {
   config: AgentConfig;
-  agent: BaseAgent;
+  agent: BaseAgent | null;
   status: AgentLifecycleStatus;
   metrics: AgentLifecycleMetrics;
   health: AgentHealthStatus;
+  capabilities: AgentCapabilities;
+  performance: AgentPerformanceMetrics;
   createdAt: Date;
   lastStarted: Date;
   startTime?: Date;
@@ -100,8 +105,44 @@ export interface AgentExecutionResult {
   duration: number;
   tokensUsed: number;
   cost: number;
-  output: any;
+  output: unknown;
   error?: string;
+}
+
+/**
+ * Interface for agent tasks
+ */
+export interface AgentTask {
+  type: string;
+  payload: Record<string, unknown>;
+  priority?: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AgentCapabilities {
+  primary: string[]; // Main capabilities
+  secondary: string[]; // Supporting capabilities
+  tools: string[]; // Available tools
+  maxConcurrent: number; // Maximum concurrent tasks
+  specializations?: string[]; // Specialized areas
+}
+
+export interface AgentHealthMetrics {
+  cpuUsage: number;
+  memoryUsage: number;
+  responseTime: number;
+  errorRate: number;
+  uptime: number;
+  lastHealthCheck: Date;
+}
+
+export interface AgentPerformanceMetrics {
+  taskCompletionRate: number;
+  averageTaskDuration: number;
+  tokensUsedPerTask: number;
+  costPerTask: number;
+  successRate: number;
+  errorFrequency: Record<string, number>;
 }
 
 /**
@@ -115,7 +156,7 @@ export class AgentLifecycleManager extends EventEmitter {
 
   constructor(tokenMetricsStream?: TokenMetricsStream) {
     super();
-    this.tokenMetricsStream = tokenMetricsStream || new TokenMetricsStream();
+    this.tokenMetricsStream = tokenMetricsStream ?? new TokenMetricsStream();
     this.resourceMonitor = new ResourceMonitor();
     this.startHealthChecks();
   }
@@ -130,7 +171,7 @@ export class AgentLifecycleManager extends EventEmitter {
 
     const agentInstance: AgentInstance = {
       config,
-      agent: null as any, // Will be created on spawn
+      agent: null, // Will be created on spawn
       status: {
         state: 'stopped',
         progress: 0
@@ -148,6 +189,15 @@ export class AgentLifecycleManager extends EventEmitter {
         isHealthy: true,
         consecutiveFailures: 0,
         nextCheckAt: new Date()
+      },
+      capabilities: this.getAgentCapabilities(config.type),
+      performance: {
+        taskCompletionRate: 0,
+        averageTaskDuration: 0,
+        tokensUsedPerTask: 0,
+        costPerTask: 0,
+        successRate: 0,
+        errorFrequency: {}
       },
       createdAt: new Date(),
       lastStarted: new Date()
@@ -200,11 +250,10 @@ export class AgentLifecycleManager extends EventEmitter {
 
       // Wait for health check if requested
       if (options.waitForHealth) {
-        await this.waitForHealthCheck(agentId, options.timeoutMs || 30000);
+        await this.waitForHealthCheck(agentId, options.timeoutMs ?? 30000);
       }
 
       this.emit('agent_spawned', { agentId, instance });
-
     } catch (error) {
       instance.status.state = 'error';
       instance.status.errorMessage = error instanceof Error ? error.message : String(error);
@@ -230,19 +279,21 @@ export class AgentLifecycleManager extends EventEmitter {
       instance.status.state = 'stopping';
       this.emit('agent_stopping', { agentId, graceful });
 
-      if (instance.agent) {
-        if (graceful) {
-          // Graceful shutdown with timeout
-          await Promise.race([
-            instance.agent.shutdown(),
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Shutdown timeout')), 30000)
-            )
-          ]);
-        } else {
-          // Force shutdown
-          await instance.agent.shutdown();
-        }
+      if (!instance.agent) {
+        throw new Error(`Agent instance is null for ${agentId}`);
+      }
+
+      if (graceful) {
+        // Graceful shutdown with timeout
+        await Promise.race([
+          instance.agent.shutdown(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Shutdown timeout')), 30000)
+          )
+        ]);
+      } else {
+        // Force shutdown
+        await instance.agent.shutdown();
       }
 
       // Update metrics
@@ -253,10 +304,9 @@ export class AgentLifecycleManager extends EventEmitter {
 
       instance.status.state = 'stopped';
       instance.status.progress = 0;
-      instance.startTime = undefined;
+      delete instance.startTime;
 
       this.emit('agent_stopped', { agentId, instance });
-
     } catch (error) {
       instance.status.state = 'error';
       instance.status.errorMessage = error instanceof Error ? error.message : String(error);
@@ -268,11 +318,15 @@ export class AgentLifecycleManager extends EventEmitter {
   /**
    * Execute a task on an agent
    */
-  async executeTask(agentId: string, task: any, options: {
-    timeout?: number;
-    trackTokens?: boolean;
-    priority?: number;
-  } = {}): Promise<AgentExecutionResult> {
+  async executeTask(
+    agentId: string,
+    task: AgentTask | string,
+    options: {
+      timeout?: number;
+      trackTokens?: boolean;
+      priority?: number;
+    } = {}
+  ): Promise<AgentExecutionResult> {
     const instance = this.agents.get(agentId);
     if (!instance) {
       throw new Error(`Agent ${agentId} is not registered`);
@@ -285,7 +339,7 @@ export class AgentLifecycleManager extends EventEmitter {
     const startTime = Date.now();
     let tokensUsed = 0;
     let cost = 0;
-    let result: any;
+    let result: unknown;
     let error: string | undefined;
 
     // Setup token tracking if requested (declare outside try to be accessible in finally)
@@ -293,7 +347,8 @@ export class AgentLifecycleManager extends EventEmitter {
 
     try {
       // Update current task
-      instance.status.currentTask = typeof task === 'string' ? task : JSON.stringify(task).substring(0, 100);
+      instance.status.currentTask =
+        typeof task === 'string' ? task : JSON.stringify(task).substring(0, 100);
 
       if (options.trackTokens) {
         tokenUnsubscribe = this.trackTaskTokens(agentId, (tokensDelta) => {
@@ -302,7 +357,12 @@ export class AgentLifecycleManager extends EventEmitter {
       }
 
       // Execute task with timeout
-      const timeout = options.timeout || instance.config.resourceRequirements.maxExecutionTime;
+      const timeout = options.timeout ?? instance.config.resourceRequirements.maxExecutionTime;
+
+      if (!instance.agent) {
+        throw new Error(`Agent instance is null for ${agentId}`);
+      }
+
       result = await Promise.race([
         instance.agent.process(task),
         new Promise((_, reject) =>
@@ -326,7 +386,6 @@ export class AgentLifecycleManager extends EventEmitter {
         cost,
         output: result
       };
-
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
       const duration = Date.now() - startTime;
@@ -344,13 +403,12 @@ export class AgentLifecycleManager extends EventEmitter {
         output: null,
         error
       };
-
     } finally {
       // Cleanup
       if (tokenUnsubscribe) {
         tokenUnsubscribe();
       }
-      instance.status.currentTask = undefined;
+      delete instance.status.currentTask;
     }
   }
 
@@ -358,7 +416,7 @@ export class AgentLifecycleManager extends EventEmitter {
    * Get agent status
    */
   getAgentStatus(agentId: string): AgentInstance | null {
-    return this.agents.get(agentId) || null;
+    return this.agents.get(agentId) ?? null;
   }
 
   /**
@@ -373,7 +431,7 @@ export class AgentLifecycleManager extends EventEmitter {
    */
   getHealthyAgents(): AgentInstance[] {
     return Array.from(this.agents.values()).filter(
-      instance => instance.health.isHealthy && instance.status.state === 'running'
+      (instance) => instance.health.isHealthy && instance.status.state === 'running'
     );
   }
 
@@ -381,9 +439,7 @@ export class AgentLifecycleManager extends EventEmitter {
    * Get agents by type
    */
   getAgentsByType(type: string): AgentInstance[] {
-    return Array.from(this.agents.values()).filter(
-      instance => instance.config.type === type
-    );
+    return Array.from(this.agents.values()).filter((instance) => instance.config.type === type);
   }
 
   /**
@@ -397,20 +453,24 @@ export class AgentLifecycleManager extends EventEmitter {
     }
 
     // Sort by priority (higher first) and then by recent success rate
-    return healthyAgents
-      .filter(agent => !taskType || agent.config.type === taskType)
-      .sort((a, b) => {
-        // First by priority
-        if (a.config.priority !== b.config.priority) {
-          return b.config.priority - a.config.priority;
-        }
+    return (
+      healthyAgents
+        .filter((agent) => !taskType || agent.config.type === taskType)
+        .sort((a, b) => {
+          // First by priority
+          if (a.config.priority !== b.config.priority) {
+            return b.config.priority - a.config.priority;
+          }
 
-        // Then by success rate
-        const aSuccessRate = a.metrics.totalRuns > 0 ? a.metrics.successfulRuns / a.metrics.totalRuns : 0;
-        const bSuccessRate = b.metrics.totalRuns > 0 ? b.metrics.successfulRuns / b.metrics.totalRuns : 0;
+          // Then by success rate
+          const aSuccessRate =
+            a.metrics.totalRuns > 0 ? a.metrics.successfulRuns / a.metrics.totalRuns : 0;
+          const bSuccessRate =
+            b.metrics.totalRuns > 0 ? b.metrics.successfulRuns / b.metrics.totalRuns : 0;
 
-        return bSuccessRate - aSuccessRate;
-      })[0] || null;
+          return bSuccessRate - aSuccessRate;
+        })[0] ?? null
+    );
   }
 
   /**
@@ -439,9 +499,9 @@ export class AgentLifecycleManager extends EventEmitter {
       clearInterval(this.healthCheckTimer);
     }
 
-    const stopPromises = Array.from(this.agents.keys()).map(agentId =>
-      this.stopAgent(agentId, false).catch(err =>
-        console.error(`Failed to stop agent ${agentId}:`, err)
+    const stopPromises = Array.from(this.agents.keys()).map((agentId) =>
+      this.stopAgent(agentId, false).catch((err) =>
+        agentLogger.error(`Failed to stop agent ${agentId}:`, err)
       )
     );
 
@@ -453,21 +513,21 @@ export class AgentLifecycleManager extends EventEmitter {
   /**
    * Load agent class dynamically
    */
-  private async loadAgentClass(type: string): Promise<any> {
+  private async loadAgentClass(type: string): Promise<new () => BaseAgent> {
     // Try to load a specific agent type
     try {
       const module = await import(`./${type}.js`);
-      const AgentClass = module.default || module[type];
+      const AgentClass = module.default ?? module[type];
 
       if (typeof AgentClass !== 'function') {
         throw new Error(`Invalid agent class for type: ${type}`);
       }
 
-      return AgentClass;
+      return AgentClass as new () => BaseAgent;
     } catch {
       // Fallback to RoboDeveloper as default
       const module = await import('./robo-developer.js');
-      return module.RoboDeveloper;
+      return module.RoboDeveloper as new () => BaseAgent;
     }
   }
 
@@ -484,7 +544,7 @@ export class AgentLifecycleManager extends EventEmitter {
   private setupTokenTracking(instance: AgentInstance): void {
     this.tokenMetricsStream.subscribe(instance.config.id, (data: TokenDataPoint) => {
       instance.metrics.totalTokensUsed += data.tokensUsed;
-      instance.metrics.totalCost += data.cost || 0;
+      instance.metrics.totalCost += data.cost ?? 0;
     });
   }
 
@@ -516,7 +576,7 @@ export class AgentLifecycleManager extends EventEmitter {
    */
   private calculateCost(tokens: number, agentType: string): number {
     // Simplified cost calculation - in real implementation this would use actual pricing
-    const costPerToken = {
+    const costPerToken: Record<string, number> = {
       'robo-developer': 0.00001,
       'robo-quality-control': 0.000008,
       'robo-system-analyst': 0.000012,
@@ -524,7 +584,7 @@ export class AgentLifecycleManager extends EventEmitter {
       'robo-ux-ui-designer': 0.000007
     };
 
-    return tokens * (costPerToken[agentType as keyof typeof costPerToken] || 0.00001);
+    return tokens * (costPerToken[agentType] ?? 0.00001);
   }
 
   /**
@@ -545,7 +605,8 @@ export class AgentLifecycleManager extends EventEmitter {
     }
 
     // Update average run time
-    const totalDuration = instance.metrics.averageRunTime * (instance.metrics.totalRuns - 1) + duration;
+    const totalDuration =
+      instance.metrics.averageRunTime * (instance.metrics.totalRuns - 1) + duration;
     instance.metrics.averageRunTime = totalDuration / instance.metrics.totalRuns;
 
     // Update token and cost metrics
@@ -554,6 +615,20 @@ export class AgentLifecycleManager extends EventEmitter {
     instance.metrics.lastRunAt = new Date();
     instance.metrics.lastRunDuration = duration;
 
+    // Update performance metrics
+    instance.performance.successRate =
+      instance.metrics.totalRuns > 0
+        ? instance.metrics.successfulRuns / instance.metrics.totalRuns
+        : 0;
+    instance.performance.taskCompletionRate = instance.performance.successRate;
+    instance.performance.averageTaskDuration = instance.metrics.averageRunTime;
+    instance.performance.tokensUsedPerTask =
+      instance.metrics.totalRuns > 0
+        ? instance.metrics.totalTokensUsed / instance.metrics.totalRuns
+        : 0;
+    instance.performance.costPerTask =
+      instance.metrics.totalRuns > 0 ? instance.metrics.totalCost / instance.metrics.totalRuns : 0;
+
     // Update uptime if agent is still running
     if (instance.startTime) {
       instance.metrics.uptime = Date.now() - instance.startTime.getTime();
@@ -561,11 +636,205 @@ export class AgentLifecycleManager extends EventEmitter {
   }
 
   /**
+   * Get agent capabilities by type
+   */
+  private getAgentCapabilities(agentType: string): AgentCapabilities {
+    const capabilities: Record<string, AgentCapabilities> = {
+      'robo-developer': {
+        primary: ['code-development', 'debugging', 'testing', 'linting'],
+        secondary: ['documentation', 'refactoring', 'git-operations'],
+        tools: ['file-edit', 'bash', 'search', 'git', 'test-runner'],
+        maxConcurrent: 3,
+        specializations: ['typescript', 'javascript', 'react', 'node.js']
+      },
+      'robo-quality-control': {
+        primary: ['code-review', 'testing', 'quality-assurance'],
+        secondary: ['performance-testing', 'security-scanning', 'accessibility-testing'],
+        tools: ['test-runner', 'linter', 'security-scanner', 'accessibility-checker'],
+        maxConcurrent: 2,
+        specializations: ['unit-tests', 'integration-tests', 'e2e-tests']
+      },
+      'robo-system-analyst': {
+        primary: ['requirements-analysis', 'system-design', 'research'],
+        secondary: ['documentation', 'planning', 'stakeholder-communication'],
+        tools: ['research-tools', 'documentation-tools', 'analysis-tools'],
+        maxConcurrent: 1,
+        specializations: ['requirements-gathering', 'system-architecture', 'technical-writing']
+      },
+      'robo-devops-sre': {
+        primary: ['deployment', 'infrastructure', 'monitoring'],
+        secondary: ['incident-response', 'security', 'performance-optimization', 'automation'],
+        tools: ['deployment-tools', 'monitoring-tools', 'security-tools', 'automation-tools'],
+        maxConcurrent: 2,
+        specializations: ['docker', 'kubernetes', 'ci-cd', 'cloud-platforms']
+      },
+      'robo-ux-ui-designer': {
+        primary: ['ui-design', 'ux-research', 'prototyping'],
+        secondary: ['design-systems', 'accessibility', 'user-testing', 'visual-design'],
+        tools: ['design-tools', 'prototyping-tools', 'user-testing-tools'],
+        maxConcurrent: 1,
+        specializations: ['responsive-design', 'accessibility', 'design-systems']
+      }
+    };
+
+    return capabilities[agentType] ?? capabilities['robo-developer'];
+  }
+
+  /**
+   * Check if agent can handle specific task type
+   */
+  canHandleTask(agentId: string, taskType: string): boolean {
+    const instance = this.agents.get(agentId);
+    if (!instance) {
+      return false;
+    }
+
+    const { capabilities, status } = instance;
+
+    // Check if agent is in a state to handle tasks
+    if (status.state !== 'running') {
+      return false;
+    }
+
+    // Check if task type matches agent capabilities
+    const allCapabilities = [...capabilities.primary, ...capabilities.secondary];
+    return allCapabilities.includes(taskType) || allCapabilities.includes('*');
+  }
+
+  /**
+   * Get agents that can handle specific task type
+   */
+  getAgentsForTask(taskType: string): AgentInstance[] {
+    return Array.from(this.agents.values()).filter((instance) =>
+      this.canHandleTask(instance.config.id, taskType)
+    );
+  }
+
+  /**
+   * Get best agent for specific task
+   */
+  getBestAgentForTask(taskType: string): AgentInstance | null {
+    const eligibleAgents = this.getAgentsForTask(taskType);
+
+    if (eligibleAgents.length === 0) {
+      return null;
+    }
+
+    // Score agents based on performance and availability
+    const scoredAgents = eligibleAgents.map((agent) => ({
+      agent,
+      score: this.calculateAgentTaskScore(agent, taskType)
+    }));
+
+    scoredAgents.sort((a, b) => b.score - a.score);
+    return scoredAgents[0].agent;
+  }
+
+  /**
+   * Calculate agent score for task assignment
+   */
+  private calculateAgentTaskScore(agent: AgentInstance, taskType: string): number {
+    let score = 100; // Base score
+
+    // Prioritize agents with the task as primary capability
+    if (agent.capabilities.primary.includes(taskType)) {
+      score += 50;
+    } else if (agent.capabilities.secondary.includes(taskType)) {
+      score += 25;
+    }
+
+    // Factor in performance metrics
+    score += agent.performance.successRate * 30;
+    score += agent.performance.taskCompletionRate * 20;
+
+    // Penalize agents with high error rates
+    score -=
+      Object.values(agent.performance.errorFrequency).reduce((sum, count) => sum + count, 0) * 5;
+
+    // Factor in current load
+    if (agent.status.currentTask) {
+      score -= 20; // Penalty for being busy
+    }
+
+    // Factor in health
+    if (!agent.health.isHealthy) {
+      score -= 100; // Heavy penalty for unhealthy agents
+    }
+
+    return Math.max(0, score);
+  }
+
+  /**
+   * Get agent performance analytics
+   */
+  getPerformanceAnalytics(agentId?: string): {
+    agentId?: string;
+    performance: AgentPerformanceMetrics;
+    health: AgentHealthStatus;
+    capabilities: AgentCapabilities;
+    recommendations: string[];
+  }[] {
+    const agents = agentId
+      ? ([this.agents.get(agentId)].filter(Boolean) as AgentInstance[])
+      : Array.from(this.agents.values());
+
+    return agents.map((agent) => {
+      const recommendations: string[] = [];
+
+      // Generate recommendations based on performance
+      if (agent.performance.successRate < 0.8) {
+        recommendations.push('Low success rate detected - review agent configuration and tasks');
+      }
+
+      if (agent.performance.averageTaskDuration > 300000) {
+        // 5 minutes
+        recommendations.push(
+          'High average task duration - consider task optimization or resource allocation'
+        );
+      }
+
+      if (agent.performance.tokensUsedPerTask > 10000) {
+        recommendations.push('High token usage per task - review task efficiency');
+      }
+
+      if (!agent.health.isHealthy) {
+        recommendations.push(`Agent health issues: ${agent.health.lastError}`);
+      }
+
+      return {
+        agentId: agent.config.id,
+        performance: agent.performance,
+        health: agent.health,
+        capabilities: agent.capabilities,
+        recommendations
+      };
+    });
+  }
+
+  /**
+   * Update agent capabilities (for runtime modifications)
+   */
+  updateAgentCapabilities(agentId: string, capabilities: Partial<AgentCapabilities>): void {
+    const instance = this.agents.get(agentId);
+    if (!instance) {
+      throw new Error(`Agent ${agentId} not found`);
+    }
+
+    // Merge capabilities
+    instance.capabilities = {
+      ...instance.capabilities,
+      ...capabilities
+    };
+
+    this.emit('agent_capabilities_updated', { agentId, capabilities: instance.capabilities });
+  }
+
+  /**
    * Start health check monitoring
    */
   private startHealthChecks(): void {
-    this.healthCheckTimer = setInterval(async () => {
-      await this.performHealthChecks();
+    this.healthCheckTimer = setInterval(() => {
+      void this.performHealthChecks();
     }, 30000); // Check every 30 seconds
   }
 
@@ -574,8 +843,10 @@ export class AgentLifecycleManager extends EventEmitter {
    */
   private async performHealthChecks(): Promise<void> {
     const healthCheckPromises = Array.from(this.agents.values())
-      .filter(instance => instance.status.state === 'running' && instance.config.healthCheck.enabled)
-      .map(instance => this.checkAgentHealth(instance.config.id));
+      .filter(
+        (instance) => instance.status.state === 'running' && instance.config.healthCheck.enabled
+      )
+      .map((instance) => this.checkAgentHealth(instance.config.id));
 
     await Promise.allSettled(healthCheckPromises);
   }
@@ -609,10 +880,9 @@ export class AgentLifecycleManager extends EventEmitter {
       instance.health.lastPing = new Date();
       instance.health.responseTime = responseTime;
       instance.health.consecutiveFailures = 0;
-      instance.health.lastError = undefined;
+      delete instance.health.lastError;
 
       this.emit('agent_healthy', { agentId, responseTime });
-
     } catch (error) {
       instance.health.consecutiveFailures++;
       instance.health.lastError = error instanceof Error ? error.message : String(error);
@@ -621,7 +891,11 @@ export class AgentLifecycleManager extends EventEmitter {
       // Mark as unhealthy if too many failures
       if (instance.health.consecutiveFailures >= config.maxFailures) {
         instance.health.isHealthy = false;
-        this.emit('agent_unhealthy', { agentId, error, consecutiveFailures: instance.health.consecutiveFailures });
+        this.emit('agent_unhealthy', {
+          agentId,
+          error,
+          consecutiveFailures: instance.health.consecutiveFailures
+        });
       }
     } finally {
       instance.health.nextCheckAt = new Date(Date.now() + config.intervalMs);
@@ -648,7 +922,7 @@ export class AgentLifecycleManager extends EventEmitter {
         throw new Error(`Agent ${agentId} failed health check`);
       }
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
     throw new Error(`Health check timeout for agent ${agentId}`);

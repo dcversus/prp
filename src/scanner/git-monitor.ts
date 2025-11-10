@@ -1,5 +1,8 @@
 import { execSync } from 'child_process';
-import { logger } from '../utils/logger';
+import { createLayerLogger } from '../shared';
+import { FileChange } from '../shared/types';
+
+const logger = createLayerLogger('scanner');
 
 /**
  * Git Status Monitor - tracks git repository status and changes
@@ -119,7 +122,9 @@ export class GitStatusMonitor {
     const lines = statusOutput.split('\n');
 
     for (const line of lines) {
-      if (line.length < 3) continue;
+      if (line.length < 3) {
+        continue;
+      }
 
       const indexStatus = line[0];
       const workTreeStatus = line[1];

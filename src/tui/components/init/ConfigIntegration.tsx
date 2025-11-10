@@ -6,8 +6,10 @@
  * and integration with existing PRP configuration system
  */
 
-import type { InitState, AgentConfig } from './InitFlow.js';
-import type { TUIConfig } from '../../types/TUIConfig.js';
+import type { InitState } from './types.js';
+import type { AgentConfig } from './types.js';
+import type { TUIConfig } from '../../../shared/types/TUIConfig.js';
+
 
 // .prprc configuration interface
 export interface PRPConfig {
@@ -104,31 +106,31 @@ const TEMPLATE_CONFIGS = {
     name: (projectName: string) => `${projectName}-cli`,
     description: (projectPrompt: string) => `TypeScript CLI tool: ${projectPrompt}`,
     build: {
-      tool: "tsc",
+      tool: 'tsc',
       optimization: true,
       minification: true,
       sourceMap: true,
-      target: ["es2020"],
+      target: ['es2020'],
       output: {
-        directory: "dist",
-        filename: "index.js",
-        format: ["cjs"]
+        directory: 'dist',
+        filename: 'index.js',
+        format: ['cjs']
       }
     },
     test: {
-      framework: "jest",
-      coverage: { enabled: true, threshold: 80, reporters: ["text"] },
-      environment: "node",
+      framework: 'jest',
+      coverage: { enabled: true, threshold: 80, reporters: ['text'] },
+      environment: 'node',
       setupFiles: [],
-      testMatch: ["**/__tests__/**/*.ts", "**/?(*.)+(spec|test).ts"]
+      testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts']
     },
     packageManager: {
-      manager: "npm",
+      manager: 'npm',
       scripts: {
-        dev: "prp dev",
-        build: "prp build",
-        test: "prp test",
-        lint: "prp lint"
+        dev: 'prp dev',
+        build: 'prp build',
+        test: 'prp test',
+        lint: 'prp lint'
       }
     }
   },
@@ -136,38 +138,38 @@ const TEMPLATE_CONFIGS = {
     name: (projectName: string) => `${projectName}-app`,
     description: (projectPrompt: string) => `React application: ${projectPrompt}`,
     build: {
-      tool: "vite",
+      tool: 'vite',
       optimization: true,
       minification: true,
       sourceMap: true,
-      target: ["es2020", "dom"],
+      target: ['es2020', 'dom'],
       output: {
-        directory: "dist",
-        filename: "index.html",
-        format: ["es"]
+        directory: 'dist',
+        filename: 'index.html',
+        format: ['es']
       }
     },
     test: {
-      framework: "vitest",
-      coverage: { enabled: true, threshold: 80, reporters: ["text"] },
-      environment: "jsdom",
+      framework: 'vitest',
+      coverage: { enabled: true, threshold: 80, reporters: ['text'] },
+      environment: 'jsdom',
       setupFiles: [],
-      testMatch: ["**/__tests__/**/*.test.tsx", "**/?(*.)+(spec|test).tsx"]
+      testMatch: ['**/__tests__/**/*.test.tsx', '**/?(*.)+(spec|test).tsx']
     }
   },
   nestjs: {
     name: (projectName: string) => `${projectName}-api`,
     description: (projectPrompt: string) => `NestJS API: ${projectPrompt}`,
     build: {
-      tool: "nest",
+      tool: 'nest',
       optimization: true,
       minification: false,
       sourceMap: true,
-      target: ["es2020"],
+      target: ['es2020'],
       output: {
-        directory: "dist",
-        filename: "main.js",
-        format: ["cjs"]
+        directory: 'dist',
+        filename: 'main.js',
+        format: ['cjs']
       }
     }
   },
@@ -175,14 +177,14 @@ const TEMPLATE_CONFIGS = {
     name: (projectName: string) => `${projectName}-api`,
     description: (projectPrompt: string) => `FastAPI service: ${projectPrompt}`,
     build: {
-      tool: "python",
+      tool: 'python',
       optimization: false,
       minification: false,
-      target: ["python3.9"],
+      target: ['python3.9'],
       output: {
-        directory: ".",
-        filename: "main.py",
-        format: ["py"]
+        directory: '.',
+        filename: 'main.py',
+        format: ['py']
       }
     }
   },
@@ -190,14 +192,14 @@ const TEMPLATE_CONFIGS = {
     name: (projectName: string) => `${projectName}-wiki`,
     description: (projectPrompt: string) => `Wiki.js documentation: ${projectPrompt}`,
     build: {
-      tool: "wikijs",
+      tool: 'wikijs',
       optimization: false,
       minification: false,
-      target: ["node"],
+      target: ['node'],
       output: {
-        directory: ".",
-        filename: "index.js",
-        format: ["cjs"]
+        directory: '.',
+        filename: 'index.js',
+        format: ['cjs']
       }
     }
   },
@@ -205,13 +207,13 @@ const TEMPLATE_CONFIGS = {
     name: (projectName: string) => projectName,
     description: (projectPrompt: string) => projectPrompt,
     build: {
-      tool: "custom",
+      tool: 'custom',
       optimization: false,
       minification: false,
       target: [],
       output: {
-        directory: ".",
-        filename: "",
+        directory: '.',
+        filename: '',
         format: []
       }
     }
@@ -232,7 +234,7 @@ export const convertAgentConfig = (agent: AgentConfig): PRPAgentConfig => {
     },
     capabilities: determineAgentCapabilities(agent.type),
     instructions: agent.cv,
-    instructionsPath: agent.instructions_path,
+    instructionsPath: agent.cv, // Use cv as instructions path since instructions_path doesn't exist
     config: {
       yolo: agent.yolo,
       subAgents: agent.sub_agents,
@@ -264,17 +266,17 @@ export const generatePRPConfig = (
   const templateConfig = TEMPLATE_CONFIGS[state.template];
 
   return {
-    version: "1.0.0",
+    version: '1.0.0',
     name: templateConfig.name(state.projectName),
     description: templateConfig.description(state.projectPrompt),
     storage: {
-      dataDir: ".prp",
-      cacheDir: "/tmp/prp-cache",
-      worktreesDir: "/tmp/prp-worktrees",
-      notesDir: ".prp/notes",
-      logsDir: "/tmp/prp-logs",
-      keychainFile: ".prp/keychain.json",
-      persistFile: ".prp/state.json",
+      dataDir: '.prp',
+      cacheDir: '/tmp/prp-cache',
+      worktreesDir: '/tmp/prp-worktrees',
+      notesDir: '.prp/notes',
+      logsDir: '/tmp/prp-logs',
+      keychainFile: '.prp/keychain.json',
+      persistFile: '.prp/state.json',
       maxCacheSize: 104857600, // 100MB
       retentionPeriod: 2592000000 // 30 days
     },
@@ -285,21 +287,21 @@ export const generatePRPConfig = (
       provider: state.provider,
       authType: state.authType,
       apiKey: state.apiKey,
-      customProvider: state.customProvider
+      customProvider: state.customConfig
     },
     scanner: {
       enabled: true,
-      watchPatterns: ["**/*.md", "PRPs/*", ".prprc"],
-      ignorePatterns: ["node_modules/**", "dist/**", ".git/**"]
+      watchPatterns: ['**/*.md', 'PRPs/*', '.prprc'],
+      ignorePatterns: ['node_modules/**', 'dist/**', '.git/**']
     },
     inspector: {
       enabled: true,
       autoReview: true,
-      rules: ["signal-detection", "prp-validation", "agent-coordination"]
+      rules: ['signal-detection', 'prp-validation', 'agent-coordination']
     },
     tui: {
-      mode: "init-flow",
-      activeScreen: "orchestrator",
+      mode: 'init-flow',
+      activeScreen: 'orchestrator',
       followEvents: true,
       autoRefresh: true,
       refreshInterval: tuiConfig?.animations?.status?.fps ? 1000 / tuiConfig.animations.status.fps : 5000
@@ -320,7 +322,7 @@ export const generatePRPConfig = (
       tokenCriticalThreshold: 0.95
     },
     logging: {
-      level: "info",
+      level: 'info',
       enableFileLogging: true,
       enableTokenTracking: true,
       enablePerformanceTracking: true,
@@ -334,7 +336,7 @@ export const generatePRPConfig = (
     settings: {
       debug: {
         enabled: false,
-        level: "info",
+        level: 'info',
         console: true,
         file: false,
         timestamp: true,
@@ -345,20 +347,20 @@ export const generatePRPConfig = (
         linting: {
           enabled: state.template !== 'none',
           rules: state.template === 'typescript' ? {
-            "@typescript-eslint/no-unused-vars": "error",
-            "@typescript-eslint/explicit-function-return-type": "warn"
+            '@typescript-eslint/no-unused-vars': 'error',
+            '@typescript-eslint/explicit-function-return-type': 'warn'
           } : {},
           fixOnSave: true
         },
         testing: {
           enabled: state.template !== 'none',
           coverage: 80,
-          frameworks: state.template === 'typescript' ? ["jest"] :
-                     state.template === 'react' ? ["vitest"] : []
+          frameworks: state.template === 'typescript' ? ['jest'] :
+            state.template === 'react' ? ['vitest'] : []
         },
         security: {
           enabled: true,
-          tools: ["npm-audit"],
+          tools: ['npm-audit'],
           rules: {}
         },
         performance: {
@@ -370,9 +372,9 @@ export const generatePRPConfig = (
         }
       },
       build: templateConfig.build,
-      test: templateConfig.test || {},
+      test: 'test' in templateConfig ? templateConfig.test : {},
       ci: {
-        platform: state.integrations.github ? "github" : "none",
+        platform: state.integrations.github ? 'github' : 'none',
         workflows: {
           build: true,
           test: true,
@@ -385,37 +387,42 @@ export const generatePRPConfig = (
           onSchedule: false
         },
         environment: {
-          NODE_ENV: "test"
+          NODE_ENV: 'test'
         }
       },
       development: {
         watch: true,
         hotReload: state.template === 'react',
         port: state.template === 'react' ? 3000 : 8000,
-        host: "localhost",
+        host: 'localhost',
         proxy: {},
-        server: state.template === 'react' ? "webpack-dev-server" : "node"
+        server: state.template === 'react' ? 'webpack-dev-server' : 'node'
       },
       packageManager: {
-        manager: "npm",
+        manager: 'npm',
         autoInstall: true,
-        scripts: templateConfig.packageManager?.scripts || {
-          dev: "prp dev",
-          build: "prp build",
-          test: "prp test",
-          lint: "prp lint"
+        scripts: ('packageManager' in templateConfig) ? (templateConfig.packageManager?.scripts || {
+          dev: 'prp dev',
+          build: 'prp build',
+          test: 'prp test',
+          lint: 'prp lint'
+        }) : {
+          dev: 'prp dev',
+          build: 'prp build',
+          test: 'prp test',
+          lint: 'prp lint'
         },
         dependencies: {},
         devDependencies: {}
       }
     },
     scripts: {
-      dev: "prp dev",
-      build: "prp build",
-      test: "prp test",
-      lint: "prp lint",
-      quality: "prp quality",
-      "init": "prp init"
+      dev: 'prp dev',
+      build: 'prp build',
+      test: 'prp test',
+      lint: 'prp lint',
+      quality: 'prp quality',
+      'init': 'prp init'
     }
   };
 };
@@ -435,7 +442,7 @@ This project contains ${state.agents.length} configured agents for autonomous de
 `;
 
   state.agents.forEach((agent, index) => {
-    content += `### ${index + 1}. ${agent.name}
+    content += `### ${index + 1}. ${agent.id}
 
 - **Type**: ${agent.type}
 - **Provider**: ${agent.provider}
@@ -499,9 +506,9 @@ For complete signal reference, see CLAUDE.md.
 // Generate initial PRP content
 export const generateInitialPRP = (state: InitState): string => {
   const timestamp = new Date().toISOString().split('T')[0];
-  const prpNumber = "001";
+  const prpNumber = '001';
 
-  return `# PRP-${prpNumber}: Project Bootstrap Complete
+  const content = `# PRP-${prpNumber}: Project Bootstrap Complete
 
 > "${state.projectPrompt}"
 
@@ -583,6 +590,9 @@ This project is now ready for autonomous development using the PRP agent system.
 
   return content;
 };
+
+// Export only TEMPLATE_CONFIGS as named export since functions are already declared inline
+export { TEMPLATE_CONFIGS };
 
 export default {
   generatePRPConfig,

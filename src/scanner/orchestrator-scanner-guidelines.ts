@@ -5,7 +5,7 @@
  * nudge execution for orchestrator coordination and admin communication.
  */
 
-import { createAgentNudgeIntegration } from '../nudge/agent-integration';
+import { createAgentNudgeIntegration } from '../shared/nudge/agent-integration';
 import { Signal } from '../shared/types';
 import { createLayerLogger } from '../shared';
 // import type { NodeJS } from 'node'; // Not needed
@@ -154,7 +154,7 @@ export class OrchestratorScannerGuidelines {
       }
     }
 
-    logger.info('OrchestratorScanner', `Processed orchestrator signals`, {
+    logger.info('OrchestratorScanner', 'Processed orchestrator signals', {
       totalProcessed: processed.length,
       nudgesSent,
       readStatusUpdated,
@@ -190,10 +190,10 @@ export class OrchestratorScannerGuidelines {
 
     if (signalType === '*a') {
       // Admin communication pending - immediate nudge
-      return await this.handleAdminPendingSignal(signal, context);
+      return this.handleAdminPendingSignal(signal, context);
     } else if (signalType === 'a*') {
       // Admin message read - update status
-      return await this.handleAdminReadSignal(signal, context);
+      return this.handleAdminReadSignal(signal, context);
     }
 
     return {
@@ -326,9 +326,11 @@ export class OrchestratorScannerGuidelines {
     this.pendingNudges.set(signalId, [{
       id: signalId,
       type: 'nudge-delivery',
-      priority: 7,
       source: 'orchestrator-scanner',
       timestamp: new Date(),
+      priority: 7,
+      resolved: false,
+      relatedSignals: [],
       data: {
         nudgeResponse,
         deliveredAt: new Date().toISOString(),
@@ -471,7 +473,7 @@ Aggregated orchestrator coordination items requiring attention.`;
     pendingCount: number;
     byPrp: Record<string, number>;
     oldestPending?: Date;
-  } {
+    } {
     const byPrp: Record<string, number> = {};
     let oldestPending: Date | undefined;
 

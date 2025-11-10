@@ -8,9 +8,9 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Text } from 'ink';
-import { TUIConfig } from '../types/TUIConfig.js';
+import type { TUIConfig } from '../../shared/types/TUIConfig.js';
 import { createLayerLogger } from '../../shared/logger.js';
-import { getVersion } from '../../utils/version.js';
+import { getVersion } from '../../shared/utils/version.js';
 
 const logger = createLayerLogger('tui');
 

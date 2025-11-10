@@ -5,11 +5,12 @@
  * with CI JSON output support and sequential init→orchestrator workflow
  */
 
+import { Command } from 'commander';
 import { render } from 'ink';
 import React from 'react';
 import * as path from 'path';
 import { Logger, setLoggerTUIMode } from '../shared/logger.js';
-import { ScaffoldingService } from '../services/scaffolding-service.js';
+import { ScaffoldingService } from '../shared/services/scaffolding-service.js';
 import { createTUIConfig } from '../tui/config/TUIConfig.js';
 import type { InitState } from '../tui/components/init/InitFlow.js';
 
@@ -24,6 +25,10 @@ export interface TUIInitOptions {
   ci?: boolean;
   debug?: boolean;
   existingProject?: boolean;
+  tui?: boolean;
+  quick?: boolean;
+  screen?: 'intro' | 'project' | 'connections' | 'agents' | 'integrations' | 'template';
+  config?: string;
 }
 
 export interface CIOutput {
@@ -65,43 +70,62 @@ export async function runTUIInit(options: TUIInitOptions = {}): Promise<CIOutput
 
     // Prepare initial state from options
     const initialState: Partial<InitState> = {
-      projectName: options.projectName || '',
-      projectPrompt: options.prompt || options.description || '',
-      template: mapTemplateOption(options.template) || 'typescript',
-      projectPath: options.projectName ? options.projectName.toLowerCase().replace(/[^a-z0-9]/g, '-') : '',
+      projectName: options.projectName ?? '',
+      projectPrompt: options.prompt ?? options.description ?? '',
+      template: mapTemplateOption(options.template),
+      projectPath: options.projectName
+        ? options.projectName.toLowerCase().replace(/[^a-z0-9]/g, '-')
+        : ''
     };
 
     // Create scaffolding service
     const scaffoldingService = new ScaffoldingService();
 
-    // Import InitFlow dynamically to handle JSX properly
+    // Import InitFlow and ThemeProvider dynamically to handle JSX properly
     const { InitFlow } = await import('../tui/components/init/InitFlow.js');
+    const { ThemeProvider } = await import('../tui/config/theme-provider.js');
 
-    // Render TUI init flow with proper options
+    // Render TUI init flow with proper theme wrapping
     const { waitUntilExit } = render(
-      React.createElement(InitFlow, {
-        config: config,
-        initialState: initialState,
-        onComplete: async (state: InitState) => {
-          // Generate project using ScaffoldingService
-          const result = await generateProject(scaffoldingService, state);
+      React.createElement(ThemeProvider, {
+        mode: 'day' as const,
+        autoDetect: true,
+        children: React.createElement(InitFlow, {
+          config: config,
+          initialState: initialState,
+          onComplete: (state: InitState) => {
+            // Generate project using ScaffoldingService
+            generateProject(scaffoldingService, state)
+              .then(async (result) => {
+                // Restore normal logging before starting orchestrator
+                setLoggerTUIMode(false);
 
-          // Restore normal logging before starting orchestrator
-          setLoggerTUIMode(false);
+                // Start orchestrator in new project directory if not in CI mode
+                if (result.success && result.project) {
+                  await startOrchestrator(result.project.path);
+                }
 
-          // Start orchestrator in new project directory if not in CI mode
-          if (result.success && result.project) {
-            await startOrchestrator(result.project.path);
+                // Exit the TUI
+                process.exit(0);
+              })
+              .catch((error) => {
+                // Restore normal logging on error
+                setLoggerTUIMode(false);
+                logger.error(
+                  'shared',
+                  'TUIInit',
+                  `Failed to complete initialization: ${error instanceof Error ? error.message : String(error)}`,
+                  error instanceof Error ? error : new Error(String(error))
+                );
+                process.exit(1);
+              });
+          },
+          onCancel: () => {
+            // Restore normal logging before exit
+            setLoggerTUIMode(false);
+            process.exit(0);
           }
-
-          // Exit the TUI
-          process.exit(0);
-        },
-        onCancel: () => {
-          // Restore normal logging before exit
-          setLoggerTUIMode(false);
-          process.exit(0);
-        }
+        })
       }),
       {
         // Ensure console output doesn't interfere with Ink
@@ -113,18 +137,19 @@ export async function runTUIInit(options: TUIInitOptions = {}): Promise<CIOutput
 
     await waitUntilExit();
 
-    // Should never reach here due to process.exit() above
     // Restore normal logging just in case
     setLoggerTUIMode(false);
+    // Should never reach here due to process.exit() above
     return { success: false, error: 'TUI terminated unexpectedly' };
-
   } catch (error) {
     // Restore normal logging on error
     setLoggerTUIMode(false);
-    // Only log if not in CI mode to avoid JSON pollution
-    if (!options.ci) {
-      console.error('TUI init failed:', error instanceof Error ? error.message : String(error));
-    }
+    logger.error(
+      'shared',
+      'TUIInit',
+      `TUI init failed: ${error instanceof Error ? error.message : String(error)}`,
+      error instanceof Error ? error : new Error(String(error))
+    );
     return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
@@ -148,47 +173,47 @@ async function runCIInit(options: TUIInitOptions): Promise<CIOutput> {
     const state: InitState = {
       step: 5, // Skip to generation
       projectName: options.projectName,
-      projectPrompt: options.prompt || options.description || `Project ${options.projectName}`,
-      template: mapTemplateOption(options.template) || 'typescript',
-      projectPath: path.resolve(process.cwd(), options.projectName.toLowerCase().replace(/[^a-z0-9]/g, '-')),
+      projectPrompt: options.prompt ?? options.description ?? `Project ${options.projectName}`,
+      template: mapTemplateOption(options.template),
+      projectPath: path.resolve(
+        process.cwd(),
+        options.projectName.toLowerCase().replace(/[^a-z0-9]/g, '-')
+      ),
       provider: 'openai',
       authType: 'api-key',
-      // Use defaults for other fields
-      agents: [{
-        id: 'robo-developer',
-        type: 'developer',
-        limit: '100usd10k#dev',
-        cv: 'Full-stack developer with expertise in TypeScript, Node.js, and React',
-        warning_limit: '2k#robo-quality-control',
-        provider: 'anthropic',
-        yolo: false,
-        instructions_path: 'AGENTS.md',
-        sub_agents: true,
-        max_parallel: 5,
-        mcp: '.mcp.json',
-        compact_prediction: {
-          percent_threshold: 0.82,
-          auto_adjust: true,
-          cap: 24000
+      agents: [
+        {
+          id: 'robo-developer',
+          type: 'claude',
+          limit: '100usd10k#dev',
+          cv: 'Full-stack developer with expertise in TypeScript, Node.js, and React',
+          provider: 'anthropic',
+          compact_prediction: {
+            percent_threshold: 0.82,
+            auto_adjust: true,
+            cap: 10000
+          }
         }
-      }],
+      ],
       integrations: {},
       configureFiles: false,
       selectedFiles: new Set(['src/', 'README.md', '.gitignore', 'package.json']),
-      generatePromptQuote: true,
+      generatePromptQuote: true
     };
 
     // Generate project
     const result = await generateProject(scaffoldingService, state);
 
     // Output JSON result for CI
-    console.log(JSON.stringify(result, null, 2));
+    process.stdout.write(JSON.stringify(result, null, 2) + '\n');
 
     return result;
-
   } catch (error) {
-    const errorResult = { success: false, error: error instanceof Error ? error.message : String(error) };
-    console.log(JSON.stringify(errorResult, null, 2));
+    const errorResult = {
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+    process.stdout.write(JSON.stringify(errorResult, null, 2) + '\n');
     return errorResult;
   }
 }
@@ -196,31 +221,41 @@ async function runCIInit(options: TUIInitOptions): Promise<CIOutput> {
 /**
  * Map template option string to InitState template type
  */
-function mapTemplateOption(template?: string): InitState['template'] {
-  if (!template) return 'typescript';
+function mapTemplateOption(
+  template?: string
+): 'typescript' | 'react' | 'nestjs' | 'fastapi' | 'wikijs' | 'none' {
+  if (!template) {
+    return 'typescript';
+  }
 
-  const templateMap: Record<string, InitState['template']> = {
-    'ts': 'typescript',
-    'typescript': 'typescript',
-    'react': 'react',
-    'nest': 'nestjs',
-    'nestjs': 'nestjs',
-    'fastapi': 'fastapi',
-    'python': 'fastapi',
-    'wikijs': 'wikijs',
-    'wiki': 'wikijs',
-    'none': 'none',
-    'minimal': 'none',
-    'basic': 'none'
+  const templateMap: Record<
+    string,
+    'typescript' | 'react' | 'nestjs' | 'fastapi' | 'wikijs' | 'none'
+  > = {
+    ts: 'typescript',
+    typescript: 'typescript',
+    react: 'react',
+    nest: 'nestjs',
+    nestjs: 'nestjs',
+    fastapi: 'fastapi',
+    python: 'fastapi',
+    wikijs: 'wikijs',
+    wiki: 'wikijs',
+    none: 'none',
+    minimal: 'none',
+    basic: 'none'
   };
 
-  return templateMap[template.toLowerCase()] || 'typescript';
+  return templateMap[template.toLowerCase()] ?? 'typescript';
 }
 
 /**
  * Generate real project from init state
  */
-async function generateProject(scaffoldingService: ScaffoldingService, state: InitState): Promise<CIOutput> {
+async function generateProject(
+  scaffoldingService: ScaffoldingService,
+  state: InitState
+): Promise<CIOutput> {
   logger.info('shared', 'TUIInit', 'Generating project from TUI state', {
     projectName: state.projectName,
     template: state.template,
@@ -248,7 +283,7 @@ async function generateProject(scaffoldingService: ScaffoldingService, state: In
         PROJECT_DESCRIPTION: state.projectPrompt || '',
         TEMPLATE: state.template,
         PROVIDER: state.provider,
-        AUTH_TYPE: state.authType,
+        AUTH_TYPE: state.authType
       }
     };
 
@@ -257,20 +292,28 @@ async function generateProject(scaffoldingService: ScaffoldingService, state: In
 
     const projectPath = state.projectPath || state.projectName;
 
-    logger.info('shared', 'TUIInit', `✅ Project "${state.projectName}" generated successfully at ${projectPath}`);
+    logger.info(
+      'shared',
+      'TUIInit',
+      `✅ Project "${state.projectName}" generated successfully at ${projectPath}`
+    );
 
     return {
       success: true,
       project: {
         name: state.projectName,
         path: projectPath,
-        template: state.template || 'typescript',
-        description: state.projectPrompt || `Project ${state.projectName}`
+        template: state.template,
+        description: state.projectPrompt
       }
     };
-
   } catch (error) {
-    logger.error('shared', 'TUIInit', 'Project generation failed', error instanceof Error ? error : new Error(String(error)));
+    logger.error(
+      'shared',
+      'TUIInit',
+      'Project generation failed',
+      error instanceof Error ? error : new Error(String(error))
+    );
     return {
       success: false,
       error: `Failed to generate project: ${error instanceof Error ? error.message : String(error)}`
@@ -291,10 +334,105 @@ async function startOrchestrator(projectPath: string): Promise<void> {
     // Import and run orchestrator command
     const { handleOrchestratorCommand } = await import('./orchestrator.js');
     await handleOrchestratorCommand({});
-
   } catch (error) {
-    logger.error('shared', 'TUIInit', 'Failed to start orchestrator', error instanceof Error ? error : new Error(String(error)));
+    logger.error(
+      'shared',
+      'TUIInit',
+      'Failed to start orchestrator',
+      error instanceof Error ? error : new Error(String(error))
+    );
     // Don't throw - just log error since project was created successfully
+  }
+}
+
+/**
+ * Create TUI init command for CLI
+ */
+export function createTUIInitCommand(): Command {
+  const tuiInitCmd = new Command('init')
+    .description('Initialize a new PRP project using TUI interface')
+    .argument('[projectName]', 'project name (optional)')
+    // TUI-specific options
+    .option('--tui', 'Force TUI mode (enabled by default)')
+    .option('--quick', 'Quick init mode with defaults')
+    .option(
+      '--screen <screen>',
+      'Start at specific screen (intro|project|connections|agents|integrations|template)',
+      'intro'
+    )
+    .option('--config <path>', 'Path to configuration file')
+    // Project options
+    .option('--prompt <string>', 'Project base prompt from what project start auto build')
+    .option('--project-name <string>', 'Project name (alternative to positional argument)')
+    .option('--template <template>', 'project template (react, nestjs, wikijs, typescript, none)')
+    .option('--description <description>', 'project description')
+    .option('--force', 'Force initialization even in non-empty directories')
+    // Global flags
+    .option('--ci', 'Run in CI mode with JSON output')
+    .option('--debug', 'Enable debug logging')
+    .action(async (projectName: string | undefined, options: TUIInitOptions, command: Command) => {
+      // Check if help is being requested - if so, let Commander handle it
+      const args = process.argv.slice(2);
+      if (args.includes('--help') || args.includes('-h')) {
+        return; // Let Commander's built-in help handler take over
+      }
+
+      // Merge global options from parent command
+      const globalOptions = command.parent?.opts() ?? {};
+      const mergedOptions = { ...globalOptions, ...options, projectName };
+
+      await handleTUIInitCommand(mergedOptions);
+    });
+
+  return tuiInitCmd;
+}
+
+/**
+ * Handle TUI init command execution
+ */
+async function handleTUIInitCommand(options: TUIInitOptions): Promise<void> {
+  try {
+    // Set debug logging if debug flag is provided
+    if (options.debug) {
+      process.env.DEBUG = 'true';
+      process.env.VERBOSE_MODE = 'true';
+    }
+
+    logger.info('shared', 'TUIInitCommand', 'Starting TUI init command', { options });
+
+    // Validate screen option
+    const validScreens = ['intro', 'project', 'connections', 'agents', 'integrations', 'template'];
+    if (options.screen && !validScreens.includes(options.screen)) {
+      throw new Error(
+        `Invalid screen: ${options.screen}. Valid options: ${validScreens.join(', ')}`
+      );
+    }
+
+    // Run TUI init with enhanced options
+    const result = await runTUIInit({
+      ...options,
+      // Force TUI mode unless CI mode is explicitly requested
+      tui: options.tui ?? !options.ci,
+      // Pass screen-specific options to the TUI
+      screen: options.screen ?? 'intro',
+      quick: options.quick ?? false
+    });
+
+    // Exit with appropriate code
+    if (!result.success) {
+      logger.error('shared', 'TUIInitCommand', `TUI init failed: ${result.error}`);
+      process.exit(1);
+    }
+
+    logger.info('shared', 'TUIInitCommand', 'TUI init completed successfully');
+  } catch (error) {
+    logger.error(
+      'shared',
+      'TUIInitCommand',
+      `TUI init command failed: ${error instanceof Error ? error.message : String(error)}`,
+      error instanceof Error ? error : new Error(String(error))
+    );
+    process.exit(1);
   }
 }
 

@@ -201,7 +201,7 @@ export class Scanner extends EventEmitter {
    * Add a worktree to monitor
    */
   async addWorktree(path: string, name?: string): Promise<void> {
-    const worktreeName = name || path.split('/').pop() || path;
+    const worktreeName = name ?? path.split('/').pop() ?? path;
 
     if (this.worktreeMonitors.has(worktreeName)) {
       logger.warn('Scanner', `Worktree ${worktreeName} already exists`);
@@ -396,7 +396,11 @@ export class Scanner extends EventEmitter {
     this.isScanning = true;
 
     while (this.scanQueue.length > 0) {
-      const { worktree, type } = this.scanQueue.shift()!;
+      const scanItem = this.scanQueue.shift();
+      if (!scanItem) {
+        break;
+      }
+      const { worktree, type } = scanItem;
 
       try {
         await this.performScan(worktree, type);
@@ -542,7 +546,10 @@ export class Scanner extends EventEmitter {
    * Scan for git changes in a worktree
    */
   private async scanGitChanges(worktree: string): Promise<FileChange[]> {
-    const monitor = this.worktreeMonitors.get(worktree)!;
+    const monitor = this.worktreeMonitors.get(worktree);
+    if (!monitor) {
+      throw new Error(`Worktree monitor not found: ${worktree}`);
+    }
     const changes: FileChange[] = [];
 
     try {
@@ -604,9 +611,14 @@ export class Scanner extends EventEmitter {
    * Scan PRP files for updates and signals
    */
   private async scanPRPFiles(worktree: string): Promise<PRPScanResult[]> {
-    const monitor = this.worktreeMonitors.get(worktree)!;
+    const monitor = this.worktreeMonitors.get(worktree);
+    if (!monitor) {
+      throw new Error(`Worktree monitor not found: ${worktree}`);
+    }
     const parser = this.prpParsers.get(worktree);
-    if (!parser) return [];
+    if (!parser) {
+      return [];
+    }
 
     const updates: PRPScanResult[] = [];
 
@@ -655,7 +667,7 @@ export class Scanner extends EventEmitter {
       } catch {
         // Ignore permission errors
       }
-    }
+    };
 
     await scanDirectory(dirPath);
     return prpFiles;
@@ -750,7 +762,10 @@ export class Scanner extends EventEmitter {
    * Scan for signals in all files
    */
   private async scanForSignals(worktree: string): Promise<Signal[]> {
-    const monitor = this.worktreeMonitors.get(worktree)!;
+    const monitor = this.worktreeMonitors.get(worktree);
+    if (!monitor) {
+      throw new Error(`Worktree monitor not found: ${worktree}`);
+    }
     const allSignals: Signal[] = [];
 
     try {
@@ -806,7 +821,7 @@ export class Scanner extends EventEmitter {
       } catch {
         // Ignore permission errors
       }
-    }
+    };
 
     await scanDirectory(dirPath);
     return relevantFiles;
@@ -865,8 +880,11 @@ export class Scanner extends EventEmitter {
   private async cleanupWorktreeSubsystems(name: string): Promise<void> {
     // Cleanup file watcher
     const fileWatcher = this.fileWatchers.get(name);
-    if (fileWatcher) {
-      await (fileWatcher.watcher as WatcherInstance)?.close?.();
+    if (fileWatcher?.watcher) {
+      const watcher = fileWatcher.watcher as WatcherInstance;
+      if (watcher.close) {
+        await watcher.close();
+      }
       this.fileWatchers.delete(name);
     }
 

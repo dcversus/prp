@@ -26,7 +26,7 @@ export class SignalDetectorImpl implements SignalDetector {
     this.customPatterns = [];
     this.enabledCategories = new Set([
       'system', 'development', 'analysis', 'incident', 'coordination',
-      'testing', 'release', 'post-release', 'design', 'devops'
+      'testing', 'release', 'post-release', 'design', 'devops', 'custom'
     ]);
     this.cache = new Map();
     this.maxCacheSize = 10000;
@@ -981,7 +981,7 @@ export class SignalDetectorImpl implements SignalDetector {
         description: 'Rollback procedures need preparation for parallel deployments',
         enabled: true,
         custom: false
-      },
+      }
 
       // === LOW PRIORITY SIGNALS (1-2) ===
 
@@ -1027,9 +1027,12 @@ export class SignalDetectorImpl implements SignalDetector {
       let match;
       while ((match = pattern.pattern.exec(content)) !== null) {
         const signalMatch = match[0]; // Full match including brackets
-        if (!signalMatch || typeof signalMatch !== 'string') continue; // Safety check
+        if (!signalMatch || typeof signalMatch !== 'string') {
+          continue;
+        } // Safety check
         const signalCode = signalMatch.substring(1, 3); // Extract code from [Xx] format
-        const position = this.getSignalPosition(content, match.index);
+        const matchIndex = match.index || 0;
+        const position = this.getSignalPosition(content, matchIndex);
 
         signals.push({
           id: HashUtils.generateId(),
@@ -1037,6 +1040,8 @@ export class SignalDetectorImpl implements SignalDetector {
           priority: pattern.priority,
           source: source ?? 'scanner',
           timestamp: new Date(),
+          resolved: false,
+          relatedSignals: [],
           data: {
             rawSignal: signalMatch,
             patternName: pattern.name,
@@ -1222,7 +1227,7 @@ export class SignalDetectorImpl implements SignalDetector {
     size: number;
     maxSize: number;
     hitRate: number; // Would need to implement hit tracking
-  } {
+    } {
     return {
       size: this.cache.size,
       maxSize: this.maxCacheSize,
@@ -1303,7 +1308,9 @@ export class SignalDetectorImpl implements SignalDetector {
     const signals: Signal[] = [];
 
     for (const match of matches) {
-      if (!match || typeof match !== 'string') continue; // Safety check
+      if (!match || typeof match !== 'string') {
+        continue;
+      } // Safety check
       const signalCode = match.substring(1, 3);
       signals.push({
         id: HashUtils.generateId(),
@@ -1311,6 +1318,8 @@ export class SignalDetectorImpl implements SignalDetector {
         priority: pattern.priority,
         source: 'test',
         timestamp: new Date(),
+        resolved: false,
+        relatedSignals: [],
         data: {
           rawSignal: match,
           patternName: pattern.name,

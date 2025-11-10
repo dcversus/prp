@@ -42,7 +42,9 @@ class SignalCache {
 
   get(key: string): Signal[] | null {
     const entry = this.cache.get(key);
-    if (!entry) return null;
+    if (!entry) {
+      return null;
+    }
 
     // Check if expired
     if (Date.now() - entry.timestamp.getTime() > this.ttl) {
@@ -148,29 +150,43 @@ class RealTimeProcessor {
 
   private extractSignals(content: string): Signal[] {
     const signals: Signal[] = [];
+
+    // Enhanced signal pattern that matches [XX] where XX are exactly 2 letters
+    // This follows the PRP specification for signal detection
     const signalPattern = /\[([a-zA-Z]{2})\]/g;
     let match;
 
     while ((match = signalPattern.exec(content)) !== null) {
-      const signalCode = match[1];
+      const signalCode = match[1]?.toUpperCase();
 
-      if (!signalCode) continue;
-      signals.push({
-        id: HashUtils.generateId(),
-        type: signalCode,
-        priority: this.calculatePriority(signalCode),
-        source: 'enhanced-scanner',
-        timestamp: new Date(),
-        data: {
-          rawSignal: match[0],
-          position: match.index,
-          line: this.getLineNumber(content, match.index)
-        },
-        metadata: {
-          detector: 'enhanced-real-time',
-          patternVersion: '2.0'
-        }
-      });
+      if (signalCode?.length !== 2) {
+        continue;
+      }
+
+      // Validate signal code against known signal patterns
+      if (this.isValidSignalCode(signalCode)) {
+        signals.push({
+          id: HashUtils.generateId(),
+          type: signalCode,
+          priority: this.calculatePriority(signalCode),
+          source: 'enhanced-scanner',
+          timestamp: new Date(),
+          data: {
+            rawSignal: match[0],
+            position: match.index,
+            line: this.getLineNumber(content, match.index),
+            column: this.getColumnNumber(content, match.index),
+            context: this.extractSignalContext(content, match.index)
+          },
+          resolved: false,
+          relatedSignals: [],
+          metadata: {
+            detector: 'enhanced-real-time',
+            patternVersion: '2.0',
+            confidence: this.calculateConfidence(content, match.index)
+          }
+        });
+      }
     }
 
     return signals;
@@ -191,7 +207,7 @@ class RealTimeProcessor {
       'tr': 6,  // Tests Red
       'cf': 6,  // CI Failed
       'rr': 6,  // Research Request
-      'aa': 6,  // Admin Attention
+      'aa': 6  // Admin Attention
     };
 
     return priorityMap[signalCode.toUpperCase()] ?? 3;
@@ -199,6 +215,60 @@ class RealTimeProcessor {
 
   private getLineNumber(content: string, index: number): number {
     return content.substring(0, index).split('\n').length;
+  }
+
+  private getColumnNumber(content: string, index: number): number {
+    const beforeIndex = content.substring(0, index);
+    const lastNewline = beforeIndex.lastIndexOf('\n');
+    return index - lastNewline;
+  }
+
+  private extractSignalContext(content: string, index: number, contextRadius: number = 100): string {
+    const start = Math.max(0, index - contextRadius);
+    const end = Math.min(content.length, index + contextRadius);
+    return content.substring(start, end);
+  }
+
+  private calculateConfidence(content: string, index: number): number {
+    // High confidence if signal appears in PRP context
+    const context = this.extractSignalContext(content, index, 200);
+    let confidence = 0.8; // Base confidence
+
+    // Boost confidence for PRP files
+    if (context.includes('PRP-') || context.includes('## progress') || context.includes('> our goal')) {
+      confidence += 0.15;
+    }
+
+    // Boost confidence if signal is followed by comment
+    const afterSignal = content.substring(index + 4, Math.min(content.length, index + 100));
+    if (afterSignal.includes('-') || afterSignal.includes('✅') || afterSignal.includes('❌')) {
+      confidence += 0.05;
+    }
+
+    return Math.min(confidence, 1.0);
+  }
+
+  private isValidSignalCode(signalCode: string): boolean {
+    // List of valid signal codes from AGENTS.md
+    const validSignals = new Set([
+      // System signals
+      'HF', 'pr', 'PR', 'FF', 'TF', 'TC', 'TI',
+      // Agent signals
+      'bb', 'af', 'gg', 'ff', 'da', 'no', 'ic', 'er', 'oa',
+      'rp', 'vr', 'rr', 'vp', 'ip', 'tp', 'dp', 'br', 'rc',
+      'tw', 'bf', 'cq', 'cp', 'tr', 'tg', 'cf', 'pc', 'rg',
+      'cd', 'rv', 'iv', 'ra', 'mg', 'rl', 'ps', 'JC', 'pm',
+      'aa', 'ap', 'oa', 'cc', 'fo', 'as', 'pt', 'pe', 'fs',
+      'ds', 'rb', 'ao', 'ac', 'sl', 'eb', 'ir', 'pb', 'ps',
+      'rc', 'rt', 'ts', 'er',
+      // Developer signals
+      'du', 'ds', 'dr', 'dh', 'da', 'dc', 'df', 'dt', 'dp',
+      // DevOps/SRE signals
+      'id', 'cd', 'mo', 'ir', 'so', 'sc', 'pb', 'dr', 'cu',
+      'ao', 'sl', 'eb', 'ps', 'rc', 'rt', 'ao', 'ts', 'er'
+    ]);
+
+    return validSignals.has(signalCode);
   }
 
   clear(): void {
@@ -351,7 +421,9 @@ export class EnhancedSignalDetector {
     const signals: Signal[] = [];
 
     for (const pattern of this.patterns) {
-      if (!pattern.enabled) continue;
+      if (!pattern.enabled) {
+        continue;
+      }
 
       let match;
       if (pattern.pattern.global) {
@@ -360,7 +432,9 @@ export class EnhancedSignalDetector {
 
       while ((match = pattern.pattern.exec(content)) !== null) {
         const signalMatch = match[0];
-        if (!signalMatch || typeof signalMatch !== 'string') continue;
+        if (!signalMatch || typeof signalMatch !== 'string') {
+          continue;
+        }
 
         const signalCode = signalMatch.substring(1, 3); // Extract XX from [XX]
         const position = this.getSignalPosition(content, match.index);
@@ -380,6 +454,8 @@ export class EnhancedSignalDetector {
             column: position.column,
             context: this.extractContext(content, position.line, position.column)
           },
+          resolved: false,
+          relatedSignals: [],
           metadata: {
             detector: 'enhanced-pattern-matcher',
             guideline: pattern.id
@@ -453,7 +529,7 @@ export class EnhancedSignalDetector {
     cacheStats: { size: number; hitRate: number };
     queueSize: number;
     patternCount: number;
-  } {
+    } {
     return {
       ...this.metrics,
       cacheStats: this.cache.getStats(),

@@ -33,8 +33,10 @@ export function renderComponentForTesting(
   return {
     instance,
     content: lastFrame.content,
+    // eslint-disable-next-line no-control-regex
     cleanContent: lastFrame.content.replace(/\x1b\[[0-9;]*m/g, ''),
-    colorCodes: (lastFrame.content.match(/\x1b\[[0-9;]*m/g) || []),
+    // eslint-disable-next-line no-control-regex
+    colorCodes: (lastFrame.content.match(/\x1b\[[0-9;]*m/g) ?? []),
     dimensions: lastFrame.dimensions
   };
 }
@@ -52,7 +54,7 @@ export class ComponentAssertions {
   /**
    * Assert that content contains specific text
    */
-  containsText(text: string, message?: string): this {
+  containsText(text: string): this {
     expect(this.result.cleanContent).toContain(text);
     return this;
   }
@@ -60,7 +62,7 @@ export class ComponentAssertions {
   /**
    * Assert that content does not contain specific text
    */
-  doesNotContainText(text: string, message?: string): this {
+  doesNotContainText(text: string): this {
     expect(this.result.cleanContent).not.toContain(text);
     return this;
   }
@@ -68,7 +70,7 @@ export class ComponentAssertions {
   /**
    * Assert that content matches regex pattern
    */
-  matchesPattern(pattern: RegExp, message?: string): this {
+  matchesPattern(pattern: RegExp): this {
     expect(this.result.cleanContent).toMatch(pattern);
     return this;
   }
@@ -76,7 +78,7 @@ export class ComponentAssertions {
   /**
    * Assert that component contains specific color code
    */
-  hasColorCode(colorCode: string, message?: string): this {
+  hasColorCode(colorCode: string): this {
     expect(this.result.colorCodes).toContain(colorCode);
     return this;
   }
@@ -84,7 +86,7 @@ export class ComponentAssertions {
   /**
    * Assert that component does not contain specific color code
    */
-  doesNotHaveColorCode(colorCode: string, message?: string): this {
+  doesNotHaveColorCode(colorCode: string): this {
     expect(this.result.colorCodes).not.toContain(colorCode);
     return this;
   }
@@ -92,7 +94,7 @@ export class ComponentAssertions {
   /**
    * Assert component dimensions
    */
-  hasDimensions(columns: number, rows: number, message?: string): this {
+  hasDimensions(columns: number, rows: number): this {
     expect(this.result.dimensions.columns).toBe(columns);
     expect(this.result.dimensions.rows).toBe(rows);
     return this;
@@ -101,7 +103,7 @@ export class ComponentAssertions {
   /**
    * Assert that content contains exact text count
    */
-  containsTextCount(text: string, count: number, message?: string): this {
+  containsTextCount(text: string, count: number): this {
     const matches = this.result.cleanContent.match(new RegExp(text, 'g'));
     const actualCount = matches ? matches.length : 0;
     expect(actualCount).toBe(count);
@@ -111,7 +113,7 @@ export class ComponentAssertions {
   /**
    * Assert that component renders multiline content
    */
-  hasLineCount(expectedCount: number, message?: string): this {
+  hasLineCount(expectedCount: number): this {
     const lines = this.result.cleanContent.split('\n').filter(line => line.trim() !== '');
     expect(lines.length).toBe(expectedCount);
     return this;
@@ -120,7 +122,7 @@ export class ComponentAssertions {
   /**
    * Assert that component has specific text structure
    */
-  hasStructure(expectedStructure: string[], message?: string): this {
+  hasStructure(expectedStructure: string[]): this {
     const lines = this.result.cleanContent.split('\n').filter(line => line.trim() !== '');
 
     expectedStructure.forEach((expectedLine, index) => {
@@ -141,7 +143,7 @@ export class ComponentAssertions {
     colorCodes: string[];
     dimensions: { columns: number; rows: number };
     lineCount: number;
-  } {
+    } {
     return {
       content: this.result.content,
       cleanContent: this.result.cleanContent,
@@ -151,6 +153,7 @@ export class ComponentAssertions {
     };
   }
 }
+ 
 
 /**
  * Helper function to create assertions
@@ -254,9 +257,8 @@ export class MockComponents {
   /**
    * Create a mock music icon component
    */
-  static MusicIcon({ status = 'IDLE', animate = true }: {
+  static MusicIcon({ status = 'IDLE' }: {
     status?: string;
-    animate?: boolean;
   }) {
     const icons = {
       SPAWNING: '♪',
@@ -286,7 +288,7 @@ export class TestDataGenerators {
 
     return Array.from({ length: count }, (_, index) => ({
       code: signalCodes[index % signalCodes.length],
-      state: states[Math.floor(Math.random() * states.length)],
+      state: states[Math.floor(Math.random() * states.length)] as string,
       latest: index === count - 1
     }));
   }
@@ -307,9 +309,9 @@ export class TestDataGenerators {
 
     return Array.from({ length: count }, (_, index) => ({
       id: `agent-${index + 1}`,
-      status: statuses[Math.floor(Math.random() * statuses.length)],
-      role: roles[Math.floor(Math.random() * roles.length)],
-      task: tasks[Math.floor(Math.random() * tasks.length)],
+      status: statuses[Math.floor(Math.random() * statuses.length)] as string,
+      role: roles[Math.floor(Math.random() * roles.length)] as string,
+      task: tasks[Math.floor(Math.random() * tasks.length)] as string,
       progress: Math.floor(Math.random() * 100)
     }));
   }
@@ -379,12 +381,12 @@ export class PerformanceTester {
     used: number;
     total: number;
     percentage: number;
-  } {
-    if (typeof process !== 'undefined' && process.memoryUsage) {
+    } {
+    if (typeof process !== 'undefined' && typeof process.memoryUsage === 'function') {
       const usage = process.memoryUsage();
       const used = usage.heapUsed;
       const total = usage.heapTotal;
-      const percentage = (used / total) * 100;
+      const percentage = total > 0 ? (used / total) * 100 : 0;
 
       return { used, total, percentage };
     }
@@ -509,22 +511,22 @@ export class IntegrationTester {
    * Test component with real-time data updates
    */
   static async testRealtimeUpdates(
-    createComponent: (data: any) => React.ReactElement,
-    updates: Array<{ delay: number; data: any }> = []
+    createComponent: (data: unknown) => React.ReactElement,
+    updates: Array<{ delay: number; data: unknown }> = []
   ): Promise<{
-    frames: Array<{ timestamp: number; data: any; content: string }>;
+    frames: Array<{ timestamp: number; data: unknown; content: string }>;
     updateCount: number;
   }> {
-    const initialComponent = createComponent(updates[0]?.data || {});
+    const initialComponent = createComponent(updates[0]?.data ?? {});
     const instance = renderTUI(initialComponent, { captureFrames: true });
 
-    const frames: Array<{ timestamp: number; data: any; content: string }> = [];
+    const frames: Array<{ timestamp: number; data: unknown; content: string }> = [];
     let updateCount = 0;
 
     // Capture initial frame
     frames.push({
       timestamp: 0,
-      data: updates[0]?.data || {},
+      data: updates[0]?.data ?? {},
       content: instance.lastFrame().content
     });
 

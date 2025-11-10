@@ -262,9 +262,9 @@ export function createRequirementsFromTemplate(
       );
     } else {
       const creator = template.type === 'feature' ? createFeatureRequirement :
-                      template.type === 'service' ? createServiceRequirement :
-                      template.type === 'auth' ? createAuthRequirement :
-                      createConfigRequirement;
+        template.type === 'service' ? createServiceRequirement :
+          template.type === 'auth' ? createAuthRequirement :
+            createConfigRequirement;
 
       return creator(
         template.name,

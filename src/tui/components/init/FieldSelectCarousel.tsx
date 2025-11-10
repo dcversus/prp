@@ -1,232 +1,180 @@
 /**
- * ♫ FieldSelectCarousel - Horizontal carousel selector
+ * ♫ Field Select Carousel - Horizontal selector component
  *
- * Horizontal slide selector with easing animations,
- * left/right navigation, and visual highlighting
+ * Horizontal sliding selector for choosing from a list of options.
+ * Follows PRP-003 specifications for smooth carousel navigation.
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { useTheme } from '../../config/theme-provider.js';
+import type { FieldSelectCarouselProps } from './types.js';
 
-// Import types
-import type { TUIConfig } from '../../types/TUIConfig.js';
-
-export interface FieldSelectCarouselProps {
-  label: string;
-  items: string[];
-  selectedIndex: number;
-  onChange: (index: number) => void;
-  config?: TUIConfig;
-  disabled?: boolean;
-  onFocus?: () => void;
-  onBlur?: () => void;
-  wrap?: boolean;
-  showIndex?: boolean;
-  animationDuration?: number;
-}
-
-export const FieldSelectCarousel: React.FC<FieldSelectCarouselProps> = ({
+const FieldSelectCarousel: React.FC<FieldSelectCarouselProps> = ({
   label,
   items,
   selectedIndex,
   onChange,
-  config,
-  disabled = false,
-  onFocus,
-  onBlur,
-  wrap = true,
-  showIndex = false,
-  animationDuration = 150
+  focused = false
 }) => {
-  const [focused, setFocused] = useState(false);
-  const [animating, setAnimating] = useState(false);
-  const [displayIndex, setDisplayIndex] = useState(selectedIndex);
-  const [animationFrame, setAnimationFrame] = useState(0);
+  const theme = useTheme();
+  const [isFocused, setIsFocused] = useState(focused);
+  const [currentIndex, setCurrentIndex] = useState(selectedIndex);
+  // const [animating, setAnimating] = useState(false); // TODO: Implement animation
 
-  // Animate to new selection with easing
+  // Sync external selection changes
   useEffect(() => {
-    if (selectedIndex !== displayIndex && !animating) {
-      setAnimating(true);
-      const startTime = Date.now();
+    setCurrentIndex(selectedIndex);
+  }, [selectedIndex]);
 
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / animationDuration, 1);
+  // Sync focus state
+  useEffect(() => {
+    setIsFocused(focused);
+  }, [focused]);
 
-        // Ease-out cubic animation
-        const easeOut = 1 - Math.pow(1 - progress, 3);
-
-        if (progress < 1) {
-          setAnimationFrame(easeOut);
-          requestAnimationFrame(animate);
-        } else {
-          setDisplayIndex(selectedIndex);
-          setAnimating(false);
-          setAnimationFrame(0);
-        }
-      };
-
-      requestAnimationFrame(animate);
+  // Handle keyboard input
+  useInput((_input, key) => {
+    if (!isFocused) {
+      return;
     }
-  }, [selectedIndex, displayIndex, animating, animationDuration]);
 
-  // Handle navigation
-  const handleLeft = useCallback(() => {
-    if (disabled || animating) return;
+    if (key.escape) {
+      setIsFocused(false);
+      return;
+    }
 
-    const newIndex = wrap
-      ? selectedIndex === 0 ? items.length - 1 : selectedIndex - 1
-      : Math.max(0, selectedIndex - 1);
-
-    onChange(newIndex);
-  }, [disabled, animating, selectedIndex, onChange, wrap, items.length]);
-
-  const handleRight = useCallback(() => {
-    if (disabled || animating) return;
-
-    const newIndex = wrap
-      ? (selectedIndex + 1) % items.length
-      : Math.min(items.length - 1, selectedIndex + 1);
-
-    onChange(newIndex);
-  }, [disabled, animating, selectedIndex, onChange, wrap, items.length]);
-
-  // Handle focus
-  const handleFocus = useCallback(() => {
-    if (disabled) return;
-    setFocused(true);
-    onFocus?.();
-  }, [disabled, onFocus]);
-
-  const handleBlur = useCallback(() => {
-    setFocused(false);
-    onBlur?.();
-  }, [onBlur]);
-
-  // Keyboard navigation
-  useInput((input, key) => {
     if (key.leftArrow) {
-      handleLeft();
-    } else if (key.rightArrow) {
-      handleRight();
-    } else if (key.tab) {
-      handleBlur();
-    } else if (!focused && !disabled) {
-      handleFocus();
+      const newIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+      setCurrentIndex(newIndex);
+      onChange(newIndex);
+      // setAnimating(true); // TODO: Implement animation
+      setTimeout(() => {
+        // setAnimating(false);
+      }, 200); // Animation duration
+      return;
     }
-  }, { isActive: !disabled });
 
-  // Color scheme
-  const colors = config?.colors;
-  const labelColor = disabled
-    ? colors?.gray
-    : focused
-      ? colors?.accent_orange
-      : colors?.muted;
+    if (key.rightArrow) {
+      const newIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+      setCurrentIndex(newIndex);
+      onChange(newIndex);
+      // setAnimating(true); // TODO: Implement animation
+      setTimeout(() => {
+        // setAnimating(false);
+      }, 200); // Animation duration
+      return;
+    }
 
-  const arrowColor = focused ? colors?.accent_orange : colors?.muted;
-  const selectedColor = colors?.accent_orange;
-  const normalColor = colors?.muted;
+    if (key.return) {
+      setIsFocused(false);
+      
+    }
+  }, { isActive: isFocused });
 
-  // Calculate visible items
-  const maxVisible = 5; // Show at most 5 items at once
-  const halfVisible = Math.floor(maxVisible / 2);
+  // const handleFocus = useCallback(() => {
+  //   setIsFocused(true);
+  // }, []); // TODO: Handle focus events
 
-  let startIndex = Math.max(0, selectedIndex - halfVisible);
-  const endIndex = Math.min(items.length, startIndex + maxVisible);
+  // Calculate visible items (show 3-5 at a time depending on terminal width)
+  const getVisibleRange = () => {
+    const maxVisible = 5; // Show max 5 items at once
+    const halfVisible = Math.floor(maxVisible / 2);
 
-  // Adjust if we can show more items at the end
-  if (endIndex - startIndex < maxVisible && startIndex > 0) {
-    startIndex = Math.max(0, endIndex - maxVisible);
-  }
+    let start = Math.max(0, currentIndex - halfVisible);
+    const end = Math.min(items.length, start + maxVisible);
 
-  const visibleItems = items.slice(startIndex, endIndex);
+    // Adjust if we're near the end to always show maxVisible items
+    if (end - start < maxVisible && start > 0) {
+      start = Math.max(0, end - maxVisible);
+    }
 
-  // Animation interpolation
-  const interpolatePosition = (index: number) => {
-    if (!animating || animationFrame === 0) return index;
-
-    // Simple position interpolation for animation
-    const targetIndex = selectedIndex;
-    const currentIndex = displayIndex;
-    const diff = targetIndex - currentIndex;
-
-    return currentIndex + (diff * animationFrame);
+    return { start, end };
   };
+
+  const { start, end } = getVisibleRange();
+  const visibleItems = items.slice(start, end);
+  const selectedRelativeIndex = currentIndex - start;
 
   return (
     <Box flexDirection="column" marginBottom={1}>
       {/* Label */}
-      <Text color={labelColor} bold={focused}>
-        {label}
-      </Text>
-
-      {/* Carousel */}
-      <Box flexDirection="row" alignItems="center" justifyContent="center">
-        {/* Left arrow */}
-        <Text color={arrowColor} marginRight={1}>
-          ‹
-        </Text>
-
-        {/* Items */}
-        <Box flexDirection="row" flexGrow={1} justifyContent="center">
-          {visibleItems.map((item, index) => {
-            const actualIndex = startIndex + index;
-            const isSelected = actualIndex === selectedIndex;
-            const interpolatedPos = interpolatePosition(actualIndex);
-
-            // Calculate visual offset during animation
-            const visualOffset = animating
-              ? Math.round((interpolatedPos - actualIndex) * 2)
-              : 0;
-
-            return (
-              <Box
-                key={actualIndex}
-                marginX={1}
-                style={{
-                  transform: visualOffset !== 0 ? `translateX(${visualOffset}ch)` : undefined
-                }}
-              >
-                <Text
-                  color={isSelected ? selectedColor : normalColor}
-                  bold={isSelected}
-                  backgroundColor={isSelected ? `${selectedColor}20` : undefined}
-                >
-                  {isSelected ? `▸ ${item} ◂` : item}
-                </Text>
-              </Box>
-            );
-          })}
-        </Box>
-
-        {/* Right arrow */}
-        <Text color={arrowColor} marginLeft={1}>
-          ›
+      <Box flexDirection="row" marginBottom={1}>
+        <Text color={theme.colors.neutrals.text} bold>
+          {label}
         </Text>
       </Box>
 
-      {/* Index indicator */}
-      {showIndex && (
-        <Box flexDirection="row" justifyContent="center" marginTop={1}>
-          <Text color={colors?.muted} dimColor>
-            {selectedIndex + 1} / {items.length}
+      {/* Carousel */}
+      <Box flexDirection="row" alignItems="center">
+        {/* Left indicator */}
+        {start > 0 && (
+          <Text color={theme.colors.neutrals.muted}>
+            ◀
+          </Text>
+        )}
+
+        {/* Items */}
+        {visibleItems.map((item, index) => {
+          const isSelected = index === selectedRelativeIndex;
+          // const isEdgeItem = (start > 0 && index === 0) || (end < items.length && index === visibleItems.length - 1); // TODO: Use for edge styling
+
+          return (
+            <Box key={`${start}-${index}`} flexDirection="row">
+              {/* Item */}
+              <Box
+                paddingX={1}
+                paddingY={0}
+                marginRight={index < visibleItems.length - 1 ? 1 : 0}
+              >
+                <Text
+                  color={
+                    isSelected
+                      ? (theme.colors.accent as any)?.orange ?? theme.colors.accent.orange
+                      : isFocused
+                        ? theme.colors.neutrals.text
+                        : theme.colors.neutrals.muted
+                  }
+                  bold={isSelected}
+                  dimColor={!isSelected && !isFocused}
+                >
+                  {item}
+                </Text>
+              </Box>
+
+              {/* Separator between items */}
+              {index < visibleItems.length - 1 && (
+                <Text color={theme.colors.neutrals.muted}>
+                  {isFocused ? '→' : '·'}
+                </Text>
+              )}
+            </Box>
+          );
+        })}
+
+        {/* Right indicator */}
+        {end < items.length && (
+          <Text color={theme.colors.neutrals.muted}>
+            ▶
+          </Text>
+        )}
+      </Box>
+
+      {/* Navigation hints */}
+      {isFocused && (
+        <Box marginTop={1}>
+          <Text color={theme.colors.neutrals.muted}>
+            [←/→] switch • [Enter] select • [Tab] next field
           </Text>
         </Box>
       )}
 
-      {/* Status indicators */}
-      {focused && (
-        <Text color={colors?.muted} dimColor>
-          [←/→] switch selection • [Tab] next field
-        </Text>
-      )}
-
-      {/* Overflow indicator */}
-      {items.length > maxVisible && (
-        <Text color={colors?.muted} dimColor>
-          {startIndex > 0 && '◀ '}{items.length > endIndex && ' ▼'}
-        </Text>
+      {/* Item counter */}
+      {!isFocused && (
+        <Box marginTop={0}>
+          <Text color={theme.colors.neutrals.muted}>
+            {currentIndex + 1} of {items.length}
+          </Text>
+        </Box>
       )}
     </Box>
   );

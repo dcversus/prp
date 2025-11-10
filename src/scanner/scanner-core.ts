@@ -5,11 +5,10 @@ import { existsSync, statSync } from 'fs';
 import { resolve } from 'path';
 import { PRPParser } from './prp-parser';
 import { TokenAccountant } from './token-accountant';
-import { FileHasher } from './file-hasher';
+import { FileHasher } from '../shared/tools/file-hasher.js';
 import { SignalDetectorImpl } from './signal-detector';
 import { GitStatusMonitor } from './git-monitor';
 import { SignalData, DetectedSignal, FileChangeData } from './types';
-import { logger } from '../utils/logger';
 
 /**
  * High-performance scanner for monitoring worktrees, git state, and PRP changes
@@ -92,6 +91,13 @@ export class ScannerCore extends EventEmitter {
     errors: 0
   };
 
+  // Additional metrics for Prometheus
+  private eventQueue: any[] = [];
+  private fileChangeCount = { added: 0, modified: 0, deleted: 0, renamed: 0 };
+  private signalCounts: Map<string, number> = new Map();
+  private tokenUsage: Map<string, any> = new Map();
+  private lastScanTime = 0;
+
   constructor(config: ScannerConfig) {
     super();
     this.config = config;
@@ -123,7 +129,7 @@ export class ScannerCore extends EventEmitter {
       // Initial scan
       await this.performScan();
 
-      logger.success(`✅ Scanner started. Monitoring ${this.worktrees.size} worktrees`);
+      logger.info(`✅ Scanner started. Monitoring ${this.worktrees.size} worktrees`);
       this.emit('scanner:started', { worktreeCount: this.worktrees.size });
 
     } catch (error) {
@@ -150,7 +156,7 @@ export class ScannerCore extends EventEmitter {
     }
 
     this.isScanning = false;
-    logger.success('✅ Scanner stopped');
+    logger.info('✅ Scanner stopped');
     this.emit('scanner:stopped');
   }
 
@@ -178,7 +184,7 @@ export class ScannerCore extends EventEmitter {
    * Get specific worktree status
    */
   getWorktreeStatus(name: string): WorktreeStatus | null {
-    return this.worktrees.get(name) || null;
+    return this.worktrees.get(name) ?? null;
   }
 
   /**
@@ -204,9 +210,9 @@ export class ScannerCore extends EventEmitter {
         const match = line.match(/^(.+?)\s+([a-f0-9]+)\s+\[(.+?)\]$/);
         if (match) {
           const [, path, commit, branch] = match;
-          const name = this.getWorktreeName(path || '');
+          const name = this.getWorktreeName(path ?? '');
 
-          await this.addWorktree(name, path || '', commit || '', branch || '');
+          await this.addWorktree(name, path ?? '', commit ?? '', branch ?? '');
         }
       }
 
@@ -243,10 +249,10 @@ export class ScannerCore extends EventEmitter {
       const detectedSignals: DetectedSignal[] = signals.map(signal => ({
         pattern: signal.type,
         type: signal.type,
-        content: String((signal.data as SignalData)?.rawSignal || ''),
+        content: String((signal.data as SignalData).rawSignal ?? ''),
         line: 0,
         column: 0,
-        context: String(signal.metadata?.worktree || ''),
+        context: String(signal.metadata.worktree ?? ''),
         priority: this.mapPriorityToLevel(signal.priority)
       }));
       status.signals.push(...detectedSignals);
@@ -309,7 +315,9 @@ export class ScannerCore extends EventEmitter {
   private async handleFileChange(filePath: string, changeType: 'added' | 'modified' | 'deleted'): Promise<void> {
     try {
       const worktree = this.findWorktreeForFile(filePath);
-      if (!worktree) return;
+      if (!worktree) {
+        return;
+      }
 
       const relativePath = filePath.replace(worktree.path + '/', '');
       const fileChange: FileChange = {
@@ -357,10 +365,10 @@ export class ScannerCore extends EventEmitter {
             const detectedSignals: DetectedSignal[] = signals.map(signal => ({
               pattern: signal.type,
               type: signal.type,
-              content: String((signal.data as SignalData)?.rawSignal || ''),
+              content: String((signal.data as SignalData).rawSignal ?? ''),
               line: 0,
               column: 0,
-              context: `${relativePath} - ${String((signal.data as SignalData)?.rawSignal || '')}`,
+              context: `${relativePath} - ${String((signal.data as SignalData).rawSignal ?? '')}`,
               priority: this.mapPriorityToLevel(signal.priority)
             }));
             status.signals.push(...detectedSignals);
@@ -396,7 +404,9 @@ export class ScannerCore extends EventEmitter {
    * Perform comprehensive scan of all worktrees
    */
   private async performScan(): Promise<void> {
-    if (this.isScanning) return;
+    if (this.isScanning) {
+      return;
+    }
 
     this.isScanning = true;
     const startTime = Date.now();
@@ -416,13 +426,13 @@ export class ScannerCore extends EventEmitter {
           worktree.branch = gitStatus.branch;
           worktree.commit = gitStatus.commit;
           worktree.fileChanges = gitStatus.fileChanges.map(fc => ({
-          path: fc.path,
-          hash: '',
-          size: 0,
-          lastModified: new Date(),
-          changeType: (fc as FileChangeData).type || 'modified' as 'added' | 'modified' | 'deleted' | 'renamed',
-          estimatedTokens: this.estimateFileTokens(fc.path)
-        }));
+            path: fc.path,
+            hash: '',
+            size: 0,
+            lastModified: new Date(),
+            changeType: (fc as FileChangeData).type ?? 'modified' as 'added' | 'modified' | 'deleted' | 'renamed',
+            estimatedTokens: this.estimateFileTokens(fc.path)
+          }));
           worktree.lastModified = new Date();
 
           this.emitEvent({
@@ -492,7 +502,7 @@ export class ScannerCore extends EventEmitter {
    */
   private getWorktreeName(path: string): string {
     const parts = path.split('/');
-    return parts[parts.length - 1] || path;
+    return parts[parts.length - 1] ?? path;
   }
 
   /**
@@ -518,10 +528,10 @@ export class ScannerCore extends EventEmitter {
       'json': 0.8,    // JSON is dense
       'yml': 0.9,     // YAML is fairly dense
       'yaml': 0.9,
-      'txt': 1.0,     // Plain text
+      'txt': 1.0     // Plain text
     };
 
-    const multiplier = multipliers[extension || ''] || 1.0;
+    const multiplier = multipliers[extension ?? ''] ?? 1.0;
     return Math.ceil(1000 * multiplier); // Placeholder, will be calculated accurately
   }
 
@@ -529,9 +539,15 @@ export class ScannerCore extends EventEmitter {
    * Map numeric priority to priority level
    */
   private mapPriorityToLevel(priority: number): 'low' | 'medium' | 'high' | 'critical' {
-    if (priority >= 8) return 'critical';
-    if (priority >= 6) return 'high';
-    if (priority >= 3) return 'medium';
+    if (priority >= 8) {
+      return 'critical';
+    }
+    if (priority >= 6) {
+      return 'high';
+    }
+    if (priority >= 3) {
+      return 'medium';
+    }
     return 'low';
   }
 
@@ -541,5 +557,126 @@ export class ScannerCore extends EventEmitter {
   private emitEvent(event: ScanEvent): void {
     this.scanMetrics.totalEvents++;
     this.emit('scanner:event', event);
+  }
+
+  /**
+   * Get comprehensive scanner metrics for Prometheus
+   */
+  public getMetrics(): any {
+    const worktrees = Array.from(this.worktrees.values());
+
+    // Aggregate signals from all worktrees
+    const allSignals: any[] = [];
+    const allTokenUsage: { [key: string]: any } = {};
+
+    worktrees.forEach(wt => {
+      // Collect signals
+      if (wt.signals) {
+        allSignals.push(...wt.signals.map(s => ({
+          type: s.type,
+          severity: s.priority,
+          content: s.content,
+          context: s.context
+        })));
+      }
+
+      // Collect token usage
+      if (wt.tokenUsage) {
+        allTokenUsage[wt.name] = {
+          agentId: wt.tokenUsage.agentId || wt.name,
+          agentType: wt.tokenUsage.agentType || 'worktree',
+          totalTokens: wt.tokenUsage.totalTokens,
+          requestCount: wt.tokenUsage.requestCount,
+          dailyLimit: wt.tokenUsage.dailyLimit,
+          weeklyLimit: wt.tokenUsage.weeklyLimit,
+          monthlyLimit: wt.tokenUsage.monthlyLimit
+        };
+      }
+    });
+
+    return {
+      scanMetrics: {
+        ...this.scanMetrics,
+        lastScanTime: this.lastScanTime,
+        avgScanTimeMs: this.scanMetrics.avgScanTime
+      },
+      worktrees: worktrees.map(wt => ({
+        name: wt.name,
+        path: wt.path,
+        branch: wt.branch,
+        commit: wt.commit,
+        status: wt.status,
+        lastModified: wt.lastModified,
+        fileChanges: wt.fileChanges,
+        prpFiles: wt.prpFiles,
+        signals: wt.signals,
+        tokenUsage: wt.tokenUsage
+      })),
+      signals: allSignals,
+      tokenUsage: allTokenUsage,
+      eventQueueSize: this.eventQueue.length,
+      fileHashCacheSize: this.fileHasher?.['cacheSize'] || 0,
+      config: {
+        scanInterval: this.config.scanInterval,
+        maxConcurrentWorktrees: this.config.maxConcurrentWorktrees,
+        fileHashCacheSize: this.config.fileHashCacheSize,
+        signalQueueSize: this.config.signalQueueSize
+      }
+    };
+  }
+
+  /**
+   * Get current event queue size
+   */
+  public getEventQueueSize(): number {
+    return this.eventQueue.length;
+  }
+
+  /**
+   * Get file hash cache size
+   */
+  public getFileHashCacheSize(): number {
+    return this.fileHasher?.['cacheSize'] || 0;
+  }
+
+  /**
+   * Get worktree count by status
+   */
+  public getWorktreeStatusCounts(): { [status: string]: number } {
+    const counts = { clean: 0, dirty: 0, conflict: 0, diverged: 0 };
+    this.worktrees.forEach(wt => {
+      if (counts[wt.status] !== undefined) {
+        counts[wt.status]++;
+      }
+    });
+    return counts;
+  }
+
+  /**
+   * Get file change statistics
+   */
+  public getFileChangeStats(): { [type: string]: number } {
+    const stats = { added: 0, modified: 0, deleted: 0, renamed: 0 };
+    this.worktrees.forEach(wt => {
+      wt.fileChanges.forEach(fc => {
+        if (stats[fc.changeType] !== undefined) {
+          stats[fc.changeType]++;
+        }
+      });
+    });
+    return stats;
+  }
+
+  /**
+   * Get signal statistics
+   */
+  public getSignalStats(): { [type: string]: number } {
+    const stats: { [key: string]: number } = {};
+    this.worktrees.forEach(wt => {
+      wt.signals.forEach(signal => {
+        stats[signal.type] = (stats[signal.type] || 0) + 1;
+      });
+    });
+    return stats;
   }
 }

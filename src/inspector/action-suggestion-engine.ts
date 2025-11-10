@@ -342,7 +342,9 @@ export class ActionSuggestionEngine extends EventEmitter {
     for (const suggestion of suggestions) {
       // Validate feasibility
       const isFeasible = await this.validateFeasibility(suggestion, context);
-      if (!isFeasible) continue;
+      if (!isFeasible) {
+        continue;
+      }
 
       // Predict success rate
       const successRate = await this.successPredictor.predict(suggestion, context);
@@ -535,15 +537,23 @@ export class ActionSuggestionEngine extends EventEmitter {
     return [];
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private identifyConstraints(classification: EnhancedSignalClassification, _context: ProcessingContext): string[] {
     const constraints = [];
-    if (classification.urgency === 'urgent') constraints.push('urgent');
+    if (classification.urgency === 'urgent') {
+      constraints.push('urgent');
+    }
     return constraints;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private assessRiskLevel(classification: EnhancedSignalClassification, _context: ProcessingContext): 'low' | 'medium' | 'high' {
-    if (classification.complexity === 'critical') return 'high';
-    if (classification.complexity === 'high') return 'medium';
+    if (classification.complexity === 'critical') {
+      return 'high';
+    }
+    if (classification.complexity === 'high') {
+      return 'medium';
+    }
     return 'low';
   }
 
@@ -555,6 +565,7 @@ Requirements: ${JSON.stringify(requirements, null, 2)}
 Provide 3-5 specific, actionable suggestions with details on implementation, requirements, and expected outcomes.`;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async callLLMForSuggestions(_prompt: string): Promise<LLMSuggestionResponse> {
     // This would integrate with an actual LLM service
     // For now, return mock response
@@ -571,6 +582,7 @@ Provide 3-5 specific, actionable suggestions with details on implementation, req
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private parseLLMSuggestions(_response: LLMSuggestionResponse, _classification: EnhancedSignalClassification, _context: ProcessingContext): EnhancedActionSuggestion[] {
     // Parse LLM response into suggestion objects
     return [];
@@ -612,6 +624,7 @@ Provide 3-5 specific, actionable suggestions with details on implementation, req
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private createSuggestionFromHistory(action: HistoricalAction, _classification: EnhancedSignalClassification, _context: ProcessingContext): EnhancedActionSuggestion {
     return {
       id: HashUtils.generateId(),
@@ -646,7 +659,7 @@ Provide 3-5 specific, actionable suggestions with details on implementation, req
       metadata: {
         confidence: 0.7,
         source: 'historical',
-        reasoning: `Based on historical success with similar signals`,
+        reasoning: 'Based on historical success with similar signals',
         estimatedCost: action.duration,
         historicalSuccessRate: 1.0
       },
@@ -663,6 +676,7 @@ Provide 3-5 specific, actionable suggestions with details on implementation, req
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async tailorSuggestionForAgent(_suggestion: EnhancedActionSuggestion, agent: AgentStatusInfo, _context: ProcessingContext): Promise<EnhancedActionSuggestion> {
     return {
       ..._suggestion,
@@ -674,6 +688,7 @@ Provide 3-5 specific, actionable suggestions with details on implementation, req
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async validateFeasibility(_suggestion: EnhancedActionSuggestion, _context: ProcessingContext): Promise<boolean> {
     // Check if suggestion is feasible given current context
     return true; // Placeholder
@@ -709,7 +724,9 @@ Provide 3-5 specific, actionable suggestions with details on implementation, req
     const seen = new Set<string>();
     return suggestions.filter(suggestion => {
       const key = `${suggestion.type}-${suggestion.targetAgent}`;
-      if (seen.has(key)) return false;
+      if (seen.has(key)) {
+        return false;
+      }
       seen.add(key);
       return true;
     });
@@ -796,6 +813,7 @@ Provide 3-5 specific, actionable suggestions with details on implementation, req
 // Supporting classes
 
 class SuccessPredictor {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async predict(suggestion: EnhancedActionSuggestion, _context: ProcessingContext): Promise<number> {
     // Simple prediction based on historical data and context
     let successRate = suggestion.metadata.historicalSuccessRate;
@@ -821,6 +839,9 @@ class CapabilityMatcher {
   }
 }
 
+// Export types for testing
+export type { EnhancedActionSuggestion, ActionTemplate, HistoricalAction, CapabilityRequirements };
+export { ActionType, ActionPriority };
 
 interface ActionRequirements {
   immediateActions: string[];

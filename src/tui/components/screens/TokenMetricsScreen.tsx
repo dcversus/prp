@@ -8,9 +8,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Text, Newline, useInput } from 'ink';
-import { TokenMetricsScreenProps } from '../../types/TUIConfig.js';
-import { TUIDashboardData, AgentTokenStatus, TokenAlert } from '../../../types/token-metrics.js';
-import { TokenMetricsStream } from '../../../monitoring/TokenMetricsStream.js';
+import type { TokenMetricsScreenProps } from '../../../shared/types/TUIConfig.js';
+import type { TUIDashboardData, AgentTokenStatus, TokenAlert } from '../../../shared/types/token-metrics.js';
+import { TokenMetricsStream } from '../../../shared/monitoring/TokenMetricsStream.js';
 import { TokenMonitoringTools } from '../../../orchestrator/tools/token-monitoring-tools.js';
 
 // Real data integration with token monitoring tools
@@ -196,13 +196,13 @@ interface TokenProgressBarProps {
   width: number;
 }
 
-const TokenProgressBar: React.FC<TokenProgressBarProps> = ({
+const TokenProgressBar = ({
   current: _current,
   limit: _limit,
   percentage,
   status,
   width
-}) => {
+}: TokenProgressBarProps) => {
   const getBarColor = () => {
     switch (status) {
       case 'blocked': return 'red';
@@ -231,7 +231,7 @@ interface AgentTokenCardProps {
   onSelect: () => void;
 }
 
-const AgentTokenCard: React.FC<AgentTokenCardProps> = ({ agent, isSelected, onSelect: _onSelect }) => {
+const AgentTokenCard = ({ agent, isSelected, onSelect: _onSelect }: AgentTokenCardProps) => {
   const getAgentColor = () => {
     switch (agent.agentType) {
       case 'scanner': return 'cyan';
@@ -265,8 +265,8 @@ const AgentTokenCard: React.FC<AgentTokenCardProps> = ({ agent, isSelected, onSe
   return (
     <Box
       flexDirection="column"
-      borderStyle={isSelected ? "double" : "single"}
-      borderColor={isSelected ? agentColor : "gray"}
+      borderStyle={isSelected ? 'double' : 'single'}
+      borderColor={isSelected ? agentColor : 'gray'}
       paddingX={1}
       marginBottom={1}
     >
@@ -313,7 +313,7 @@ interface AlertPanelProps {
   onAcknowledge: (alertId: string) => void;
 }
 
-const AlertPanel: React.FC<AlertPanelProps> = ({ alerts, onAcknowledge: _onAcknowledge }) => {
+const AlertPanel = ({ alerts, onAcknowledge: _onAcknowledge }: AlertPanelProps) => {
   const getAlertColor = (type: TokenAlert['type']) => {
     switch (type) {
       case 'blocked': return 'red';
@@ -382,12 +382,12 @@ interface SummaryPanelProps {
   activeAlerts: number;
 }
 
-const SummaryPanel: React.FC<SummaryPanelProps> = ({
+const SummaryPanel = ({
   totalAgents,
   totalTokensUsed,
   totalCost,
   activeAlerts
-}) => {
+}: SummaryPanelProps) => {
   const formatTokens = (tokens: number): string => {
     if (tokens >= 1000000) {
       return `${(tokens / 1000000).toFixed(2)}M`;
@@ -417,7 +417,7 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
       </Box>
       <Box justifyContent="space-between">
         <Text color="muted">Active Alerts:</Text>
-        <Text color={activeAlerts > 0 ? "red" : "green"}>
+        <Text color={activeAlerts > 0 ? 'red' : 'green'}>
           {activeAlerts}
         </Text>
       </Box>
@@ -425,10 +425,10 @@ const SummaryPanel: React.FC<SummaryPanelProps> = ({
   );
 };
 
-export const TokenMetricsScreen: React.FC<TokenMetricsScreenProps> = ({
+export const TokenMetricsScreen = ({
   isActive,
   onNavigate
-}) => {
+}: TokenMetricsScreenProps) => {
   const [dashboardData, setDashboardData] = useState<TUIDashboardData>(createMockDashboardData());
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -451,7 +451,9 @@ export const TokenMetricsScreen: React.FC<TokenMetricsScreenProps> = ({
 
   // Real-time updates from token monitoring tools
   useEffect(() => {
-    if (!isActive || !autoRefresh || !useRealData) return;
+    if (!isActive || !autoRefresh || !useRealData) {
+      return;
+    }
 
     const interval = setInterval(() => {
       try {
@@ -467,7 +469,9 @@ export const TokenMetricsScreen: React.FC<TokenMetricsScreenProps> = ({
 
   // Fallback simulation if real data fails
   useEffect(() => {
-    if (!isActive || !autoRefresh || useRealData) return;
+    if (!isActive || !autoRefresh || useRealData) {
+      return;
+    }
 
     const interval = setInterval(() => {
       setDashboardData(prevData => ({
@@ -505,7 +509,9 @@ export const TokenMetricsScreen: React.FC<TokenMetricsScreenProps> = ({
   }, []);
 
   const handleKeyPress = useCallback((input: string, _key: any) => {
-    if (!isActive) return;
+    if (!isActive) {
+      return;
+    }
 
     switch (input) {
       case 'q':
@@ -533,7 +539,9 @@ export const TokenMetricsScreen: React.FC<TokenMetricsScreenProps> = ({
 
   useInput(handleKeyPress);
 
-  if (!isActive) return null;
+  if (!isActive) {
+    return null;
+  }
 
   return (
     <Box flexDirection="column" paddingX={1}>

@@ -840,24 +840,26 @@ export class SignalResolutionEngine {
         }
 
         const workflow = this.activeWorkflows.get(workflowId);
-        if (workflow?.status !== 'running') break;
+        if (workflow?.status !== 'running') {
+          break;
+        }
 
         workflow.currentStep = i + 1;
 
         // Check action conditions
         if (action.conditions && !this.evaluateConditions(action.conditions, signal, prp)) {
-          logger.debug('processSignal', 'Action conditions not met', { action: action?.description });
+          logger.debug('processSignal', 'Action conditions not met', { action: action.description });
           continue;
         }
 
         try {
           const result = await this.executeAction(action, signal, prp);
-          results.push({ action: action?.description, result, success: true });
+          results.push({ action: action.description, result, success: true });
 
           // Check if action result meets success criteria
           if (resolution.successCriteria && !this.meetsSuccessCriteria(resolution.successCriteria, result)) {
             logger.warn('processSignal', 'Action result does not meet success criteria', {
-              action: action?.description,
+              action: action.description,
               criteria: resolution.successCriteria
             });
           }
@@ -866,12 +868,12 @@ export class SignalResolutionEngine {
           logger.error('processSignal', 'Action execution failed',
             error instanceof Error ? error : new Error(error instanceof Error ? error.message : String(error)),
             {
-              action: action?.description
+              action: action.description
             }
           );
 
           results.push({
-            action: action?.description,
+            action: action.description,
             error: error instanceof Error ? error.message : String(error),
             success: false
           });
@@ -937,22 +939,22 @@ export class SignalResolutionEngine {
   private async executeAction(action: ResolutionAction, signal: Signal, prp?: PRPFile): Promise<unknown> {
     switch (action.type) {
       case 'agent_task':
-        return await this.executeAgentTask(action, signal, prp);
+        return this.executeAgentTask(action, signal, prp);
 
       case 'signal':
-        return await this.emitSignal(action, signal);
+        return this.emitSignal(action, signal);
 
       case 'notification':
-        return await this.sendNotification(action, signal);
+        return this.sendNotification(action, signal);
 
       case 'tool_call':
-        return await this.executeToolCall(action, signal);
+        return this.executeToolCall(action, signal);
 
       case 'prp_update':
-        return await this.updatePRP(action, signal, prp);
+        return this.updatePRP(action, signal, prp);
 
       case 'escalation':
-        return await this.escalateSignal(action, signal, prp);
+        return this.escalateSignal(action, signal, prp);
 
       default:
         throw new Error(`Unknown action type: ${action.type}`);
@@ -967,7 +969,7 @@ export class SignalResolutionEngine {
       throw new Error('Agent task action requires agentType and task');
     }
 
-    return await this.orchestrator.executeCommand('assign_agent_task', {
+    return this.orchestrator.executeCommand('assign_agent_task', {
       agentType: action.agentType,
       task: action.task,
       priority: action.priority,
@@ -1006,15 +1008,15 @@ export class SignalResolutionEngine {
       }
     };
 
-    return await this.orchestrator.processSignal(followUpSignal);
+    return this.orchestrator.processSignal(followUpSignal);
   }
 
   /**
    * Send notification
    */
   private async sendNotification(action: ResolutionAction, signal: Signal): Promise<unknown> {
-    const message = action.message || `Signal processed: ${signal.type}`;
-    const channel = action.channel || 'default';
+    const message = action.message ?? `Signal processed: ${signal.type}`;
+    const channel = action.channel ?? 'default';
 
     logger.info('sendNotification', 'Sending notification', {
       message,
@@ -1039,7 +1041,7 @@ export class SignalResolutionEngine {
       throw new Error('Tool call action requires toolName');
     }
 
-    return await this.orchestrator.executeCommand('execute_tool', {
+    return this.orchestrator.executeCommand('execute_tool', {
       toolName: action.toolName,
       parameters: {
         ...action.toolParameters,
@@ -1056,7 +1058,7 @@ export class SignalResolutionEngine {
       throw new Error('PRP update action requires PRP context');
     }
 
-    const updateContent = `[${signal.type}] ${action?.description || 'Signal processed'} - ${new Date().toISOString()}\n`;
+    const updateContent = `[${signal.type}] ${action.description || 'Signal processed'} - ${new Date().toISOString()}\n`;
 
     // Update PRP progress section
     if (prp.content) {
@@ -1066,12 +1068,12 @@ export class SignalResolutionEngine {
       );
     }
 
-    return await this.orchestrator.executeCommand('update_prp', {
+    return this.orchestrator.executeCommand('update_prp', {
       prpName: prp.name,
       content: prp.content,
       signalUpdate: {
         signal: signal.type,
-        action: action?.description,
+        action: action.description,
         timestamp: new Date()
       }
     });
@@ -1083,7 +1085,7 @@ export class SignalResolutionEngine {
   private async escalateSignal(action: ResolutionAction, signal: Signal, prp?: PRPFile): Promise<unknown> {
     logger.warn('escalateSignal', 'Escalating signal', {
       signalType: signal.type,
-      escalationReason: action?.description
+      escalationReason: action.description
     });
 
     // Execute escalation actions
@@ -1095,7 +1097,7 @@ export class SignalResolutionEngine {
 
     return {
       escalated: true,
-      reason: action?.description,
+      reason: action.description,
       timestamp: new Date()
     };
   }
@@ -1114,13 +1116,13 @@ export class SignalResolutionEngine {
 
       switch (prereq) {
         case 'blocker_identified':
-          met = signal.data?.blockerDetails !== undefined;
+          met = signal.data.blockerDetails !== undefined;
           break;
         case 'impact_assessed':
-          met = signal.data?.impact !== undefined;
+          met = signal.data.impact !== undefined;
           break;
         case 'complexity_documented':
-          met = signal.data?.complexity !== undefined;
+          met = signal.data.complexity !== undefined;
           break;
         default:
           // Check PRP content for prerequisite
@@ -1183,15 +1185,17 @@ export class SignalResolutionEngine {
   private getFieldValue(field: string, signal: Signal, prp?: PRPFile): unknown {
     if (field.startsWith('data.')) {
       const dataField = field.substring(5);
-      return signal.data?.[dataField];
+      return signal.data[dataField];
     } else if (field.startsWith('metadata.')) {
       const metadataField = field.substring(9);
-      return signal.metadata?.[metadataField];
+      return signal.metadata[metadataField];
     } else if (field.startsWith('prp.')) {
-      // Handle PRP field access
-      return prp ? (prp as any)[field.substring(4)] : undefined;
+      // Handle PRP field access - use proper type indexing
+      const prpField = field.substring(4);
+      return prp ? (prp as unknown as Record<string, unknown>)[prpField] : undefined;
     } else {
-      return (signal as any)[field];
+      // Handle direct signal field access
+      return (signal as unknown as Record<string, unknown>)[field];
     }
   }
 
@@ -1202,7 +1206,8 @@ export class SignalResolutionEngine {
     // Simple implementation - could be enhanced with more sophisticated criteria evaluation
     for (const criterion of criteria) {
       if (typeof result === 'object' && result !== null) {
-        if (!(result as any)[criterion]) {
+        const resultObj = result as Record<string, unknown>;
+        if (!resultObj[criterion]) {
           return false;
         }
       }
@@ -1226,7 +1231,7 @@ export class SignalResolutionEngine {
         logger.error('handleFailure', 'Failure handling action failed',
           error instanceof Error ? error : new Error(error instanceof Error ? error.message : String(error)),
           {
-            action: action?.description
+            action: action.description
           }
         );
       }

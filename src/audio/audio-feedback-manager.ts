@@ -5,22 +5,58 @@
  * real-time audio feedback for agent lifecycle events.
  */
 
-import { SignalOrchestra, MelodyPatterns, OrchestraConfig } from './signal-orchestra.js';
+import { SignalOrchestra, MelodyPatterns, OrchestraConfig } from './signal-orchestra';
+import { logger } from '../shared/logger.js';
+
+// Simple audio logger to avoid external dependencies
+class AudioLogger {
+  constructor(private readonly context: string) {}
+
+  info(message: string, ...args: unknown[]): void {
+    const metadata = args.length > 0 ? { args } : undefined;
+    logger.info('shared', 'AudioFeedbackManager', message, metadata);
+  }
+
+  warn(message: string, ...args: unknown[]): void {
+    const metadata = args.length > 0 ? { args } : undefined;
+    logger.warn('shared', 'AudioFeedbackManager', message, metadata);
+  }
+
+  error(message: string, ...args: unknown[]): void {
+    const metadata = args.length > 0 ? { args } : undefined;
+    logger.error('shared', 'AudioFeedbackManager', message, undefined, metadata);
+  }
+
+  debug(message: string, ...args: unknown[]): void {
+    if (process.env['NODE_ENV'] === 'development' || process.env['DEBUG']) {
+      const metadata = args.length > 0 ? { args } : undefined;
+      logger.debug('shared', 'AudioFeedbackManager', message, metadata);
+    }
+  }
+}
+
+const audioFeedbackLogger = new AudioLogger('AudioFeedbackManager');
 
 export interface AudioFeedbackRule {
   agentType: string;
   event: string;
-  condition?: (data: any) => boolean;
+  condition?: (data: AudioEventData) => boolean;
   action: 'play_signal' | 'play_melody' | 'stop' | 'sequence';
   target: string;
   delay?: number;
+}
+
+export interface AudioEventData {
+  success?: boolean;
+  significance?: string;
+  [key: string]: unknown;
 }
 
 export interface AudioEvent {
   type: string;
   agentId: string;
   agentType: string;
-  data: any;
+  data: AudioEventData;
   timestamp: number;
 }
 
@@ -46,10 +82,10 @@ export class AudioFeedbackManager {
     await this.orchestra.initialize();
 
     if (this.orchestra.getMetrics().latency > 0) {
-      console.log('🎵 Audio Feedback Manager initialized');
+      audioFeedbackLogger.info('🎵 Audio Feedback Manager initialized');
       this.startEventProcessor();
     } else {
-      console.warn('Audio system not available, disabling audio feedback');
+      audioFeedbackLogger.warn('Audio system not available, disabling audio feedback');
       this.enabled = false;
     }
   }
@@ -64,8 +100,15 @@ export class AudioFeedbackManager {
   /**
    * Process agent lifecycle event
    */
-  async processAgentEvent(agentId: string, agentType: string, event: string, data: any): Promise<void> {
-    if (!this.enabled) return;
+  async processAgentEvent(
+    agentId: string,
+    agentType: string,
+    event: string,
+    data: AudioEventData
+  ): Promise<void> {
+    if (!this.enabled) {
+      return;
+    }
 
     const audioEvent: AudioEvent = {
       type: event,
@@ -78,6 +121,7 @@ export class AudioFeedbackManager {
     this.eventQueue.push(audioEvent);
 
     if (!this.isProcessing) {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       this.processEventQueue();
     }
   }
@@ -86,12 +130,14 @@ export class AudioFeedbackManager {
    * Process signal change event
    */
   async processSignalChange(signal: string, agentType: string): Promise<void> {
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      return;
+    }
 
     try {
       await this.orchestra.playSignal(signal, agentType);
     } catch (error) {
-      console.error('Failed to play signal audio:', error);
+      audioFeedbackLogger.error('Failed to play signal audio:', error);
     }
   }
 
@@ -99,22 +145,24 @@ export class AudioFeedbackManager {
    * Play melody for agent state
    */
   async playMelodyForAgent(_agentId: string, agentType: string, state: string): Promise<void> {
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      return;
+    }
 
     let pattern = null;
 
     switch (state) {
       case 'spawning':
-        pattern = MelodyPatterns.AGENT_SPAWNING;
+        pattern = MelodyPatterns['AGENT_SPAWNING'];
         break;
       case 'success':
-        pattern = MelodyPatterns.TASK_SUCCESS;
+        pattern = MelodyPatterns['TASK_SUCCESS'];
         break;
       case 'error':
-        pattern = MelodyPatterns.TASK_ERROR;
+        pattern = MelodyPatterns['TASK_ERROR'];
         break;
       case 'completed':
-        pattern = MelodyPatterns.COMPLETION_FANFARE;
+        pattern = MelodyPatterns['COMPLETION_FANFARE'];
         break;
       default:
         return;
@@ -125,7 +173,7 @@ export class AudioFeedbackManager {
         await this.orchestra.playMelody(pattern, agentType);
       }
     } catch (error) {
-      console.error('Failed to play melody:', error);
+      audioFeedbackLogger.error('Failed to play melody:', error);
     }
   }
 
@@ -133,7 +181,9 @@ export class AudioFeedbackManager {
    * Stop audio for specific agent
    */
   stopAgentAudio(agentId: string): void {
-    if (!this.enabled) return;
+    if (!this.enabled) {
+      return;
+    }
     this.orchestra.stopAgentVoice(agentId);
   }
 
@@ -203,7 +253,7 @@ export class AudioFeedbackManager {
     this.rules.push({
       agentType: '*',
       event: 'task_completed',
-      condition: (data) => data.success,
+      condition: (data) => Boolean(data.success),
       action: 'play_melody',
       target: 'TASK_SUCCESS',
       delay: 0
@@ -260,16 +310,20 @@ export class AudioFeedbackManager {
    * Process queued events
    */
   private async processEventQueue(): Promise<void> {
-    if (this.isProcessing) return;
+    if (this.isProcessing) {
+      return;
+    }
 
     this.isProcessing = true;
 
     while (this.eventQueue.length > 0) {
-      const event = this.eventQueue.shift()!;
-      await this.processEvent(event);
+      const event = this.eventQueue.shift();
+      if (event) {
+        await this.processEvent(event);
+      }
 
       // Small delay to prevent audio overload
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
     }
 
     this.isProcessing = false;
@@ -280,7 +334,7 @@ export class AudioFeedbackManager {
    */
   private async processEvent(event: AudioEvent): Promise<void> {
     // Find matching rules
-    const matchingRules = this.rules.filter(rule => {
+    const matchingRules = this.rules.filter((rule) => {
       if (rule.agentType !== '*' && rule.agentType !== event.agentType) {
         return false;
       }
@@ -299,6 +353,7 @@ export class AudioFeedbackManager {
     // Execute matching rules
     for (const rule of matchingRules) {
       if (rule.delay && rule.delay > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-misused-promises
         setTimeout(() => this.executeRule(rule, event), rule.delay);
       } else {
         await this.executeRule(rule, event);
@@ -317,7 +372,8 @@ export class AudioFeedbackManager {
           break;
 
         case 'play_melody': {
-          const pattern = (MelodyPatterns as any)[rule.target];
+          const targetKey = rule.target;
+          const pattern = MelodyPatterns[targetKey];
           if (pattern) {
             await this.orchestra.playMelody(pattern, event.agentId);
           }
@@ -333,7 +389,7 @@ export class AudioFeedbackManager {
           break;
       }
     } catch (error) {
-      console.error(`Failed to execute audio rule ${rule.action}:`, error);
+      audioFeedbackLogger.error(`Failed to execute audio rule ${rule.action}:`, error);
     }
   }
 
@@ -343,6 +399,7 @@ export class AudioFeedbackManager {
   private startEventProcessor(): void {
     setInterval(() => {
       if (this.enabled && !this.isProcessing && this.eventQueue.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         this.processEventQueue();
       }
     }, 100); // Check every 100ms

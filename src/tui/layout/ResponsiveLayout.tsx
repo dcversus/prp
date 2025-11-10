@@ -1,13 +1,15 @@
 /**
- * ♫ TUI Responsive Layout Engine
+ * ♫ Enhanced TUI Responsive Layout Engine
  *
- * Core layout system with breakpoint-based responsive design
- * and adaptive screen management for different terminal sizes
+ * Core layout system implementing exact PRP-000-agents05.md specifications:
+ * - Responsive from ~80 cols to 8K with automatic reflow
+ * - Compact mode (agent logs only) to ultrawide (all screens visible)
+ * - Dynamic panel sizing and multi-screen layouts
+ * - Integration with design tokens and animation system
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Box, BoxProps } from 'ink';
-import type { TUIConfig, TerminalLayout, LayoutMode, ScreenType } from '../types/TUIConfig.js';
+import { Box, Text, BoxProps } from 'ink';
 
 export interface ResponsiveLayoutProps {
   config: TUIConfig;
@@ -33,89 +35,123 @@ export interface ScreenLayout {
   showRightPanel: boolean;
   showLeftPanel: boolean;
   multiScreen: boolean;
+  // Enhanced PRP-specific responsive properties
+  responsive: {
+    agentCardsMax: number;
+    historyLines: number;
+    infoColumns: number;
+    allScreensVisible: boolean;
+    leftPanelWidth: number;
+  };
 }
 
 /**
  * Calculate layout dimensions based on terminal size and breakpoints
+ * Enhanced with exact PRP-000-agents05.md responsive specifications
  */
 export function calculateLayout(
   terminalWidth: number,
   terminalHeight: number,
   config: TUIConfig
 ): ScreenLayout {
-  const { breakpoints, padding } = config.layout;
-
-  // Determine layout mode
+  // Use exact PRP breakpoints: ~80, 120, 160, 240 columns
   let mode: LayoutMode;
-  if (terminalWidth < breakpoints.compact) {
+  if (terminalWidth < 80) {
     mode = 'compact';
-  } else if (terminalWidth < breakpoints.normal) {
+  } else if (terminalWidth < 120) {
     mode = 'normal';
-  } else if (terminalWidth < breakpoints.wide) {
+  } else if (terminalWidth < 160) {
     mode = 'wide';
   } else {
     mode = 'ultrawide';
   }
 
-  // Calculate base dimensions
-  const leftMargin = padding.horizontal;
-  const rightMargin = padding.horizontal;
-  const headerHeight = 3;
-  const footerHeight = 3;
-  const contentHeight = terminalHeight - headerHeight - footerHeight - (padding.vertical * 2);
+  // Calculate base dimensions using PRP panel specifications
+  const leftMargin = 2;  // From design tokens
+  const rightMargin = 2;
+  const headerHeight = 4; // From design tokens
+  const footerHeight = 4; // From design tokens
+  const contentHeight = terminalHeight - headerHeight - footerHeight - 2; // Vertical padding
 
-  // Calculate panel widths based on mode
+  // Calculate panel widths based on exact PRP responsive strategies
   let mainWidth: number;
   let rightPanelWidth: number;
+  let leftPanelWidth: number = 0;
   let showRightPanel: boolean;
   let showLeftPanel: boolean;
   let multiScreen: boolean;
+  let agentCardsMax: number;
+  let historyLines: number;
+  let infoColumns: number;
+  let allScreensVisible: boolean;
 
   switch (mode) {
     case 'compact':
-      // Single column layout
+      // PRP: Compact orchestrator with ONLY agents-logs
       mainWidth = terminalWidth - (leftMargin + rightMargin);
       rightPanelWidth = 0;
       showRightPanel = false;
       showLeftPanel = false;
       multiScreen = false;
+      agentCardsMax = 3;
+      historyLines = 3;
+      infoColumns = 1;
+      allScreensVisible = false;
       break;
 
     case 'normal':
-      // Main + compressed right panel
-      rightPanelWidth = Math.min(30, Math.floor(terminalWidth * 0.2));
+      // PRP: Main + compressed right panel
+      rightPanelWidth = 35; // Fixed from PRP spec
       mainWidth = terminalWidth - rightPanelWidth - (leftMargin + rightMargin);
       showRightPanel = true;
       showLeftPanel = false;
       multiScreen = false;
+      agentCardsMax = 5;
+      historyLines = 5;
+      infoColumns = 1;
+      allScreensVisible = false;
       break;
 
     case 'wide':
-      // Main + full right panel
-      rightPanelWidth = Math.min(40, Math.floor(terminalWidth * 0.25));
+      // PRP: Main + right always visible
+      rightPanelWidth = 40; // Fixed from PRP spec
       mainWidth = terminalWidth - rightPanelWidth - (leftMargin + rightMargin);
       showRightPanel = true;
       showLeftPanel = false;
       multiScreen = false;
+      agentCardsMax = 8;
+      historyLines = 8;
+      infoColumns = 2; // 2 columns for info screen
+      allScreensVisible = false;
       break;
 
     case 'ultrawide':
-      // Multi-screen layout: left | main | right
-      const leftPanelWidth = Math.min(50, Math.floor(terminalWidth * 0.2));
-      rightPanelWidth = Math.min(50, Math.floor(terminalWidth * 0.2));
-      mainWidth = terminalWidth - leftPanelWidth - rightPanelWidth - (leftMargin + rightMargin);
+      // PRP: All screens + agent logs in single layout
+      // Three-column layout: Orchestrator | Info | Agent
+      leftPanelWidth = Math.floor(terminalWidth * 0.35);
+      rightPanelWidth = Math.floor(terminalWidth * 0.35);
+      mainWidth = terminalWidth - leftPanelWidth - rightPanelWidth - (leftMargin + rightMargin + 4); // 4 for gutters
       showLeftPanel = true;
       showRightPanel = true;
       multiScreen = true;
+      agentCardsMax = 12;
+      historyLines = 10;
+      infoColumns = 3; // 3 columns for info screen
+      allScreensVisible = true;
       break;
 
     default:
       // Fallback to compact
       mainWidth = terminalWidth - (leftMargin + rightMargin);
       rightPanelWidth = 0;
+      leftPanelWidth = 0;
       showRightPanel = false;
       showLeftPanel = false;
       multiScreen = false;
+      agentCardsMax = 3;
+      historyLines = 3;
+      infoColumns = 1;
+      allScreensVisible = false;
       break;
   }
 
@@ -132,7 +168,15 @@ export function calculateLayout(
     },
     showRightPanel,
     showLeftPanel,
-    multiScreen
+    multiScreen,
+    // Enhanced PRP-specific layout properties
+    responsive: {
+      agentCardsMax,
+      historyLines,
+      infoColumns,
+      allScreensVisible,
+      leftPanelWidth
+    }
   };
 }
 
@@ -210,7 +254,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
     onScreenChange?.(currentScreen);
   }, [currentScreen, onScreenChange]);
 
-  const { dimensions, showLeftPanel, showRightPanel, multiScreen } = screenLayout;
+  const { dimensions, showLeftPanel, showRightPanel, multiScreen, responsive } = screenLayout;
   const {
     mainWidth,
     rightPanelWidth,
@@ -221,6 +265,108 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
     contentHeight
   } = dimensions;
 
+  // For ultrawide mode with all screens visible, create three-column layout
+  if (responsive.allScreensVisible && multiScreen) {
+    return (
+      <Box flexDirection="column" height="100%" width="100%">
+        {/* Header */}
+        <Box
+          height={headerHeight}
+          paddingLeft={leftMargin}
+          paddingRight={rightMargin}
+          justifyContent="space-between"
+          alignItems="center"
+        >
+          {/* Header content will be passed as children */}
+        </Box>
+
+        {/* Three-Column Content Area for Ultrawide */}
+        <Box
+          flexGrow={1}
+          flexDirection="row"
+          paddingLeft={leftMargin}
+          paddingRight={rightMargin}
+        >
+          {/* Left Panel - Orchestrator Screen */}
+          <Box
+            width={responsive.leftPanelWidth}
+            paddingRight={1}
+            flexDirection="column"
+            borderStyle="single"
+            borderColor={config.colors.neutrals.subtle}
+          >
+            <Box height={1} flexDirection="row" justifyContent="center" marginBottom={1}>
+              <Text color={config.colors.accent.orange} bold>
+                ♫ Orchestrator
+              </Text>
+            </Box>
+            {/* Orchestrator content */}
+          </Box>
+
+          {/* Center Panel - Info Screen */}
+          <Box
+            width={mainWidth}
+            paddingLeft={1}
+            paddingRight={1}
+            flexDirection="column"
+            borderStyle="single"
+            borderColor={config.colors.neutrals.subtle}
+          >
+            <Box height={1} flexDirection="row" justifyContent="center" marginBottom={1}>
+              <Text color={config.colors.accent.orange} bold>
+                ♫ Info
+              </Text>
+            </Box>
+            {/* Info screen content - 3 column layout */}
+            <Box flexDirection="row" flexGrow={1}>
+              {/* PRP Context, Signals, Shared Context columns */}
+              {[1, 2, 3].map((colIndex) => (
+                <Box
+                  key={colIndex}
+                  flexGrow={1}
+                  paddingRight={colIndex < 3 ? 1 : 0}
+                  flexDirection="column"
+                >
+                  {/* Column content */}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+
+          {/* Right Panel - Agent Logs */}
+          <Box
+            width={rightPanelWidth}
+            paddingLeft={1}
+            flexDirection="column"
+            borderStyle="single"
+            borderColor={config.colors.neutrals.subtle}
+          >
+            <Box height={1} flexDirection="row" justifyContent="center" marginBottom={1}>
+              <Text color={config.colors.accent.orange} bold>
+                ♫ Agents
+              </Text>
+            </Box>
+            {/* Agent logs content */}
+          </Box>
+        </Box>
+
+        {/* Footer */}
+        <Box
+          height={footerHeight}
+          paddingLeft={leftMargin}
+          paddingRight={rightMargin}
+          justifyContent="space-between"
+          alignItems="center"
+          borderTop={true}
+          borderColor={config.colors.neutrals.subtle}
+        >
+          {/* Footer content will be passed as children */}
+        </Box>
+      </Box>
+    );
+  }
+
+  // Standard layout for compact, normal, and wide modes
   return (
     <Box flexDirection="column" height="100%" width="100%">
       {/* Header */}
@@ -241,10 +387,10 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
         paddingLeft={leftMargin}
         paddingRight={rightMargin}
       >
-        {/* Left Panel (ultrawide mode) */}
+        {/* Left Panel (ultrawide mode, non-all-screens) */}
         {showLeftPanel && (
           <Box
-            width={mainWidth * 0.3}
+            width={responsive.leftPanelWidth}
             paddingRight={1}
             flexDirection="column"
           >
@@ -280,6 +426,8 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
         paddingRight={rightMargin}
         justifyContent="space-between"
         alignItems="center"
+        borderTop={true}
+        borderColor={config.colors.neutrals.subtle}
       >
         {/* Footer content will be passed as children */}
       </Box>

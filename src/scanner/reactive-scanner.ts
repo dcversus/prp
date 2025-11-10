@@ -5,8 +5,7 @@ import { existsSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import { PRPParser } from './prp-parser';
 import { TokenAccountant } from './token-accountant';
-import { FileHasher } from './file-hasher';
-import { logger } from '../utils/logger';
+import { FileHasher } from '../shared/tools/file-hasher.js';
 // import { SignalDetectorImpl } from './signal-detector'; // TODO: Use in signal detection logic
 
 /**
@@ -113,7 +112,7 @@ export class ReactiveScanner extends EventEmitter {
       await this.performInitialAnalysis();
 
       this.isRunning = true;
-      logger.success(`✅ Reactive Scanner started. Monitoring ${this.config.worktrees.length} worktrees`);
+      logger.info(`✅ Reactive Scanner started. Monitoring ${this.config.worktrees.length} worktrees`);
 
       this.emit('scanner:started', {
         worktreeCount: this.config.worktrees.length,
@@ -233,7 +232,9 @@ export class ReactiveScanner extends EventEmitter {
    * Automatically finds any [XX] pattern - no configuration needed
    */
   private async detectSignals(fileData: FileChangeEvent): Promise<void> {
-    if (!fileData.content) return;
+    if (!fileData.content) {
+      return;
+    }
 
     try {
       const lines = fileData.content.split('\n');
@@ -352,7 +353,9 @@ export class ReactiveScanner extends EventEmitter {
    * Update token tracking and check thresholds
    */
   private async updateTokenTracking(fileData: FileChangeEvent): Promise<void> {
-    if (!fileData.content) return;
+    if (!fileData.content) {
+      return;
+    }
 
     try {
       const tokenCount = this.estimateTokenCount(fileData.content);
@@ -432,9 +435,15 @@ export class ReactiveScanner extends EventEmitter {
   }
 
   private calculateFileUrgency(fileData: FileChangeEvent): 'low' | 'medium' | 'high' | 'critical' {
-    if (fileData.action === 'unlink') return 'medium';
-    if (fileData.size > 100000) return 'high'; // Large files
-    if (fileData.path.includes('package.json') || fileData.path.includes('.prprc')) return 'high';
+    if (fileData.action === 'unlink') {
+      return 'medium';
+    }
+    if (fileData.size > 100000) {
+      return 'high';
+    } // Large files
+    if (fileData.path.includes('package.json') || fileData.path.includes('.prprc')) {
+      return 'high';
+    }
     return 'low';
   }
 
@@ -442,8 +451,12 @@ export class ReactiveScanner extends EventEmitter {
     const urgentSignals = ['[Bb]', '[AE]', '[OA]'];
     const mediumSignals = ['[af]', '[oa]', '[op]'];
 
-    if (urgentSignals.some(s => signal.includes(s))) return 'critical';
-    if (mediumSignals.some(s => signal.includes(s))) return 'medium';
+    if (urgentSignals.some(s => signal.includes(s))) {
+      return 'critical';
+    }
+    if (mediumSignals.some(s => signal.includes(s))) {
+      return 'medium';
+    }
     return 'low';
   }
 
@@ -479,7 +492,7 @@ export class ReactiveScanner extends EventEmitter {
     }
     this.gitWatchers.clear();
 
-    logger.success('✅ Reactive Scanner stopped');
+    logger.info('✅ Reactive Scanner stopped');
     this.emit('scanner:stopped', { metrics: this.getMetrics() });
   }
 }

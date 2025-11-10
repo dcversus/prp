@@ -4,9 +4,9 @@ import { ensureDir } from 'fs-extra';
 import * as path from 'path';
 import * as yaml from 'yaml';
 import { homedir } from 'os';
-import { logger } from '../utils/logger';
-import { ConfigurationError } from '../utils/error-handler';
+import { ConfigurationError } from '../shared/utils/error-handler';
 import { SchemaValidator, type ValidationResult as SchemaValidationResult } from './schema-validator';
+import { logger } from '../shared/utils/logger';
 import type { PRPConfig, SettingsConfig } from '../shared/config';
 import type { ValidationResult } from '../types';
 
@@ -334,8 +334,8 @@ export class ConfigurationManager {
       logging: { ...base.logging, ...override.logging },
       security: { ...base.security, ...override.security },
       // Merge arrays by concatenation
-      agents: [...(base.agents || []), ...(override.agents || [])],
-      guidelines: [...(base.guidelines || []), ...(override.guidelines || [])],
+      agents: [...base.agents, ...(override.agents ?? [])],
+      guidelines: [...base.guidelines, ...(override.guidelines ?? [])],
       // Merge scripts
       scripts: { ...base.scripts, ...override.scripts }
     };
@@ -399,7 +399,7 @@ export class ConfigurationManager {
         keychainFile: '.prp/keychain.json',
         persistFile: '.prp/state.json',
         maxCacheSize: 100 * 1024 * 1024,
-        retentionPeriod: 30 * 24 * 60 * 60 * 1000,
+        retentionPeriod: 30 * 24 * 60 * 60 * 1000
       },
       agents: [],
       guidelines: [],
@@ -412,7 +412,7 @@ export class ConfigurationManager {
         activeScreen: 'main',
         followEvents: true,
         autoRefresh: true,
-        refreshInterval: 5000,
+        refreshInterval: 5000
       },
       features: {
         scanner: true,
@@ -420,26 +420,26 @@ export class ConfigurationManager {
         orchestrator: true,
         tui: true,
         mcp: true,
-        worktrees: true,
+        worktrees: true
       },
       limits: {
         maxConcurrentAgents: 5,
         maxWorktrees: 50,
         maxPRPsPerWorktree: 20,
         tokenAlertThreshold: 0.8,
-        tokenCriticalThreshold: 0.95,
+        tokenCriticalThreshold: 0.95
       },
       logging: {
         level: 'info',
         enableFileLogging: true,
         enableTokenTracking: true,
         enablePerformanceTracking: true,
-        logRetentionDays: 7,
+        logRetentionDays: 7
       },
       security: {
         enablePinProtection: false,
         encryptSecrets: true,
-        sessionTimeout: 60,
+        sessionTimeout: 60
       },
       settings: {
         debug: {
@@ -631,4 +631,5 @@ export class ConfigurationManager {
         development: this.config.settings.development !== undefined
       }
     };
-  }}
+  }
+}

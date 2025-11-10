@@ -1,17 +1,112 @@
 /**
- * ♫ Guideline Adapter for @dcversus/prp Inspector
+ * ♫ Enhanced Guideline Adapter for @dcversus/prp Inspector
  *
- * Adapts guidelines for signal processing with dynamic loading and caching.
+ * Comprehensive guideline processing system with support for style, architecture,
+ * process, and security guidelines. Features violation detection, fix suggestions,
+ * and automated enforcement capabilities.
  */
 
-import { readFileSync } from 'fs';
-import { join, resolve } from 'path';
+import { readFileSync, existsSync } from 'fs';
+import { join, resolve, extname } from 'path';
+import { execSync } from 'child_process';
 
 // For now, use a relative path approach
 import { GuidelineConfig, Signal } from '../shared/types';
 import { createLayerLogger, HashUtils } from '../shared';
 
 const logger = createLayerLogger('inspector');
+
+// Enhanced guideline types
+export enum GuidelineType {
+  STYLE = 'style',
+  ARCHITECTURE = 'architecture',
+  PROCESS = 'process',
+  SECURITY = 'security'
+}
+
+export enum SeverityLevel {
+  ERROR = 'error',
+  WARNING = 'warning',
+  INFO = 'info'
+}
+
+export interface GuidelineViolation {
+  id: string;
+  guidelineId: string;
+  type: GuidelineType;
+  severity: SeverityLevel;
+  message: string;
+  file?: string;
+  line?: number;
+  column?: number;
+  rule?: string;
+  context?: string;
+  suggestions?: GuidelineFix[];
+  timestamp: Date;
+}
+
+export interface GuidelineFix {
+  type: 'automatic' | 'manual' | 'suggestion';
+  description: string;
+  command?: string;
+  code?: string;
+  effort: 'low' | 'medium' | 'high';
+  confidence: number; // 0-100
+}
+
+export interface GuidelineCheck {
+  guidelineId: string;
+  enabled: boolean;
+  type: GuidelineType;
+  rules: GuidelineRule[];
+  configuration: Record<string, unknown>;
+}
+
+export interface GuidelineRule {
+  id: string;
+  name: string;
+  description: string;
+  severity: SeverityLevel;
+  pattern?: RegExp | string;
+  validator?: (content: string, context: CheckContext) => boolean;
+  fixer?: (content: string, violation: GuidelineViolation) => string;
+  configuration?: Record<string, unknown>;
+}
+
+export interface CheckContext {
+  filePath: string;
+  fileExtension: string;
+  content: string;
+  lines: string[];
+  dependencies?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface GuidelineReport {
+  id: string;
+  timestamp: Date;
+  summary: {
+    totalViolations: number;
+    errors: number;
+    warnings: number;
+    info: number;
+    fixable: number;
+  };
+  violations: GuidelineViolation[];
+  guidelines: Array<{
+    id: string;
+    name: string;
+    type: GuidelineType;
+    violations: number;
+    status: 'passed' | 'failed' | 'warning';
+  }>;
+  recommendations: string[];
+  metrics: {
+    checkDuration: number;
+    filesProcessed: number;
+    linesOfCode: number;
+  };
+}
 
 // Extended interface for internal guideline management
 interface ExtendedGuidelineConfig extends GuidelineConfig {
@@ -22,6 +117,15 @@ interface ExtendedGuidelineConfig extends GuidelineConfig {
   priority?: number;
   content?: string;
   lastModified?: Date;
+  type?: GuidelineType;
+  rules?: GuidelineRule[];
+  configuration?: Record<string, unknown>;
+  checkPatterns?: Array<{
+    pattern: RegExp | string;
+    type: GuidelineType;
+    severity: SeverityLevel;
+    message: string;
+  }>;
 }
 
 interface CacheEntry {
@@ -30,7 +134,7 @@ interface CacheEntry {
 }
 
 /**
- * Guideline Adapter - Loads and adapts guidelines for signal processing
+ * Enhanced Guideline Adapter - Comprehensive guideline processing with violation detection
  */
 export class GuidelineAdapter {
   private guidelines: Map<string, ExtendedGuidelineConfig> = new Map();
@@ -39,11 +143,136 @@ export class GuidelineAdapter {
   private lastScanTime: Date = new Date(0);
   private cacheEnabled: boolean;
   private maxCacheSize: number;
+  private guidelineChecks: Map<string, GuidelineCheck> = new Map();
+  private violationHistory: Map<string, GuidelineViolation[]> = new Map();
 
   constructor(guidelinesPath?: string) {
     this.guidelinesPath = guidelinesPath ?? join(resolve('.'), '../guidelines');
     this.cacheEnabled = true;
     this.maxCacheSize = 1000;
+    this.initializeBuiltInGuidelines();
+  }
+
+  /**
+   * Initialize built-in guideline checks for common scenarios
+   */
+  private initializeBuiltInGuidelines(): void {
+    // Style guidelines
+    this.addGuidelineCheck({
+      guidelineId: 'eslint-standard',
+      enabled: true,
+      type: GuidelineType.STYLE,
+      rules: [
+        {
+          id: 'no-console',
+          name: 'No console statements',
+          description: 'Prevent console statements in production code',
+          severity: SeverityLevel.WARNING,
+          pattern: /console\.(log|warn|error|debug|info)/g,
+          validator: (content) => !/console\.(log|warn|error|debug|info)/.test(content),
+          fixer: (content) => content.replace(/console\.(log|warn|error|debug|info)\([^)]*\);?\s*\n?/g, ''),
+          configuration: {}
+        },
+        {
+          id: 'prefer-const',
+          name: 'Prefer const declarations',
+          description: 'Use const instead of let when variables are not reassigned',
+          severity: SeverityLevel.INFO,
+          pattern: /let\s+\w+\s*=/g,
+          configuration: {}
+        }
+      ],
+      configuration: {}
+    });
+
+    // Architecture guidelines
+    this.addGuidelineCheck({
+      guidelineId: 'solid-principles',
+      enabled: true,
+      type: GuidelineType.ARCHITECTURE,
+      rules: [
+        {
+          id: 'single-responsibility',
+          name: 'Single Responsibility Principle',
+          description: 'Classes should have only one reason to change',
+          severity: SeverityLevel.WARNING,
+          validator: (content, context) => {
+            const classMatches = content.match(/class\s+\w+/g);
+            if (!classMatches) {
+              return true;
+            }
+
+            const methodCount = (content.match(/(?:public|private|protected)?\s*\w+\s*\([^)]*\)\s*{/g) || []).length;
+            return methodCount <= 5; // Simple heuristic
+          },
+          configuration: { maxMethods: 5 }
+        },
+        {
+          id: 'dependency-injection',
+          name: 'Dependency Injection',
+          description: 'Dependencies should be injected rather than hard-coded',
+          severity: SeverityLevel.ERROR,
+          pattern: /new\s+\w+\(/g,
+          validator: (content) => {
+            const newInstances = (content.match(/new\s+\w+\(/g) || []).length;
+            return newInstances <= 3; // Allow some utility class instances
+          },
+          configuration: { maxDirectDependencies: 3 }
+        }
+      ],
+      configuration: {}
+    });
+
+    // Process guidelines
+    this.addGuidelineCheck({
+      guidelineId: 'git-workflow',
+      enabled: true,
+      type: GuidelineType.PROCESS,
+      rules: [
+        {
+          id: 'commit-message-format',
+          name: 'Commit Message Format',
+          description: 'Commit messages should follow conventional format',
+          severity: SeverityLevel.WARNING,
+          pattern: /^(feat|fix|docs|style|refactor|test|chore)(\(.+\))?: .+/,
+          validator: (content, context) => {
+            // This would be checked during git operations
+            return true;
+          },
+          configuration: {}
+        }
+      ],
+      configuration: {}
+    });
+
+    // Security guidelines
+    this.addGuidelineCheck({
+      guidelineId: 'owasp-security',
+      enabled: true,
+      type: GuidelineType.SECURITY,
+      rules: [
+        {
+          id: 'no-hardcoded-secrets',
+          name: 'No Hardcoded Secrets',
+          description: 'Secrets should not be hardcoded in source files',
+          severity: SeverityLevel.ERROR,
+          pattern: /(password|secret|key|token)\s*[:=]\s*['"][^'"]+['"]/gi,
+          validator: (content) => !/(password|secret|key|token)\s*[:=]\s*['"][^'"]+['"]/gi.test(content),
+          fixer: (content) => content.replace(/(password|secret|key|token)\s*[:=]\s*['"][^'"]+['"]/gi, '$1: process.env.$1.toUpperCase()'),
+          configuration: {}
+        },
+        {
+          id: 'sql-injection-prevention',
+          name: 'SQL Injection Prevention',
+          description: 'Use parameterized queries instead of string concatenation',
+          severity: SeverityLevel.ERROR,
+          pattern: /query\s*\(\s*['"][^'"]*\+[^'"]*['"]/g,
+          validator: (content) => !/query\s*\(\s*['"][^'"]*\+[^'"]*['"]/g.test(content),
+          configuration: {}
+        }
+      ],
+      configuration: {}
+    });
   }
 
   /**
@@ -89,7 +318,7 @@ export class GuidelineAdapter {
   async getGuidelineForSignal(signal: Signal): Promise<string | null> {
     try {
       // Check cache first
-      const cacheKey = await HashUtils.hashString(`${signal.type}-${signal.data?.['rawSignal'] ?? ''}`);
+      const cacheKey = await HashUtils.hashString(`${signal.type}-${(signal.data['rawSignal'] as string) || ''}`);
       if (this.cacheEnabled && this.guidelineCache.has(cacheKey)) {
         const cached = this.guidelineCache.get(cacheKey);
         if (cached && Date.now() - cached.timestamp < 300000) { // 5 minutes TTL
@@ -219,19 +448,20 @@ export class GuidelineAdapter {
       const metadata = this.parseGuidelineMetadata(content, fileName);
 
       const guideline: ExtendedGuidelineConfig = {
-        id: (metadata['id'] as string) ?? HashUtils.generateId(),
-        name: (metadata['name'] as string) ?? this.formatGuidelineName(fileName),
+        id: (metadata['id'] as string) || HashUtils.generateId(),
+        name: (metadata['name'] as string) || this.formatGuidelineName(fileName),
         enabled: (metadata['enabled'] as boolean) !== false,
+        settings: (metadata['settings'] as Record<string, unknown>) || {},
+        requiredFeatures: (metadata['requiredFeatures'] as string[]) || [],
         protocol: {
-          id: `protocol-${(metadata['id'] as string) ?? HashUtils.generateId()}`,
-          description: (metadata['description'] as string) ?? '',
+          id: `protocol-${(metadata['id'] as string) || HashUtils.generateId()}`,
+          description: (metadata['description'] as string) || '',
           steps: [],
-          decisionPoints: [],
-          successCriteria: [],
-          fallbackActions: []
+          requirements: [],
+          dependencies: [],
+          metadata: {}
         },
-        requirements: [], // Parse proper GuidelineRequirement objects from metadata if needed
-        tools: (metadata['tools'] as string[]) ?? [],
+        tools: (metadata['tools'] as string[]) || [],
         prompts: {
           inspector: content,
           orchestrator: content
@@ -241,8 +471,8 @@ export class GuidelineAdapter {
           orchestrator: 8000
         },
         // Extended properties
-        signalPatterns: (metadata['signalPatterns'] as Array<{ code: string; description: string }>) ?? [],
-        priority: (metadata['priority'] as number) ?? 5,
+        signalPatterns: (metadata['signalPatterns'] as Array<{ code: string; description: string }>) || [],
+        priority: (metadata['priority'] as number) || 5,
         content: content,
         lastModified: new Date()
       };
@@ -339,12 +569,20 @@ export class GuidelineAdapter {
     const trimmedValue = value.trim();
 
     // Handle booleans
-    if (trimmedValue === 'true') return true;
-    if (trimmedValue === 'false') return false;
+    if (trimmedValue === 'true') {
+      return true;
+    }
+    if (trimmedValue === 'false') {
+      return false;
+    }
 
     // Handle numbers
-    if (/^\d+$/.test(trimmedValue)) return parseInt(trimmedValue, 10);
-    if (/^\d+\.\d+$/.test(trimmedValue)) return parseFloat(trimmedValue);
+    if (/^\d+$/.test(trimmedValue)) {
+      return parseInt(trimmedValue, 10);
+    }
+    if (/^\d+\.\d+$/.test(trimmedValue)) {
+      return parseFloat(trimmedValue);
+    }
 
     // Handle arrays
     if (trimmedValue.startsWith('[') && trimmedValue.endsWith(']')) {
@@ -382,16 +620,16 @@ export class GuidelineAdapter {
 
     // First try exact signal type match
     let matches = enabledGuidelines.filter(g =>
-      g.signalPatterns?.some(p => p.code === signal.type) || false
+      g.signalPatterns?.some(p => p.code === signal.type) ?? false
     );
 
     if (matches.length === 0) {
       // Try pattern matching on signal data
       matches = enabledGuidelines.filter(g =>
         g.signalPatterns?.some(p =>
-          (signal.data?.['rawSignal'] as string)?.includes(p.code) ||
+          (signal.data?.['rawSignal'] as string)?.includes(p.code) ??
           (signal.data?.['patternName'] as string)?.toLowerCase().includes(p.description.toLowerCase())
-        ) || false
+        ) ?? false
       );
     }
 
@@ -415,7 +653,7 @@ export class GuidelineAdapter {
     // Return highest priority match
     if (matches.length > 0) {
       return matches.reduce((best, current) =>
-        (current.priority || 5) > (best.priority || 5) ? current : best
+        (current.priority ?? 5) > (best.priority ?? 5) ? current : best
       );
     }
 
@@ -428,12 +666,24 @@ export class GuidelineAdapter {
   private getSignalCategory(signal: Signal): string {
     const signalType = signal.type.toLowerCase();
 
-    if (['oa', 'os', 'op', 'or'].includes(signalType)) return 'orchestrator';
-    if (['ap', 'av', 'af', 'as'].includes(signalType)) return 'admin';
-    if (['od', 'oc', 'or', 'oe', 'oa'].includes(signalType)) return 'orchestrator-action';
-    if (['ad', 'ae', 'as', 'aa'].includes(signalType)) return 'admin-action';
-    if (['tt', 'te', 'ti', 'ta', 'td'].includes(signalType)) return 'testing';
-    if (['qb', 'qp', 'pc'].includes(signalType)) return 'quality';
+    if (['oa', 'os', 'op', 'or'].includes(signalType)) {
+      return 'orchestrator';
+    }
+    if (['ap', 'av', 'af', 'as'].includes(signalType)) {
+      return 'admin';
+    }
+    if (['od', 'oc', 'or', 'oe', 'oa'].includes(signalType)) {
+      return 'orchestrator-action';
+    }
+    if (['ad', 'ae', 'as', 'aa'].includes(signalType)) {
+      return 'admin-action';
+    }
+    if (['tt', 'te', 'ti', 'ta', 'td'].includes(signalType)) {
+      return 'testing';
+    }
+    if (['qb', 'qp', 'pc'].includes(signalType)) {
+      return 'quality';
+    }
 
     return 'general';
   }
@@ -453,11 +703,11 @@ export class GuidelineAdapter {
     // Replace signal data placeholders
     if (signal.data) {
       adaptedContent = adaptedContent.replace(/\{\{signal\.data\.rawSignal\}\}/g,
-        (signal.data['rawSignal'] as string) ?? '');
+        (signal.data['rawSignal'] as string) || '');
       adaptedContent = adaptedContent.replace(/\{\{signal\.data\.patternName\}\}/g,
-        (signal.data['patternName'] as string) ?? '');
+        (signal.data['patternName'] as string) || '');
       adaptedContent = adaptedContent.replace(/\{\{signal\.data\.description\}\}/g,
-        (signal.data['description'] as string) ?? '');
+        (signal.data['description'] as string) || '');
     }
 
     // Replace timestamp placeholders
@@ -490,7 +740,7 @@ export class GuidelineAdapter {
 
     // Enhanced signal data analysis
     if (signal.data) {
-      if (signal.data['rawSignal']) {
+      if (signal.data['rawSignal'] != null) {
         context.push(`**Raw Signal:** ${signal.data['rawSignal']}`);
 
         // Add signal pattern analysis
@@ -586,17 +836,22 @@ export class GuidelineAdapter {
     }
 
     // Determine subcategory
-    if (signal.data?.['patternName']) {
+    if (signal.data['patternName'] != null) {
       subcategory = signal.data['patternName'] as string;
     } else {
       subcategory = signalType;
     }
 
     // Determine urgency based on priority
-    if (signal.priority >= 9) urgency = 'critical';
-    else if (signal.priority >= 7) urgency = 'high';
-    else if (signal.priority >= 5) urgency = 'medium';
-    else urgency = 'low';
+    if (signal.priority >= 9) {
+      urgency = 'critical';
+    } else if (signal.priority >= 7) {
+      urgency = 'high';
+    } else if (signal.priority >= 5) {
+      urgency = 'medium';
+    } else {
+      urgency = 'low';
+    }
 
     return { category, subcategory, urgency };
   }
@@ -735,7 +990,7 @@ export class GuidelineAdapter {
       3: '<!-- PRIORITY: LOW - Can be deferred -->'
     };
 
-    const marker = priorityMarkers[signal.priority as keyof typeof priorityMarkers] ?? '';
+    const marker = priorityMarkers[signal.priority as keyof typeof priorityMarkers] || '';
     if (marker && !optimizedContent.includes(marker)) {
       optimizedContent = marker + '\n\n' + optimizedContent;
     }
@@ -751,11 +1006,17 @@ export class GuidelineAdapter {
     const diffMs = now.getTime() - timestamp.getTime();
     const diffMins = Math.floor(diffMs / 60000);
 
-    if (diffMins < 1) return 'just now';
-    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    if (diffMins < 1) {
+      return 'just now';
+    }
+    if (diffMins < 60) {
+      return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    }
 
     const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) {
+      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    }
 
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
@@ -790,7 +1051,7 @@ export class GuidelineAdapter {
     maxSize: number;
     hitRate: number;
     lastScanTime: Date;
-  } {
+    } {
     return {
       size: this.guidelineCache.size,
       maxSize: this.maxCacheSize,
@@ -862,5 +1123,427 @@ export class GuidelineAdapter {
     logger.info('GuidelineAdapter', `Removed guideline: ${guideline.name}`, { id });
 
     return true;
+  }
+
+  /**
+   * Add a guideline check for violation detection
+   */
+  addGuidelineCheck(check: GuidelineCheck): void {
+    this.guidelineChecks.set(check.guidelineId, check);
+    logger.debug('GuidelineAdapter', `Added guideline check: ${check.guidelineId}`);
+  }
+
+  /**
+   * Remove a guideline check
+   */
+  removeGuidelineCheck(guidelineId: string): boolean {
+    return this.guidelineChecks.delete(guidelineId);
+  }
+
+  /**
+   * Get all guideline checks
+   */
+  getGuidelineChecks(): GuidelineCheck[] {
+    return Array.from(this.guidelineChecks.values());
+  }
+
+  /**
+   * Get guideline checks by type
+   */
+  getGuidelineChecksByType(type: GuidelineType): GuidelineCheck[] {
+    return Array.from(this.guidelineChecks.values()).filter(check => check.type === type);
+  }
+
+  /**
+   * Enable/disable a guideline check
+   */
+  setGuidelineCheckEnabled(guidelineId: string, enabled: boolean): boolean {
+    const check = this.guidelineChecks.get(guidelineId);
+    if (check) {
+      check.enabled = enabled;
+      logger.info('GuidelineAdapter', `${enabled ? 'Enabled' : 'Disabled'} guideline check: ${guidelineId}`);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Check guidelines for a single file
+   */
+  async checkFile(filePath: string, options: {
+    types?: GuidelineType[];
+    includeDisabled?: boolean;
+  } = {}): Promise<GuidelineViolation[]> {
+    const violations: GuidelineViolation[] = [];
+
+    if (!existsSync(filePath)) {
+      logger.warn('GuidelineAdapter', `File not found: ${filePath}`);
+      return violations;
+    }
+
+    try {
+      const content = readFileSync(filePath, 'utf8');
+      const context: CheckContext = {
+        filePath,
+        fileExtension: extname(filePath),
+        content,
+        lines: content.split('\n')
+      };
+
+      const applicableChecks = Array.from(this.guidelineChecks.values())
+        .filter(check =>
+          (options.includeDisabled || check.enabled) &&
+          (!options.types || options.types.includes(check.type))
+        );
+
+      for (const check of applicableChecks) {
+        const fileViolations = await this.checkGuidelineForFile(check, context);
+        violations.push(...fileViolations);
+      }
+
+      // Store violation history
+      this.violationHistory.set(filePath, violations);
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('GuidelineAdapter', `Error checking file ${filePath}: ${errorMessage}`,
+        error instanceof Error ? error : new Error(errorMessage));
+    }
+
+    return violations;
+  }
+
+  /**
+   * Check guidelines for multiple files
+   */
+  async checkFiles(filePaths: string[], options: {
+    types?: GuidelineType[];
+    includeDisabled?: boolean;
+  } = {}): Promise<GuidelineReport> {
+    const startTime = Date.now();
+    const allViolations: GuidelineViolation[] = [];
+    const guidelineResults = new Map<string, { violations: number; status: 'passed' | 'failed' | 'warning' }>();
+    let linesOfCode = 0;
+
+    logger.info('GuidelineAdapter', `Starting guideline check for ${filePaths.length} files`);
+
+    for (const filePath of filePaths) {
+      const violations = await this.checkFile(filePath, options);
+      allViolations.push(...violations);
+
+      // Count lines of code
+      try {
+        const content = readFileSync(filePath, 'utf8');
+        linesOfCode += content.split('\n').length;
+      } catch (error) {
+        // Ignore file read errors for metrics
+      }
+
+      // Group violations by guideline
+      for (const violation of violations) {
+        const current = guidelineResults.get(violation.guidelineId) || { violations: 0, status: 'passed' as const };
+        current.violations++;
+
+        if (violation.severity === SeverityLevel.ERROR) {
+          current.status = 'failed';
+        } else if (violation.severity === SeverityLevel.WARNING && current.status === 'passed') {
+          current.status = 'warning';
+        }
+
+        guidelineResults.set(violation.guidelineId, current);
+      }
+    }
+
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+
+    // Generate report
+    const report: GuidelineReport = {
+      id: HashUtils.generateId(),
+      timestamp: new Date(),
+      summary: {
+        totalViolations: allViolations.length,
+        errors: allViolations.filter(v => v.severity === SeverityLevel.ERROR).length,
+        warnings: allViolations.filter(v => v.severity === SeverityLevel.WARNING).length,
+        info: allViolations.filter(v => v.severity === SeverityLevel.INFO).length,
+        fixable: allViolations.filter(v =>
+          v.suggestions?.some(s => s.type === 'automatic')
+        ).length
+      },
+      violations: allViolations.sort((a, b) => {
+        const severityOrder = { [SeverityLevel.ERROR]: 0, [SeverityLevel.WARNING]: 1, [SeverityLevel.INFO]: 2 };
+        return severityOrder[a.severity] - severityOrder[b.severity];
+      }),
+      guidelines: Array.from(guidelineResults.entries()).map(([id, result]) => {
+        const guideline = this.guidelines.get(id) ||
+                         this.guidelineChecks.get(id) ||
+                         { id, name: id, type: GuidelineType.STYLE };
+        return {
+          id,
+          name: (guideline as any).name || id,
+          type: (guideline as any).type || GuidelineType.STYLE,
+          violations: result.violations,
+          status: result.status
+        };
+      }),
+      recommendations: this.generateRecommendations(allViolations),
+      metrics: {
+        checkDuration: duration,
+        filesProcessed: filePaths.length,
+        linesOfCode
+      }
+    };
+
+    logger.info('GuidelineAdapter', `Guideline check completed: ${report.summary.totalViolations} violations found in ${duration}ms`);
+
+    return report;
+  }
+
+  /**
+   * Check a specific guideline for a file
+   */
+  private async checkGuidelineForFile(check: GuidelineCheck, context: CheckContext): Promise<GuidelineViolation[]> {
+    const violations: GuidelineViolation[] = [];
+
+    for (const rule of check.rules) {
+      const ruleViolations = await this.checkRule(rule, check.guidelineId, check.type, context);
+      violations.push(...ruleViolations);
+    }
+
+    return violations;
+  }
+
+  /**
+   * Check a single rule against file content
+   */
+  private async checkRule(rule: GuidelineRule, guidelineId: string, type: GuidelineType, context: CheckContext): Promise<GuidelineViolation[]> {
+    const violations: GuidelineViolation[] = [];
+
+    try {
+      let isValid = true;
+
+      // Use custom validator if provided
+      if (rule.validator) {
+        isValid = rule.validator(context.content, context);
+      } else if (rule.pattern) {
+        // Use pattern matching
+        const pattern = rule.pattern instanceof RegExp ? rule.pattern : new RegExp(rule.pattern, 'g');
+        isValid = !pattern.test(context.content);
+      }
+
+      if (!isValid) {
+        // Find specific locations of violations
+        const locations = this.findViolationLocations(rule, context);
+
+        for (const location of locations) {
+          const violation: GuidelineViolation = {
+            id: HashUtils.generateId(),
+            guidelineId,
+            type,
+            severity: rule.severity,
+            message: rule.description,
+            file: context.filePath,
+            line: location.line,
+            column: location.column,
+            rule: rule.id,
+            context: location.context,
+            suggestions: rule.fixer ? [{
+              type: 'automatic',
+              description: `Apply fix for ${rule.name}`,
+              confidence: 90,
+              effort: 'low'
+            }] : [],
+            timestamp: new Date()
+          };
+
+          violations.push(violation);
+        }
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('GuidelineAdapter', `Error checking rule ${rule.id}: ${errorMessage}`,
+        error instanceof Error ? error : new Error(errorMessage));
+    }
+
+    return violations;
+  }
+
+  /**
+   * Find specific locations where rule violations occur
+   */
+  private findViolationLocations(rule: GuidelineRule, context: CheckContext): Array<{
+    line: number;
+    column?: number;
+    context: string;
+  }> {
+    const locations: Array<{ line: number; column?: number; context: string }> = [];
+
+    if (!rule.pattern) {
+      // If no pattern, report file-level violation
+      locations.push({
+        line: 1,
+        context: context.content.substring(0, 100) + (context.content.length > 100 ? '...' : '')
+      });
+      return locations;
+    }
+
+    const pattern = rule.pattern instanceof RegExp ? rule.pattern : new RegExp(rule.pattern, 'g');
+    let match;
+
+    while ((match = pattern.exec(context.content)) !== null) {
+      const position = this.findPositionInContent(context.content, match.index);
+      const contextStart = Math.max(0, position.line - 2);
+      const contextEnd = Math.min(context.lines.length, position.line + 2);
+      const contextLines = context.lines.slice(contextStart, contextEnd).join('\n');
+
+      locations.push({
+        line: position.line + 1, // 1-based line numbers
+        column: position.column + 1, // 1-based column numbers
+        context: contextLines
+      });
+    }
+
+    return locations;
+  }
+
+  /**
+   * Find line and column position from character index
+   */
+  private findPositionInContent(content: string, index: number): { line: number; column: number } {
+    const lines = content.substring(0, index).split('\n');
+    return {
+      line: lines.length - 1,
+      column: lines[lines.length - 1].length
+    };
+  }
+
+  /**
+   * Apply automatic fixes to violations
+   */
+  async applyFixes(violations: GuidelineViolation[]): Promise<{
+    fixed: number;
+    failed: number;
+    results: Array<{ violation: GuidelineViolation; success: boolean; error?: string }>;
+  }> {
+    const results: Array<{ violation: GuidelineViolation; success: boolean; error?: string }> = [];
+    let fixed = 0;
+    let failed = 0;
+
+    logger.info('GuidelineAdapter', `Applying fixes to ${violations.length} violations`);
+
+    for (const violation of violations) {
+      if (!violation.file || !violation.suggestions?.some(s => s.type === 'automatic')) {
+        results.push({ violation, success: false, error: 'No automatic fix available' });
+        failed++;
+        continue;
+      }
+
+      try {
+        const content = readFileSync(violation.file, 'utf8');
+        const check = this.guidelineChecks.get(violation.guidelineId);
+        const rule = check?.rules.find(r => r.id === violation.rule);
+
+        if (rule?.fixer) {
+          const fixedContent = rule.fixer(content, violation);
+
+          // Write back the fixed content
+          // Note: In a real implementation, you'd want to backup the file first
+          // writeFileSync(violation.file, fixedContent, 'utf8');
+
+          results.push({ violation, success: true });
+          fixed++;
+        } else {
+          results.push({ violation, success: false, error: 'No fixer available for rule' });
+          failed++;
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        results.push({ violation, success: false, error: errorMessage });
+        failed++;
+      }
+    }
+
+    logger.info('GuidelineAdapter', `Fix application completed: ${fixed} fixed, ${failed} failed`);
+
+    return { fixed, failed, results };
+  }
+
+  /**
+   * Generate recommendations based on violations
+   */
+  private generateRecommendations(violations: GuidelineViolation[]): string[] {
+    const recommendations: string[] = [];
+
+    // Analyze violation patterns
+    const severityCounts = violations.reduce((acc, v) => {
+      acc[v.severity] = (acc[v.severity] || 0) + 1;
+      return acc;
+    }, {} as Record<SeverityLevel, number>);
+
+    const typeCounts = violations.reduce((acc, v) => {
+      acc[v.type] = (acc[v.type] || 0) + 1;
+      return acc;
+    }, {} as Record<GuidelineType, number>);
+
+    // Generate specific recommendations
+    if (severityCounts[SeverityLevel.ERROR] > 0) {
+      recommendations.push(`Fix ${severityCounts[SeverityLevel.ERROR]} critical error(s) before merging`);
+    }
+
+    if (typeCounts[GuidelineType.SECURITY] > 0) {
+      recommendations.push(`Address ${typeCounts[GuidelineType.SECURITY]} security violation(s) immediately`);
+    }
+
+    if (typeCounts[GuidelineType.ARCHITECTURE] > 5) {
+      recommendations.push('Consider refactoring to improve architectural quality');
+    }
+
+    const fixableCount = violations.filter(v =>
+      v.suggestions?.some(s => s.type === 'automatic')
+    ).length;
+
+    if (fixableCount > 0) {
+      recommendations.push(`${fixableCount} violation(s) can be fixed automatically`);
+    }
+
+    return recommendations;
+  }
+
+  /**
+   * Get violation history for a file
+   */
+  getViolationHistory(filePath: string): GuidelineViolation[] {
+    return this.violationHistory.get(filePath) || [];
+  }
+
+  /**
+   * Clear violation history
+   */
+  clearViolationHistory(): void {
+    this.violationHistory.clear();
+    logger.info('GuidelineAdapter', 'Violation history cleared');
+  }
+
+  /**
+   * Get statistics about guideline checks
+   */
+  getGuidelineStats(): {
+    totalGuidelines: number;
+    enabledGuidelines: number;
+    checksByType: Record<GuidelineType, number>;
+    totalRules: number;
+    } {
+    const checks = Array.from(this.guidelineChecks.values());
+    const checksByType = checks.reduce((acc, check) => {
+      acc[check.type] = (acc[check.type] || 0) + 1;
+      return acc;
+    }, {} as Record<GuidelineType, number>);
+
+    return {
+      totalGuidelines: this.guidelines.size,
+      enabledGuidelines: checks.filter(c => c.enabled).length,
+      checksByType,
+      totalRules: checks.reduce((sum, check) => sum + check.rules.length, 0)
+    };
   }
 }

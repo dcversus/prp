@@ -33,10 +33,10 @@ export type {
 
 export {
   StorageManager
-} from './storage/index.js';
+} from './shared/storage.js';
 export type {
   StorageConfig
-} from './storage/index.js';
+} from './shared/types.js';
 
 export {
   GuidelinesRegistry
@@ -62,14 +62,8 @@ export type {
   AgentConfig
 } from './shared/index.js';
 
-export {
-  TmuxManager,
-  TerminalMonitor,
-  TabbedTUI,
-  createDefaultTmuxConfig,
-  createDefaultTUIConfig,
-  createDefaultTerminalMonitorConfig
-} from './tmux/index.js';
+// tmux functionality has been moved to appropriate modules
+// scanner/terminal-monitor, orchestrator/tmux-management, and shared/types
 
 export {
   SignalRegistry,
@@ -77,7 +71,7 @@ export {
   signalRegistry,
   SignalProcessor,
   SignalEscalationManager
-} from './signals/index.js';
+} from './shared/signals/index.js';
 export type {
   SignalMetrics
-} from './signals/index.js';
+} from './shared/signals/index.js';

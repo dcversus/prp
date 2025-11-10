@@ -38,9 +38,9 @@ import {
 } from '../shared';
 import type { ToolImplementation } from './tool-implementation';
 import { guidelinesRegistry } from '../guidelines';
-import { storageManager } from '../storage';
+import { storageManager } from '../shared/storage.js';
 // import { TmuxManager, createDefaultTmuxConfig } from '../tmux'; // Temporarily disabled
-// import { AgentTerminalSession } from '../tmux/types'; // Temporarily disabled
+// import { AgentTerminalSession } from ../../shared/types'; // Temporarily disabled
 
 // Model call interfaces
 interface ModelCallOptions {
@@ -246,7 +246,7 @@ export class Orchestrator extends EventEmitter {
         compressionStrategy: 'summarize',
         preserveElements: ['signals', 'active_tasks', 'agent_status'],
         compressionRatio: 0.3,
-        importantSignals: ['At', 'Bb', 'Ur', 'Co'],
+        importantSignals: ['At', 'Bb', 'Ur', 'Co']
       },
       tools: [
         {
@@ -369,12 +369,24 @@ export class Orchestrator extends EventEmitter {
         context: {
           originalPayload: {
             id: 'init-' + HashUtils.generateId(),
+            signalId: 'init-signal-' + HashUtils.generateId(),
             timestamp: new Date(),
             sourceSignals: [],
-            classification: [],
+            classification: {
+              category: 'system',
+              subcategory: 'initialization',
+              priority: 5,
+              confidence: 1.0,
+              reasoning: 'System initialization'
+            },
             recommendations: [],
             context: {
+              id: 'init-ctx-' + HashUtils.generateId(),
               summary: 'initialization',
+              keyPoints: ['system starting', 'initializing components'],
+              relevantData: { status: 'initializing' },
+              fileReferences: [],
+              agentStates: {},
               activePRPs: [],
               blockedItems: [],
               recentActivity: [],
@@ -382,6 +394,8 @@ export class Orchestrator extends EventEmitter {
               agentStatus: [],
               sharedNotes: []
             },
+            size: 0,
+            compressed: false,
             estimatedTokens: 0,
             priority: 5
           },
@@ -849,13 +863,13 @@ export class Orchestrator extends EventEmitter {
   private async buildChainOfThoughtContext(payload: InspectorPayload): Promise<CoTContext> {
     return {
       originalPayload: payload,
-      signals: payload.sourceSignals,
+      signals: (payload as any).sourceSignals || [],
       activeGuidelines: [],
       availableAgents: Array.from(this.agents.keys()),
       systemState: this.getSystemState(),
       previousDecisions: Array.from(this.decisions.values()).slice(-5),
-      constraints: await this.getCurrentConstraints(),
-    } as CoTContext;
+      constraints: await this.getCurrentConstraints()
+    } as unknown as CoTContext;
   }
 
   /**
@@ -1090,20 +1104,20 @@ export class Orchestrator extends EventEmitter {
       assignedTo: this.getStepAssignee(action),
       payload: action.payload && typeof action.payload === 'object'
         ? {
-            ...action.payload,
-            decisionContext: {
-              decisionId: decision.id,
-              decisionType: decision.type,
-              confidence: decision.confidence
-            }
+          ...action.payload,
+          decisionContext: {
+            decisionId: decision.id,
+            decisionType: decision.type,
+            confidence: decision.confidence
           }
+        }
         : {
-            decisionContext: {
-              decisionId: decision.id,
-              decisionType: decision.type,
-              confidence: decision.confidence
-            }
-          },
+          decisionContext: {
+            decisionId: decision.id,
+            decisionType: decision.type,
+            confidence: decision.confidence
+          }
+        },
       result: undefined,
       error: undefined,
       startTime: undefined,
@@ -1156,7 +1170,9 @@ export class Orchestrator extends EventEmitter {
     const sorted: ExecutionStep[] = [];
 
     const visit = (stepId: string) => {
-      if (visited.has(stepId)) return;
+      if (visited.has(stepId)) {
+        return;
+      }
       visited.add(stepId);
 
       const dependencies = plan.dependencies.get(stepId) ?? [];
@@ -1182,7 +1198,9 @@ export class Orchestrator extends EventEmitter {
    * Check if step can be executed
    */
   private canExecuteStep(step: ExecutionStep, plan: ExecutionPlan): boolean {
-    if (step.status !== 'pending') return false;
+    if (step.status !== 'pending') {
+      return false;
+    }
 
     const dependencies = plan.dependencies.get(step.id) ?? [];
     for (const depId of dependencies) {
@@ -1296,7 +1314,7 @@ export class Orchestrator extends EventEmitter {
       throw new Error(`Tool not found: ${toolName}`);
     }
 
-    return await tool.execute(step.payload);
+    return tool.execute(step.payload);
   }
 
   /**
@@ -1353,11 +1371,12 @@ export class Orchestrator extends EventEmitter {
     return results
       .filter(r => r.status === 'failed')
       .map(r => ({
-        type: 'spawn_agent' as const,
-        target: 'developer',
-        payload: { retryAction: r.actionId, error: r.error },
-        reasoning: `Consider retrying the failed action: ${r.error}`,
-        priority: 5
+        type: 'retry_action',
+        priority: 'medium',
+        description: `Retry failed action: ${r.error}`,
+        reasoning: `The action ${r.actionId} failed and should be retried`,
+        estimatedTime: 5, // 5 minutes
+        prerequisites: [`fix_error: ${r.error}`]
       }));
   }
 
@@ -1410,7 +1429,7 @@ export class Orchestrator extends EventEmitter {
     const record: DecisionRecord = {
       id: decisionId,
       timestamp: new Date(),
-      payload,
+      payload: payload as any,
       decision,
       reasoning: chainOfThought,
       actions: [],
@@ -1538,7 +1557,7 @@ export class Orchestrator extends EventEmitter {
    * Get current goals (public wrapper)
    */
   async getCurrentGoals(): Promise<Goal[]> {
-    return await this._getCurrentGoals();
+    return this._getCurrentGoals();
   }
 
   /**

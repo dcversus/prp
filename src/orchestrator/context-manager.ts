@@ -1,16 +1,50 @@
 /**
- * ♫ Context Manager for @dcversus/prp Orchestrator
+ * ♫ Enhanced Context Manager for @dcversus/prp Orchestrator
  *
  * Manages modular prompt construction and context synchronization
- * across PRPs, agents, and shared memory.
+ * across PRPs, agents, and shared memory with war-room memo format
+ * and async compaction capabilities.
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, resolve } from 'path';
 import { Signal, PRPFile } from '../shared/types';
 import { createLayerLogger } from '../shared';
+import { EventEmitter } from 'events';
 
 // Placeholder types for missing definitions
+// Enhanced interfaces for war-room memo format and async compaction
+interface WarRoomMemo {
+  done: string[];        // Completed tasks/resolved issues
+  doing: string[];       // Currently in progress
+  next: string[];        // Next actions/priorities
+  blockers: string[];    // Current blockers and issues
+  notes: string[];       // General notes and observations
+  lastUpdated: Date;
+  maxItems: number;      // Maximum items per section
+}
+
+interface CompactionConfig {
+  enabled: boolean;
+  threshold: number;     // Percentage (0-1) when to trigger compaction
+  targetSize: number;    // Target size after compaction
+  preserveRecent: number; // Number of recent items to preserve
+  preserveImportant: boolean; // Preserve high-priority items
+  async: boolean;        // Perform compaction asynchronously
+}
+
+interface ContextSection {
+  id: string;
+  name: string;
+  content: string;
+  tokens: number;
+  priority: number;
+  lastAccessed: Date;
+  accessCount: number;
+  compressible: boolean;
+  dependencies: string[];
+}
+
 interface SharedContext {
   signals: unknown[];
   notes: unknown[];
@@ -22,6 +56,7 @@ interface SharedContext {
     next: { description: string; priority: number }[];
     notes: string[];
   };
+  warRoom: WarRoomMemo;  // Enhanced war-room memo format
   agentStatuses: Map<string, unknown>;
   systemMetrics: {
     tokensUsed: number;
@@ -31,6 +66,8 @@ interface SharedContext {
     averageResponseTime: number;
     errorRate: number;
   };
+  sections: Map<string, ContextSection>; // Modular context sections
+  compaction: CompactionConfig;
 }
 
 interface ContextWindow {
@@ -65,21 +102,11 @@ interface ContextLimits {
   total: number;
 }
 
-interface ContextSection {
-  name: string;
-  content: string;
-  tokens: number;
-  priority: number;
-  required: boolean;
-  compressible: boolean;
-  lastUpdated: Date;
-}
-
-
 /**
- * Context Manager - Handles prompt construction and context management
+ * Enhanced Context Manager - Handles prompt construction and context management
+ * with war-room memo format and async compaction capabilities
  */
-export class ContextManager {
+export class ContextManager extends EventEmitter {
   private contextLimits: ContextLimits;
   private sharedContext: SharedContext;
   private prpContexts: Map<string, ContextSection[]> = new Map();
@@ -87,8 +114,11 @@ export class ContextManager {
   private noteCache: Map<string, unknown> = new Map();
   private storagePath: string;
   private _maxCacheSize: number;
-  
+  private compactionInProgress = false;
+
   constructor(contextLimits: Partial<ContextLimits> = {}) {
+    super();
+
     this.contextLimits = {
       prp: contextLimits.prp ?? 30000,
       shared: contextLimits.shared ?? 10000,
@@ -96,6 +126,27 @@ export class ContextManager {
       tools: contextLimits.tools ?? 5000,
       system: contextLimits.system ?? 5000,
       total: contextLimits.total ?? 200000
+    };
+
+    // Initialize war-room memo format
+    const warRoomMemo: WarRoomMemo = {
+      done: [],
+      doing: [],
+      next: [],
+      blockers: [],
+      notes: [],
+      lastUpdated: new Date(),
+      maxItems: 50 // Maximum items per section
+    };
+
+    // Initialize compaction configuration
+    const compactionConfig: CompactionConfig = {
+      enabled: true,
+      threshold: 0.85, // Trigger at 85% capacity
+      targetSize: 0.7, // Compact to 70% of capacity
+      preserveRecent: 10, // Preserve 10 most recent items
+      preserveImportant: true,
+      async: true
     };
 
     this.sharedContext = {
@@ -109,7 +160,10 @@ export class ContextManager {
         next: [],
         notes: []
       },
+      warRoom: warRoomMemo, // Enhanced war-room memo format
       agentStatuses: new Map(),
+      sections: new Map(), // Modular context sections
+      compaction: compactionConfig,
       systemMetrics: {
         tokensUsed: 0,
         tokensLimit: this.contextLimits.total,
@@ -139,6 +193,9 @@ export class ContextManager {
       // Load notes from filesystem
       await this.loadNotes();
 
+      // Initialize war-room memo format
+      this.initializeWarRoomMemo();
+
       logger.info('initialize', 'Context manager initialized successfully');
     } catch (error) {
       logger.error('initialize', 'Failed to initialize context manager',
@@ -146,6 +203,442 @@ export class ContextManager {
       );
       throw error;
     }
+  }
+
+  /**
+   * War-Room Memo Management Methods
+   */
+
+  /**
+   * Initialize war-room memo format
+   */
+  private initializeWarRoomMemo(): void {
+    // Sync existing warzone data to war-room memo format
+    const warzone = this.sharedContext.warzone;
+    const warRoom = this.sharedContext.warRoom;
+
+    // Transfer blockers
+    warRoom.blockers = warzone.blockers.map(b => b.description);
+
+    // Transfer completed items
+    warRoom.done = warzone.completed.map(c => `${c.description} (${c.prp})`);
+
+    // Transfer next actions
+    warRoom.next = warzone.next.map(n => n.description);
+
+    // Transfer notes
+    warRoom.notes = warzone.notes;
+
+    warRoom.lastUpdated = new Date();
+
+    logger.info('initializeWarRoomMemo', 'War-room memo format initialized', {
+      blockers: warRoom.blockers.length,
+      done: warRoom.done.length,
+      next: warRoom.next.length,
+      notes: warRoom.notes.length
+    });
+  }
+
+  /**
+   * Add item to war-room memo
+   */
+  addToWarRoom(section: keyof Omit<WarRoomMemo, 'lastUpdated' | 'maxItems'>, item: string): void {
+    const warRoom = this.sharedContext.warRoom;
+
+    // Add item to section
+    warRoom[section].push(item);
+
+    // Maintain max items limit
+    if (warRoom[section].length > warRoom.maxItems) {
+      warRoom[section] = warRoom[section].slice(-warRoom.maxItems);
+    }
+
+    warRoom.lastUpdated = new Date();
+
+    // Check if compaction is needed
+    this.checkCompactionNeeded();
+
+    logger.debug('addToWarRoom', 'Item added to war-room memo', {
+      section,
+      itemCount: warRoom[section].length
+    });
+
+    this.emit('warRoom_updated', { section, item, timestamp: warRoom.lastUpdated });
+  }
+
+  /**
+   * Get war-room memo status
+   */
+  getWarRoomStatus(): WarRoomMemo & {
+    totalItems: number;
+    lastAction: string;
+    } {
+    const warRoom = this.sharedContext.warRoom;
+    const totalItems = warRoom.done.length + warRoom.doing.length +
+                      warRoom.next.length + warRoom.blockers.length + warRoom.notes.length;
+
+    return {
+      ...warRoom,
+      totalItems,
+      lastAction: this.getLastWarRoomAction()
+    };
+  }
+
+  /**
+   * Move item between war-room sections
+   */
+  moveInWarRoom(fromSection: keyof Omit<WarRoomMemo, 'lastUpdated' | 'maxItems'>,
+    toSection: keyof Omit<WarRoomMemo, 'lastUpdated' | 'maxItems'>,
+    item: string): boolean {
+    const warRoom = this.sharedContext.warRoom;
+    const fromIndex = warRoom[fromSection].indexOf(item);
+
+    if (fromIndex === -1) {
+      logger.warn('moveInWarRoom', 'Item not found in source section', {
+        fromSection,
+        item
+      });
+      return false;
+    }
+
+    // Remove from source section
+    warRoom[fromSection].splice(fromIndex, 1);
+
+    // Add to target section
+    warRoom[toSection].push(item);
+
+    // Maintain max items limit
+    if (warRoom[toSection].length > warRoom.maxItems) {
+      warRoom[toSection] = warRoom[toSection].slice(-warRoom.maxItems);
+    }
+
+    warRoom.lastUpdated = new Date();
+
+    logger.debug('moveInWarRoom', 'Item moved between sections', {
+      fromSection,
+      toSection,
+      item
+    });
+
+    this.emit('warRoom_item_moved', {
+      fromSection,
+      toSection,
+      item,
+      timestamp: warRoom.lastUpdated
+    });
+
+    return true;
+  }
+
+  /**
+   * Archive old war-room items
+   */
+  archiveWarRoomItems(olderThanDays: number = 7): number {
+    const warRoom = this.sharedContext.warRoom;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+
+    let archivedCount = 0;
+
+    // Archive old items from each section (keep recent items)
+    ['done', 'doing', 'next', 'blockers', 'notes'].forEach(section => {
+      const sectionKey = section as keyof Omit<WarRoomMemo, 'lastUpdated' | 'maxItems'>;
+      const originalLength = warRoom[sectionKey].length;
+
+      // Keep only recent items (simplified logic)
+      const keepCount = Math.min(warRoom.maxItems / 2, 20);
+      warRoom[sectionKey] = warRoom[sectionKey].slice(-keepCount);
+
+      archivedCount += originalLength - warRoom[sectionKey].length;
+    });
+
+    warRoom.lastUpdated = new Date();
+
+    logger.info('archiveWarRoomItems', 'War-room items archived', {
+      archivedCount,
+      cutoffDate
+    });
+
+    this.emit('warRoom_archived', {
+      archivedCount,
+      cutoffDate,
+      timestamp: warRoom.lastUpdated
+    });
+
+    return archivedCount;
+  }
+
+  /**
+   * Get last war-room action
+   */
+  private getLastWarRoomAction(): string {
+    const warRoom = this.sharedContext.warRoom;
+    const sections = ['done', 'doing', 'next', 'blockers', 'notes'];
+
+    let latestSection = '';
+    let latestCount = 0;
+
+    sections.forEach(section => {
+      const sectionKey = section as keyof Omit<WarRoomMemo, 'lastUpdated' | 'maxItems'>;
+      const count = warRoom[sectionKey].length;
+      if (count > latestCount) {
+        latestCount = count;
+        latestSection = section;
+      }
+    });
+
+    return latestSection || 'none';
+  }
+
+  /**
+   * Async Compaction Methods
+   */
+
+  /**
+   * Check if compaction is needed
+   */
+  private checkCompactionNeeded(): void {
+    if (!this.sharedContext.compaction.enabled || this.compactionInProgress) {
+      return;
+    }
+
+    const totalTokens = this.calculateTotalTokens();
+    const threshold = this.contextLimits.total * this.sharedContext.compaction.threshold;
+
+    if (totalTokens >= threshold) {
+      logger.info('checkCompactionNeeded', 'Compaction threshold reached', {
+        totalTokens,
+        threshold,
+        percentage: (totalTokens / this.contextLimits.total) * 100
+      });
+
+      if (this.sharedContext.compaction.async) {
+        // Perform async compaction
+        setImmediate(() => this.performAsyncCompaction());
+      } else {
+        // Perform synchronous compaction
+        this.performCompaction();
+      }
+    }
+  }
+
+  /**
+   * Perform async compaction
+   */
+  private async performAsyncCompaction(): Promise<void> {
+    if (this.compactionInProgress) {
+      return;
+    }
+
+    this.compactionInProgress = true;
+
+    try {
+      logger.info('performAsyncCompaction', 'Starting async context compaction');
+      this.emit('compaction_started', { async: true });
+
+      const startTime = Date.now();
+
+      // Compact war-room memo
+      this.compactWarRoomMemo();
+
+      // Compact context sections
+      await this.compactContextSections();
+
+      // Compact PRP contexts
+      await this.compactPRPContexts();
+
+      // Compact agent contexts
+      await this.compactAgentContexts();
+
+      const duration = Date.now() - startTime;
+      const tokensAfter = this.calculateTotalTokens();
+
+      logger.info('performAsyncCompaction', 'Async compaction completed', {
+        duration,
+        tokensAfter,
+        reductionPercentage: ((this.contextLimits.total - tokensAfter) / this.contextLimits.total) * 100
+      });
+
+      this.emit('compaction_completed', {
+        async: true,
+        duration,
+        tokensAfter,
+        tokensBefore: this.contextLimits.total
+      });
+
+    } catch (error) {
+      logger.error('performAsyncCompaction', 'Async compaction failed');
+      this.emit('compaction_failed', {
+        async: true,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    } finally {
+      this.compactionInProgress = false;
+    }
+  }
+
+  /**
+   * Perform synchronous compaction
+   */
+  performCompaction(targetSize?: number): boolean {
+    try {
+      const target = targetSize || (this.contextLimits.total * this.sharedContext.compaction.targetSize);
+
+      logger.info('performCompaction', 'Starting context compaction', {
+        currentSize: this.calculateTotalTokens(),
+        targetSize: target
+      });
+
+      this.emit('compaction_started', { async: false });
+
+      // Compact war-room memo
+      this.compactWarRoomMemo();
+
+      // Compact context sections
+      this.compactContextSectionsSync();
+
+      const finalSize = this.calculateTotalTokens();
+
+      logger.info('performCompaction', 'Compaction completed', {
+        originalSize: this.contextLimits.total,
+        finalSize,
+        reduction: this.contextLimits.total - finalSize
+      });
+
+      this.emit('compaction_completed', {
+        async: false,
+        finalSize,
+        originalSize: this.contextLimits.total
+      });
+
+      return true;
+
+    } catch (error) {
+      logger.error('performCompaction', 'Compaction failed');
+      this.emit('compaction_failed', {
+        async: false,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Compact war-room memo
+   */
+  private compactWarRoomMemo(): void {
+    const warRoom = this.sharedContext.warRoom;
+    const preserveRecent = this.sharedContext.compaction.preserveRecent;
+
+    ['done', 'doing', 'next', 'blockers', 'notes'].forEach(section => {
+      const sectionKey = section as keyof Omit<WarRoomMemo, 'lastUpdated' | 'maxItems'>;
+      const originalLength = warRoom[sectionKey].length;
+
+      // Keep only recent items
+      warRoom[sectionKey] = warRoom[sectionKey].slice(-preserveRecent);
+
+      logger.debug('compactWarRoomMemo', 'Section compacted', {
+        section,
+        originalLength,
+        newLength: warRoom[sectionKey].length
+      });
+    });
+
+    warRoom.lastUpdated = new Date();
+  }
+
+  /**
+   * Compact context sections asynchronously
+   */
+  private async compactContextSections(): Promise<void> {
+    const targetSize = this.contextLimits.total * this.sharedContext.compaction.targetSize;
+    const preserveRecent = this.sharedContext.compaction.preserveRecent;
+
+    for (const [sectionId, section] of this.sharedContext.sections) {
+      if (section.compressible && section.lastAccessed < new Date(Date.now() - 24 * 60 * 60 * 1000)) {
+        // Compress section content (simplified)
+        const originalLength = section.content.length;
+        section.content = section.content.slice(-Math.floor(targetSize / 10));
+        section.lastAccessed = new Date();
+
+        logger.debug('compactContextSections', 'Section compacted', {
+          sectionId,
+          originalLength,
+          newLength: section.content.length
+        });
+      }
+    }
+  }
+
+  /**
+   * Compact context sections synchronously
+   */
+  private compactContextSectionsSync(): void {
+    const targetSize = this.contextLimits.total * this.sharedContext.compaction.targetSize;
+
+    for (const [sectionId, section] of this.sharedContext.sections) {
+      if (section.compressible) {
+        // Simple content truncation
+        section.content = section.content.slice(-Math.floor(targetSize / this.sharedContext.sections.size));
+        section.lastAccessed = new Date();
+      }
+    }
+  }
+
+  /**
+   * Compact PRP contexts
+   */
+  private async compactPRPContexts(): Promise<void> {
+    const preserveRecent = this.sharedContext.compaction.preserveRecent;
+
+    for (const [prpId, sections] of this.prpContexts) {
+      // Keep only recent sections
+      if (sections.length > preserveRecent) {
+        this.prpContexts.set(prpId, sections.slice(-preserveRecent));
+      }
+    }
+  }
+
+  /**
+   * Compact agent contexts
+   */
+  private async compactAgentContexts(): Promise<void> {
+    const preserveRecent = this.sharedContext.compaction.preserveRecent;
+
+    for (const [agentId, sections] of this.agentContexts) {
+      // Keep only recent sections
+      if (sections.length > preserveRecent) {
+        this.agentContexts.set(agentId, sections.slice(-preserveRecent));
+      }
+    }
+  }
+
+  /**
+   * Calculate total tokens in context
+   */
+  private calculateTotalTokens(): number {
+    let totalTokens = 0;
+
+    // War-room memo tokens
+    const warRoom = this.sharedContext.warRoom;
+    totalTokens += JSON.stringify(warRoom).length / 4; // Rough estimate
+
+    // Context sections tokens
+    for (const section of this.sharedContext.sections.values()) {
+      totalTokens += section.tokens;
+    }
+
+    // PRP context tokens
+    for (const sections of this.prpContexts.values()) {
+      totalTokens += sections.reduce((sum, section) => sum + section.tokens, 0);
+    }
+
+    // Agent context tokens
+    for (const sections of this.agentContexts.values()) {
+      totalTokens += sections.reduce((sum, section) => sum + section.tokens, 0);
+    }
+
+    return Math.floor(totalTokens);
   }
 
   /**
@@ -239,7 +732,7 @@ export class ContextManager {
     agentContexts: number;
     notesCount: number;
     totalTokens: number;
-  } {
+    } {
     return {
       sharedContext: this.sharedContext,
       prpContexts: this.prpContexts.size,
@@ -301,8 +794,12 @@ export class ContextManager {
 
     // Sort by priority and required status
     sections.sort((a, b) => {
-      if (a.required && !b.required) return -1;
-      if (!a.required && b.required) return 1;
+      if (a.required && !b.required) {
+        return -1;
+      }
+      if (!a.required && b.required) {
+        return 1;
+      }
       return b.priority - a.priority;
     });
 
@@ -518,8 +1015,12 @@ Always think step-by-step and explain your reasoning clearly.`),
     // Sort sections by priority and compressibility
     optimizedSections.sort((a, b) => {
       // Required sections come first
-      if (a.required && !b.required) return -1;
-      if (!a.required && b.required) return 1;
+      if (a.required && !b.required) {
+        return -1;
+      }
+      if (!a.required && b.required) {
+        return 1;
+      }
 
       // Then by priority
       if (a.priority !== b.priority) {
@@ -769,7 +1270,7 @@ Always think step-by-step and explain your reasoning clearly.`),
     }
 
     // Progress log (recent entries)
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+     
     if (prp.progressLog?.length > 0) {
       const recentProgress = prp.progressLog.slice(-5);
       const progressContent = recentProgress.map(entry =>

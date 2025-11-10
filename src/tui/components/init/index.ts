@@ -7,26 +7,46 @@
 
 // Main init flow component
 export { default as InitFlow } from './InitFlow.js';
-export type { InitFlowProps, InitState } from './InitFlow.js';
 
 // Core init shell and layout
-export { default as InitShell, type InitShellProps, type MusicNoteState } from './InitShell.js';
+export { default as InitShell } from './InitShell.js';
 
 // Form field components
-export { default as FieldText, type FieldTextProps } from './FieldText.js';
-export { default as FieldTextBlock, type FieldTextBlockProps } from './FieldTextBlock.js';
-export { default as FieldSelectCarousel, type FieldSelectCarouselProps } from './FieldSelectCarousel.js';
-export { default as FieldSecret, type FieldSecretProps } from './FieldSecret.js';
-export { default as FieldJSON, type FieldJSONProps } from './FieldJSON.js';
-export { default as FieldToggle, type FieldToggleProps } from './FieldToggle.js';
-export { default as FileTreeChecks, type FileTreeChecksProps, type TreeNode } from './FileTreeChecks.js';
+export { default as FieldText } from './FieldText.js';
+export { default as FieldTextBlock } from './FieldTextBlock.js';
+export { default as FieldSelectCarousel } from './FieldSelectCarousel.js';
+export { default as FieldSecret } from './FieldSecret.js';
+export { default as FieldJSON } from './FieldJSON.js';
+export { default as FieldToggle } from './FieldToggle.js';
+export { default as FileTreeChecks, type TreeNode } from './FileTreeChecks.js';
 
 // Specialized components
-export { default as AgentEditor, type AgentEditorProps, type AgentConfig } from './AgentEditor.js';
-export { default as GenerationProgress, type GenerationProgressProps } from './GenerationProgress.js';
+export { default as AgentEditor } from './AgentEditor.js';
+export { default as GenerationProgress } from './GenerationProgress.js';
+
+// Export all types from types.ts
+export type {
+  InitState,
+  InitShellProps,
+  FieldProps,
+  FieldTextProps,
+  FieldTextBlockProps,
+  FieldSecretProps,
+  FieldSelectCarouselProps,
+  FieldToggleProps,
+  FieldJSONProps,
+  FileTreeChecksProps,
+  TemplateFile,
+  AgentConfig,
+  AgentEditorProps,
+  GenerationEvent,
+  GenerationProgressProps,
+  StepHeaderProps
+} from './types.js';
 
 // Animation and intro components
-export { default as IntroSequence, MiniIntro, type IntroSequenceProps } from './IntroSequence.js';
+export { default as IntroSequence, MiniIntro } from './IntroSequence.js';
+export type { IntroSequenceProps } from './IntroSequence.js';
 
 // Configuration integration
 export {
@@ -40,4 +60,3 @@ export {
 } from './ConfigIntegration.js';
 
 // Re-export for backward compatibility
-export * from '../../types/TUIConfig.js';

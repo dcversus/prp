@@ -36,7 +36,7 @@ export class PathResolver {
 
       if (this.isPackageRoot(directRoot)) {
         this.packageRoot = directRoot;
-        logger.info('PathResolver', `Package root found: ${this.packageRoot}`);
+        logger.info('shared', 'PathResolver', `Package root found: ${this.packageRoot}`);
         return this.packageRoot;
       }
 
@@ -48,12 +48,12 @@ export class PathResolver {
         throw new Error('Could not determine package root directory');
       }
 
-      logger.info('PathResolver', `Package root found via traversal: ${this.packageRoot}`);
+      logger.info('shared', 'PathResolver', `Package root found via traversal: ${this.packageRoot}`);
       return this.packageRoot;
 
     } catch (error) {
       const execInfo = this.getExecutionInfo();
-      this.logger.error(`Failed to resolve package root. Execution: ${execInfo.type}, Module: ${execInfo.modulePath}, Error: ${error}`);
+      logger.error('shared', 'PathResolver', `Failed to resolve package root. Execution: ${execInfo.type}, Module: ${execInfo.modulePath}, Error: ${error}`);
       throw new Error(`Failed to resolve package root directory: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -66,7 +66,7 @@ export class PathResolver {
 
     if (!existsSync(fullPath)) {
       const execInfo = this.getExecutionInfo();
-      this.logger.warn(`Path does not exist: ${fullPath}. Execution: ${execInfo.type}, PackageRoot: ${this.packageRoot}`);
+      logger.warn('shared', 'PathResolver', `Path does not exist: ${fullPath}. Execution: ${execInfo.type}, PackageRoot: ${this.packageRoot}`);
     }
 
     return fullPath;
@@ -109,7 +109,7 @@ export class PathResolver {
     modulePath: string;
     packageRoot: string | null;
     workingDir: string;
-  } {
+    } {
     const modulePath = fileURLToPath(import.meta.url);
     const workingDir = process.cwd();
 

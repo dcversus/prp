@@ -259,7 +259,7 @@ export class RealTimeEventEmitter {
       timestamp: TimeUtils.now(),
       metadata: {
         component,
-        status: metadata.status || 'unknown',
+        status: metadata.status ?? 'unknown',
         ...metadata
       }
     };
@@ -274,7 +274,7 @@ export class RealTimeEventEmitter {
     // Update metrics
     this.metrics.totalEvents++;
     const eventType = event.type;
-    this.metrics.eventsByType[eventType] = (this.metrics.eventsByType[eventType] || 0) + 1;
+    this.metrics.eventsByType[eventType] = (this.metrics.eventsByType[eventType] ?? 0) + 1;
 
     // Add to queue for processing
     if (this.eventQueue.length >= this.maxQueueSize) {
@@ -408,12 +408,12 @@ export class RealTimeEventEmitter {
     active: number;
     byEventType: Record<string, number>;
     mostTriggered: Array<{ id: string; eventType: string; triggerCount: number }>;
-  } {
+    } {
     const activeSubscriptions = Array.from(this.subscriptions.values()).filter(sub => sub.active);
     const byEventType: Record<string, number> = {};
 
     activeSubscriptions.forEach(sub => {
-      byEventType[sub.eventType] = (byEventType[sub.eventType] || 0) + 1;
+      byEventType[sub.eventType] = (byEventType[sub.eventType] ?? 0) + 1;
     });
 
     const mostTriggered = activeSubscriptions
@@ -660,7 +660,7 @@ export class RealTimeEventEmitter {
       timestamp: Date;
       id: string;
     }>;
-  } {
+    } {
     const uptime = TimeUtils.now().getTime() - this.metrics.startTime.getTime();
 
     const recentEvents = this.eventQueue.slice(-10).map(event => ({

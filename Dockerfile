@@ -1,4 +1,4 @@
-# Multi-stage build for PRP CLI
+# Multi-stage build for PRP CLI with MCP Server
 # Stage 1: Build stage
 FROM node:20-alpine AS builder
 
@@ -15,8 +15,8 @@ RUN apk add --no-cache \
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production --no-audit --no-fund
+# Install all dependencies (including dev dependencies for build)
+RUN npm ci --no-audit --no-fund
 
 # Copy source code
 COPY . .
@@ -27,14 +27,18 @@ RUN npm run build
 # Verify CLI was built
 RUN test -f dist/cli.js || (echo "CLI build failed" && exit 1)
 
-# Stage 2: Runtime stage
-FROM node:20-alpine AS runtime
+# Install only production dependencies for smaller image
+RUN npm prune --production
+
+# Stage 2: MCP Server Runtime stage
+FROM node:20-alpine AS mcp-server
 
 # Install runtime dependencies
 RUN apk add --no-cache \
     git \
     curl \
     bash \
+    openssl \
     && rm -rf /var/cache/apk/*
 
 # Create non-root user for security
@@ -56,6 +60,33 @@ COPY --from=builder --chown=prp:prp /app/templates ./templates 2>/dev/null || tr
 RUN ln -s ./dist/cli.js ./prp && \
     chmod +x ./dist/cli.js ./prp
 
+# Create MCP server startup script with metrics
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Check if API_SECRET is set\n\
+if [ -z "$API_SECRET" ]; then\n\
+    echo "Error: API_SECRET environment variable is required for MCP server"\n\
+    exit 1\n\
+fi\n\
+\n\
+# Set default port if not provided\n\
+PORT=${PORT:-8080}\n\
+HOST=${HOST:-0.0.0.0}\n\
+\n\
+echo "Starting PRP MCP Server..."\n\
+echo "Port: $PORT"\n\
+echo "Host: $HOST"\n\
+echo "Environment: $NODE_ENV"\n\
+echo "Metrics available at: http://$HOST:$PORT/metrics"\n\
+echo "Health checks at: http://$HOST:$PORT/health"\n\
+echo "Readiness probe at: http://$HOST:$PORT/metrics/health/readiness"\n\
+echo "Liveness probe at: http://$HOST:$PORT/metrics/health/liveness"\n\
+\n\
+# Start MCP server with metrics enabled\n\
+exec ./prp mcp start --port $PORT --host $HOST' > ./start-mcp.sh && \
+    chmod +x ./start-mcp.sh
+
 # Switch to non-root user
 USER prp
 
@@ -64,32 +95,32 @@ ENV NODE_ENV=production
 ENV PRP_TELEMETRY=false
 ENV PRP_NO_COLOR=true
 
-# Set default command
-ENTRYPOINT ["./prp"]
-CMD ["--help"]
+# Set default command for MCP server
+ENTRYPOINT ["./start-mcp.sh"]
+CMD []
 
 # Labels for metadata
 LABEL maintainer="dcversus" \
-      description="PRP CLI - Interactive Project Bootstrap CLI" \
-      version="0.4.9" \
-      org.opencontainers.image.title="PRP CLI" \
-      org.opencontainers.image.description="Interactive Project Bootstrap CLI with AI integration" \
+      description="PRP MCP Server - Model Context Protocol for Remote Orchestration" \
+      version="0.5.0" \
+      org.opencontainers.image.title="PRP MCP Server" \
+      org.opencontainers.image.description="Model Context Protocol server for remote orchestration and control" \
       org.opencontainers.image.url="https://github.com/dcversus/prp" \
       org.opencontainers.image.documentation="https://github.com/dcversus/prp#readme" \
       org.opencontainers.image.source="https://github.com/dcversus/prp" \
       org.opencontainers.image.vendor="dcversus" \
       org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.version="0.4.9"
+      org.opencontainers.image.version="0.5.0"
 
-# Health check
+# Health check for MCP server (liveness probe)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD ./prp --version || exit 1
+    CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
 # Volume mount for workspace
 VOLUME ["/workspace"]
 
-# Expose nothing (CLI tool)
-# EXPOSE not needed for CLI
+# Expose MCP server port (metrics available on same port at /metrics)
+EXPOSE 8080
 
 # Set default working directory when using volume mounts
 WORKDIR /workspace

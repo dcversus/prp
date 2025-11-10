@@ -62,7 +62,6 @@ export type AnimationType =
  */
 export class AnimationEngine extends EventEmitter {
   private animations: Map<string, SignalAnimationState> = new Map();
-  private intervals: Map<string, NodeJS.Timeout> = new Map();
   private melody?: MelodyConfig;
   private melodyInterval?: NodeJS.Timeout;
   private currentBeat: MelodyBeat | null = null;
@@ -79,7 +78,9 @@ export class AnimationEngine extends EventEmitter {
    * Start the animation engine
    */
   private startEngine(): void {
-    if (this.isRunning) return;
+    if (this.isRunning) {
+      return;
+    }
     this.isRunning = true;
 
     // Main animation loop
@@ -116,11 +117,13 @@ export class AnimationEngine extends EventEmitter {
    */
   private updateAnimations(now: number): void {
     this.animations.forEach((state, id) => {
-      if (!state.isAnimating) return;
+      if (!state.isAnimating) {
+        return;
+      }
 
       const frameDuration = 1000 / this.globalFPS;
 
-      if (now - (state.lastUpdate || 0) >= frameDuration) {
+      if (now - (state.lastUpdate ?? 0) >= frameDuration) {
         this.updateAnimation(id, now);
       }
     });
@@ -131,7 +134,9 @@ export class AnimationEngine extends EventEmitter {
    */
   private updateAnimation(id: string, now: number): void {
     const state = this.animations.get(id);
-    if (!state?.isAnimating) return;
+    if (!state?.isAnimating) {
+      return;
+    }
 
     const { frames, currentFrame, direction = 'forward' } = state;
 
@@ -178,7 +183,9 @@ export class AnimationEngine extends EventEmitter {
    */
   private completeAnimation(id: string): void {
     const state = this.animations.get(id);
-    if (!state) return;
+    if (!state) {
+      return;
+    }
 
     state.isAnimating = false;
     this.emit('animationComplete', { id, state });
@@ -204,8 +211,7 @@ export class AnimationEngine extends EventEmitter {
   registerSignalAnimation(
     id: string,
     code: string,
-    type: AnimationType,
-    config?: Partial<AnimationConfig>
+    type: AnimationType
   ): void {
     const frames = this.generateFrames(code, type);
 
@@ -345,13 +351,20 @@ export class AnimationEngine extends EventEmitter {
    * Start melody beat synchronization
    */
   private startMelodySync(): void {
-    if (!this.melody || this.melodyInterval) return;
+    if (!this.melody || this.melodyInterval) {
+      return;
+    }
 
     const beatInterval = 60000 / (this.melody.bpm * 2); // 8th notes
     let currentStep = 0;
 
     this.melodyInterval = setInterval(() => {
-      const isOnBeat = this.melody!.steps[currentStep % this.melody!.steps.length] === 1;
+      const melody = this.melody;
+      if (!melody) {
+        return;
+      }
+
+      const isOnBeat = melody.steps[currentStep % melody.steps.length] === 1;
 
       this.currentBeat = {
         index: currentStep,
@@ -449,7 +462,7 @@ export class AnimationEngine extends EventEmitter {
    * Clear all animations
    */
   clearAllAnimations(): void {
-    this.animations.forEach((state, id) => {
+    this.animations.forEach((_state, id) => {
       this.removeAnimation(id);
     });
   }
@@ -476,7 +489,7 @@ export class AnimationEngine extends EventEmitter {
     activeAnimations: number;
     melodySync: boolean;
     currentBeat: MelodyBeat | null;
-  } {
+    } {
     const totalAnimations = this.animations.size;
     const activeAnimations = Array.from(this.animations.values())
       .filter(state => state.isAnimating).length;
@@ -552,7 +565,7 @@ export const AnimationUtils = {
   /**
    * Debounce rapid function calls
    */
-  debounce: <T extends (...args: any[]) => any>(
+  debounce: <T extends (...args: unknown[]) => unknown>(
     func: T,
     wait: number
   ): ((...args: Parameters<T>) => void) => {
@@ -566,7 +579,7 @@ export const AnimationUtils = {
   /**
    * Throttle function calls to max frequency
    */
-  throttle: <T extends (...args: any[]) => any>(
+  throttle: <T extends (...args: unknown[]) => unknown>(
     func: T,
     limit: number
   ): ((...args: Parameters<T>) => void) => {
@@ -575,7 +588,9 @@ export const AnimationUtils = {
       if (!inThrottle) {
         func(...args);
         inThrottle = true;
-        setTimeout(() => inThrottle = false, limit);
+        setTimeout(() => {
+          inThrottle = false; 
+        }, limit);
       }
     };
   }

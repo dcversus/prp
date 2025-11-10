@@ -7,17 +7,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { InputBarProps } from '../types/TUIConfig.js';
+import type { InputBarProps } from '../../shared/types/TUIConfig.js';
 import {
   PasteHandler,
-  PasteMetadata,
-  defaultPasteHandler,
-  processPaste
+  PasteMetadata
 } from '../utils/paste-handler.js';
 
 export function InputBar({ value, onChange, config, terminalLayout }: InputBarProps) {
   const [internalValue, setInternalValue] = useState(value);
   const [pasteInfo, setPasteInfo] = useState<PasteMetadata | null>(null);
+  const [tokenCaps, setTokenCaps] = useState<any>(null);
   const [pasteHandler] = useState(() => new PasteHandler({
     maxTokens: 200000, // Default from orchestrator caps
     reservePercentage: 5,
@@ -25,17 +24,13 @@ export function InputBar({ value, onChange, config, terminalLayout }: InputBarPr
   }));
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  // Expose paste handling method for external integration
-  const handleExternalPaste = useCallback((content: string) => {
-    handlePaste(content);
-  }, [handlePaste]);
-
   // Update max tokens dynamically based on system caps
   const updateTokenCaps = useCallback(async () => {
     try {
       // This would integrate with the existing token tracking system
       // For now, we'll use the default values
       // In a full implementation, this would fetch real-time caps
+      setTokenCaps({ maxTokens: 200000, used: 0 });
     } catch (error) {
       console.warn('Failed to update token caps:', error);
     }
@@ -91,6 +86,20 @@ export function InputBar({ value, onChange, config, terminalLayout }: InputBarPr
     }
   }, [pasteHandler, internalValue, onChange]);
 
+  // Expose methods for external integration
+  const clearError = useCallback(() => {
+    setErrorMessage('');
+  }, []);
+
+  const getCurrentValue = useCallback(() => {
+    return internalValue;
+  }, [internalValue]);
+
+  // Expose paste handling method for external integration
+  const handleExternalPaste = useCallback((content: string) => {
+    handlePaste(content);
+  }, [handlePaste]);
+
   // Handle input changes
   useInput((input, key) => {
     // Clear error message on any new input
@@ -106,7 +115,7 @@ export function InputBar({ value, onChange, config, terminalLayout }: InputBarPr
             onChange(internalValue);
           }
           return;
-        case 'v': // Ctrl+V - paste (simulated for terminal)
+        case 'v': { // Ctrl+V - paste (simulated for terminal)
           // In terminal environments, we simulate paste detection
           // Real clipboard access would require terminal-specific APIs
           const simulatedPaste = getSimulatedPasteContent();
@@ -114,6 +123,7 @@ export function InputBar({ value, onChange, config, terminalLayout }: InputBarPr
             handlePaste(simulatedPaste);
           }
           return;
+        }
       }
     }
 

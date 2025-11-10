@@ -107,7 +107,7 @@ export class EnhancedContextManager extends ContextManager implements IEnhancedC
 
       this.contextMetrics.aggregationsCreated++;
 
-      logger.info('aggregateAndShareContexts', `Context aggregation and sharing completed`, {
+      logger.info('aggregateAndShareContexts', 'Context aggregation and sharing completed', {
         sessionId: session.id,
         sections: aggregatedContext.sections.length,
         agents: agents.length,
@@ -149,7 +149,7 @@ export class EnhancedContextManager extends ContextManager implements IEnhancedC
       await this.broker.shareContext('system', targetAgent, section);
       this.contextMetrics.contextsShared++;
 
-      logger.info('extractAndSharePRPSection', `Section extracted and shared successfully`, {
+      logger.info('extractAndSharePRPSection', 'Section extracted and shared successfully', {
         prpId,
         sectionType,
         targetAgent,
@@ -157,7 +157,7 @@ export class EnhancedContextManager extends ContextManager implements IEnhancedC
       });
 
     } catch (error) {
-      logger.error('extractAndSharePRPSection', `Failed to extract and share section`,
+      logger.error('extractAndSharePRPSection', 'Failed to extract and share section',
         error instanceof Error ? error : new Error(String(error))
       );
       throw error;
@@ -174,7 +174,7 @@ export class EnhancedContextManager extends ContextManager implements IEnhancedC
       const session = await this.broker.establishContextSession(participants);
       this.activeSessions.set(session.id, session);
 
-      logger.info('createContextSession', `Context session created`, {
+      logger.info('createContextSession', 'Context session created', {
         sessionId: session.id,
         participants: participants.length
       });
@@ -215,7 +215,7 @@ export class EnhancedContextManager extends ContextManager implements IEnhancedC
         });
       }
 
-      logger.info('enableRealTimeSync', `Real-time sync enabled`, {
+      logger.info('enableRealTimeSync', 'Real-time sync enabled', {
         contexts: contextIds.length,
         success: syncResult.success
       });
@@ -245,7 +245,7 @@ export class EnhancedContextManager extends ContextManager implements IEnhancedC
       const sections = await this.extractor.extractAllSections(prp);
       this.contextMetrics.sectionsExtracted += sections.length;
 
-      logger.info('registerPRP', `PRP registered successfully`, {
+      logger.info('registerPRP', 'PRP registered successfully', {
         prpName: prp.name,
         sectionsExtracted: sections.length
       });
@@ -273,7 +273,7 @@ export class EnhancedContextManager extends ContextManager implements IEnhancedC
     registeredPRPs: number;
     sharedContexts: number;
     pendingUpdates: number;
-  } {
+    } {
     return {
       metrics: { ...this.contextMetrics },
       activeSessions: this.activeSessions.size,
@@ -342,7 +342,7 @@ export class EnhancedContextManager extends ContextManager implements IEnhancedC
         sharedContexts = this.broker.getSharedContexts('system');
       }
 
-      logger.info('buildEnhancedContext', `Enhanced context built successfully`, {
+      logger.info('buildEnhancedContext', 'Enhanced context built successfully', {
         baseSections: baseContext.sections.length,
         hasAggregated: !!aggregatedContext,
         sharedContexts: sharedContexts.length
@@ -405,7 +405,7 @@ export class EnhancedContextManager extends ContextManager implements IEnhancedC
         conflictsResolved: number;
       };
     };
-  } {
+    } {
     const base = super.getContextSummary();
 
     const sessions = Array.from(this.activeSessions.values()).map((session: ContextSession) => ({
@@ -465,7 +465,7 @@ export class EnhancedContextManager extends ContextManager implements IEnhancedC
       }
 
       // Broadcast signal to relevant agents if needed
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+       
       if (typeof signal.data === 'object' && signal.data !== null) {
         const targetAgents = (signal.data as { targetAgents?: unknown[] }).targetAgents;
         if (Array.isArray(targetAgents)) {
@@ -481,7 +481,7 @@ export class EnhancedContextManager extends ContextManager implements IEnhancedC
         }
       }
 
-      logger.info('handleSignal', `Signal processed successfully`, {
+      logger.info('handleSignal', 'Signal processed successfully', {
         signalType: signal.type,
         actionsCount: actions.length,
         contextUsed

@@ -1,145 +1,88 @@
 /**
- * ♫ FieldToggle - Toggle switch component
+ * ♫ Field Toggle - Toggle switch component
  *
- * Simple on/off toggle with visual feedback,
- * keyboard navigation, and accessibility support
+ * Simple on/off toggle with visual feedback and keyboard navigation.
+ * Follows PRP-003 specifications for toggle interactions.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
+import { useTheme } from '../../config/theme-provider.js';
+import type { FieldToggleProps } from './types.js';
 
-// Import types
-import type { TUIConfig } from '../../types/TUIConfig.js';
-
-export interface FieldToggleProps {
-  label: string;
-  value: boolean;
-  onChange: (value: boolean) => void;
-  config?: TUIConfig;
-  disabled?: boolean;
-  onFocus?: () => void;
-  onBlur?: () => void;
-  onValue?: string;
-  offValue?: string;
-  autoFocus?: boolean;
-}
-
-export const FieldToggle: React.FC<FieldToggleProps> = ({
+const FieldToggle: React.FC<FieldToggleProps> = ({
   label,
   value,
   onChange,
-  config,
-  disabled = false,
-  onFocus,
-  onBlur,
-  onValue = 'ON',
-  offValue = 'OFF',
-  autoFocus = false
+  focused = false,
+  disabled = false
 }) => {
-  const [focused, setFocused] = useState(autoFocus);
+  const theme = useTheme();
+  const [isFocused, setIsFocused] = useState(focused);
 
-  // Handle toggle
-  const handleToggle = useCallback(() => {
-    if (disabled) return;
-    onChange(!value);
-  }, [disabled, value, onChange]);
+  // Sync focus state
+  useEffect(() => {
+    setIsFocused(focused);
+  }, [focused]);
 
-  // Handle focus
-  const handleFocus = useCallback(() => {
-    if (disabled) return;
-    setFocused(true);
-    onFocus?.();
-  }, [disabled, onFocus]);
-
-  const handleBlur = useCallback(() => {
-    setFocused(false);
-    onBlur?.();
-  }, [onBlur]);
-
-  // Keyboard navigation
+  // Handle keyboard input
   useInput((input, key) => {
-    if (!focused || disabled) return;
+    if (!isFocused || disabled) {
+      return;
+    }
 
     if (key.return || input === ' ') {
-      handleToggle();
-    } else if (key.tab) {
-      handleBlur();
-    } else if (input === 't') {
-      handleToggle();
+      onChange(!value);
+      return;
     }
-  }, { isActive: !disabled });
 
-  // Auto-focus if requested
-  React.useEffect(() => {
-    if (autoFocus && !disabled) {
-      handleFocus();
+    if (key.escape) {
+      setIsFocused(false);
     }
-  }, [autoFocus, disabled, handleFocus]);
+  }, { isActive: isFocused });
 
-  // Color scheme
-  const colors = config?.colors;
-  const labelColor = disabled
-    ? colors?.gray
-    : focused
-      ? colors?.accent_orange
-      : colors?.muted;
-
-  const toggleColor = disabled
-    ? colors?.gray
-    : value
-      ? colors?.ok || '#00FF00'
-      : colors?.muted;
-
-  const toggleBgColor = disabled
-    ? undefined
-    : value
-      ? `${toggleColor}20`
-      : undefined;
-
-  const focusColor = focused ? colors?.accent_orange : colors?.muted;
-
+  
   return (
-    <Box flexDirection="row" alignItems="center" marginBottom={1}>
-      {/* Label */}
-      <Text color={labelColor} bold={focused}>
-        {label}
-      </Text>
-
-      {/* Spacer */}
-      <Box flexGrow={1} />
-
-      {/* Toggle switch */}
-      <Box flexDirection="row" alignItems="center">
-        <Text color={focusColor} marginRight={1}>
-          [
+    <Box flexDirection="column" marginBottom={1}>
+      {/* Label with toggle */}
+      <Box flexDirection="row" alignItems="center" justifyContent="space-between">
+        <Text color={theme.colors.neutrals.text} bold={isFocused}>
+          {label}
         </Text>
 
-        <Text
-          color={toggleColor}
-          backgroundColor={toggleBgColor}
-          bold={value}
-          onClick={handleToggle}
+        {/* Toggle switch */}
+        <Box
+          flexDirection="row"
+          alignItems="center"
+          borderStyle={isFocused ? 'double' : 'single'}
+          borderColor={
+            isFocused
+              ? (theme.colors.accent.orange)
+              : theme.colors.neutrals.muted
+          }
+          paddingX={1}
+          paddingY={0}
         >
-          {value ? onValue : offValue}
-        </Text>
-
-        <Text color={focusColor} marginLeft={1}>
-          ]
-        </Text>
-
-        {/* Status indicator */}
-        {focused && (
-          <Text color={colors?.accent_orange} marginLeft={1}>
-            ◀
+          <Text
+            color={
+              value
+                ? theme.colors.status.ok
+                : theme.colors.neutrals.muted
+            }
+            bold={value}
+          >
+            {value ? 'ON' : 'OFF'}
           </Text>
-        )}
+        </Box>
       </Box>
 
-      {/* Status indicators */}
-      {focused && (
-        <Text color={colors?.muted} dimColor marginLeft={2}>
-          [Space/T/Enter] toggle • [Tab] next field
-        </Text>
+      {/* Help text when focused */}
+      {isFocused && (
+        <Box marginTop={0}>
+          <Text color={theme.colors.neutrals.muted}>
+            [Space/Enter] toggle • [Tab] next field • [Esc] done
+          </Text>
+        </Box>
       )}
     </Box>
   );

@@ -1,37 +1,50 @@
 #!/usr/bin/env node
 
+/**
+ * Main CLI entry point for PRP
+ * Handles command routing and global options
+ */
+
+// [da] CLI entry point implemented with commander.js - supports prp, prp init, prp orchestrator commands - robo-developer
+
 import { Command } from 'commander';
-import { promises as fs } from 'fs';
+import { createLayerLogger } from './shared/logger.js';
 import { createInitCommand } from './commands/init.js';
 import { createOrchestratorCommand } from './commands/orchestrator.js';
 
+const logger = createLayerLogger('shared');
 const program = new Command();
 
 program
   .name('prp')
-  .description('Interactive Project Bootstrap CLI - Modern scaffolding tool with AI integration')
-  .version('0.4.9')
+  .description('♫ @dcversus/prp - Autonomous Development Orchestration')
+  .version('0.5.0')
   .configureOutput({
     writeErr: (str) => process.stderr.write(str),
     writeOut: (str) => process.stdout.write(str)
   })
-  // Core global options as per PRP-001 specification
-  .option('-c, --ci', 'Run in CI mode with non-interactive execution')
-  .option('-d, --debug', 'Enable debug mode with verbose logging')
-  .option('--log-level <level>', 'Set logging level (error, warn, info, debug, verbose)', 'info')
-  .option('--no-color', 'Disable colored output for CI environments')
-  .option('--log-file <path>', 'Output to file instead of console only with mcp')
-  .option('--mcp-port <port>', 'Run MCP server, default for docker run is --ci --mcp-port 8080')
-  .option('--config <path>', 'Path to configuration file (.prprc format)')
-  .option('--limit <format>', 'Token limits format (e.g., 1k,2k#robo-role,100usd10k#agent-name)')
-  .option('--instructions-path <path>', 'Path to instructions file (default: AGENTS.md)')
-  .option('--verbose', 'Enable detailed operation logging')
-  .option('-n, --name <name>', 'project name')
-  .option('--description <description>', 'project description')
-  .option('--force', 'Force initialization even in existing directories, use defaults for all options')
-  .option('--openai-api-key <key>', 'OpenAI API key for LLM generation')
-  
-// Add only the commands specified in PRP-001
+  // Global options available for all commands (PRP-001 bootstrap requirements)
+  .option('--ci', 'Run in CI mode without TUI or interactive prompts')
+  .option('--debug', 'Enable debug mode with verbose logging and system monitoring')
+  .option('--log-level <level>', 'Set logging level (error|warn|info|debug|verbose)', 'info')
+  .option('--log-file <path>', 'Write logs to specified file')
+  .option('--no-color', 'Disable colored output')
+  .option('--dry-run', 'Show what would be done without executing')
+  .option('--verbose', 'Enable verbose output')
+  .option('--quiet', 'Suppress non-error output')
+  .option('--no-interactive', 'Disable interactive prompts')
+  .option('--mcp-port <port>', 'Start MCP server on specified port');
+
+// Add version as explicit command
+program
+  .command('version')
+  .description('Show version number')
+  .action(() => {
+    logger.info('cli', 'CLI', `Version: ${program.version()}`);
+    process.exit(0);
+  });
+
+// Add core commands as specified in PRP-001
 program.addCommand(createInitCommand());
 program.addCommand(createOrchestratorCommand());
 
@@ -42,23 +55,77 @@ export { program };
 if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2);
 
-  // Handle default behavior when no command is specified
-  if (args.length === 0 || (!args.includes('init') && !args.includes('orchestrator') && !args.includes('help') && !args.includes('--help') && !args.includes('-h'))) {
-    // No command provided, check if .prprc exists and decide what to run
-    (async () => {
-      try {
-        await fs.access('.prprc');
-        // .prprc exists, run orchestrator
-        const { handleOrchestratorCommand } = await import('./commands/orchestrator.js');
-        await handleOrchestratorCommand(program.opts());
-      } catch {
-        // .prprc doesn't exist, run init
-        const { handleInitCommand } = await import('./commands/init.js');
-        await handleInitCommand(program.opts(), undefined);
-      }
-    })();
-  } else {
-    // Command provided, let Commander handle it
+  // Check for version flag first - it should always exit after showing version
+  if (args.includes('-V') || args.includes('--version')) {
+    logger.info('cli', 'CLI', `Version: ${program.version()}`);
+    process.exit(0);
+  }
+
+  // Check for help flag
+  if (args.includes('-h') || args.includes('--help')) {
+    program.help();
+    process.exit(0);
+  }
+
+  // Parse commands with Commander
+  try {
     program.parse();
+
+    // Handle global --mcp-port option
+    const opts = program.opts();
+    if (opts.mcpPort) {
+      // Start MCP server if --mcp-port is specified
+      if (!process.env.API_SECRET) {
+        logger.error(
+          'cli',
+          'CLI',
+          'API_SECRET environment variable is required when using --mcp-port',
+          new Error('Missing API_SECRET')
+        );
+        process.exit(1);
+      }
+
+      const { MCPServer } = await import('./mcp/server.js');
+      const mcpConfig = {
+        host: '0.0.0.0',
+        port: parseInt(opts.mcpPort, 10) || 8080,
+        ssl: false,
+        apiSecret: process.env.API_SECRET,
+        jwtExpiration: '24h',
+        rateLimitWindow: 900000, // 15 minutes
+        rateLimitMax: 100,
+        corsOrigins: ['*'],
+        enableStreaming: true,
+        maxConnections: 10
+      };
+
+      const mcpServer = new MCPServer(mcpConfig);
+      await mcpServer.start();
+
+      logger.info('cli', 'CLI', `MCP Server started on port ${opts.mcpPort}`, {});
+      logger.info(
+        'cli',
+        'CLI',
+        `Metrics available at: http://localhost:${opts.mcpPort}/metrics`,
+        {}
+      );
+
+      // Keep the process alive
+      process.on('SIGINT', async () => {
+        logger.info('cli', 'CLI', 'Shutting down MCP Server...', {});
+        await mcpServer.stop();
+        process.exit(0);
+      });
+    }
+  } catch (error) {
+    logger.debug(
+      'shared',
+      'command-parsing-error',
+      `Command parsing failed: ${error instanceof Error ? error.message : String(error)}`,
+      error instanceof Error
+        ? { error: error.message, stack: error.stack }
+        : { error: String(error) }
+    );
+    process.exit(1);
   }
 }

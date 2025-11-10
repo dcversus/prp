@@ -5,7 +5,6 @@
  * with color schemes, fonts, layouts, and animation settings
  */
 
-import type { TUIConfig, ColorScheme } from '../types/TUIConfig.js';
 
 // Re-export TUIConfig type for backward compatibility
 export type { TUIConfig };
@@ -199,11 +198,11 @@ export function createTUIConfig(overrides: Partial<TUIConfig> = {}): TUIConfig {
 export function getRoleColors(role: string, colors: ColorScheme) {
   const roleKey = role.replace(/-/g, '_');
   return {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+     
     active: colors[roleKey as keyof typeof colors] || colors.orchestrator,
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+     
     dim: colors[`${roleKey}_dim` as keyof typeof colors] || colors.orchestrator_dim,
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+     
     bg: colors[`${roleKey}_bg` as keyof typeof colors] || colors.orchestrator_bg
   };
 }

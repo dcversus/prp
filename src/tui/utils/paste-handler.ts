@@ -6,7 +6,7 @@
  */
 
 import crypto from 'crypto';
-import { getTokenCapsTool } from '../../orchestrator/tools/get-token-caps.js';
+import { logger } from '../../shared/logger.js';
 
 // Interface for paste metadata
 export interface PasteMetadata {
@@ -109,7 +109,7 @@ export class PasteHandler {
       return this.maxTokens;
     } catch (error) {
       // Fallback to default if token caps retrieval fails
-      console.warn('Failed to get token caps, using default:', error);
+      logger.debug('Failed to get token caps, using default:', { error }, 'PasteHandler.getMaxTokens');
       return this.maxTokens;
     }
   }
@@ -133,7 +133,9 @@ export class PasteHandler {
    * @returns Truncated content
    */
   private truncateToTokenCount(content: string, maxTokens: number): string {
-    if (maxTokens <= 0) return '';
+    if (maxTokens <= 0) {
+      return '';
+    }
 
     // Calculate approximate character limit
     const maxChars = maxTokens * 4;

@@ -133,11 +133,20 @@ interface TokenCapsResult {
   projections?: Record<string, unknown>;
 }
 
-interface TokenCapsParams {
-  agentType?: string;
-  detailed?: boolean;
-  includeProjections?: boolean;
+interface TokenBudgetAllocation {
+  method: string;
+  totalBudget: number;
+  reserveAmount: number;
+  availableBudget: number;
+  allocations: Record<string, number>;
+  summary: {
+    totalAllocated: number;
+    agentCount: number;
+    averageAllocation: number;
+  };
+  recommendations: string[];
 }
+
 
 interface NewLimitsData {
   totalLimit?: number;
@@ -225,7 +234,7 @@ export const getTokenUsageTool: Tool = {
       const usageData = await collectTokenUsageData(typedParams);
 
       const typedUsageData = usageData;
-      logger.info('get_token_usage', `Collected token usage data for ${typedUsageData.agents.length} agents`);
+      logger.info('get_token_usage', `Collected token usage data for ${typedUsageData.agents.length ?? 0} agents`);
 
       return {
         success: true,
@@ -238,7 +247,7 @@ export const getTokenUsageTool: Tool = {
       };
 
     } catch (error) {
-      logger.error('get_token_usage', `Failed to get token usage`, error instanceof Error ? error : new Error(String(error)));
+      logger.error('get_token_usage', 'Failed to get token usage', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -320,7 +329,7 @@ export const setTokenLimitsTool: Tool = {
       };
 
     } catch (error) {
-      logger.error('set_token_limits', `Failed to set token limits`, error instanceof Error ? error : new Error(String(error)));
+      logger.error('set_token_limits', 'Failed to set token limits', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -373,7 +382,7 @@ export const getTokenProjectionsTool: Tool = {
       };
 
     } catch (error) {
-      logger.error('get_token_projections', `Failed to generate projections`, error instanceof Error ? error : new Error(String(error)));
+      logger.error('get_token_projections', 'Failed to generate projections', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -412,7 +421,7 @@ export const getTokenEfficiencyTool: Tool = {
       const efficiencyData = await analyzeTokenEfficiency();
 
       const typedEfficiencyData = efficiencyData;
-      logger.info('analyze_token_efficiency', `Analyzed token efficiency for ${typedEfficiencyData.analyzedAgents || 0} agents`);
+      logger.info('analyze_token_efficiency', `Analyzed token efficiency for ${typedEfficiencyData.analyzedAgents ?? 0} agents`);
 
       return {
         success: true,
@@ -425,7 +434,7 @@ export const getTokenEfficiencyTool: Tool = {
       };
 
     } catch (error) {
-      logger.error('analyze_token_efficiency', `Failed to analyze efficiency`, error instanceof Error ? error : new Error(String(error)));
+      logger.error('analyze_token_efficiency', 'Failed to analyze efficiency', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -502,7 +511,7 @@ export const configureTokenAlertsTool: Tool = {
       };
 
     } catch (error) {
-      logger.error('configure_token_alerts', `Failed to configure alerts`, error instanceof Error ? error : new Error(String(error)));
+      logger.error('configure_token_alerts', 'Failed to configure alerts', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -722,7 +731,7 @@ export const getTokenCapsTool: Tool = {
       };
 
     } catch (error) {
-      logger.error('get_token_caps', `Failed to get token caps`, error instanceof Error ? error : new Error(String(error)));
+      logger.error('get_token_caps', 'Failed to get token caps', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -796,7 +805,7 @@ export const setDynamicTokenCapsTool: Tool = {
       };
 
     } catch (error) {
-      logger.error('set_dynamic_token_caps', `Failed to adjust token caps`, error instanceof Error ? error : new Error(String(error)));
+      logger.error('set_dynamic_token_caps', 'Failed to adjust token caps', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -856,7 +865,7 @@ export const allocateTokenBudgetTool: Tool = {
       };
 
     } catch (error) {
-      logger.error('allocate_token_budget', `Failed to allocate token budget`, error instanceof Error ? error : new Error(String(error)));
+      logger.error('allocate_token_budget', 'Failed to allocate token budget', error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -867,7 +876,7 @@ async function getTokenCapsData(params: {
   agentType?: string;
   includeProjections?: boolean;
   detailed?: boolean;
-}): Promise<any> {
+}): Promise<TokenCapsResult> {
   const filterType = params.agentType || 'all';
 
   // Define token caps based on PRP-007 specifications
@@ -950,15 +959,17 @@ async function getTokenCapsData(params: {
   if (params.detailed) {
     result.detailedBreakdown = {};
     Object.entries(filteredCaps).forEach(([agentType, caps]: [string, TokenCapsData]) => {
-      result.detailedBreakdown[agentType] = {
-        allocation: caps.allocation,
-        utilization: Object.entries(caps.allocation).map(([component, tokens]) => ({
-          component,
-          allocated: tokens,
-          utilized: Math.floor((tokens) * caps.percentage / 100),
-          percentage: caps.percentage
-        }))
-      };
+      if (result.detailedBreakdown) {
+        result.detailedBreakdown[agentType] = {
+          allocation: caps.allocation,
+          utilization: Object.entries(caps.allocation).map(([component, tokens]) => ({
+            component,
+            allocated: tokens,
+            utilized: Math.floor(tokens * caps.percentage / 100),
+            percentage: caps.percentage
+          }))
+        };
+      }
     });
   }
 
@@ -987,7 +998,7 @@ async function getTokenCapsData(params: {
 }
 
 async function adjustTokenCaps(params: AdjustTokenCapsParams): Promise<AdjustTokenCapsResult> {
-  const targetIdentifier = params.agentId || params.agentType;
+  const targetIdentifier = params.agentId ?? params.agentType;
 
   if (!targetIdentifier) {
     throw new Error('Either agentId or agentType must be specified');
@@ -1007,61 +1018,72 @@ async function adjustTokenCaps(params: AdjustTokenCapsParams): Promise<AdjustTok
       if (!params.newLimits) {
         throw new Error('newLimits must be provided for manual adjustment strategy');
       }
-      newCaps = params.newLimits;
+      newCaps = params.newLimits as TokenCaps;
       adjustmentLog.push(`Manual adjustment applied: ${JSON.stringify(params.newLimits)}`);
       break;
 
     case 'performance_based':
       if (params.scaleFactor) {
-        Object.entries(currentCaps.tokenCaps).forEach(([agentType, caps]: [string, TokenCapsData]) => {
+        Object.entries(currentCaps.tokenCaps).forEach(([agentType, caps]: [string, unknown]) => {
+          const typedCaps = caps as TokenCapsData;
           newCaps[agentType] = {
-            ...caps,
-            totalLimit: Math.floor(caps.totalLimit * params.scaleFactor!),
+            ...typedCaps,
+            totalLimit: Math.floor(typedCaps.totalLimit * (params.scaleFactor ?? 1)),
             allocation: Object.fromEntries(
-              Object.entries(caps.allocation).map(([key, value]) => [key, Math.floor(value * params.scaleFactor!)])
+              Object.entries(typedCaps.allocation).map(([key, value]) => [key, Math.floor(value * (params.scaleFactor ?? 1))])
             )
           };
-          adjustmentLog.push(`${agentType}: ${caps.totalLimit} -> ${newCaps[agentType].totalLimit} (${params.scaleFactor}x)`);
+          adjustmentLog.push(`${agentType}: ${typedCaps.totalLimit} -> ${newCaps[agentType]?.totalLimit} (${params.scaleFactor ?? 1}x)`);
         });
       }
       break;
 
     case 'usage_based':
-      Object.entries(currentCaps.tokenCaps).forEach(([agentType, caps]: [string, TokenCapsData]) => {
-        const usageRatio = caps.currentUsage / caps.totalLimit;
+      Object.entries(currentCaps.tokenCaps).forEach(([agentType, caps]: [string, unknown]) => {
+        const typedCaps = caps as TokenCapsData;
+        const usageRatio = typedCaps.currentUsage / typedCaps.totalLimit;
         let adjustmentFactor = 1.0;
 
-        if (usageRatio > 0.9) adjustmentFactor = 1.2; // Increase limit if near capacity
-        else if (usageRatio < 0.3) adjustmentFactor = 0.8; // Decrease limit if underutilized
+        if (usageRatio > 0.9) {
+          adjustmentFactor = 1.2;
+        } // Increase limit if near capacity
+        else if (usageRatio < 0.3) {
+          adjustmentFactor = 0.8;
+        } // Decrease limit if underutilized
 
         newCaps[agentType] = {
-          ...caps,
-          totalLimit: Math.floor(caps.totalLimit * adjustmentFactor),
+          ...typedCaps,
+          totalLimit: Math.floor(typedCaps.totalLimit * adjustmentFactor),
           allocation: Object.fromEntries(
-            Object.entries(caps.allocation).map(([key, value]) => [key, Math.floor(value * adjustmentFactor)])
+            Object.entries(typedCaps.allocation).map(([key, value]) => [key, Math.floor(value * adjustmentFactor)])
           )
         };
-        adjustmentLog.push(`${agentType}: ${caps.totalLimit} -> ${newCaps[agentType].totalLimit} (${adjustmentFactor}x, usage: ${(usageRatio * 100).toFixed(1)}%)`);
+        adjustmentLog.push(`${agentType}: ${typedCaps.totalLimit} -> ${newCaps[agentType]?.totalLimit} (${adjustmentFactor}x, usage: ${(usageRatio * 100).toFixed(1)}%)`);
       });
       break;
 
     case 'cost_based':
       // Cost-based adjustment would consider current cost vs budget
-      Object.entries(currentCaps.tokenCaps).forEach(([agentType, caps]: [string, TokenCapsData]) => {
-        const estimatedCost = caps.currentUsage * 0.00001; // Simplified cost calculation
+      Object.entries(currentCaps.tokenCaps).forEach(([agentType, caps]: [string, unknown]) => {
+        const typedCaps = caps as TokenCapsData;
+        const estimatedCost = typedCaps.currentUsage * 0.00001; // Simplified cost calculation
         let adjustmentFactor = 1.0;
 
-        if (estimatedCost > 5) adjustmentFactor = 0.9; // Reduce if cost is high
-        else if (estimatedCost < 1) adjustmentFactor = 1.1; // Increase if cost is low
+        if (estimatedCost > 5) {
+          adjustmentFactor = 0.9;
+        } // Reduce if cost is high
+        else if (estimatedCost < 1) {
+          adjustmentFactor = 1.1;
+        } // Increase if cost is low
 
         newCaps[agentType] = {
-          ...caps,
-          totalLimit: Math.floor(caps.totalLimit * adjustmentFactor),
+          ...typedCaps,
+          totalLimit: Math.floor(typedCaps.totalLimit * adjustmentFactor),
           allocation: Object.fromEntries(
-            Object.entries(caps.allocation).map(([key, value]) => [key, Math.floor(value * adjustmentFactor)])
+            Object.entries(typedCaps.allocation).map(([key, value]) => [key, Math.floor(value * adjustmentFactor)])
           )
         };
-        adjustmentLog.push(`${agentType}: ${caps.totalLimit} -> ${newCaps[agentType].totalLimit} (${adjustmentFactor}x, est. cost: $${estimatedCost.toFixed(2)})`);
+        adjustmentLog.push(`${agentType}: ${typedCaps.totalLimit} -> ${newCaps[agentType]?.totalLimit} (${adjustmentFactor}x, est. cost: $${estimatedCost.toFixed(2)})`);
       });
       break;
 
@@ -1070,13 +1092,16 @@ async function adjustTokenCaps(params: AdjustTokenCapsParams): Promise<AdjustTok
   }
 
   return {
-    targetIdentifier,
-    strategy: params.adjustmentStrategy,
+    success: true,
     previousCaps: currentCaps.tokenCaps,
     newCaps,
-    adjustmentLog,
-    reason: params.reason || 'No reason provided',
-    effectedAt: new Date().toISOString()
+    adjustments: adjustmentLog.map(() => ({
+      agentType: 'unknown',
+      component: 'unknown',
+      oldValue: 0,
+      newValue: 0
+    })),
+    reason: params.reason || 'No reason provided'
   };
 }
 
@@ -1085,8 +1110,8 @@ async function allocateTokenBudget(params: {
   allocationMethod: string;
   agentWeights?: Record<string, number>;
   reservePercentage?: number;
-}): Promise<any> {
-  const reservePercentage = params.reservePercentage || 10;
+}): Promise<TokenBudgetAllocation> {
+  const reservePercentage = params.reservePercentage ?? 10;
   const reserveAmount = Math.floor(params.totalBudget * reservePercentage / 100);
   const availableBudget = params.totalBudget - reserveAmount;
 
@@ -1176,7 +1201,7 @@ function generateBudgetRecommendations(allocations: Record<string, number>, avai
     recommendations.push('Consider rebalancing allocations - there is a significant disparity between agent budgets');
   }
 
-  const reserveAmount = allocations.reserve || 0;
+  const reserveAmount = allocations.reserve ?? 0;
   const reservePercentage = (reserveAmount / (availableBudget + reserveAmount)) * 100;
   if (reservePercentage < 5) {
     recommendations.push('Consider increasing reserve percentage for unexpected usage spikes');

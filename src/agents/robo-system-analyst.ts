@@ -4,7 +4,13 @@
  * System analysis and requirement gathering agent.
  */
 
-import { BaseAgent, AgentCapabilities, AgentLimits, AgentStatus, AgentMetrics } from './base-agent.js';
+import {
+  BaseAgent,
+  AgentCapabilities,
+  AgentLimits,
+  AgentStatus,
+  AgentMetrics
+} from './base-agent.js';
 
 export class RoboSystemAnalyst implements BaseAgent {
   id = 'robo-system-analyst';
@@ -74,7 +80,7 @@ export class RoboSystemAnalyst implements BaseAgent {
 
       this.metrics.tasksCompleted++;
       this.status.status = 'idle';
-      this.status.currentTask = undefined;
+      delete this.status.currentTask;
       this.status.lastActivity = new Date();
 
       return result;

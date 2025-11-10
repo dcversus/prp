@@ -5,8 +5,19 @@
  * agent health monitoring, and task distribution.
  */
 
-import { createAgentNudgeIntegration } from '../nudge/agent-integration';
+import { createAgentNudgeIntegration } from '../shared/nudge/agent-integration';
 import { createLayerLogger } from '../shared';
+import {
+  TaskManager,
+  TaskDefinition,
+  TaskAssignment,
+  TaskResult as TaskManagerResult,
+  TaskType,
+  TaskPriority as TaskManagerPriority,
+  AssignmentStatus,
+  TaskOutcome
+} from '../shared/tasks';
+import { Signal } from '../shared/types';
 
 const logger = createLayerLogger('orchestrator-scheduler');
 
@@ -124,6 +135,8 @@ export interface SchedulerConfig {
   metricsEnabled: boolean;
   enableHealthChecks: boolean;
   enablePingMonitoring: boolean;
+  enableTaskManagement: boolean;
+  enableAutoTaskAssignment: boolean;
 }
 
 /**
@@ -137,6 +150,7 @@ export class SharedScheduler {
   private config: SchedulerConfig;
   private agentNudge: ReturnType<typeof createAgentNudgeIntegration>;
   private intervals: Map<string, ReturnType<typeof setInterval>> = new Map();
+  private taskManager?: TaskManager;
   private metrics: {
     tasksExecuted: number;
     tasksSucceeded: number;
@@ -158,6 +172,8 @@ export class SharedScheduler {
       metricsEnabled: true,
       enableHealthChecks: true,
       enablePingMonitoring: true,
+      enableTaskManagement: true,
+      enableAutoTaskAssignment: true,
       ...config
     };
 
@@ -176,8 +192,13 @@ export class SharedScheduler {
   /**
    * Initialize scheduler with default tasks
    */
-  private initializeScheduler(): void {
+  private async initializeScheduler(): Promise<void> {
     logger.info('SharedScheduler', 'Initializing shared scheduler system');
+
+    // Initialize task manager if enabled
+    if (this.config.enableTaskManagement) {
+      await this.initializeTaskManager();
+    }
 
     // Register default tasks
     this.registerDefaultTasks();
@@ -200,8 +221,207 @@ export class SharedScheduler {
 
     logger.info('SharedScheduler', 'Shared scheduler initialized', {
       config: this.config,
-      tasksCount: this.tasks.size
+      tasksCount: this.tasks.size,
+      taskManagerEnabled: this.config.enableTaskManagement
     });
+  }
+
+  /**
+   * Initialize task manager
+   */
+  private async initializeTaskManager(): Promise<void> {
+    if (!this.taskManager) {
+      this.taskManager = new TaskManager({
+        enableAutoAssignment: this.config.enableAutoTaskAssignment,
+        maxConcurrentTasksPerAgent: 3,
+        defaultTaskTimeout: this.config.taskTimeout
+      });
+
+      await this.taskManager.initialize();
+
+      // Register default agents
+      this.registerDefaultAgents();
+
+      // Set up task manager event listeners
+      this.setupTaskManagerEventListeners();
+
+      logger.info('SharedScheduler', 'Task manager initialized successfully');
+    }
+  }
+
+  /**
+   * Register default agents with task manager
+   */
+  private registerDefaultAgents(): void {
+    if (!this.taskManager) {
+      return;
+    }
+
+    // Register standard agents
+    const defaultAgents = [
+      {
+        id: 'robo-developer',
+        type: 'robo-developer',
+        capabilities: ['coding', 'file_operations', 'testing', 'debugging', 'refactoring'],
+        maxWorkload: 3,
+        performance: {
+          avgCompletionTime: 20 * 60 * 1000, // 20 minutes
+          successRate: 95,
+          qualityScore: 85
+        }
+      },
+      {
+        id: 'robo-aqa',
+        type: 'robo-aqa',
+        capabilities: ['testing', 'validation', 'analysis', 'quality_assurance', 'code_review'],
+        maxWorkload: 4,
+        performance: {
+          avgCompletionTime: 15 * 60 * 1000, // 15 minutes
+          successRate: 98,
+          qualityScore: 90
+        }
+      },
+      {
+        id: 'robo-system-analyst',
+        type: 'robo-system-analyst',
+        capabilities: ['analysis', 'research', 'planning', 'documentation', 'requirements_analysis'],
+        maxWorkload: 2,
+        performance: {
+          avgCompletionTime: 25 * 60 * 1000, // 25 minutes
+          successRate: 92,
+          qualityScore: 88
+        }
+      },
+      {
+        id: 'robo-ux-ui-designer',
+        type: 'robo-ux-ui-designer',
+        capabilities: ['design', 'user_experience', 'visual_design', 'prototyping', 'accessibility'],
+        maxWorkload: 2,
+        performance: {
+          avgCompletionTime: 30 * 60 * 1000, // 30 minutes
+          successRate: 90,
+          qualityScore: 87
+        }
+      },
+      {
+        id: 'robo-devops-sre',
+        type: 'robo-devops-sre',
+        capabilities: ['deployment', 'system_operations', 'monitoring', 'security', 'performance'],
+        maxWorkload: 2,
+        performance: {
+          avgCompletionTime: 35 * 60 * 1000, // 35 minutes
+          successRate: 94,
+          qualityScore: 89
+        }
+      }
+    ];
+
+    defaultAgents.forEach(agent => {
+      this.taskManager?.registerAgent(agent);
+    });
+
+    logger.info('SharedScheduler', `Registered ${defaultAgents.length} default agents`);
+  }
+
+  /**
+   * Set up task manager event listeners
+   */
+  private setupTaskManagerEventListeners(): void {
+    if (!this.taskManager) {
+      return;
+    }
+
+    this.taskManager.on('task:created', ({ task, signal }) => {
+      logger.info('SharedScheduler', 'Task created from signal', {
+        taskId: task.id,
+        taskType: task.type,
+        signalId: signal.id
+      });
+    });
+
+    this.taskManager.on('task:assigned', ({ task, assignment, agent }) => {
+      logger.info('SharedScheduler', 'Task assigned to agent', {
+        taskId: task.id,
+        assignmentId: assignment.id,
+        agentId: agent.id,
+        agentType: agent.type
+      });
+    });
+
+    this.taskManager.on('task:completed', ({ task, assignment, result, agent }) => {
+      logger.info('SharedScheduler', 'Task completed', {
+        taskId: task.id,
+        assignmentId: assignment.id,
+        outcome: result.outcome,
+        duration: result.timestamps.duration,
+        agentId: agent.id
+      });
+
+      // Update scheduler metrics
+      this.metrics.tasksExecuted++;
+      if (result.outcome === TaskOutcome.SUCCESS) {
+        this.metrics.tasksSucceeded++;
+      } else {
+        this.metrics.tasksFailed++;
+      }
+    });
+
+    this.taskManager.on('agent:registered', ({ agent }) => {
+      logger.info('SharedScheduler', 'Agent registered with task manager', {
+        agentId: agent.id,
+        type: agent.type,
+        capabilities: agent.capabilities.length
+      });
+    });
+  }
+
+  /**
+   * Create task from signal
+   */
+  createTaskFromSignal(signal: Signal, options?: {
+    type?: TaskType;
+    priority?: TaskManagerPriority;
+    title?: string;
+    description?: string;
+    requiredCapabilities?: string[];
+    parameters?: Record<string, unknown>;
+  }): TaskDefinition | null {
+    if (!this.taskManager || !this.config.enableTaskManagement) {
+      logger.warn('SharedScheduler', 'Task management not enabled, cannot create task from signal');
+      return null;
+    }
+
+    try {
+      const task = this.taskManager.createTaskFromSignal(signal, options);
+      logger.info('SharedScheduler', 'Task created from signal', {
+        taskId: task.id,
+        signalId: signal.id,
+        signalType: signal.type,
+        taskType: task.type,
+        priority: task.priority
+      });
+      return task;
+    } catch (error) {
+      logger.error('SharedScheduler', 'Failed to create task from signal', error instanceof Error ? error : new Error(String(error)), {
+        signalId: signal.id,
+        signalType: signal.type
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Get task manager instance
+   */
+  getTaskManager(): TaskManager | undefined {
+    return this.taskManager;
+  }
+
+  /**
+   * Get task manager statistics
+   */
+  getTaskManagerStatistics() {
+    return this.taskManager?.getStatistics() ?? null;
   }
 
   /**
@@ -793,7 +1013,7 @@ export class SharedScheduler {
       return {
         success: true,
         duration: Date.now() - startTime,
-        message: `System cleanup completed`,
+        message: 'System cleanup completed',
         data: { cleanedPings, cleanedGroups }
       };
 
@@ -888,7 +1108,7 @@ export class SharedScheduler {
       idle: number;
       failed: number;
     };
-  } {
+    } {
     const tasks = Array.from(this.tasks.values());
     const agents = Array.from(this.agentPings.values());
     const groups = Array.from(this.coordinationGroups.values());
@@ -981,7 +1201,7 @@ export class SharedScheduler {
   /**
    * Shutdown scheduler
    */
-  shutdown(): void {
+  async shutdown(): Promise<void> {
     logger.info('SharedScheduler', 'Shutting down shared scheduler');
 
     // Clear all intervals
@@ -991,13 +1211,17 @@ export class SharedScheduler {
     });
     this.intervals.clear();
 
+    // Shutdown task manager if initialized
+    if (this.taskManager) {
+      await this.taskManager.shutdown();
+      this.taskManager = undefined;
+    }
+
     // Wait for running tasks to complete or timeout
     const runningTaskPromises = Array.from(this.runningTasks.values());
     if (runningTaskPromises.length > 0) {
       logger.info('SharedScheduler', `Waiting for ${runningTaskPromises.length} tasks to complete`);
-      Promise.allSettled(runningTaskPromises).then(() => {
-        logger.info('SharedScheduler', 'All tasks completed, shutdown complete');
-      });
+      await Promise.allSettled(runningTaskPromises);
     }
 
     logger.info('SharedScheduler', 'Shared scheduler shutdown completed');

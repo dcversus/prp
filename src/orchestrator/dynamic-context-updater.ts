@@ -125,9 +125,12 @@ export class DynamicContextUpdaterImpl implements DynamicContextUpdater {
       if (!this.subscriptions.has(contextId)) {
         this.subscriptions.set(contextId, []);
       }
-      this.subscriptions.get(contextId)!.push(subscription);
+      const subscriptions = this.subscriptions.get(contextId);
+      if (subscriptions) {
+        subscriptions.push(subscription);
+      }
 
-      logger.info('subscribeToContextUpdates', `Subscription created`, {
+      logger.info('subscribeToContextUpdates', 'Subscription created', {
         subscriptionId: subscription.id,
         contextId
       });
@@ -179,7 +182,7 @@ export class DynamicContextUpdaterImpl implements DynamicContextUpdater {
         syncResult.success = false;
       }
 
-      logger.info('synchronizeContexts', `Synchronization completed`, {
+      logger.info('synchronizeContexts', 'Synchronization completed', {
         totalContexts: contextIds.length,
         syncedContexts: syncResult.syncedContexts.length,
         conflicts: syncResult.conflicts.length,
@@ -219,7 +222,7 @@ export class DynamicContextUpdaterImpl implements DynamicContextUpdater {
       // Execute all updates in parallel
       await Promise.allSettled(updateTasks);
 
-      logger.info('broadcastUpdate', `Broadcast completed`, {
+      logger.info('broadcastUpdate', 'Broadcast completed', {
         source: update.source,
         contextsUpdated: relevantContexts.length
       });
@@ -278,7 +281,7 @@ export class DynamicContextUpdaterImpl implements DynamicContextUpdater {
       await this.applyUpdate(contextId, rollbackUpdate);
       await this.notifySubscribers(contextId, rollbackUpdate);
 
-      logger.info('rollbackContext', `Context rolled back successfully`, {
+      logger.info('rollbackContext', 'Context rolled back successfully', {
         contextId,
         toVersion: version
       });
@@ -304,7 +307,7 @@ export class DynamicContextUpdaterImpl implements DynamicContextUpdater {
         if (subscriptions.length === 0) {
           this.subscriptions.delete(contextId);
         }
-        logger.info('unsubscribe', `Unsubscribed successfully`, { subscriptionId, contextId });
+        logger.info('unsubscribe', 'Unsubscribed successfully', { subscriptionId, contextId });
         return;
       }
     }
@@ -347,7 +350,7 @@ export class DynamicContextUpdaterImpl implements DynamicContextUpdater {
 
       this.pendingUpdates.delete(contextId);
 
-      logger.info('resolvePendingUpdate', `Pending update resolved`, {
+      logger.info('resolvePendingUpdate', 'Pending update resolved', {
         contextId,
         resolution
       });
@@ -464,7 +467,7 @@ export class DynamicContextUpdaterImpl implements DynamicContextUpdater {
         try {
           await subscription.callback(update);
         } catch (error) {
-          logger.warn('notifySubscribers', `Subscriber callback failed`, {
+          logger.warn('notifySubscribers', 'Subscriber callback failed', {
             subscriptionId: subscription.id,
             contextId,
             error: error instanceof Error ? error.message : String(error)
@@ -480,7 +483,10 @@ export class DynamicContextUpdaterImpl implements DynamicContextUpdater {
       this.contextVersions.set(contextId, []);
     }
 
-    const versions = this.contextVersions.get(contextId)!;
+    const versions = this.contextVersions.get(contextId);
+    if (!versions) {
+      throw new Error(`No versions array found for context ${contextId}`);
+    }
 
     const version: ContextVersion = {
       version: context.version,
@@ -524,7 +530,7 @@ export class DynamicContextUpdaterImpl implements DynamicContextUpdater {
     };
 
     this.pendingUpdates.set(contextId, pending);
-    logger.warn('addPendingUpdate', `Update added to pending queue`, {
+    logger.warn('addPendingUpdate', 'Update added to pending queue', {
       contextId,
       conflicts: conflicts.length
     });
@@ -615,7 +621,9 @@ export class DynamicContextUpdaterImpl implements DynamicContextUpdater {
       for (let j = i + 1; j < contextIds.length; j++) {
         const id1 = contextIds[i];
         const id2 = contextIds[j];
-        if (!id1 || !id2) continue;
+        if (!id1 || !id2) {
+          continue;
+        }
         const context1 = this.contexts.get(id1);
         const context2 = this.contexts.get(id2);
 
@@ -646,13 +654,18 @@ export class DynamicContextUpdaterImpl implements DynamicContextUpdater {
   }
 
   private async processQueue(): Promise<void> {
-    if (this.isProcessingQueue) return;
+    if (this.isProcessingQueue) {
+      return;
+    }
 
     this.isProcessingQueue = true;
 
     try {
       while (this.updateQueue.length > 0) {
-        const update = this.updateQueue.shift()!;
+        const update = this.updateQueue.shift();
+        if (!update) {
+          break; // Queue is empty
+        }
         try {
           await this.updateContext(update.contextId, update);
         } catch (error) {

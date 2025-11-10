@@ -11,10 +11,17 @@ import * as path from 'path';
 import { spawn, execSync } from 'child_process';
 import { Tool, ToolResult, ParameterDefinition } from './types';
 import { createLayerLogger } from '../shared';
-import { httpTools } from './tools/http-tools';
+import { httpTools } from '../shared/tools/http-tools.js';
 import { agentTools } from './tools/agent-tools';
 import { tokenTrackingTools } from './tools/token-tracking-tools';
 import { getTokenCapsTool } from './tools/get-token-caps';
+import {
+  TaskManager,
+  TaskDefinition,
+  TaskAssignment,
+  TaskResult as TaskManagerResult,
+  AgentCapability
+} from '../shared/tasks';
 
 const logger = createLayerLogger('orchestrator');
 
@@ -31,10 +38,14 @@ export class ToolRegistry extends EventEmitter {
   private categories: Map<string, Set<string>> = new Map();
   private rateLimits: Map<string, RateLimit> = new Map();
   private executionStats: Map<string, ExecutionStats> = new Map();
+  private taskManager?: TaskManager;
+  private agentCapabilities: Map<string, AgentCapability> = new Map();
 
-  constructor() {
+  constructor(taskManager?: TaskManager) {
     super();
+    this.taskManager = taskManager;
     this.initializeBuiltinTools();
+    this.setupTaskManagerIntegration();
   }
 
   /**
@@ -71,7 +82,10 @@ export class ToolRegistry extends EventEmitter {
     if (!this.categories.has(tool.category)) {
       this.categories.set(tool.category, new Set());
     }
-    this.categories.get(tool.category)!.add(tool.name);
+    const categoryTools = this.categories.get(tool.category);
+    if (categoryTools) {
+      categoryTools.add(tool.name);
+    }
 
     // Initialize rate limiting
     this.rateLimits.set(tool.name, {
@@ -141,7 +155,9 @@ export class ToolRegistry extends EventEmitter {
    */
   getToolsByCategory(category: string): Tool[] {
     const toolNames = this.categories.get(category) || new Set();
-    return Array.from(toolNames).map(name => this.tools.get(name)!).filter(Boolean);
+    return Array.from(toolNames)
+      .map(name => this.tools.get(name))
+      .filter((tool): tool is Tool => tool !== undefined);
   }
 
   /**
@@ -250,6 +266,282 @@ export class ToolRegistry extends EventEmitter {
       stats[name] = stat;
     }
     return stats;
+  }
+
+  /**
+   * Set task manager instance
+   */
+  setTaskManager(taskManager: TaskManager): void {
+    this.taskManager = taskManager;
+    this.setupTaskManagerIntegration();
+  }
+
+  /**
+   * Setup integration with task manager
+   */
+  private setupTaskManagerIntegration(): void {
+    if (!this.taskManager) {
+      return;
+    }
+
+    // Listen for agent registration events
+    this.taskManager.on('agent:registered', ({ agent }) => {
+      this.updateAgentCapabilities(agent);
+    });
+
+    // Sync agent capabilities with task manager
+    this.syncAgentCapabilities();
+
+    logger.info('ToolRegistry', 'Task manager integration setup complete');
+  }
+
+  /**
+   * Update agent capabilities from task manager
+   */
+  private updateAgentCapabilities(agent: AgentCapability): void {
+    this.agentCapabilities.set(agent.id, agent);
+
+    // Map agent capabilities to tool access
+    const toolAccess = this.mapCapabilitiesToTools(agent.capabilities);
+
+    logger.info('ToolRegistry', 'Updated agent capabilities', {
+      agentId: agent.id,
+      capabilities: agent.capabilities.length,
+      toolAccess: toolAccess.length
+    });
+
+    this.emit('agent:capabilities_updated', {
+      agentId: agent.id,
+      capabilities: agent.capabilities,
+      toolAccess
+    });
+  }
+
+  /**
+   * Sync all agent capabilities from task manager
+   */
+  private syncAgentCapabilities(): void {
+    if (!this.taskManager) {
+      return;
+    }
+
+    // Get task manager statistics to find active agents
+    const stats = this.taskManager.getStatistics();
+
+    // For now, we'll set up default agent capabilities
+    // In a real implementation, this would sync from the task manager's agent registry
+    const defaultAgents = [
+      {
+        id: 'robo-developer',
+        agentType: 'robo-developer',
+        capabilities: ['coding', 'file_operations', 'testing', 'debugging'],
+        currentWorkload: 0,
+        maxWorkload: 3,
+        status: 'available' as const
+      },
+      {
+        id: 'robo-aqa',
+        agentType: 'robo-aqa',
+        capabilities: ['testing', 'validation', 'analysis', 'quality_assurance'],
+        currentWorkload: 0,
+        maxWorkload: 4,
+        status: 'available' as const
+      },
+      {
+        id: 'robo-system-analyst',
+        agentType: 'robo-system-analyst',
+        capabilities: ['analysis', 'research', 'planning', 'documentation'],
+        currentWorkload: 0,
+        maxWorkload: 2,
+        status: 'available' as const
+      }
+    ];
+
+    defaultAgents.forEach(agent => {
+      this.agentCapabilities.set(agent.id, agent);
+    });
+
+    logger.info('ToolRegistry', `Synced ${defaultAgents.length} agent capabilities`);
+  }
+
+  /**
+   * Map agent capabilities to accessible tools
+   */
+  private mapCapabilitiesToTools(capabilities: string[]): string[] {
+    const capabilityToolMap: Record<string, string[]> = {
+      'coding': ['write_file', 'execute_command', 'git_status'],
+      'file_operations': ['read_file', 'write_file', 'list_directory'],
+      'testing': ['execute_command', 'http_request'],
+      'debugging': ['read_file', 'execute_command', 'list_directory'],
+      'validation': ['read_file', 'execute_command'],
+      'analysis': ['read_file', 'list_directory', 'git_status'],
+      'research': ['http_request', 'read_file'],
+      'planning': ['write_file', 'read_file'],
+      'documentation': ['write_file', 'read_file'],
+      'deployment': ['execute_command', 'git_status'],
+      'system_operations': ['execute_command', 'list_directory'],
+      'monitoring': ['execute_command', 'read_file'],
+      'security': ['execute_command', 'read_file', 'git_status'],
+      'performance': ['execute_command', 'read_file'],
+      'quality_assurance': ['execute_command', 'read_file', 'git_status']
+    };
+
+    const accessibleTools = new Set<string>();
+
+    capabilities.forEach(capability => {
+      const tools = capabilityToolMap[capability] || [];
+      tools.forEach(tool => accessibleTools.add(tool));
+    });
+
+    return Array.from(accessibleTools);
+  }
+
+  /**
+   * Check if agent can access a tool
+   */
+  canAgentAccessTool(agentId: string, toolName: string): boolean {
+    const agent = this.agentCapabilities.get(agentId);
+    if (!agent) {
+      return false;
+    }
+
+    const accessibleTools = this.mapCapabilitiesToTools(agent.capabilities);
+    return accessibleTools.includes(toolName);
+  }
+
+  /**
+   * Get tools accessible to an agent
+   */
+  getAgentAccessibleTools(agentId: string): Tool[] {
+    const agent = this.agentCapabilities.get(agentId);
+    if (!agent) {
+      return [];
+    }
+
+    const accessibleToolNames = this.mapCapabilitiesToTools(agent.capabilities);
+    return accessibleToolNames
+      .map(toolName => this.tools.get(toolName))
+      .filter((tool): tool is Tool => tool !== undefined);
+  }
+
+  /**
+   * Get agent capabilities
+   */
+  getAgentCapabilities(agentId: string): AgentCapability | null {
+    return this.agentCapabilities.get(agentId) ?? null;
+  }
+
+  /**
+   * Get all agent capabilities
+   */
+  getAllAgentCapabilities(): AgentCapability[] {
+    return Array.from(this.agentCapabilities.values());
+  }
+
+  /**
+   * Create task from tool execution request
+   */
+  createTaskFromToolRequest(
+    agentId: string,
+    toolName: string,
+    parameters: unknown,
+    options?: {
+      priority?: 'low' | 'medium' | 'high' | 'critical';
+      title?: string;
+      description?: string;
+    }
+  ): TaskDefinition | null {
+    if (!this.taskManager) {
+      logger.warn('ToolRegistry', 'No task manager available, cannot create task from tool request');
+      return null;
+    }
+
+    const tool = this.getTool(toolName);
+    if (!tool) {
+      logger.warn('ToolRegistry', 'Tool not found for task creation', { toolName });
+      return null;
+    }
+
+    if (!this.canAgentAccessTool(agentId, toolName)) {
+      logger.warn('ToolRegistry', 'Agent does not have access to tool', { agentId, toolName });
+      return null;
+    }
+
+    // Create a signal from the tool request
+    const signal = {
+      id: `tool_${toolName}_${Date.now()}`,
+      type: 'af' as const, // Feedback request
+      priority: options?.priority === 'critical' ? 10 :
+        options?.priority === 'high' ? 8 :
+          options?.priority === 'medium' ? 5 : 3,
+      source: agentId,
+      data: {
+        toolName,
+        parameters,
+        requestType: 'tool_execution',
+        agentId
+      },
+      timestamp: new Date()
+    };
+
+    try {
+      const task = this.taskManager.createTaskFromSignal(signal, {
+        type: this.mapToolToTaskType(tool.category),
+        title: options?.title ?? `Execute ${toolName} tool`,
+        description: options?.description ?? `Execute ${tool.description} with provided parameters`,
+        requiredCapabilities: this.mapToolCategoryToCapabilities(tool.category),
+        parameters: {
+          toolName,
+          parameters,
+          requestedBy: agentId
+        }
+      });
+
+      logger.info('ToolRegistry', 'Task created from tool request', {
+        taskId: task.id,
+        agentId,
+        toolName,
+        taskType: task.type
+      });
+
+      return task;
+    } catch (error) {
+      logger.error('ToolRegistry', 'Failed to create task from tool request', error instanceof Error ? error : new Error(String(error)), {
+        agentId,
+        toolName
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Map tool category to task type
+   */
+  private mapToolToTaskType(category: string): import('../shared/tasks').TaskType {
+    const categoryTaskMap: Record<string, import('../shared/tasks').TaskType> = {
+      'file': import('../shared/tasks').TaskType.DEVELOPMENT,
+      'system': import('../shared/tasks').TaskType.DEPLOYMENT,
+      'git': import('../shared/tasks').TaskType.DEVELOPMENT,
+      'network': import('../shared/tasks').TaskType.INTEGRATION,
+      'coordination': import('../shared/tasks').TaskType.COORDINATION
+    };
+
+    return categoryTaskMap[category] ?? import('../shared/tasks').TaskType.COORDINATION;
+  }
+
+  /**
+   * Map tool category to required capabilities
+   */
+  private mapToolCategoryToCapabilities(category: string): string[] {
+    const categoryCapabilityMap: Record<string, string[]> = {
+      'file': ['file_operations'],
+      'system': ['system_operations'],
+      'git': ['coding', 'file_operations'],
+      'network': ['integration'],
+      'coordination': ['coordination']
+    };
+
+    return categoryCapabilityMap[category] ?? ['general'];
   }
 
   /**

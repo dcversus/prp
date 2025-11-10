@@ -4,6 +4,8 @@
  * Comprehensive token usage tracking, limits monitoring, and alerting.
  */
 
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+
 import {
   TokenAccountingEntry,
   TokenAccountingReport,
@@ -108,7 +110,7 @@ export class TokenAccountingManager {
       metadata: {
         ...metadata,
         scanId: metadata.scanId,
-        worktree: metadata.worktree,
+        worktree: metadata.worktree
       }
     };
 
@@ -172,8 +174,8 @@ export class TokenAccountingManager {
         startTime = TimeUtils.daysAgo(30);
         break;
       case 'custom':
-        startTime = customStart || TimeUtils.daysAgo(1);
-        endTime = customEnd || now;
+        startTime = customStart ?? TimeUtils.daysAgo(1);
+        endTime = customEnd ?? now;
         break;
     }
 
@@ -218,14 +220,14 @@ export class TokenAccountingManager {
 
     // Extract token limits from AgentConfig.limits and create a proper Record<string, unknown>
     const agentLimitsRecord: Record<string, unknown> = {
-      maxTokensPerRequest: agentConfig.limits?.maxTokensPerRequest || 0,
-      maxRequestsPerHour: agentConfig.limits?.maxRequestsPerHour || 0,
-      maxRequestsPerDay: agentConfig.limits?.maxRequestsPerDay || 0,
-      maxCostPerDay: agentConfig.limits?.maxCostPerDay || 0,
-      maxExecutionTime: agentConfig.limits?.maxExecutionTime || 0,
-      maxMemoryUsage: agentConfig.limits?.maxMemoryUsage || 0,
-      maxConcurrentTasks: agentConfig.limits?.maxConcurrentTasks || 0,
-      cooldownPeriod: agentConfig.limits?.cooldownPeriod || 0
+      maxTokensPerRequest: agentConfig.limits?.maxTokensPerRequest ?? 0,
+      maxRequestsPerHour: agentConfig.limits?.maxRequestsPerHour ?? 0,
+      maxRequestsPerDay: agentConfig.limits?.maxRequestsPerDay ?? 0,
+      maxCostPerDay: agentConfig.limits?.maxCostPerDay ?? 0,
+      maxExecutionTime: agentConfig.limits?.maxExecutionTime ?? 0,
+      maxMemoryUsage: agentConfig.limits?.maxMemoryUsage ?? 0,
+      maxConcurrentTasks: agentConfig.limits?.maxConcurrentTasks ?? 0,
+      cooldownPeriod: agentConfig.limits?.cooldownPeriod ?? 0
     };
 
     // Extract additional properties if they exist in configuration
@@ -235,10 +237,10 @@ export class TokenAccountingManager {
 
     const tokenLimits = agentLimitsRecord as Record<string, number>;
     const limits = {
-      daily: tokenLimits.daily || tokenLimits.maxRequestsPerDay || 0,
-      weekly: tokenLimits.weekly || 0,
-      monthly: tokenLimits.monthly || 0,
-      maxPrice: tokenLimits.maxPrice || tokenLimits.maxCostPerDay || 0
+      daily: tokenLimits.daily ?? tokenLimits.maxRequestsPerDay ?? 0,
+      weekly: tokenLimits.weekly ?? 0,
+      monthly: tokenLimits.monthly ?? 0,
+      maxPrice: tokenLimits.maxPrice ?? tokenLimits.maxCostPerDay ?? 0
     };
 
     const percentages = {
@@ -295,8 +297,8 @@ export class TokenAccountingManager {
         startTime = TimeUtils.daysAgo(30);
         break;
       case 'custom':
-        startTime = customStart || TimeUtils.daysAgo(1);
-        endTime = customEnd || now;
+        startTime = customStart ?? TimeUtils.daysAgo(1);
+        endTime = customEnd ?? now;
         break;
     }
 
@@ -315,9 +317,7 @@ export class TokenAccountingManager {
     // Breakdown by agent
     const byAgent: Record<string, AgentBreakdown> = {};
     allEntries.forEach(entry => {
-      if (!byAgent[entry.agentId]) {
-        byAgent[entry.agentId] = { tokens: 0, cost: 0, operations: 0, percentage: 0 };
-      }
+      byAgent[entry.agentId] ??= { tokens: 0, cost: 0, operations: 0, percentage: 0 };
       const agentStats = byAgent[entry.agentId];
       if (agentStats) {
         agentStats.tokens += entry.totalTokens;
@@ -337,9 +337,7 @@ export class TokenAccountingManager {
     // Breakdown by layer
     const byLayer: Record<string, LayerBreakdown> = {};
     allEntries.forEach(entry => {
-      if (!byLayer[entry.layer]) {
-        byLayer[entry.layer] = { tokens: 0, cost: 0, operations: 0, percentage: 0 };
-      }
+      byLayer[entry.layer] ??= { tokens: 0, cost: 0, operations: 0, percentage: 0 };
       const layerStats = byLayer[entry.layer];
       if (layerStats) {
         layerStats.tokens += entry.totalTokens;
@@ -358,9 +356,7 @@ export class TokenAccountingManager {
     // Breakdown by model
     const byModel: Record<string, ModelBreakdown> = {};
     allEntries.forEach(entry => {
-      if (!byModel[entry.model]) {
-        byModel[entry.model] = { tokens: 0, cost: 0, operations: 0, percentage: 0 };
-      }
+      byModel[entry.model] ??= { tokens: 0, cost: 0, operations: 0, percentage: 0 };
       const modelStats = byModel[entry.model];
       if (modelStats) {
         modelStats.tokens += entry.totalTokens;
@@ -382,12 +378,10 @@ export class TokenAccountingManager {
 
     allEntries.forEach(entry => {
       const hourKey = new Date(entry.timestamp).toISOString().substring(0, 13); // YYYY-MM-DDTHH
-      if (!timeBuckets.has(hourKey)) {
-        timeBuckets.set(hourKey, { tokens: 0, cost: 0 });
-      }
-      const bucket = timeBuckets.get(hourKey)!;
+      const bucket = timeBuckets.get(hourKey) ?? { tokens: 0, cost: 0 };
       bucket.tokens += entry.totalTokens;
       bucket.cost += entry.cost;
+      timeBuckets.set(hourKey, bucket);
     });
 
     timeBuckets.forEach((data, hourKey) => {
@@ -433,7 +427,9 @@ export class TokenAccountingManager {
    */
   private checkTokenLimits(agentId: string): void {
     const status = this.getLimitStatus(agentId);
-    if (!status) return;
+    if (!status) {
+      return;
+    }
 
     const { percentages, limits } = status;
 
@@ -527,7 +523,7 @@ export class TokenAccountingManager {
       message,
       current,
       threshold: {
-        tokens: limits.daily || limits.weekly || limits.monthly,
+        tokens: limits.daily ?? limits.weekly ?? limits.monthly,
         cost: limits.maxPrice,
         percentage: Math.max(percentages.daily, percentages.weekly, percentages.monthly, percentages.price)
       },
@@ -560,7 +556,9 @@ export class TokenAccountingManager {
    */
   resolveAlert(alertId: string): boolean {
     const alert = this.alerts.get(alertId);
-    if (!alert) return false;
+    if (!alert) {
+      return false;
+    }
 
     alert.resolved = true;
     alert.resolvedAt = TimeUtils.now();
@@ -601,10 +599,10 @@ export class TokenAccountingManager {
       'claude-3-sonnet': 0.015,
       'claude-3-haiku': 0.00025,
       'gemini-pro': 0.00025,
-      'gemini-pro-vision': 0.0025,
+      'gemini-pro-vision': 0.0025
     };
 
-    const costPerToken = (costPer1kTokens[model] || 0.01) / 1000;
+    const costPerToken = (costPer1kTokens[model] ?? 0.01) / 1000;
     return tokens * costPerToken;
   }
 
@@ -666,10 +664,14 @@ export class TokenAccountingManager {
   private async loadPersistedData(): Promise<void> {
     try {
       const exists = await FileUtils.pathExists(this.persistPath);
-      if (!exists) return;
+      if (!exists) {
+        return;
+      }
 
       const data = await ConfigUtils.loadConfigFile<PersistedAccountingData>(this.persistPath);
-      if (!data) return;
+      if (!data) {
+        return;
+      }
 
       // Load entries (only recent ones to avoid memory issues)
       const cutoffDate = TimeUtils.daysAgo(30); // Keep only last 30 days
@@ -734,7 +736,7 @@ export class TokenAccountingManager {
     agentsTracked: number;
     oldestEntry: Date | null;
     newestEntry: Date | null;
-  } {
+    } {
     const entries = Array.from(this.entries.values());
     const activeAlerts = this.getActiveAlerts();
     const uniqueAgents = new Set(entries.map(e => e.agentId));
@@ -746,7 +748,7 @@ export class TokenAccountingManager {
       totalCost: entries.reduce((sum, e) => sum + e.cost, 0),
       agentsTracked: uniqueAgents.size,
       oldestEntry: entries.length > 0 ? new Date(Math.min(...entries.map(e => e.timestamp.getTime()))) : null,
-      newestEntry: entries.length > 0 ? new Date(Math.max(...entries.map(e => e.timestamp.getTime()))) : null,
+      newestEntry: entries.length > 0 ? new Date(Math.max(...entries.map(e => e.timestamp.getTime()))) : null
     };
   }
 
@@ -763,14 +765,14 @@ export class TokenAccountingManager {
 
     // Extract token limits from AgentConfig.limits and create a proper Record<string, unknown>
     const agentLimitsRecord: Record<string, unknown> = {
-      maxTokensPerRequest: agentConfig.limits?.maxTokensPerRequest || 0,
-      maxRequestsPerHour: agentConfig.limits?.maxRequestsPerHour || 0,
-      maxRequestsPerDay: agentConfig.limits?.maxRequestsPerDay || 0,
-      maxCostPerDay: agentConfig.limits?.maxCostPerDay || 0,
-      maxExecutionTime: agentConfig.limits?.maxExecutionTime || 0,
-      maxMemoryUsage: agentConfig.limits?.maxMemoryUsage || 0,
-      maxConcurrentTasks: agentConfig.limits?.maxConcurrentTasks || 0,
-      cooldownPeriod: agentConfig.limits?.cooldownPeriod || 0
+      maxTokensPerRequest: agentConfig.limits?.maxTokensPerRequest ?? 0,
+      maxRequestsPerHour: agentConfig.limits?.maxRequestsPerHour ?? 0,
+      maxRequestsPerDay: agentConfig.limits?.maxRequestsPerDay ?? 0,
+      maxCostPerDay: agentConfig.limits?.maxCostPerDay ?? 0,
+      maxExecutionTime: agentConfig.limits?.maxExecutionTime ?? 0,
+      maxMemoryUsage: agentConfig.limits?.maxMemoryUsage ?? 0,
+      maxConcurrentTasks: agentConfig.limits?.maxConcurrentTasks ?? 0,
+      cooldownPeriod: agentConfig.limits?.cooldownPeriod ?? 0
     };
 
     // Extract additional properties if they exist in configuration
@@ -779,7 +781,7 @@ export class TokenAccountingManager {
     }
 
     const tokenLimits = agentLimitsRecord as Record<string, number>;
-    return tokenLimits.daily || tokenLimits.maxRequestsPerDay || 0;
+    return tokenLimits.daily ?? tokenLimits.maxRequestsPerDay ?? 0;
   }
 
   /**

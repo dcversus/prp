@@ -89,7 +89,7 @@ export class ContextAggregator {
         }
       };
 
-      logger.info('aggregateContexts', `Context aggregation completed`, {
+      logger.info('aggregateContexts', 'Context aggregation completed', {
         sourcePRPs: prpIds.length,
         sections: aggregatedSections.length,
         totalTokens: finalTokens,
@@ -153,7 +153,11 @@ export class ContextAggregator {
 
     // If we have multiple sections after merging, create a combined section
     if (mergedSections.length === 1) {
-      return mergedSections[0]!;
+      const section = mergedSections[0];
+      if (!section) {
+        throw new Error('Merged section is undefined');
+      }
+      return section;
     }
 
     return this.createCombinedSection(mergedSections);
@@ -185,7 +189,7 @@ export class ContextAggregator {
       score += 5;
     }
 
-    if (signal.data && typeof signal.data === 'object') {
+    if (signal.data) {
       const dataString = JSON.stringify(signal.data).toLowerCase();
       if (section.content.toLowerCase().includes(dataString)) {
         score += 3;
@@ -499,7 +503,7 @@ export class ContextAggregator {
     const allPermissions = new Set<string>();
 
     sections.forEach(section => {
-      if (section.permissions) {
+      if (section.permissions?.length) {
         section.permissions.forEach(perm => allPermissions.add(perm));
       }
     });

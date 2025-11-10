@@ -11,7 +11,7 @@ import {
   ParsedPRP,
   SignalEntry
 } from './types';
-import { PRPFile, Signal } from '../shared/types';
+import { PRPFile, Signal, SignalType } from '../shared/types';
 import { createLayerLogger } from '../shared';
 
 const logger = createLayerLogger('orchestrator');
@@ -34,8 +34,8 @@ export class PRPSectionExtractor {
     logger.debug('extractSection', `Extracting ${sectionType} from ${prp.name}`);
 
     try {
-      const parsed = await this.parsePRPStructure(prp.content || '');
-      const sectionContent = parsed.sections.get(sectionType) || '';
+      const parsed = await this.parsePRPStructure(prp.content ?? '');
+      const sectionContent = parsed.sections.get(sectionType) ?? '';
 
       if (!sectionContent.trim()) {
         logger.warn('extractSection', `Section ${sectionType} not found in ${prp.name}`);
@@ -60,7 +60,7 @@ export class PRPSectionExtractor {
         accessCount: 0
       };
 
-      logger.debug('extractSection', `Section extracted successfully`, {
+      logger.debug('extractSection', 'Section extracted successfully', {
         prp: prp.name,
         section: sectionType,
         tokens: section.tokens,
@@ -109,7 +109,7 @@ export class PRPSectionExtractor {
         }
       };
 
-      logger.debug('parsePRPStructure', `PRP structure parsed`, {
+      logger.debug('parsePRPStructure', 'PRP structure parsed', {
         sections: parsed.metadata.sectionCount,
         totalTokens: parsed.metadata.totalTokens
       });
@@ -138,7 +138,7 @@ export class PRPSectionExtractor {
       for (const line of progressLines) {
         const signalMatch = line.match(this.signalPattern);
         if (signalMatch) {
-            const signalType = signalMatch[1];
+          const signalType = signalMatch[1];
           const timestamp = signalMatch[2];
           const comment = signalMatch[3];
           const agent = signalMatch[4];
@@ -150,7 +150,7 @@ export class PRPSectionExtractor {
           // Create a basic signal object
           const signal: Signal = {
             id: this.generateSignalId(),
-            type: signalType as any, // Type assertion for simplicity
+            type: signalType,
             priority: 5, // Default priority
             source: prp.name,
             timestamp: new Date(timestamp),
@@ -168,7 +168,7 @@ export class PRPSectionExtractor {
             signal,
             timestamp: signal.timestamp,
             context: comment.trim(),
-            agent: agent?.trim()
+            agent: agent.trim()
           });
         }
       }
@@ -193,7 +193,7 @@ export class PRPSectionExtractor {
 
     try {
       const relevantSections: EnhancedContextSection[] = [];
-      const parsed = await this.parsePRPStructure(prp.content || '');
+      const parsed = await this.parsePRPStructure(prp.content ?? '');
 
       // Calculate relevance scores for each section
       const sectionScores: Array<{ type: PRPSectionType; score: number }> = [];
@@ -242,7 +242,7 @@ export class PRPSectionExtractor {
 
     try {
       const allSections: EnhancedContextSection[] = [];
-      const parsed = await this.parsePRPStructure(prp.content || '');
+      const parsed = await this.parsePRPStructure(prp.content ?? '');
 
       for (const sectionType of parsed.sections.keys()) {
         try {

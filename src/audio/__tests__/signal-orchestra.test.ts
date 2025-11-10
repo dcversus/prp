@@ -2,7 +2,7 @@
  * ♫ Signal Orchestra Tests
  */
 
-import { SignalOrchestra, MelodyPatterns } from '../signal-orchestra.js';
+import { SignalOrchestra, MelodyPatterns } from '../signal-orchestra';
 
 // Mock AudioContext for testing
 class MockAudioContext {
@@ -43,26 +43,26 @@ class MockAudioContext {
   }
 }
 
-class MockOscillator {
+class MockOscillator implements MockAudioNode {
   type: OscillatorType = 'sine';
   frequency: MockAudioParam = new MockAudioParam();
   started: boolean = false;
   stopped: boolean = false;
   startTime: number = 0;
   stopTime: number = 0;
-  connectedNodes: any[] = [];
+  connectedNodes: MockAudioNode[] = [];
 
   start(time?: number): void {
     this.started = true;
-    this.startTime = time || 0;
+    this.startTime = time ?? 0;
   }
 
   stop(time?: number): void {
     this.stopped = true;
-    this.stopTime = time || 0;
+    this.stopTime = time ?? 0;
   }
 
-  connect(node: any): void {
+  connect(node: MockAudioNode): void {
     this.connectedNodes.push(node);
   }
 
@@ -71,11 +71,11 @@ class MockOscillator {
   }
 }
 
-class MockGainNode {
+class MockGainNode implements MockAudioNode {
   gain: MockAudioParam = new MockAudioParam();
-  connectedNodes: any[] = [];
+  connectedNodes: MockAudioNode[] = [];
 
-  connect(node: any): void {
+  connect(node: MockAudioNode): void {
     this.connectedNodes.push(node);
   }
 
@@ -87,27 +87,27 @@ class MockGainNode {
 class MockAudioParam {
   value: number = 0;
 
-  setValueAtTime(value: number, _time: number): void {
+  setValueAtTime(value: number): void {
     this.value = value;
   }
 
-  linearRampToValueAtTime(value: number, _time: number): void {
+  linearRampToValueAtTime(value: number): void {
     this.value = value;
   }
 
-  exponentialRampToValueAtTime(value: number, _time: number): void {
+  exponentialRampToValueAtTime(value: number): void {
     this.value = value;
   }
 }
 
-class MockDynamicsCompressor {
+class MockDynamicsCompressor implements MockAudioNode {
   threshold: MockAudioParam = new MockAudioParam();
   knee: MockAudioParam = new MockAudioParam();
   ratio: MockAudioParam = new MockAudioParam();
   attack: MockAudioParam = new MockAudioParam();
   release: MockAudioParam = new MockAudioParam();
 
-  connect(_node: any): void {
+  connect(): void {
     // Mock implementation
   }
 
@@ -116,10 +116,10 @@ class MockDynamicsCompressor {
   }
 }
 
-class MockConvolverNode {
+class MockConvolverNode implements MockAudioNode {
   buffer: MockAudioBuffer | null = null;
 
-  connect(_node: any): void {
+  connect(): void {
     // Mock implementation
   }
 
@@ -128,10 +128,10 @@ class MockConvolverNode {
   }
 }
 
-class MockAnalyserNode {
+class MockAnalyserNode implements MockAudioNode {
   fftSize: number = 2048;
 
-  connect(_node: any): void {
+  connect(): void {
     // Mock implementation
   }
 
@@ -141,9 +141,13 @@ class MockAnalyserNode {
 }
 
 class MockAudioBuffer {
-  constructor(public channels: number, public length: number, public sampleRate: number) {}
+  constructor(
+    public channels: number,
+    public length: number,
+    public sampleRate: number
+  ) {}
 
-  getChannelData(_channel: number): Float32Array {
+  getChannelData(): Float32Array {
     return new Float32Array(this.length);
   }
 }
@@ -151,8 +155,14 @@ class MockAudioBuffer {
 type OscillatorType = 'sine' | 'square' | 'sawtooth' | 'triangle' | 'custom';
 type MusicalNote = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'A#' | 'C#' | 'D#' | 'F#' | 'G#';
 
+// Mock interface for audio nodes
+interface MockAudioNode {
+  connect(node: MockAudioNode): void;
+  disconnect(): void;
+}
+
 // Mock window.AudioContext
-global.AudioContext = MockAudioContext as any;
+(global as any).AudioContext = MockAudioContext;
 
 describe('Signal Orchestra', () => {
   let orchestra: SignalOrchestra;
@@ -234,7 +244,7 @@ describe('Signal Orchestra', () => {
       expect(history[0]?.toSignal).toBe('[tp]');
       expect(history[1]?.toSignal).toBe('[dp]');
       expect(history[2]?.toSignal).toBe('[tw]');
-      expect(history.every(h => h.agentType === 'robo-developer')).toBe(true);
+      expect(history.every((h) => h.agentType === 'robo-developer')).toBe(true);
     });
   });
 
@@ -257,7 +267,7 @@ describe('Signal Orchestra', () => {
     });
 
     it('should play predefined melody patterns', async () => {
-      const playPromise = orchestra.playMelody(MelodyPatterns.AGENT_SPAWNING!, 'test-agent');
+      const playPromise = orchestra.playMelody(MelodyPatterns['AGENT_SPAWNING']!, 'test-agent');
 
       await expect(playPromise).resolves.not.toThrow();
     });
@@ -268,7 +278,7 @@ describe('Signal Orchestra', () => {
       expect(orchestra.getMetrics().activeVoices).toBe(1);
 
       // Play melody (should replace the signal voice)
-      await orchestra.playMelody(MelodyPatterns.TASK_SUCCESS!, 'test-agent');
+      await orchestra.playMelody(MelodyPatterns['TASK_SUCCESS']!, 'test-agent');
       // Voice count might vary due to sequenced notes, but should not crash
     });
   });

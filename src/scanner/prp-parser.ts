@@ -323,9 +323,15 @@ export class PRPParser {
     const highSignals = ['Bb', 'OC', 'OD', 'AD'];
     const mediumSignals = ['af', 'ap', 'op', 'oa'];
 
-    if (criticalSignals.includes(signalType)) return 'critical';
-    if (highSignals.includes(signalType)) return 'high';
-    if (mediumSignals.includes(signalType)) return 'medium';
+    if (criticalSignals.includes(signalType)) {
+      return 'critical';
+    }
+    if (highSignals.includes(signalType)) {
+      return 'high';
+    }
+    if (mediumSignals.includes(signalType)) {
+      return 'medium';
+    }
     return 'low';
   }
 

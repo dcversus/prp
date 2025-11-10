@@ -11,24 +11,25 @@
  * 7. Generation Progress
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 
 // Import init components
-import InitShell, { MusicNoteState } from './InitShell.js';
+import InitShell from './InitShell.js';
 import FieldText from './FieldText.js';
 import FieldTextBlock from './FieldTextBlock.js';
 import FieldSelectCarousel from './FieldSelectCarousel.js';
 import FieldSecret from './FieldSecret.js';
 import FieldToggle from './FieldToggle.js';
 import FieldJSON from './FieldJSON.js';
-import FileTreeChecks, { TreeNode } from './FileTreeChecks.js';
-import AgentEditor, { AgentConfig } from './AgentEditor.js';
+// import FileTreeChecks, { TreeNode } from './FileTreeChecks.js'; // Unused import
+import AgentEditor from './AgentEditor.js';
 import GenerationProgress from './GenerationProgress.js';
 
 // Import types and config
-import type { TUIConfig } from '../../types/TUIConfig.js';
+import type { TUIConfig } from '../../../shared/types/TUIConfig.js';
 import { createTUIConfig } from '../../config/TUIConfig.js';
+import type { AgentConfig, TemplateFile, GenerationStep } from './types.js';
 
 // Init state interface
 export interface InitState {
@@ -74,14 +75,6 @@ interface Action {
 }
 
 // Generation progress interfaces
-interface GenerationStep {
-  name: string;
-  status: 'pending' | 'running' | 'completed' | 'error';
-  progress?: number;
-  message?: string;
-  duration?: number;
-}
-
 export interface InitFlowProps {
   config?: TUIConfig;
   onComplete?: (state: InitState) => void;
@@ -89,17 +82,17 @@ export interface InitFlowProps {
   initialState?: Partial<InitState>;
 }
 
-export const InitFlow: React.FC<InitFlowProps> = ({
+export const InitFlow = ({
   config: externalConfig,
   onComplete,
   onCancel,
   initialState = {}
-}) => {
+}: InitFlowProps) => {
   const { exit } = useApp();
   const [config] = useState(() => externalConfig || createTUIConfig());
   const inputHandlerRef = useRef<((input: string, key: any) => void) | null>(null);
   const [actions, setActions] = useState<Action[]>([]);
-  const [musicState, setMusicState] = useState<MusicNoteState>('awaiting');
+  // const [musicState, // setMusicState] = useState<MusicNoteState>('awaiting'); // Unused variable
 
   // Initialize init state
   const [state, setState] = useState<InitState>({
@@ -163,14 +156,14 @@ export const InitFlow: React.FC<InitFlowProps> = ({
   const handleNext = useCallback(() => {
     if (state.step < 6) {
       setState(prev => ({ ...prev, step: (prev.step + 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6 }));
-      setMusicState('awaiting');
+      // setMusicState('awaiting');
     }
   }, [state.step]);
 
   const handleBack = useCallback(() => {
     if (state.step > 0) {
       setState(prev => ({ ...prev, step: (prev.step - 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6 }));
-      setMusicState('awaiting');
+      // setMusicState('awaiting');
     } else {
       onCancel?.();
       exit();
@@ -179,7 +172,7 @@ export const InitFlow: React.FC<InitFlowProps> = ({
 
   // Step completion handlers
   const handleStepComplete = useCallback(() => {
-    setMusicState('confirmed');
+    // setMusicState('confirmed');
     setTimeout(() => {
       handleNext();
     }, 500);
@@ -239,80 +232,88 @@ export const InitFlow: React.FC<InitFlowProps> = ({
   };
 
   // Apply input handler with cleanup on unmount
-  useInput(inputHandlerRef.current, []);
+  useInput(() => {}, { isActive: true }); // Empty input handler for now
 
   // Template files tree
-  const getTemplateFiles = useCallback((): TreeNode[] => {
-    const baseFiles: TreeNode[] = [
+  const getTemplateFiles = useCallback((): TemplateFile[] => {
+    const baseFiles: TemplateFile[] = [
       {
         id: 'src',
+        path: 'src/',
         name: 'src/',
-        type: 'directory',
-        checked: true,
+        description: 'Source code directory',
         required: true,
+        checked: true,
         children: [
-          { id: 'src/index', name: 'index.ts', type: 'file', checked: true, required: true },
-          { id: 'src/app', name: 'app.ts', type: 'file', checked: true, required: true },
-          { id: 'src/cli', name: 'cli.ts', type: 'file', checked: true, required: true }
+          { id: 'src/index', path: 'src/index.ts', name: 'index.ts', description: 'Entry point', required: true, checked: true },
+          { id: 'src/app', path: 'src/app.ts', name: 'app.ts', description: 'Main application', required: true, checked: true },
+          { id: 'src/cli', path: 'src/cli.ts', name: 'cli.ts', description: 'CLI interface', required: true, checked: true }
         ]
       },
       {
         id: 'docs',
+        path: 'docs/',
         name: 'docs/',
-        type: 'directory',
+        description: 'Documentation directory',
+        required: true,
         checked: true,
         children: [
-          { id: 'docs/readme', name: 'README.md', type: 'file', checked: true, required: true },
-          { id: 'docs/api', name: 'api/', type: 'directory', checked: false, children: [] }
+          { id: 'docs/readme', path: 'docs/README.md', name: 'README.md', description: 'Documentation', required: true, checked: true },
+          { id: 'docs/api', path: 'docs/api/', name: 'api/', description: 'API docs', required: false, checked: false, children: [] }
         ]
       },
-      { id: 'package', name: 'package.json', type: 'file', checked: true, required: true },
-      { id: 'gitignore', name: '.gitignore', type: 'file', checked: true, required: true },
-      { id: 'license', name: 'LICENSE', type: 'file', checked: false },
-      { id: 'contributing', name: 'CONTRIBUTING.md', type: 'file', checked: false }
+      { id: 'package', path: 'package.json', name: 'package.json', description: 'Package configuration', required: true, checked: true },
+      { id: 'gitignore', path: '.gitignore', name: '.gitignore', description: 'Git ignore file', required: true, checked: true },
+      { id: 'license', path: 'LICENSE', name: 'LICENSE', description: 'License file', required: false, checked: false },
+      { id: 'contributing', path: 'CONTRIBUTING.md', name: 'CONTRIBUTING.md', description: 'Contributing guidelines', required: false, checked: false }
     ];
 
     if (state.template !== 'none') {
       baseFiles.push({
         id: 'agents',
+        path: 'AGENTS.md',
         name: 'AGENTS.md',
-        type: 'file',
-        checked: true,
+        description: 'Agent configuration and role definitions',
         required: true,
-        description: 'Agent configuration and role definitions'
+        checked: true
       });
 
       baseFiles.push({
         id: 'prprc',
+        path: '.prprc',
         name: '.prprc',
-        type: 'file',
-        checked: true,
+        description: 'Project configuration',
         required: true,
-        description: 'Project configuration'
+        checked: true
       });
 
       baseFiles.push({
         id: 'mcp',
+        path: '.mcp.json',
         name: '.mcp.json',
-        type: 'file',
-        checked: true,
-        description: 'Model Context Protocol configuration'
+        description: 'Model Context Protocol configuration',
+        required: false,
+        checked: true
       });
 
       baseFiles.push({
         id: 'github',
+        path: '.github/',
         name: '.github/',
-        type: 'directory',
+        description: 'GitHub configuration',
+        required: false,
         checked: true,
         children: [
           {
             id: 'github-workflows',
+            path: '.github/workflows/',
             name: 'workflows/',
-            type: 'directory',
+            description: 'GitHub workflows',
+            required: false,
             checked: true,
             children: [
-              { id: 'github-ci', name: 'ci.yml', type: 'file', checked: true },
-              { id: 'github-review', name: 'claude-code-review.yml', type: 'file', checked: true }
+              { id: 'github-ci', path: '.github/workflows/ci.yml', name: 'ci.yml', description: 'CI workflow', required: false, checked: true },
+              { id: 'github-review', path: '.github/workflows/claude-code-review.yml', name: 'claude-code-review.yml', description: 'Code review workflow', required: false, checked: true }
             ]
           }
         ]
@@ -347,7 +348,12 @@ export const InitFlow: React.FC<InitFlowProps> = ({
       instructions_path: 'AGENTS.md',
       sub_agents: false,
       max_parallel: 3,
-      mcp: '.mcp.json'
+      mcp: '.mcp.json',
+      compact_prediction: {
+        percent_threshold: 80,
+        auto_adjust: true,
+        cap: 100
+      }
     };
 
     setState(prev => ({
@@ -384,7 +390,7 @@ export const InitFlow: React.FC<InitFlowProps> = ({
   // Project generation
   const handleGenerate = useCallback(async () => {
     setState(prev => ({ ...prev, step: 6 }));
-    setMusicState('validating');
+    // setMusicState('validating');
 
     // Simulate generation process
     for (let i = 0; i < generationSteps.length; i++) {
@@ -394,6 +400,7 @@ export const InitFlow: React.FC<InitFlowProps> = ({
         const newSteps = [...prev];
         newSteps[i] = {
           ...newSteps[i],
+          name: newSteps[i]?.name || 'Processing...',
           status: 'running' as const,
           progress: 0
         };
@@ -406,9 +413,10 @@ export const InitFlow: React.FC<InitFlowProps> = ({
         setGenerationSteps(prev => {
           const newSteps = [...prev];
           newSteps[i] = {
-            ...newSteps[i],
+            name: newSteps[i]?.name || 'Processing...',
+            status: newSteps[i]?.status || 'running',
             progress: j
-          };
+          } as GenerationStep;
           return newSteps;
         });
       }
@@ -417,6 +425,7 @@ export const InitFlow: React.FC<InitFlowProps> = ({
         const newSteps = [...prev];
         newSteps[i] = {
           ...newSteps[i],
+          name: newSteps[i]?.name || 'Processing...',
           status: 'completed' as const,
           progress: 100,
           duration: 800 + Math.random() * 400
@@ -426,11 +435,11 @@ export const InitFlow: React.FC<InitFlowProps> = ({
 
       addAction({
         type: 'success',
-        message: `Completed: ${generationSteps[i].name}`
+        message: `Completed: ${generationSteps[i]?.name || 'Unknown step'}`
       });
     }
 
-    setMusicState('confirmed');
+    // // setMusicState('confirmed'); // Music state disabled
     setTimeout(() => {
       onComplete?.(state);
       exit();
@@ -524,14 +533,13 @@ export const InitFlow: React.FC<InitFlowProps> = ({
   };
 
   // Step components (implemented as separate components for clarity)
-  const IntroStep: React.FC<{ onNext: () => void }> = ({ onNext }) => (
+  const IntroStep = ({ onNext }: { onNext: () => void }) => (
     <InitShell
       title="@dcversus/prp"
       stepIndex={0}
       totalSteps={6}
+      icon="♫"
       footerKeys={['Enter', 'Esc']}
-      config={config}
-      mode="day"
     >
       <Box flexDirection="column" flexGrow={1} justifyContent="center" alignItems="center">
         <Box marginBottom={3}>
@@ -563,14 +571,13 @@ export const InitFlow: React.FC<InitFlowProps> = ({
     </InitShell>
   );
 
-  const ProjectStep: React.FC<any> = ({ state, setState, onBack, onNext, config, addAction }) => (
+  const ProjectStep = ({ state, setState, onBack, config }: any) => (
     <InitShell
       title="Project"
       stepIndex={1}
       totalSteps={6}
+      icon="♫"
       footerKeys={['Enter', 'Esc', '↑/↓ move', '␣ toggle multiline']}
-      config={config}
-      mode="day"
       onBack={onBack}
     >
       <Box flexDirection="column" flexGrow={1}>
@@ -585,7 +592,6 @@ export const InitFlow: React.FC<InitFlowProps> = ({
           notice="taken from package.json"
           config={config}
           autoFocus={true}
-          onSubmit={onNext}
         />
 
         <FieldTextBlock
@@ -603,12 +609,14 @@ export const InitFlow: React.FC<InitFlowProps> = ({
 
         <Box flexDirection="column" marginTop={1}>
           <Box flexDirection="row" alignItems="center" marginBottom={1}>
-            <Text color={config.colors.muted}>Folder: </Text>
-            <Text color={config.colors.accent_orange} marginLeft={1}>
-              {process.cwd()}/{state.projectPath || 'project-name'}
-            </Text>
+            <Text color={config.colors.muted}>Folder:</Text>
+            <Box marginLeft={1}>
+              <Text color={config.colors.accent_orange}>
+                {process.cwd()}/{state.projectPath || 'project-name'}
+              </Text>
+            </Box>
           </Box>
-          <Text color={config.colors.muted} dimColor italic>
+          <Text color={config.colors.muted}>
             Updates live as you edit Project name. Default: ./project-name
           </Text>
         </Box>
@@ -616,14 +624,13 @@ export const InitFlow: React.FC<InitFlowProps> = ({
     </InitShell>
   );
 
-  const ConnectionsStep: React.FC<any> = ({ state, setState, onBack, onNext, config, addAction }) => (
+  const ConnectionsStep = ({ state, setState, onBack, config }: any) => (
     <InitShell
       title="Connections"
       stepIndex={2}
       totalSteps={6}
+      icon="♬"
       footerKeys={['Enter', 'Esc', '←/→ switch provider', '⌥v paste secret', 'D see raw JSON']}
-      config={config}
-      mode="day"
       onBack={onBack}
     >
       <FieldSelectCarousel
@@ -631,7 +638,7 @@ export const InitFlow: React.FC<InitFlowProps> = ({
         items={['OpenAI', 'Anthropic', 'Custom']}
         selectedIndex={['OpenAI', 'Anthropic', 'Custom'].indexOf(
           state.provider === 'openai' ? 'OpenAI' :
-          state.provider === 'anthropic' ? 'Anthropic' : 'Custom'
+            state.provider === 'anthropic' ? 'Anthropic' : 'Custom'
         )}
         onChange={(index) => {
           const providers = ['openai', 'anthropic', 'custom'];
@@ -654,8 +661,6 @@ export const InitFlow: React.FC<InitFlowProps> = ({
           value={state.apiKey || ''}
           onChange={(value) => setState({ ...state, apiKey: value })}
           placeholder="sk-********************************"
-          config={config}
-          showToggle={true}
         />
       )}
 
@@ -697,8 +702,6 @@ export const InitFlow: React.FC<InitFlowProps> = ({
               customProvider: { ...state.customProvider, apiToken: value }
             })}
             placeholder="***************"
-            config={config}
-            showToggle={true}
           />
 
           <FieldJSON
@@ -722,14 +725,13 @@ export const InitFlow: React.FC<InitFlowProps> = ({
     </InitShell>
   );
 
-  const AgentsStep: React.FC<any> = ({ state, setState, onBack, onNext, config, onAddAgent, onUpdateAgent, onRemoveAgent, addAction }) => (
+  const AgentsStep = ({ state, onBack, config, onUpdateAgent, onRemoveAgent }: any) => (
     <InitShell
       title="Agents"
       stepIndex={3}
       totalSteps={6}
+      icon="⚠"
       footerKeys={['Enter', 'Esc', '←/→ switch type', 'A add agent', 'R remove agent']}
-      config={config}
-      mode="day"
       onBack={onBack}
     >
       <FieldSelectCarousel
@@ -755,7 +757,7 @@ export const InitFlow: React.FC<InitFlowProps> = ({
       />
 
       {/* Render existing agents */}
-      {state.agents.map((agent, index) => (
+      {state.agents.map((agent: AgentConfig, index: number) => (
         <AgentEditor
           key={index}
           agent={agent}
@@ -769,14 +771,13 @@ export const InitFlow: React.FC<InitFlowProps> = ({
     </InitShell>
   );
 
-  const IntegrationsStep: React.FC<any> = ({ state, setState, onBack, onNext, config, addAction }) => (
+  const IntegrationsStep = ({ onBack, config }: any) => (
     <InitShell
       title="Connections (repos/registry)"
       stepIndex={4}
       totalSteps={6}
+      icon="♪"
       footerKeys={['Enter', 'Esc', '←/→ switch']}
-      config={config}
-      mode="day"
       onBack={onBack}
     >
       <FieldSelectCarousel
@@ -794,23 +795,24 @@ export const InitFlow: React.FC<InitFlowProps> = ({
           Will create workflows and templates.
         </Text>
 
-        <Text color={config.colors.muted} dimColor marginTop={1}>
-          If npm:
-          Auth          [OAuth]   Token
-          Registry      https://registry.npmjs.org
-        </Text>
+        <Box marginTop={1}>
+          <Text color={config.colors.muted}>
+            If npm:
+            Auth          [OAuth]   Token
+            Registry      https://registry.npmjs.org
+          </Text>
+        </Box>
       </Box>
     </InitShell>
   );
 
-  const TemplateStep: React.FC<any> = ({ state, setState, onBack, onGenerate, config, getTemplateFiles, onFileToggle, addAction }) => (
+  const TemplateStep = ({ state, setState, onBack, config }: any) => (
     <InitShell
       title="Template"
       stepIndex={5}
       totalSteps={6}
+      icon="♫"
       footerKeys={['Enter', 'Esc', '↑/↓ move', '→ open subtree', '␣ toggle']}
-      config={config}
-      mode="day"
       onBack={onBack}
     >
       <FieldSelectCarousel
@@ -834,9 +836,11 @@ export const InitFlow: React.FC<InitFlowProps> = ({
 
       {/* Default files preview */}
       <Box flexDirection="column" marginTop={1} borderStyle="single" borderColor={config.colors.gray} padding={1}>
-        <Text color={config.colors.accent_orange} bold marginBottom={1}>
-          Default template files will be created:
-        </Text>
+        <Box marginBottom={1}>
+          <Text color={config.colors.accent_orange} bold>
+            Default template files will be created:
+          </Text>
+        </Box>
 
         <Text color={config.colors.ok}>✓</Text>
         <Text color={config.colors.base_fg}> AGENTS.md</Text>
@@ -850,9 +854,11 @@ export const InitFlow: React.FC<InitFlowProps> = ({
         <Text color={config.colors.ok}>✓</Text>
         <Text color={config.colors.base_fg}> CLAUDE.md (symlink to AGENTS.md)</Text>
 
-        <Text color={config.colors.muted} dimColor marginTop={1}>
-          AGENTS.md and .prprc are mandatory.
-        </Text>
+        <Box marginTop={1}>
+          <Text color={config.colors.muted}>
+            AGENTS.md and .prprc are mandatory.
+          </Text>
+        </Box>
       </Box>
 
       {/* Generate prompt quote option */}
@@ -865,20 +871,18 @@ export const InitFlow: React.FC<InitFlowProps> = ({
     </InitShell>
   );
 
-  const GenerationStep: React.FC<any> = ({ state, config, steps, events }) => (
+  const GenerationStep = ({ config, steps, events }: any) => (
     <InitShell
-      title={steps.every(s => s.status === 'completed') ? "Generation Complete" : "Generating..."}
+      title={steps.every((s: GenerationStep) => s.status === 'completed') ? 'Generation Complete' : 'Generating...'}
       stepIndex={6}
       totalSteps={6}
+      icon={steps.every((s: GenerationStep) => s.status === 'completed') ? '♫' : '⚠'}
       footerKeys={['Enter', 'Esc']}
-      config={config}
-      mode="night"
     >
       <GenerationProgress
-        steps={steps}
+        isActive={true}
         events={events}
         config={config}
-        showDetails={true}
       />
     </InitShell>
   );

@@ -6,8 +6,6 @@
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Text } from 'ink';
-import { SignalBarProps, SignalTag, SignalState, TUIConfig } from '../types/TUIConfig.js';
 import { getSignalColor } from '../config/TUIConfig.js';
 import { useAnimationEngine, AnimationType } from '../animation/AnimationEngine.js';
 
@@ -30,8 +28,8 @@ function AnimatedSignal({ signal, index, config, animate, isActive }: AnimatedSi
 
   // Generate unique animation ID for this signal
   const animationId = useMemo(() =>
-    `signal-${signal.code}-${index}-${Math.random().toString(36).substr(2, 9)}`,
-    [signal.code, index]
+    `signal-${signal.code}-${index}-${Math.random().toString(36).substring(2, 11)}`,
+  [signal.code, index]
   );
 
   // Determine animation type based on signal code and state
@@ -53,7 +51,9 @@ function AnimatedSignal({ signal, index, config, animate, isActive }: AnimatedSi
 
   // Register animation with the engine
   useEffect(() => {
-    if (!isMountedRef.current) return;
+    if (!isMountedRef.current) {
+      return;
+    }
 
     animationIdRef.current = animationId;
 
@@ -105,12 +105,12 @@ function AnimatedSignal({ signal, index, config, animate, isActive }: AnimatedSi
   // Get colors for different parts of the signal
   const letterColor = useMemo(() =>
     getSignalColor(signal.code, signal.state, config.colors),
-    [signal.code, signal.state, config.colors]
+  [signal.code, signal.state, config.colors]
   );
 
   const braceColor = useMemo(() =>
     signal.state === 'active' ? config.colors.signal_braces : config.colors.signal_placeholder,
-    [signal.state, config.colors]
+  [signal.state, config.colors]
   );
 
   // Extract content (remove brackets)
@@ -162,11 +162,13 @@ export function SignalBar({
   // Determine the active/latest signal for highlighting
   const latestSignalIndex = useMemo(() =>
     signals.findIndex(signal => signal.latest),
-    [signals]
+  [signals]
   );
 
   const activeSignalIndex = useMemo(() => {
-    if (latestSignalIndex >= 0) return latestSignalIndex;
+    if (latestSignalIndex >= 0) {
+      return latestSignalIndex;
+    }
 
     // Find first active signal
     const activeIndex = signals.findIndex(signal => signal.state === 'active');

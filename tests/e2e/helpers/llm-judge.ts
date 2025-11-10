@@ -313,11 +313,12 @@ export class LLMJudge {
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
+      if (!chunk) continue;
       console.log(`🔍 Evaluating chunk ${i + 1}/${chunks.length} (${chunk.length} chars)`);
 
-      const chunkInput = {
+      const chunkInput: JudgeInput = {
         ...input,
-        context: `${input.context} (Chunk ${i + 1}/${chunks.length})`,
+        context: `${input.context || ''} (Chunk ${i + 1}/${chunks.length})`,
         output: chunk
       };
 
@@ -619,7 +620,7 @@ Provide only the JSON response, no additional text.`;
   /**
    * Parse AI provider's response into structured result
    */
-  private parseAIResponse(response: any, input: JudgeInput): JudgeResult {
+  private parseAIResponse(response: any, _input: JudgeInput): JudgeResult {
     try {
       let responseText: string;
 
@@ -731,7 +732,7 @@ Provide only the JSON response, no additional text.`;
     return content;
   }
 
-  private aggregateChunkResults(chunkResults: JudgeResult[], originalInput: JudgeInput): JudgeResult {
+  private aggregateChunkResults(chunkResults: JudgeResult[], _originalInput: JudgeInput): JudgeResult {
     if (chunkResults.length === 0) {
       throw new Error('No valid chunk results to aggregate');
     }
@@ -840,7 +841,9 @@ Provide only the JSON response, no additional text.`;
     // Clean up old entries
     if (this.evaluationCache.size > 50) {
       const oldestKey = this.evaluationCache.keys().next().value;
-      this.evaluationCache.delete(oldestKey);
+      if (oldestKey) {
+        this.evaluationCache.delete(oldestKey);
+      }
     }
   }
 }

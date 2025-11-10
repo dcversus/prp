@@ -14,7 +14,7 @@ import {
   ProviderType,
   agentConfigManager
 } from './agent-config';
-import { AgentValidator } from './agent-validator';
+import { ConfigValidator } from './config-validator';
 
 const logger = createLayerLogger('config');
 
@@ -148,7 +148,7 @@ export interface AgentRegistry {
  */
 export class AgentDiscovery extends EventEmitter {
   private registry: AgentRegistry;
-  private validator: AgentValidator;
+  private validator: ConfigValidator;
   private discoveryInterval?: NodeJS.Timeout;
   private healthCheckInterval?: NodeJS.Timeout;
   private configWatcher?: NodeJS.Timeout;
@@ -167,18 +167,20 @@ export class AgentDiscovery extends EventEmitter {
       },
       lastUpdated: new Date()
     };
-    this.validator = new AgentValidator();
+    this.validator = new ConfigValidator();
     this.initializeIndexes();
   }
 
   /**
    * Start the discovery system
    */
-  async start(options: {
-    discoveryInterval?: number; // milliseconds
-    healthCheckInterval?: number; // milliseconds
-    configWatchInterval?: number; // milliseconds
-  } = {}): Promise<void> {
+  async start(
+    options: {
+      discoveryInterval?: number; // milliseconds
+      healthCheckInterval?: number; // milliseconds
+      configWatchInterval?: number; // milliseconds
+    } = {}
+  ): Promise<void> {
     logger.info('AgentDiscovery', 'Starting agent discovery system');
 
     const {
@@ -192,26 +194,28 @@ export class AgentDiscovery extends EventEmitter {
 
     // Start periodic discovery
     this.discoveryInterval = setInterval(() => {
-      this.discoverAgents().catch(error => {
+      this.discoverAgents().catch((error) => {
         logger.error('AgentDiscovery', 'Periodic discovery failed', error);
       });
     }, discoveryInterval);
 
     // Start health checks
     this.healthCheckInterval = setInterval(() => {
-      this.performHealthChecks().catch(error => {
+      this.performHealthChecks().catch((error) => {
         logger.error('AgentDiscovery', 'Health check failed', error);
       });
     }, healthCheckInterval);
 
     // Start config watching
     this.configWatcher = setInterval(() => {
-      this.checkConfigChanges().catch(error => {
+      this.checkConfigChanges().catch((error) => {
         logger.error('AgentDiscovery', 'Config watch failed', error);
       });
     }, configWatchInterval);
 
-    this.emit('discovery-started', { intervals: { discoveryInterval, healthCheckInterval, configWatchInterval } });
+    this.emit('discovery-started', {
+      intervals: { discoveryInterval, healthCheckInterval, configWatchInterval }
+    });
   }
 
   /**
@@ -283,12 +287,16 @@ export class AgentDiscovery extends EventEmitter {
       });
 
       return Array.from(this.registry.agents.values());
-
     } catch (error) {
       const duration = Date.now() - startTime;
-      logger.error('AgentDiscovery', 'Discovery failed', error instanceof Error ? error : new Error(String(error)), {
-        duration
-      });
+      logger.error(
+        'AgentDiscovery',
+        'Discovery failed',
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          duration
+        }
+      );
       this.emit('discovery-failed', { error, duration });
       throw error;
     }
@@ -306,45 +314,45 @@ export class AgentDiscovery extends EventEmitter {
 
     // Apply filters
     if (filter.type && filter.type.length > 0) {
-      agents = agents.filter(agent => filter.type!.includes(agent.config.type));
+      agents = agents.filter((agent) => filter.type!.includes(agent.config.type));
     }
 
     if (filter.role && filter.role.length > 0) {
-      agents = agents.filter(agent => filter.role!.includes(agent.config.role));
+      agents = agents.filter((agent) => filter.role!.includes(agent.config.role));
     }
 
     if (filter.provider && filter.provider.length > 0) {
-      agents = agents.filter(agent => filter.provider!.includes(agent.config.provider));
+      agents = agents.filter((agent) => filter.provider!.includes(agent.config.provider));
     }
 
     if (filter.status && filter.status.length > 0) {
-      agents = agents.filter(agent => filter.status!.includes(agent.status.state));
+      agents = agents.filter((agent) => filter.status!.includes(agent.status.state));
     }
 
     if (filter.health && filter.health.length > 0) {
-      agents = agents.filter(agent => filter.health!.includes(agent.health.overall));
+      agents = agents.filter((agent) => filter.health!.includes(agent.health.overall));
     }
 
     if (filter.tags && filter.tags.length > 0) {
-      agents = agents.filter(agent =>
-        filter.tags!.some(tag => agent.config.metadata.tags.includes(tag))
+      agents = agents.filter((agent) =>
+        filter.tags!.some((tag) => agent.config.metadata.tags.includes(tag))
       );
     }
 
     if (filter.capabilities && filter.capabilities.length > 0) {
-      agents = agents.filter(agent =>
-        filter.capabilities!.some(cap =>
+      agents = agents.filter((agent) =>
+        filter.capabilities!.some((cap) =>
           agent.runtimeCapabilities.supportedFeatures.includes(cap)
         )
       );
     }
 
     if (filter.minScore !== undefined) {
-      agents = agents.filter(agent => agent.health.score >= filter.minScore!);
+      agents = agents.filter((agent) => agent.health.score >= filter.minScore!);
     }
 
     if (filter.onlineOnly) {
-      agents = agents.filter(agent => agent.status.state === 'online');
+      agents = agents.filter((agent) => agent.status.state === 'online');
     }
 
     return agents;
@@ -362,8 +370,12 @@ export class AgentDiscovery extends EventEmitter {
    */
   getAgentsByType(type: AgentType): DiscoveredAgent[] {
     const agentIds = this.registry.indexes.byType.get(type);
-    if (!agentIds) return [];
-    return Array.from(agentIds).map(id => this.registry.agents.get(id)!).filter(Boolean);
+    if (!agentIds) {
+      return [];
+    }
+    return Array.from(agentIds)
+      .map((id) => this.registry.agents.get(id))
+      .filter((agent): agent is DiscoveredAgent => agent !== undefined);
   }
 
   /**
@@ -371,8 +383,12 @@ export class AgentDiscovery extends EventEmitter {
    */
   getAgentsByRole(role: AgentRole): DiscoveredAgent[] {
     const agentIds = this.registry.indexes.byRole.get(role);
-    if (!agentIds) return [];
-    return Array.from(agentIds).map(id => this.registry.agents.get(id)!).filter(Boolean);
+    if (!agentIds) {
+      return [];
+    }
+    return Array.from(agentIds)
+      .map((id) => this.registry.agents.get(id))
+      .filter((agent): agent is DiscoveredAgent => agent !== undefined);
   }
 
   /**
@@ -380,8 +396,12 @@ export class AgentDiscovery extends EventEmitter {
    */
   getAgentsByCapability(capability: string): DiscoveredAgent[] {
     const agentIds = this.registry.indexes.byCapability.get(capability);
-    if (!agentIds) return [];
-    return Array.from(agentIds).map(id => this.registry.agents.get(id)!).filter(Boolean);
+    if (!agentIds) {
+      return [];
+    }
+    return Array.from(agentIds)
+      .map((id) => this.registry.agents.get(id))
+      .filter((agent): agent is DiscoveredAgent => agent !== undefined);
   }
 
   /**
@@ -403,32 +423,28 @@ export class AgentDiscovery extends EventEmitter {
     } = requirements;
 
     // Filter agents by capabilities
-    let candidates = this.getAgents().filter(agent =>
-      requiredCapabilities.every(cap =>
-        agent.runtimeCapabilities.supportedFeatures.includes(cap)
-      )
+    let candidates = this.getAgents().filter((agent) =>
+      requiredCapabilities.every((cap) => agent.runtimeCapabilities.supportedFeatures.includes(cap))
     );
 
     // Filter by role if specified
     if (preferredRole) {
-      candidates = candidates.filter(agent => agent.config.role === preferredRole);
+      candidates = candidates.filter((agent) => agent.config.role === preferredRole);
     }
 
     // Filter by health
-    candidates = candidates.filter(agent => agent.health.score >= minHealth);
+    candidates = candidates.filter((agent) => agent.health.score >= minHealth);
 
     // Filter by cost if specified
     if (maxCost !== undefined) {
-      candidates = candidates.filter(agent =>
-        agent.config.limits.maxCostPerDay <= maxCost
-      );
+      candidates = candidates.filter((agent) => agent.config.limits.maxCostPerDay <= maxCost);
     }
 
     // Exclude busy agents if specified
     if (excludeBusy) {
-      candidates = candidates.filter(agent =>
-        agent.status.state !== 'busy' &&
-        agent.status.currentTasks < agent.status.maxTasks
+      candidates = candidates.filter(
+        (agent) =>
+          agent.status.state !== 'busy' && agent.status.currentTasks < agent.status.maxTasks
       );
     }
 
@@ -437,7 +453,7 @@ export class AgentDiscovery extends EventEmitter {
     }
 
     // Score candidates
-    const scoredCandidates = candidates.map(agent => ({
+    const scoredCandidates = candidates.map((agent) => ({
       agent,
       score: this.calculateAgentScore(agent, requirements)
     }));
@@ -445,7 +461,9 @@ export class AgentDiscovery extends EventEmitter {
     // Sort by score (descending)
     scoredCandidates.sort((a, b) => b.score - a.score);
 
-    return scoredCandidates.length > 0 && scoredCandidates[0]?.agent ? scoredCandidates[0].agent : null;
+    return scoredCandidates.length > 0 && scoredCandidates[0]?.agent
+      ? scoredCandidates[0].agent
+      : null;
   }
 
   /**
@@ -598,19 +616,18 @@ export class AgentDiscovery extends EventEmitter {
     byProvider: Record<ProviderType, number>;
     averageHealthScore: number;
     lastUpdated: Date;
-  } {
+    } {
     const agents = Array.from(this.registry.agents.values());
 
     const stats = {
       totalAgents: agents.length,
-      onlineAgents: agents.filter(a => a.status.state === 'online').length,
-      healthyAgents: agents.filter(a => a.health.overall === 'healthy').length,
+      onlineAgents: agents.filter((a) => a.status.state === 'online').length,
+      healthyAgents: agents.filter((a) => a.health.overall === 'healthy').length,
       byType: {} as Record<AgentType, number>,
       byRole: {} as Record<AgentRole, number>,
       byProvider: {} as Record<ProviderType, number>,
-      averageHealthScore: agents.length > 0
-        ? agents.reduce((sum, a) => sum + a.health.score, 0) / agents.length
-        : 0,
+      averageHealthScore:
+        agents.length > 0 ? agents.reduce((sum, a) => sum + a.health.score, 0) / agents.length : 0,
       lastUpdated: this.registry.lastUpdated
     };
 
@@ -707,9 +724,12 @@ export class AgentDiscovery extends EventEmitter {
       }
 
       logger.debug('AgentDiscovery', `Discovered ${agents.length} agents from config`);
-
     } catch (error) {
-      logger.error('AgentDiscovery', 'Failed to discover from config', error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'AgentDiscovery',
+        'Failed to discover from config',
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
 
     return agents;
@@ -737,9 +757,12 @@ export class AgentDiscovery extends EventEmitter {
         // Query Kubernetes API for agent pods
         logger.debug('AgentDiscovery', 'Discovering agents from Kubernetes');
       }
-
     } catch (error) {
-      logger.error('AgentDiscovery', 'Failed to discover from network', error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'AgentDiscovery',
+        'Failed to discover from network',
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
 
     return agents;
@@ -755,11 +778,7 @@ export class AgentDiscovery extends EventEmitter {
     const agents: DiscoveredAgent[] = [];
 
     try {
-      const pluginDirs = [
-        './plugins',
-        './node_modules/@dcversus/agents',
-        './agents'
-      ];
+      const pluginDirs = ['./plugins', './node_modules/@dcversus/agents', './agents'];
 
       for (const dir of pluginDirs) {
         if (await FileUtils.pathExists(dir)) {
@@ -767,21 +786,27 @@ export class AgentDiscovery extends EventEmitter {
           // Scan for plugin manifests
         }
       }
-
     } catch (error) {
-      logger.error('AgentDiscovery', 'Failed to discover from plugins', error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'AgentDiscovery',
+        'Failed to discover from plugins',
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
 
     return agents;
   }
 
-  private async processDiscoveredAgent(agent: DiscoveredAgent, options: DiscoveryOptions): Promise<void> {
+  private async processDiscoveredAgent(
+    agent: DiscoveredAgent,
+    options: DiscoveryOptions
+  ): Promise<void> {
     // Validate configuration if requested
     if (options.validateConfigs) {
       const validation = await this.validator.validateAgent(agent.config);
       if (!validation.valid) {
         logger.warn('AgentDiscovery', `Agent ${agent.config.id} failed validation`, {
-          errors: validation.errors.map(e => e.message)
+          errors: validation.errors.map((e) => e.message)
         });
       }
     }
@@ -849,7 +874,7 @@ export class AgentDiscovery extends EventEmitter {
       };
 
       // Test tool availability
-      const availableTools = agent.config.tools.filter(tool => tool.enabled);
+      const availableTools = agent.config.tools.filter((tool) => tool.enabled);
       toolCapability.supported = availableTools.length > 0;
       toolCapability.confidence = availableTools.length / agent.config.tools.length;
 
@@ -896,7 +921,7 @@ export class AgentDiscovery extends EventEmitter {
     checks.push(configCheck);
 
     // Authentication check
-    if (agent.config.authentication?.credentials?.apiKey) {
+    if (agent.config.authentication.credentials?.apiKey) {
       const authCheck: HealthCheck = {
         name: 'authentication',
         status: 'pass',
@@ -937,7 +962,9 @@ export class AgentDiscovery extends EventEmitter {
   }
 
   private calculateHealthScore(checks: HealthCheck[]): number {
-    if (checks.length === 0) return 0;
+    if (checks.length === 0) {
+      return 0;
+    }
 
     let score = 100;
     for (const check of checks) {
@@ -952,15 +979,19 @@ export class AgentDiscovery extends EventEmitter {
   }
 
   private getOverallHealthStatus(score: number): AgentHealth['overall'] {
-    if (score >= 90) return 'healthy';
-    if (score >= 70) return 'degraded';
+    if (score >= 90) {
+      return 'healthy';
+    }
+    if (score >= 70) {
+      return 'degraded';
+    }
     return 'unhealthy';
   }
 
   private extractHealthIssues(checks: HealthCheck[]): HealthIssue[] {
     return checks
-      .filter(check => check.status !== 'pass')
-      .map(check => ({
+      .filter((check) => check.status !== 'pass')
+      .map((check) => ({
         severity: check.status === 'fail' ? 'high' : 'medium',
         category: 'connectivity' as const,
         message: check.message,
@@ -971,30 +1002,47 @@ export class AgentDiscovery extends EventEmitter {
   private extractSupportedFeatures(config: AgentConfig): string[] {
     const features: string[] = [];
 
-    if (config.capabilities.supportsTools) features.push('tools');
-    if (config.capabilities.supportsImages) features.push('images');
-    if (config.capabilities.supportsSubAgents) features.push('sub-agents');
-    if (config.capabilities.supportsParallel) features.push('parallel');
-    if (config.capabilities.supportsCodeExecution) features.push('code-execution');
-    if (config.capabilities.canAccessInternet) features.push('internet-access');
-    if (config.capabilities.canAccessFileSystem) features.push('file-system');
+    if (config.capabilities.supportsTools) {
+      features.push('tools');
+    }
+    if (config.capabilities.supportsImages) {
+      features.push('images');
+    }
+    if (config.capabilities.supportsSubAgents) {
+      features.push('sub-agents');
+    }
+    if (config.capabilities.supportsParallel) {
+      features.push('parallel');
+    }
+    if (config.capabilities.supportsCodeExecution) {
+      features.push('code-execution');
+    }
+    if (config.capabilities.canAccessInternet) {
+      features.push('internet-access');
+    }
+    if (config.capabilities.canAccessFileSystem) {
+      features.push('file-system');
+    }
 
     return features;
   }
 
-  private calculateAgentScore(agent: DiscoveredAgent, requirements: {
-    requiredCapabilities: string[];
-    preferredRole?: AgentRole;
-    maxCost?: number;
-    minHealth?: number;
-  }): number {
+  private calculateAgentScore(
+    agent: DiscoveredAgent,
+    requirements: {
+      requiredCapabilities: string[];
+      preferredRole?: AgentRole;
+      maxCost?: number;
+      minHealth?: number;
+    }
+  ): number {
     let score = 0;
 
     // Health score (40% weight)
     score += (agent.health.score / 100) * 40;
 
     // Capability matching (30% weight)
-    const matchingCapabilities = requirements.requiredCapabilities.filter(cap =>
+    const matchingCapabilities = requirements.requiredCapabilities.filter((cap) =>
       agent.runtimeCapabilities.supportedFeatures.includes(cap)
     );
     const capabilityScore = matchingCapabilities.length / requirements.requiredCapabilities.length;
@@ -1026,7 +1074,7 @@ export class AgentDiscovery extends EventEmitter {
     }
 
     // Remove agents that are no longer discovered
-    const discoveredIds = new Set(agents.map(a => a.config.id));
+    const discoveredIds = new Set(agents.map((a) => a.config.id));
     for (const [agentId, agent] of this.registry.agents) {
       if (!discoveredIds.has(agentId)) {
         this.registry.agents.delete(agentId);
@@ -1039,16 +1087,37 @@ export class AgentDiscovery extends EventEmitter {
 
   private initializeIndexes(): void {
     const types: AgentType[] = [
-      'claude-code-anthropic', 'claude-code-glm', 'codex', 'gemini',
-      'amp', 'aider', 'github-copilot', 'custom'
+      'claude-code-anthropic',
+      'claude-code-glm',
+      'codex',
+      'gemini',
+      'amp',
+      'aider',
+      'github-copilot',
+      'custom'
     ];
     const roles: AgentRole[] = [
-      'robo-developer', 'robo-system-analyst', 'robo-aqa', 'robo-security-expert',
-      'robo-performance-engineer', 'robo-ui-designer', 'robo-devops', 'robo-documenter',
-      'orchestrator-agent', 'task-agent', 'specialist-agent', 'conductor'
+      'robo-developer',
+      'robo-system-analyst',
+      'robo-aqa',
+      'robo-security-expert',
+      'robo-performance-engineer',
+      'robo-ui-designer',
+      'robo-devops',
+      'robo-documenter',
+      'orchestrator-agent',
+      'task-agent',
+      'specialist-agent',
+      'conductor'
     ];
     const providers: ProviderType[] = [
-      'anthropic', 'openai', 'google', 'groq', 'ollama', 'github', 'custom'
+      'anthropic',
+      'openai',
+      'google',
+      'groq',
+      'ollama',
+      'github',
+      'custom'
     ];
     const statuses: AgentStatus['state'][] = ['online', 'offline', 'busy', 'error', 'maintenance'];
     const healthStates: AgentHealth['overall'][] = ['healthy', 'degraded', 'unhealthy'];
@@ -1111,7 +1180,11 @@ export class AgentDiscovery extends EventEmitter {
         }
       }
     } catch (error) {
-      logger.error('AgentDiscovery', 'Failed to check config changes', error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'AgentDiscovery',
+        'Failed to check config changes',
+        error instanceof Error ? error : new Error(String(error))
+      );
     }
   }
 }

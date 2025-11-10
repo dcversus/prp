@@ -21,6 +21,10 @@ prp-project/
 .env.local
 .env.*.local
 
+# PRP Secrets - never commit!
+.prpsecrets
+*/.prpsecrets
+
 # IDE
 .vscode/
 .idea/

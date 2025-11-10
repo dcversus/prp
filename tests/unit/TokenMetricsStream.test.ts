@@ -2,8 +2,8 @@
  * Unit tests for TokenMetricsStream
  */
 
-import { TokenMetricsStream, TokenStreamSubscriber } from '../../src/monitoring/TokenMetricsStream';
-import { TokenDataPoint } from '../../src/types/token-metrics';
+import { TokenMetricsStream, TokenStreamSubscriber } from '../../src/shared/monitoring/TokenMetricsStream.js';
+import { TokenDataPoint } from '../../src/shared/types/token-metrics.js';
 
 describe('TokenMetricsStream', () => {
   let stream: TokenMetricsStream;
@@ -101,11 +101,11 @@ describe('TokenMetricsStream', () => {
 
     it('should throw error for invalid callback', () => {
       expect(() => {
-        stream.subscribe('test-agent-1', null as unknown);
+        stream.subscribe('test-agent-1', null as any);
       }).toThrow('Callback must be a function');
 
       expect(() => {
-        stream.subscribe('test-agent-1', 'invalid' as unknown);
+        stream.subscribe('test-agent-1', 'invalid' as any);
       }).toThrow('Callback must be a function');
     });
 
@@ -155,11 +155,11 @@ describe('TokenMetricsStream', () => {
 
     it('should validate data points', () => {
       expect(() => {
-        stream.publish(null as unknown);
+        stream.publish(null as any);
       }).toThrow('Data point cannot be null or undefined');
 
       expect(() => {
-        stream.publish({} as unknown);
+        stream.publish({} as any);
       }).toThrow('Invalid agentId: must be a non-empty string');
 
       expect(() => {
@@ -172,7 +172,7 @@ describe('TokenMetricsStream', () => {
       expect(() => {
         stream.publish({
           ...testData,
-          timestamp: 'invalid' as unknown
+          timestamp: 'invalid' as any
         });
       }).toThrow('Invalid timestamp: must be a Date object');
 
@@ -279,8 +279,8 @@ describe('TokenMetricsStream', () => {
 
       const agent1Data = stream.getLatestData('agent-1');
       expect(agent1Data).toHaveLength(2);
-      expect(agent1Data[0].tokensUsed).toBe(200); // Latest first
-      expect(agent1Data[1].tokensUsed).toBe(100);
+      expect(agent1Data[0]?.tokensUsed).toBe(200); // Latest first
+      expect(agent1Data[1]?.tokensUsed).toBe(100);
     });
 
     it('should clear buffer for specific agent', () => {
@@ -309,7 +309,7 @@ describe('TokenMetricsStream', () => {
 
       const remainingData = stream.getAllLatestData();
       expect(remainingData).toHaveLength(1);
-      expect(remainingData[0].agentId).toBe('agent-2');
+      expect(remainingData[0]?.agentId).toBe('agent-2');
     });
 
     it('should clear entire buffer', () => {

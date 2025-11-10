@@ -5,7 +5,7 @@
  */
 
 import { EventEmitter } from 'events';
-import { ephemeralSignalSystem, EphemeralSignal, SystemStatus, AgentStatus, PRPStatus } from '../signals/ephemeral-signal-system';
+import { ephemeralSignalSystem, EphemeralSignal, SystemStatus, AgentStatus, PRPStatus } from '../shared/signals/ephemeral-signal-system';
 import { createLayerLogger, HashUtils } from '../shared';
 import { ToolRegistry } from './tool-registry';
 import { AgentManager } from './agent-manager';
@@ -125,7 +125,9 @@ export class EphemeralOrchestrator extends EventEmitter {
    * Handle ephemeral [HF] signal
    */
   private async processEphemeralSignal(): Promise<void> {
-    if (!this.currentCycle) return;
+    if (!this.currentCycle) {
+      return;
+    }
 
     // Generate [HF] signal with current status
     const hfSignal = ephemeralSignalSystem.generateEphemeralSignal();
@@ -167,13 +169,16 @@ export class EphemeralOrchestrator extends EventEmitter {
     systemStatus.activePRPs
       .filter(prp => prp.currentAgent && !this.isMakingProgress(prp))
       .forEach(prp => {
+        if (!prp.currentAgent) {
+          return; // Skip if no current agent
+        }
         priorities.push({
           prpId: prp.id,
           priority: 80,
           urgency: 'high',
           estimatedTime: 60,
           dependencies: [],
-          agentRequirements: [prp.currentAgent!]
+          agentRequirements: [prp.currentAgent]
         });
       });
 
@@ -199,7 +204,9 @@ export class EphemeralOrchestrator extends EventEmitter {
    * Select next task from priorities
    */
   private selectNextTask(priorities: TaskPriority[]): TaskPriority | null {
-    if (priorities.length === 0) return null;
+    if (priorities.length === 0) {
+      return null;
+    }
 
     // Check for resource constraints
     const availableAgents = this.getAvailableAgents();
@@ -225,7 +232,9 @@ export class EphemeralOrchestrator extends EventEmitter {
    * Execute selected task
    */
   private async executeTask(task: TaskPriority, systemStatus: SystemStatus): Promise<void> {
-    if (!this.currentCycle) return;
+    if (!this.currentCycle) {
+      return;
+    }
 
     logger.info('EphemeralOrchestrator', `Executing task for PRP ${task.prpId} with priority ${task.priority}`);
 
@@ -427,7 +436,9 @@ Execute this task efficiently and report progress through signals.
    * Handle generic signal
    */
   private handleSignal(signal: EphemeralSignal): void {
-    if (!this.currentCycle) return;
+    if (!this.currentCycle) {
+      return;
+    }
 
     logger.info('orchestrator', `Handling signal: ${signal.type}`, {
       signalId: signal.id,
@@ -461,7 +472,9 @@ Execute this task efficiently and report progress through signals.
    * Handle user signal
    */
   private handleUserSignal(signal: EphemeralSignal): void {
-    if (!this.currentCycle) return;
+    if (!this.currentCycle) {
+      return;
+    }
 
     const signalData = signal.data as { message: string };
     const interruption: UserInterruption = {
@@ -603,7 +616,7 @@ Execute this task efficiently and report progress through signals.
   private extractAgentStatusFromSignal(signal: EphemeralSignal): Partial<AgentStatus> {
     // Extract agent status information from signal data
     return {
-      lastActivity: signal.timestamp,
+      lastActivity: signal.timestamp
       // Add more status extraction logic based on signal type
     };
   }
@@ -626,7 +639,9 @@ Execute this task efficiently and report progress through signals.
    * Stop orchestration cycle
    */
   async stopCycle(): Promise<void> {
-    if (!this.isRunning) return;
+    if (!this.isRunning) {
+      return;
+    }
 
     this.isRunning = false;
 

@@ -5,12 +5,11 @@
 import { isMainThread, parentPort, workerData } from 'worker_threads';
 import type {
   TaskData,
+  WorkerTaskMessage,
   WorkerMessage,
-  DetailedInspectorResult,
-  InspectorPayload
+  DetailedInspectorResult
 } from './parallel-executor.js';
 import type { AgentRole } from '../shared/types.js';
-import { HashUtils } from '../shared/index.js';
 
 // Exit if this is being run as main thread
 if (isMainThread) {
@@ -66,17 +65,16 @@ parentPort?.on('message', async (message: WorkerMessage) => {
         timestamp: new Date()
       });
       process.exit(0);
-      break;
   }
 });
 
 // Handle task execution
-const handleTaskExecution = async (message: WorkerMessage) => {
+const handleTaskExecution = async (message: WorkerTaskMessage) => {
   if (message.type !== 'task:execute' || !message.data) {
     throw new Error('Invalid task message');
   }
   const { taskId, data } = message;
-  const taskData = data as TaskData;
+  const taskData = data;
 
   try {
     // Send task start message

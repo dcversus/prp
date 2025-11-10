@@ -6,7 +6,6 @@
 
 import { useState, useCallback } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { PasteHandler, PasteMetadata } from '../utils/paste-handler.js';
 
 interface PasteDemoProps {
   maxTokens?: number;
@@ -45,7 +44,7 @@ export function PasteDemo({ maxTokens = 1000, reservePercentage = 5 }: PasteDemo
   useInput((input, key) => {
     if (key.ctrl) {
       switch (input) {
-        case 'v': // Ctrl+V - simulate paste
+        case 'v': { // Ctrl+V - simulate paste
           const sampleTexts = [
             'Short text example',
             'This is a longer text example that demonstrates token counting and reserve enforcement. It contains multiple sentences and should count more tokens.',
@@ -60,6 +59,7 @@ export function PasteDemo({ maxTokens = 1000, reservePercentage = 5 }: PasteDemo
           const randomText = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
           handleDemoPaste(randomText);
           return;
+        }
 
         case 'c': // Ctrl+C - clear
           setCurrentInput('');
@@ -112,7 +112,7 @@ export function PasteDemo({ maxTokens = 1000, reservePercentage = 5 }: PasteDemo
         <Text color="yellow">Current Status:</Text>
         <Text>  Input length: {currentInput.length} chars</Text>
         <Text>  Input tokens: {currentTokens}</Text>
-        <Text color={remainingTokens < 100 ? "red" : "green"}>
+        <Text color={remainingTokens < 100 ? 'red' : 'green'}>
            Remaining: {remainingTokens} tokens
         </Text>
       </Box>

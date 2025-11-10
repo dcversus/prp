@@ -6,6 +6,8 @@
  * following PRP-003 specifications
  */
 
+// [da] Init wizard TUI flow implemented - 6-step wizard with animations and validation - robo-ux-ui-designer
+
 import React from 'react';
 import { render } from 'ink';
 

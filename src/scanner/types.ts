@@ -6,6 +6,9 @@
 
 import { FileChange, PRPFile, Signal } from '../shared/types';
 
+// Re-export FileChange for use within scanner domain
+export { FileChange };
+
 // Enhanced metadata interfaces for better type safety
 export interface TokenAccountingMetadata {
   operationType?: string;
@@ -365,4 +368,33 @@ export interface SignalDetectedEvent {
   worktree: string;
   signals: Signal[];
   source: string; // file path, agent, etc.
+}
+
+// Missing types that are imported in other files
+export interface WorktreeStatus {
+  path: string;
+  status: 'active' | 'inactive' | 'error' | 'scanning';
+  lastModified?: Date;
+  changes?: FileChange[];
+  signals?: Signal[];
+}
+
+export interface TokenUsage {
+  agentId: string;
+  agentType: string;
+  operation: string;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  cost: number;
+  timestamp: Date;
+  metadata?: TokenAccountingMetadata;
+}
+
+export interface ScanEvent {
+  type: 'started' | 'completed' | 'error' | 'pause' | 'resume';
+  scanId: string;
+  worktree: string;
+  timestamp: Date;
+  data?: unknown;
 }

@@ -12,7 +12,7 @@
 import { performance } from 'perf_hooks';
 import { execSync, spawn } from 'child_process';
 import { join } from 'path';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync } from 'fs-extra';
 
 interface PerformanceTestResult {
   testName: string;

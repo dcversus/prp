@@ -26,7 +26,7 @@ export function validateProjectName(name: string): ValidationResult {
   }
 
   // Check for invalid characters
-  const invalidChars = /[<>:"/\\|?*\x00-\x1f]/;
+  const invalidChars = /[<>:"/\\|?*\x00-\x1f]/; // eslint-disable-line no-control-regex
   if (invalidChars.test(name)) {
     return {
       isValid: false,

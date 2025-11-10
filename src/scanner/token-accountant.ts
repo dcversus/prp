@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
 import { EventEmitter } from 'events';
+import { logger } from '../shared/logger.js';
 import {
   TokenUsageEvent,
   TokenEventCallback,
@@ -14,7 +16,17 @@ import {
   TokenAlert,
   TokenMonitoringConfig,
   TokenPerformanceMetrics
-} from '../types/token-metrics';
+} from '../shared/types/token-metrics';
+
+/**
+ * Interface for trend data points used in dashboard visualization
+ */
+export interface TrendDataPoint {
+  timestamp: Date;
+  usage: number;
+  cost: number;
+  agentBreakdown: Record<string, number>;
+}
 
 /**
  * Token Accounting System - tracks token usage across agents and PRPs
@@ -137,7 +149,7 @@ export class TokenAccountant extends EventEmitter {
   constructor(storageDir?: string, config?: Partial<TokenMonitoringConfig>) {
     super();
 
-    this.storagePath = storageDir || join(homedir(), '.prp', 'token-usage.json');
+    this.storagePath = storageDir ?? join(homedir(), '.prp', 'token-usage.json');
     this.monitoringConfig = this.createDefaultConfig(config);
     this.performanceMetrics = this.initializePerformanceMetrics();
 
@@ -246,13 +258,13 @@ export class TokenAccountant extends EventEmitter {
     for (const [agentId, usage] of this.usage.entries()) {
       const limit = this.limits.get(agentId);
       const currentUsage = usage.totalTokens;
-      const limitAmount = limit?.dailyLimit || 0;
+      const limitAmount = limit?.dailyLimit ?? 0;
       const percentage = limitAmount > 0 ? (currentUsage / limitAmount) * 100 : 0;
       const cost = this.calculateAgentTotalCost(agentId);
 
       agents.push({
         agentId,
-        agentType: limit?.agentType || usage.agentType || 'unknown',
+        agentType: limit?.agentType ?? usage.agentType ?? 'unknown',
         currentUsage,
         limit: limitAmount,
         percentage,
@@ -356,7 +368,7 @@ export class TokenAccountant extends EventEmitter {
    * Get usage for a specific agent
    */
   getAgentUsage(agentId: string): TokenUsage | null {
-    return this.usage.get(agentId) || null;
+    return this.usage.get(agentId) ?? null;
   }
 
   /**
@@ -373,10 +385,10 @@ export class TokenAccountant extends EventEmitter {
     const limit: TokenLimit = {
       agentId,
       agentType,
-      dailyLimit: limits.daily || existingLimit?.dailyLimit || 100000,
-      weeklyLimit: limits.weekly || existingLimit?.weeklyLimit || 500000,
-      monthlyLimit: limits.monthly || existingLimit?.monthlyLimit || 2000000,
-      currentUsage: existingLimit?.currentUsage || {
+      dailyLimit: limits.daily ?? existingLimit?.dailyLimit ?? 100000,
+      weeklyLimit: limits.weekly ?? existingLimit?.weeklyLimit ?? 500000,
+      monthlyLimit: limits.monthly ?? existingLimit?.monthlyLimit ?? 2000000,
+      currentUsage: existingLimit?.currentUsage ?? {
         daily: 0,
         weekly: 0,
         monthly: 0,
@@ -457,7 +469,9 @@ export class TokenAccountant extends EventEmitter {
    */
   hasExceededLimits(agentId: string): { exceeded: boolean; periods: string[] } {
     const limit = this.limits.get(agentId);
-    if (!limit) return { exceeded: false, periods: [] };
+    if (!limit) {
+      return { exceeded: false, periods: [] };
+    }
 
     this.resetCountersIfNeeded(limit, new Date());
 
@@ -512,7 +526,7 @@ export class TokenAccountant extends EventEmitter {
       monthlyLimit: number;
     }>;
     approachingLimits: ApproachingLimit[];
-  } {
+    } {
     const totalTokens = Array.from(this.usage.values())
       .reduce((sum, usage) => sum + usage.totalTokens, 0);
 
@@ -523,16 +537,16 @@ export class TokenAccountant extends EventEmitter {
       const limit = this.limits.get(agentId);
       return {
         agentId,
-        agentType: limit?.agentType || 'unknown',
+        agentType: limit?.agentType ?? 'unknown',
         totalTokens: usage.totalTokens,
         requestCount: usage.requestCount,
         averageRequestSize: usage.averageRequestSize,
-        dailyUsage: limit?.currentUsage.daily || 0,
-        dailyLimit: limit?.dailyLimit || 0,
-        weeklyUsage: limit?.currentUsage.weekly || 0,
-        weeklyLimit: limit?.weeklyLimit || 0,
-        monthlyUsage: limit?.currentUsage.monthly || 0,
-        monthlyLimit: limit?.monthlyLimit || 0
+        dailyUsage: limit?.currentUsage.daily ?? 0,
+        dailyLimit: limit?.dailyLimit ?? 0,
+        weeklyUsage: limit?.currentUsage.weekly ?? 0,
+        weeklyLimit: limit?.weeklyLimit ?? 0,
+        monthlyUsage: limit?.currentUsage.monthly ?? 0,
+        monthlyLimit: limit?.monthlyLimit ?? 0
       };
     });
 
@@ -548,7 +562,7 @@ export class TokenAccountant extends EventEmitter {
    * Update usage statistics based on event
    */
   private updateUsage(event: TokenEvent): void {
-    const existing = this.usage.get(event.agentId) || this.getDefaultUsage();
+    const existing = this.usage.get(event.agentId) ?? this.getDefaultUsage();
     const limit = this.limits.get(event.agentId);
 
     // Update usage
@@ -577,7 +591,9 @@ export class TokenAccountant extends EventEmitter {
    */
   private checkLimitWarnings(event: TokenEvent): void {
     const limit = this.limits.get(event.agentId);
-    if (!limit) return;
+    if (!limit) {
+      return;
+    }
 
     this.resetCountersIfNeeded(limit, event.timestamp);
 
@@ -592,7 +608,7 @@ export class TokenAccountant extends EventEmitter {
         const percentUsed = (warning.current / warning.limit) * 100;
         if (percentUsed >= 90) {
           // Emit warning event (would be handled by scanner)
-          console.warn(`⚠️  Agent ${event.agentId} has used ${percentUsed.toFixed(1)}% of ${warning.period} limit`);
+          logger.warn('scanner', 'TokenAccountant', `Agent ${event.agentId} has used ${percentUsed.toFixed(1)}% of ${warning.period} limit`);
         }
       }
     }
@@ -696,7 +712,7 @@ export class TokenAccountant extends EventEmitter {
         // Basic JSON validation - check if it starts with { or [
         const trimmed = fileContent.trim();
         if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-          console.warn('⚠️  Token usage data file does not contain valid JSON. Initializing empty data.');
+          logger.warn('scanner', 'TokenAccountant', 'Token usage data file does not contain valid JSON. Initializing empty data.');
           return;
         }
 
@@ -750,7 +766,10 @@ export class TokenAccountant extends EventEmitter {
         }
       }
     } catch (error) {
-      console.warn('⚠️  Could not load token usage data:', error);
+      logger.warn('scanner', 'TokenAccountant', 'Could not load token usage data', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
     }
   }
 
@@ -773,7 +792,7 @@ export class TokenAccountant extends EventEmitter {
 
       writeFileSync(this.storagePath, JSON.stringify(data, null, 2));
     } catch (error) {
-      console.error('❌ Could not save token usage data:', error);
+      logger.error('scanner', 'TokenAccountant', 'Could not save token usage data', error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -913,7 +932,9 @@ export class TokenAccountant extends EventEmitter {
    * Flush event buffer to subscribers
    */
   private flushEventBuffer(): void {
-    if (this.eventBuffer.length === 0) return;
+    if (this.eventBuffer.length === 0) {
+      return;
+    }
 
     const events = [...this.eventBuffer];
     this.eventBuffer = [];
@@ -929,7 +950,7 @@ export class TokenAccountant extends EventEmitter {
         try {
           subscription.callback(event);
         } catch (error) {
-          console.error(`❌ Error in token event subscription ${subscription.id}:`, error);
+          logger.error('scanner', 'TokenAccountant', `Error in token event subscription ${subscription.id}`, error instanceof Error ? error : new Error(String(error)));
         }
       }
     }
@@ -945,10 +966,14 @@ export class TokenAccountant extends EventEmitter {
    * Calculate cost for a token event
    */
   private calculateCost(event: TokenEvent): number {
-    if (!event.model) return 0;
+    if (!event.model) {
+      return 0;
+    }
 
     const costCalc = this.costCalculations.get(event.model);
-    if (!costCalc) return 0;
+    if (!costCalc) {
+      return 0;
+    }
 
     // Simple cost calculation (input vs output tokens would need to be determined)
     const inputCost = (event.tokens * costCalc.inputTokenPrice) / 1000;
@@ -960,7 +985,7 @@ export class TokenAccountant extends EventEmitter {
    */
   private getCurrentLimit(agentId: string): number {
     const limit = this.limits.get(agentId);
-    return limit?.dailyLimit || 0;
+    return limit?.dailyLimit ?? 0;
   }
 
   /**
@@ -970,7 +995,9 @@ export class TokenAccountant extends EventEmitter {
     const usage = this.usage.get(agentId);
     const limit = this.limits.get(agentId);
 
-    if (!usage || !limit) return 0;
+    if (!usage || !limit) {
+      return 0;
+    }
 
     return Math.max(0, limit.dailyLimit - limit.currentUsage.daily);
   }
@@ -980,7 +1007,9 @@ export class TokenAccountant extends EventEmitter {
    */
   private enforceTokenLimits(event: TokenUsageEvent): void {
     const limit = this.limits.get(event.agentId);
-    if (!limit) return;
+    if (!limit) {
+      return;
+    }
 
     this.resetCountersIfNeeded(limit, event.timestamp);
     const percentage = (limit.currentUsage.daily / limit.dailyLimit) * 100;
@@ -1085,16 +1114,22 @@ export class TokenAccountant extends EventEmitter {
    * Get agent status based on usage percentage
    */
   private getAgentStatus(percentage: number): 'normal' | 'warning' | 'critical' | 'blocked' {
-    if (percentage >= 95) return 'blocked';
-    if (percentage >= 90) return 'critical';
-    if (percentage >= 80) return 'warning';
+    if (percentage >= 95) {
+      return 'blocked';
+    }
+    if (percentage >= 90) {
+      return 'critical';
+    }
+    if (percentage >= 80) {
+      return 'warning';
+    }
     return 'normal';
   }
 
   /**
    * Get trend data for dashboard
    */
-  private getTrendData(): any[] {
+  private getTrendData(): TrendDataPoint[] {
     // Simplified trend data - in real implementation would calculate actual trends
     return [{
       timestamp: new Date(),
@@ -1133,8 +1168,12 @@ export class TokenAccountant extends EventEmitter {
     const recentUsage = recentEvents.reduce((sum, event) => sum + event.tokens, 0);
     const olderUsage = olderEvents.reduce((sum, event) => sum + event.tokens, 0);
 
-    if (recentUsage > olderUsage * 1.1) return 'increasing';
-    if (recentUsage < olderUsage * 0.9) return 'decreasing';
+    if (recentUsage > olderUsage * 1.1) {
+      return 'increasing';
+    }
+    if (recentUsage < olderUsage * 0.9) {
+      return 'decreasing';
+    }
     return 'stable';
   }
 
@@ -1151,7 +1190,7 @@ export class TokenAccountant extends EventEmitter {
    */
   private calculateProjectedCost(agentId: string, projectedUsage: number): number {
     const averageCostPerToken = this.calculateAgentTotalCost(agentId) /
-      Math.max(this.usage.get(agentId)?.totalTokens || 1, 1);
+      Math.max(this.usage.get(agentId)?.totalTokens ?? 1, 1);
     return projectedUsage * averageCostPerToken;
   }
 
@@ -1160,9 +1199,15 @@ export class TokenAccountant extends EventEmitter {
    */
   private calculateConfidence(sampleSize: number): number {
     // Simple confidence calculation based on sample size
-    if (sampleSize < 5) return 0.3;
-    if (sampleSize < 20) return 0.6;
-    if (sampleSize < 50) return 0.8;
+    if (sampleSize < 5) {
+      return 0.3;
+    }
+    if (sampleSize < 20) {
+      return 0.6;
+    }
+    if (sampleSize < 50) {
+      return 0.8;
+    }
     return 0.95;
   }
 

@@ -4,11 +4,11 @@
  * Part of PRP-007-F: Signal Sensor Inspector Implementation
  */
 
-import { ScannerEventBus, ScannerEvent } from './event-bus/EventBus';
-import { SignalParser, ParsedSignal } from './signal-parser/SignalParser';
+import { ScannerEventBus, ScannerEvent } from '../shared/scanner/event-bus.js';
+import { SignalParser, ParsedSignal } from '../shared/scanner/signal-parser.js';
+import { logger } from '../shared/logger.js';
 import * as fs from 'fs';
 import * as path from 'path';
-import { logger } from '../utils/logger';
 
 export interface ScannerOptions {
   watchPaths: string[];
@@ -46,11 +46,11 @@ export class ScannerCore {
    */
   async start(): Promise<void> {
     if (this.isRunning) {
-      logger.warning('Scanner is already running');
+      logger.warn('scanner', 'ScannerCore', 'Scanner is already running');
       return;
     }
 
-    logger.info('🔍 Starting Scanner...');
+    logger.info('scanner', 'ScannerCore', '🔍 Starting Scanner...');
     this.isRunning = true;
 
     // Initial scan
@@ -59,7 +59,7 @@ export class ScannerCore {
     // Start periodic scanning
     this.scanInterval = setInterval(() => {
       this.scanAllFiles().catch(error => {
-        logger.error('Scanner error:', error);
+        logger.error('scanner', 'ScannerCore', 'Scanner error occurred', error instanceof Error ? error : new Error(String(error)));
       });
     }, this.options.pollInterval);
 
@@ -80,7 +80,7 @@ export class ScannerCore {
       return;
     }
 
-    logger.info('🛑 Stopping Scanner...');
+    logger.info('scanner', 'ScannerCore', '🛑 Stopping Scanner...');
     this.isRunning = false;
 
     if (this.scanInterval) {
@@ -166,7 +166,7 @@ export class ScannerCore {
 
       return result;
     } catch (error) {
-      logger.error(`Error scanning file ${filePath}:`, error);
+      logger.error('scanner', 'ScannerCore', `Error scanning file ${filePath}`, error instanceof Error ? error : new Error(String(error)));
       return null;
     }
   }
@@ -220,7 +220,7 @@ export class ScannerCore {
         files.push(watchPath);
       }
     } catch (error) {
-      logger.error(`Error accessing ${watchPath}:`, error);
+      logger.error('scanner', 'ScannerCore', `Error accessing ${watchPath}`, error instanceof Error ? error : new Error(String(error)));
     }
 
     return files;
@@ -260,7 +260,7 @@ export class ScannerCore {
     signalsDetected: number;
     lastScan: Date | null;
     isRunning: boolean;
-  } {
+    } {
     const recentEvents = this.eventBus.getRecentEvents(100);
     const lastScanEvent = recentEvents
       .filter(e => e.type === 'scanner_started' || e.type === 'file_scanned')

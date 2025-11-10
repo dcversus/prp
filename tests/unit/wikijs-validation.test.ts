@@ -3,7 +3,7 @@
  * Tests frontmatter schema, content quality, and link validation
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync } from 'fs-extra';
 import { join } from 'path';
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { execSync } from 'child_process';
@@ -26,7 +26,7 @@ describe('Wiki.js Content Validation', () => {
 
     // Generate test project using CLI
     execSync(
-      `npx tsx ${join(process.cwd(), 'src/cli.ts')} --name ${testProjectName} --template wikijs --no-interactive --yes --no-git --no-install`,
+      `npx tsx ${join(process.cwd(), 'src/cli.ts')} init ${testProjectName} --template wikijs --no-interactive --yes --no-git --no-install`,
       {
         stdio: 'inherit',
         cwd: join(process.cwd(), 'tmp')
@@ -55,14 +55,14 @@ describe('Wiki.js Content Validation', () => {
       const colonIndex = line.indexOf(':');
       if (colonIndex > 0) {
         const key = line.substring(0, colonIndex).trim();
-        let value = line.substring(colonIndex + 1).trim();
+        let value: any = line.substring(colonIndex + 1).trim();
 
         // Parse different value types
         if (value === 'true') value = true;
         else if (value === 'false') value = false;
         else if (value.startsWith('[') && value.endsWith(']')) {
           // Parse array
-          value = value.slice(1, -1).split(',').map(item => item.trim().replace(/['"]/g, ''));
+          value = value.slice(1, -1).split(',').map((item: string) => item.trim().replace(/['"]/g, ''));
         } else if (value.startsWith('"') && value.endsWith('"')) {
           // Remove quotes from string values
           value = value.slice(1, -1);
@@ -83,7 +83,7 @@ describe('Wiki.js Content Validation', () => {
 
   // Helper function to extract headings
   function extractHeadings(content: string): string[] {
-    const headings = content.match(/^#{1,6}\s+.+$/gm) || [];
+    const headings = content.match(/^#{1,6}\s+.+$/gm) ?? [];
     return headings;
   }
 
@@ -238,7 +238,7 @@ describe('Wiki.js Content Validation', () => {
       // Verify linked files exist
       internalLinks.forEach(link => {
         const filePath = join(testProjectPath, 'docs', link);
-        expect(filePath, `Linked file does not exist: ${link}`).toBeFile();
+        expect(existsSync(filePath)).toBe(true);
       });
     });
 
@@ -265,15 +265,6 @@ describe('Wiki.js Content Validation', () => {
       const anchorLinks = Array.from(content.matchAll(anchorLinkPattern), match => match[1]);
 
       anchorLinks.forEach(anchor => {
-        // Anchor should correspond to existing heading
-        const headingText = anchor.replace('#', '').replace(/-/g, ' ').toLowerCase();
-        const headings = extractHeadings(content);
-
-        const hasMatchingHeading = headings.some(heading => {
-          const headingTextNormalized = heading.replace(/^#+\s*/, '').toLowerCase().replace(/\s+/g, '-');
-          return headingTextNormalized === anchor.replace('#', '');
-        });
-
         // Note: This is a basic check - in a real implementation, you'd want more sophisticated anchor matching
         expect(anchor.length).toBeGreaterThan(1);
         expect(anchor).toMatch(/^#[a-z0-9-]+$/);
@@ -305,12 +296,12 @@ describe('Wiki.js Content Validation', () => {
 
       if (content.includes('|')) {
         // Should have proper table header separator
-        expect(content).toMatch(/\|[\s\-\|]+\|/);
+        expect(content).toMatch(/\|[\s-|]+\|/);
 
         // Should have consistent column counts
         const lines = content.split('\n').filter(line => line.includes('|'));
         if (lines.length > 0) {
-          const columnCounts = lines.map(line => (line.match(/\|/g) || []).length + 1);
+          const columnCounts = lines.map(line => (line.match(/\|/g) ?? []).length + 1);
           const firstColumnCount = columnCounts[0];
 
           columnCounts.forEach(count => {

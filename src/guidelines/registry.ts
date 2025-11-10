@@ -70,6 +70,8 @@ export class GuidelinesRegistry extends EventEmitter {
   private templates: Map<string, GuidelineTemplate> = new Map();
   private signalPatterns: Map<string, SignalPattern> = new Map();
   private configPath: string = '.prp/guidelines.json';
+  private defaultLanguage: string = 'EN';
+  private supportedLanguages: Set<string> = new Set(['EN', 'DE', 'SC']);
 
   constructor() {
     super();
@@ -78,7 +80,9 @@ export class GuidelinesRegistry extends EventEmitter {
       categories: new Map(),
       dependencies: new Map(),
       dependents: new Map(),
-      signalMappings: new Map()
+      signalMappings: new Map(),
+      languages: new Map(),
+      filePaths: new Map()
     };
     this.initializeDefaultGuidelines();
     this.setupEventHandlers();
@@ -96,6 +100,7 @@ export class GuidelinesRegistry extends EventEmitter {
       category: 'development',
       priority: 'critical',
       enabled: true,
+      language: 'EN',
       protocol: {
         id: 'pull-request-analysis-protocol',
         description: 'Complete Pull Request analysis workflow with GitHub data fetching and implementation assessment',
@@ -195,7 +200,7 @@ export class GuidelinesRegistry extends EventEmitter {
               const config = configManager.get();
               const hasGitHubAgent = config.agents.some(a => a.type.includes('github'));
               const githubAgent = config.agents.find(a => a.type.includes('github')) as GitHubAgentConfig | undefined;
-              const hasToken = process.env.GITHUB_TOKEN ||
+              const hasToken = process.env.GITHUB_TOKEN ??
                 githubAgent?.credentials?.token;
               return Boolean(hasGitHubAgent && hasToken);
             } catch {
@@ -330,7 +335,8 @@ RESPOND WITH:
         createdAt: new Date(),
         lastModified: new Date(),
         tags: ['pr-analysis', 'github', 'implementation-review', 'quality-assessment'],
-        dependencies: []
+        dependencies: [],
+        language: 'EN'
       }
     });
 
@@ -342,6 +348,7 @@ RESPOND WITH:
       category: 'security',
       priority: 'critical',
       enabled: true,
+      language: 'EN',
       protocol: {
         id: 'pull-request-security-analysis-protocol',
         description: 'Comprehensive security analysis of code changes',
@@ -401,7 +408,7 @@ RESPOND WITH:
                 nextSteps: []
               },
               {
-              id: 'block-merge',
+                id: 'block-merge',
                 label: 'Block Merge - Critical Issues',
                 action: 'security-block',
                 nextSteps: []
@@ -432,7 +439,7 @@ RESPOND WITH:
             const config = configManager.get();
             const hasGitHubAgent = config.agents.some(a => a.type.includes('github'));
             const githubAgent = config.agents.find(a => a.type.includes('github')) as GitHubAgentConfig | undefined;
-            const hasToken = process.env.GITHUB_TOKEN ||
+            const hasToken = process.env.GITHUB_TOKEN ??
               githubAgent?.credentials?.token;
             return Boolean(hasGitHubAgent && hasToken);
           },
@@ -552,7 +559,8 @@ RESPOND WITH:
         createdAt: new Date(),
         lastModified: new Date(),
         tags: ['security', 'vulnerability', 'security-review'],
-        dependencies: []
+        dependencies: [],
+        language: 'EN'
       }
     });
 
@@ -564,6 +572,7 @@ RESPOND WITH:
       category: 'performance',
       priority: 'high',
       enabled: true,
+      language: 'EN',
       protocol: {
         id: 'pull-request-performance-analysis-protocol',
         description: 'Comprehensive performance analysis of code changes',
@@ -654,7 +663,7 @@ RESPOND WITH:
             const config = configManager.get();
             const hasGitHubAgent = config.agents.some(a => a.type.includes('github'));
             const githubAgent = config.agents.find(a => a.type.includes('github')) as GitHubAgentConfig | undefined;
-            const hasToken = process.env.GITHUB_TOKEN ||
+            const hasToken = process.env.GITHUB_TOKEN ??
               githubAgent?.credentials?.token;
             return Boolean(hasGitHubAgent && hasToken);
           },
@@ -780,7 +789,8 @@ RESPOND WITH:
         createdAt: new Date(),
         lastModified: new Date(),
         tags: ['performance', 'optimization', 'scalability'],
-        dependencies: []
+        dependencies: [],
+        language: 'EN'
       }
     });
 
@@ -817,6 +827,11 @@ RESPOND WITH:
       throw new Error(`Invalid guideline: ${guideline.id}`);
     }
 
+    // Set default language if not provided
+    if (!guideline.language) {
+      guideline.language = this.defaultLanguage;
+    }
+
     // Check for conflicts
     if (this.registry.guidelines.has(guideline.id)) {
       logger.warn('shared', 'GuidelinesRegistry', `Guideline ${guideline.id} already exists, updating`, { guidelineId: guideline.id });
@@ -829,7 +844,24 @@ RESPOND WITH:
     if (!this.registry.categories.has(guideline.category)) {
       this.registry.categories.set(guideline.category, new Set());
     }
-    this.registry.categories.get(guideline.category)!.add(guideline.id);
+    const categorySet = this.registry.categories.get(guideline.category);
+    if (categorySet) {
+      categorySet.add(guideline.id);
+    }
+
+    // Update language mapping
+    if (!this.registry.languages.has(guideline.language)) {
+      this.registry.languages.set(guideline.language, new Set());
+    }
+    const languageSet = this.registry.languages.get(guideline.language);
+    if (languageSet) {
+      languageSet.add(guideline.id);
+    }
+
+    // Update file path mapping
+    if (guideline.metadata.filePath) {
+      this.registry.filePaths.set(guideline.id, guideline.metadata.filePath);
+    }
 
     // Update dependencies
     this.registry.dependencies.set(guideline.id, new Set(guideline.metadata.dependencies));
@@ -837,7 +869,10 @@ RESPOND WITH:
       if (!this.registry.dependents.has(dep)) {
         this.registry.dependents.set(dep, new Set());
       }
-      this.registry.dependents.get(dep)!.add(guideline.id);
+      const dependentSet = this.registry.dependents.get(dep);
+      if (dependentSet) {
+        dependentSet.add(guideline.id);
+      }
     }
 
     // Initialize metrics
@@ -855,7 +890,10 @@ RESPOND WITH:
       });
     }
 
-    logger.info('shared', 'GuidelinesRegistry', `Guideline registered: ${guideline.id}`, { guidelineId: guideline.id });
+    logger.info('shared', 'GuidelinesRegistry', `Guideline registered: ${guideline.id} (${guideline.language})`, {
+      guidelineId: guideline.id,
+      language: guideline.language
+    });
     this.emit('guideline_registered', guideline);
   }
 
@@ -1056,7 +1094,7 @@ RESPOND WITH:
     // Check requirements
     for (const requirement of guideline.requirements) {
       if (requirement.required) {
-        const satisfied = await requirement.check();
+        const satisfied = requirement.check ? await requirement.check() : true;
         if (!satisfied) {
           throw new Error(`Requirement not satisfied: ${requirement.name} - ${requirement.errorMessage}`);
         }
@@ -1219,10 +1257,10 @@ RESPOND WITH:
         metrics.successfulExecutions++;
         if (performance) {
           // Update averages
-          const totalTime = metrics.averageExecutionTime * (metrics.successfulExecutions - 1) + (performance?.totalDuration || 0);
+          const totalTime = metrics.averageExecutionTime * (metrics.successfulExecutions - 1) + (performance.totalDuration ?? 0);
           metrics.averageExecutionTime = totalTime / metrics.successfulExecutions;
 
-          const totalCost = metrics.averageTokenCost * (metrics.successfulExecutions - 1) + (performance?.tokenUsage?.total || 0);
+          const totalCost = metrics.averageTokenCost * (metrics.successfulExecutions - 1) + (performance.tokenUsage?.total ?? 0);
           metrics.averageTokenCost = totalCost / metrics.successfulExecutions;
         }
         break;
@@ -1265,6 +1303,59 @@ RESPOND WITH:
   }
 
   /**
+   * Get guidelines by language
+   */
+  getGuidelinesByLanguage(language: string): GuidelineDefinition[] {
+    const guidelineIds = this.registry.languages.get(language);
+    if (!guidelineIds) {
+      return [];
+    }
+
+    return Array.from(guidelineIds)
+      .map(id => this.registry.guidelines.get(id))
+      .filter(Boolean) as GuidelineDefinition[];
+  }
+
+  /**
+   * Get guideline with language fallback
+   */
+  getGuidelineWithFallback(guidelineId: string, preferredLanguage?: string): GuidelineDefinition | undefined {
+    const guideline = this.registry.guidelines.get(guidelineId);
+    if (!guideline) {
+      return undefined;
+    }
+
+    // If guideline matches preferred language or no preference, return it
+    if (!preferredLanguage || guideline.language === preferredLanguage) {
+      return guideline;
+    }
+
+    // Try to find same guideline in preferred language
+    const languageGuidelines = this.getGuidelinesByLanguage(preferredLanguage);
+    const fallback = languageGuidelines.find(g =>
+      g.id === guidelineId ||
+      g.id.startsWith(guidelineId.split('-')[0] || '') ||
+      g.name === guideline.name
+    );
+
+    return fallback || guideline;
+  }
+
+  /**
+   * Get supported languages
+   */
+  getSupportedLanguages(): string[] {
+    return Array.from(this.supportedLanguages);
+  }
+
+  /**
+   * Get available languages (languages that have guidelines)
+   */
+  getAvailableLanguages(): string[] {
+    return Array.from(this.registry.languages.keys());
+  }
+
+  /**
    * Get enabled guidelines
    */
   getEnabledGuidelines(): GuidelineDefinition[] {
@@ -1303,8 +1394,7 @@ RESPOND WITH:
         guideline.description.length > 0 &&
         ['development', 'testing', 'deployment', 'security', 'performance', 'documentation', 'communication'].includes(guideline.category) &&
         ['critical', 'high', 'medium', 'low'].includes(guideline.priority) &&
-        guideline.protocol &&
-        guideline.protocol.steps &&
+        guideline.protocol?.steps &&
         guideline.protocol.steps.length > 0 &&
         guideline.prompts.inspector.length > 0 &&
         guideline.prompts.orchestrator.length > 0 &&
@@ -1348,7 +1438,9 @@ RESPOND WITH:
       }
 
       const data = await ConfigUtils.loadConfigFile<Record<string, unknown>>(this.configPath);
-      if (!data) return;
+      if (!data) {
+        return;
+      }
 
       // Load guidelines
       if (data['guidelines']) {

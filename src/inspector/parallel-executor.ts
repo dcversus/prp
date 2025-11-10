@@ -19,7 +19,13 @@ import {
   InspectorPayload
 } from './types';
 import { LLMExecutionEngine } from './llm-execution-engine';
-import { createLayerLogger, HashUtils } from '../shared';
+import {
+  createLayerLogger,
+  HashUtils,
+  type WorkerPoolConfig,
+  type WorkerPoolStatus,
+  type WorkerMessage
+} from '../shared';
 
 const logger = createLayerLogger('inspector');
 
@@ -38,7 +44,17 @@ export interface TaskData {
 }
 
 /**
- * Worker task message interface
+ * Re-export types from inspector types for worker use
+ */
+export type {
+  DetailedInspectorResult,
+  InspectorPayload
+} from './types';
+
+// Worker interfaces now imported from shared tools/worker-pool.ts
+
+/**
+ * Worker task message interface specific to inspector
  */
 export interface WorkerTaskMessage {
   type: 'task:execute';
@@ -49,19 +65,17 @@ export interface WorkerTaskMessage {
 }
 
 /**
- * Worker configuration
+ * Worker message union type for all worker communications
  */
-export interface WorkerConfig {
-  id: number;
-  maxConcurrent: number;
-  timeout: number;
-  retryAttempts: number;
-  retryDelay: number;
-  heartbeatInterval: number;
-}
+export type WorkerMessage =
+  | WorkerTaskMessage
+  | { type: 'worker:ready'; workerId: number; timestamp: Date }
+  | { type: 'worker:error'; workerId: number; error: { code: string; message: string; stack?: string }; timestamp: Date }
+  | { type: 'worker:heartbeat'; workerId: number; timestamp: Date }
+  | { type: 'worker:shutdown'; workerId: number; timestamp: Date };
 
 /**
- * Execution task
+ * Execution task specific to inspector
  */
 export interface ExecutionTask {
   id: string;
@@ -77,65 +91,11 @@ export interface ExecutionTask {
 }
 
 /**
- * Worker pool status
- */
-export interface WorkerPoolStatus {
-  totalWorkers: number;
-  activeWorkers: number;
-  idleWorkers: number;
-  busyWorkers: number;
-  failedWorkers: number;
-  queueSize: number;
-  processingTasks: number;
-  completedTasks: number;
-  averageResponseTime: number;
-  throughput: number;
-  [key: string]: unknown;
-}
-
-/**
  * Parallel execution configuration
  */
-export interface ParallelExecutionConfig {
-  maxWorkers?: number;
-  maxConcurrentPerWorker?: number;
-  taskTimeout?: number;
-  retryAttempts?: number;
-  retryDelay?: number;
-  enableLoadBalancing?: boolean;
-  enableHealthChecks?: boolean;
-  healthCheckInterval?: number;
-  gracefulShutdownTimeout?: number;
-}
-
-/**
- * Worker message types
- */
-export type WorkerMessageType =
-  | 'task:start'
-  | 'task:execute'
-  | 'task:progress'
-  | 'task:complete'
-  | 'task:error'
-  | 'worker:ready'
-  | 'worker:heartbeat'
-  | 'worker:error'
-  | 'worker:shutdown';
-
-/**
- * Worker message interface
- */
-export interface WorkerMessage {
-  type: WorkerMessageType;
-  taskId?: string;
-  workerId?: number;
-  data?: TaskData | unknown;
-  error?: {
-    code: string;
-    message: string;
-    stack?: string;
-  };
-  timestamp: Date;
+export interface ParallelExecutionConfig extends Omit<WorkerPoolConfig, 'maxMemory'> {
+  // Inspector-specific configuration can be added here
+  inspectorSpecific?: boolean;
 }
 
 /**
@@ -143,7 +103,7 @@ export interface WorkerMessage {
  */
 export class ParallelExecutor extends EventEmitter {
   private config: ParallelExecutionConfig;
-  private workers: Map<number, WorkerInfo> = new Map();
+  private workers: Map<number, InspectorWorkerInfo> = new Map();
   private taskQueue: ExecutionTask[] = [];
   private processingTasks: Map<string, ExecutionTask> = new Map();
   private completedTasks: Map<string, DetailedInspectorResult> = new Map();
@@ -429,7 +389,14 @@ export class ParallelExecutor extends EventEmitter {
       processingTasks: this.processingTasks.size,
       completedTasks: this.completedTasks.size,
       averageResponseTime: this.metrics.averageProcessingTime,
-      throughput: this.metrics.processingRate
+      throughput: this.metrics.processingRate,
+      workerDetails: Array.from(this.workers.values()).map(worker => ({
+        id: worker.id,
+        status: worker.status,
+        tasksProcessed: worker.taskCount,
+        currentTask: worker.currentTask || null,
+        lastHeartbeat: new Date()
+      }))
     };
   }
 
@@ -501,7 +468,7 @@ export class ParallelExecutor extends EventEmitter {
   /**
    * Create a single worker
    */
-  private async createWorker(workerId: number): Promise<WorkerInfo> {
+  private async createWorker(workerId: number): Promise<InspectorWorkerInfo> {
     return new Promise((resolve, reject) => {
       const workerPath = join(__dirname, 'parallel-executor-worker.js');
       const worker = new Worker(workerPath, {
@@ -511,7 +478,7 @@ export class ParallelExecutor extends EventEmitter {
         }
       });
 
-      const workerInfo: WorkerInfo = {
+      const workerInfo: InspectorWorkerInfo = {
         id: workerId,
         worker,
         status: 'initializing',
@@ -575,7 +542,9 @@ export class ParallelExecutor extends EventEmitter {
    */
   private handleWorkerMessage(workerId: number, message: WorkerMessage): void {
     const worker = this.workers.get(workerId);
-    if (!worker) return;
+    if (!worker) {
+      return;
+    }
 
     switch (message.type) {
       case 'worker:ready':
@@ -680,7 +649,7 @@ export class ParallelExecutor extends EventEmitter {
         id: taskId,
         signal: task.signal,
         error: {
-          code: (error as Record<string, unknown>).code as string ?? 'WORKER_ERROR',
+          code: (error as Record<string, unknown>).code as string || 'WORKER_ERROR',
           message: error instanceof Error ? error.message : 'Unknown worker error',
           stack: error instanceof Error ? error.stack : undefined
         },
@@ -736,7 +705,9 @@ export class ParallelExecutor extends EventEmitter {
    */
   private startTaskProcessingLoop(): void {
     const processLoop = () => {
-      if (this.shutdownRequested) return;
+      if (this.shutdownRequested) {
+        return;
+      }
 
       // Get available workers
       const availableWorkers = Array.from(this.workers.values())
@@ -763,7 +734,7 @@ export class ParallelExecutor extends EventEmitter {
   /**
    * Assign task to worker
    */
-  private assignTaskToWorker(worker: WorkerInfo, task: ExecutionTask): void {
+  private assignTaskToWorker(worker: InspectorWorkerInfo, task: ExecutionTask): void {
     // Move task from queue to processing
     this.processingTasks.set(task.id, task);
 
@@ -787,7 +758,7 @@ export class ParallelExecutor extends EventEmitter {
   /**
    * Terminate worker
    */
-  private async terminateWorker(worker: WorkerInfo): Promise<void> {
+  private async terminateWorker(worker: InspectorWorkerInfo): Promise<void> {
     try {
       // Send shutdown message
       worker.worker.postMessage({
@@ -835,7 +806,7 @@ export class ParallelExecutor extends EventEmitter {
     const now = new Date();
     const staleThreshold = (this.config.healthCheckInterval ?? 5000) * 2;
 
-    for (const [workerId, worker] of this.workers) {
+    for (const [workerId, worker] of Array.from(this.workers.entries())) {
       const timeSinceHeartbeat = now.getTime() - worker.lastHeartbeat.getTime();
 
       if (timeSinceHeartbeat > staleThreshold) {
@@ -918,9 +889,9 @@ export class ParallelExecutor extends EventEmitter {
 }
 
 /**
- * Worker information interface
+ * Inspector worker information interface (extends shared WorkerInfo)
  */
-interface WorkerInfo {
+interface InspectorWorkerInfo {
   id: number;
   worker: Worker;
   status: 'initializing' | 'idle' | 'busy' | 'failed' | 'exited' | 'shutdown';

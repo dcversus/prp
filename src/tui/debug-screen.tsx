@@ -148,7 +148,9 @@ export class TuiDebugScreen extends EventEmitter {
    * Activate debug screen
    */
   activate(): void {
-    if (this.isActive) return;
+    if (this.isActive) {
+      return;
+    }
 
     this.isActive = true;
     this.setupKeyboardHandlers();
@@ -172,7 +174,9 @@ export class TuiDebugScreen extends EventEmitter {
    * Deactivate debug screen
    */
   deactivate(): void {
-    if (!this.isActive) return;
+    if (!this.isActive) {
+      return;
+    }
 
     this.isActive = false;
     this.cleanupKeyboardHandlers();
@@ -186,7 +190,9 @@ export class TuiDebugScreen extends EventEmitter {
    * Add a debug event
    */
   addEvent(event: Omit<DebugEvent, 'id'>): void {
-    if (!this.isActive && event.source !== 'system') return;
+    if (!this.isActive && event.source !== 'system') {
+      return;
+    }
 
     const debugEvent: DebugEvent = {
       id: `${event.source}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -210,7 +216,9 @@ export class TuiDebugScreen extends EventEmitter {
    * Get current debug content for rendering
    */
   getDebugContent(): string[] {
-    if (!this.isActive) return [];
+    if (!this.isActive) {
+      return [];
+    }
 
     const content: string[] = [];
 
@@ -492,12 +500,18 @@ export class TuiDebugScreen extends EventEmitter {
 
       if (record.impact || record.risk) {
         const parts = [];
-        if (record.impact) parts.push(`impact: "${record.impact}"`);
-        if (record.risk) parts.push(`risk: ${record.risk}`);
+        if (record.impact) {
+          parts.push(`impact: "${record.impact}"`);
+        }
+        if (record.risk) {
+          parts.push(`risk: ${record.risk}`);
+        }
         if (record.files && Array.isArray(record.files)) {
           parts.push(`files: [${(record.files as string[]).slice(0, 2).map((f: string) => `"${f.length > 10 ? f.substring(0, 10) + '…' : f}"`).join(', ')}]`);
         }
-        if (record.why) parts.push(`why: "${record.why}"`);
+        if (record.why) {
+          parts.push(`why: "${record.why}"`);
+        }
         return `{ ${parts.join(', ')} }`;
       }
     }
@@ -537,11 +551,20 @@ export class TuiDebugScreen extends EventEmitter {
 
       if (signal.state === 'active') {
         // Determine color based on signal type
-        if (signal.code.includes('aA')) color = this.config.colorScheme.agent;
-        else if (signal.code.includes('pr')) color = '\x1b[94m'; // Blue
-        else if (signal.code.includes('PR')) color = '\x1b[96m'; // Cyan
-        else if (signal.code.includes('FF')) color = '\x1b[93m'; // Yellow
-        else color = '\x1b[97m'; // White
+        if (signal.code.includes('aA')) {
+          color = this.config.colorScheme.agent;
+        } else if (signal.code.includes('pr')) {
+          color = '\x1b[94m';
+        } // Blue
+        else if (signal.code.includes('PR')) {
+          color = '\x1b[96m';
+        } // Cyan
+        else if (signal.code.includes('FF')) {
+          color = '\x1b[93m';
+        } // Yellow
+        else {
+          color = '\x1b[97m';
+        } // White
       } else if (signal.state === 'resolved') {
         color = '\x1b[37m'; // Dim white
       }
@@ -589,11 +612,21 @@ export class TuiDebugScreen extends EventEmitter {
 
   private getRoleColor(role: string): string {
     // Map role names to colors (simplified version)
-    if (role.includes('aqa')) return '\x1b[95m'; // Purple
-    if (role.includes('developer')) return '\x1b[94m'; // Blue
-    if (role.includes('system-analyst')) return '\x1b[33m'; // Brown/yellow
-    if (role.includes('devops') || role.includes('sre')) return '\x1b[92m'; // Green
-    if (role.includes('ux-ui')) return '\x1b[91m'; // Pink/red
+    if (role.includes('aqa')) {
+      return '\x1b[95m';
+    } // Purple
+    if (role.includes('developer')) {
+      return '\x1b[94m';
+    } // Blue
+    if (role.includes('system-analyst')) {
+      return '\x1b[33m';
+    } // Brown/yellow
+    if (role.includes('devops') || role.includes('sre')) {
+      return '\x1b[92m';
+    } // Green
+    if (role.includes('ux-ui')) {
+      return '\x1b[91m';
+    } // Pink/red
     return '\x1b[97m'; // White
   }
 

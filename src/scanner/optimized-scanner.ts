@@ -12,7 +12,7 @@
 
 import { EventEmitter } from 'events';
 import { watch, FSWatcher } from 'chokidar';
-import { performanceManager, measurePerformanceDecorator } from '../performance/index.js';
+import { performanceManager, measurePerformanceDecorator } from '../shared/performance/index.js';
 import { extname } from 'path';
 import { readFile, stat } from 'fs/promises';
 import { createHash } from 'crypto';
@@ -182,12 +182,16 @@ class LazySignalParser {
       const lines = content.split('\n');
 
       for (const [signalType, pattern] of this.signalPatterns) {
-        if (!signalType) continue;
+        if (!signalType) {
+          continue;
+        }
         pattern.lastIndex = 0; // Reset regex
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
           const line = lines[lineIndex];
-          if (!line) continue;
+          if (!line) {
+            continue;
+          }
 
           let match;
 
@@ -536,7 +540,7 @@ export class OptimizedScanner extends EventEmitter {
   getMetrics(): typeof this.metrics & {
     cacheSize: { hasher: number; parser: number };
     isRunning: boolean;
-  } {
+    } {
     return {
       ...this.metrics,
       cacheSize: {

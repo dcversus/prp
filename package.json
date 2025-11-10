@@ -61,8 +61,8 @@
     "fastapi",
     "nestjs"
   ],
-  "author": "dcversus",
-  "license": "MIT",
+  "author": "Vasilisa Versus (dcversus)",
+  "license": "AGPL-3.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dcversus/prp.git"
@@ -88,128 +88,27 @@
     "jsxSingleQuote": false,
     "quoteProps": "as-needed"
   },
-  "jest": {
-    "preset": "ts-jest/presets/default-esm",
-    "testEnvironment": "jsdom",
-    "setupFilesAfterEnv": [
-      "<rootDir>/tests/setup.ts"
-    ],
-    "roots": [
-      "<rootDir>/src",
-      "<rootDir>/tests"
-    ],
-    "testMatch": [
-      "**/__tests__/**/*.ts",
-      "**/__tests__/**/*.tsx",
-      "**/?(*.)+(spec|test).ts",
-      "**/?(*.)+(spec|test).tsx"
-    ],
-    "extensionsToTreatAsEsm": [
-      ".ts",
-      ".tsx"
-    ],
-    "transform": {
-      "^.+\\.tsx?$": [
-        "ts-jest",
-        {
-          "tsconfig": {
-            "jsx": "react-jsx",
-            "module": "ESNext",
-            "target": "ES2022",
-            "strict": true,
-            "noUnusedLocals": true,
-            "noUnusedParameters": true,
-            "exactOptionalPropertyTypes": true
-          },
-          "useESM": true
-        }
-      ]
-    },
-    "transformIgnorePatterns": [
-      "node_modules/(?!(axios|ink|ink-testing-library))/"
-    ],
-    "moduleNameMapper": {
-      "^(\\.{1,2}/.*)\\.js$": "$1",
-      "^axios$": "axios/dist/node/axios.cjs",
-      "^@/(.*)$": "<rootDir>/src/$1",
-      "^@ui/(.*)$": "<rootDir>/src/ui/$1",
-      "^@generators/(.*)$": "<rootDir>/src/generators/$1",
-      "^@templates/(.*)$": "<rootDir>/src/templates/$1",
-      "^@ai/(.*)$": "<rootDir>/src/ai/$1",
-      "^@utils/(.*)$": "<rootDir>/src/utils/$1"
-    },
-    "collectCoverageFrom": [
-      "src/**/*.{ts,tsx}",
-      "!src/**/*.d.ts",
-      "!src/**/*.test.ts",
-      "!src/**/*.spec.ts"
-    ],
-    "coverageDirectory": "coverage",
-    "coverageThreshold": {
-      "global": {
-        "branches": 80,
-        "functions": 80,
-        "lines": 80,
-        "statements": 80
-      }
-    },
-    "maxWorkers": 4,
-    "verbose": true,
-    "errorOnDeprecated": true,
-    "forceExit": true,
-    "detectOpenHandles": true,
-    "clearMocks": true,
-    "resetMocks": true,
-    "restoreMocks": true,
-    "projects": [
-      {
-        "displayName": "Unit Tests",
-        "testMatch": [
-          "<rootDir>/tests/unit/**/*.test.ts",
-          "<rootDir>/tests/integration/**/*.test.ts"
-        ],
-        "testEnvironment": "node"
-      },
-      {
-        "displayName": "Performance Tests",
-        "testMatch": [
-          "<rootDir>/tests/performance/**/*.test.ts"
-        ],
-        "testEnvironment": "node",
-        "maxWorkers": 1,
-        "setupFilesAfterEnv": [
-          "<rootDir>/tests/performance/setup.ts"
-        ]
-      },
-      {
-        "displayName": "E2E Tests",
-        "testMatch": [
-          "<rootDir>/tests/e2e/**/*.test.ts"
-        ],
-        "testEnvironment": "node",
-        "maxWorkers": 1,
-        "setupFilesAfterEnv": [
-          "<rootDir>/tests/setup-e2e-simple.js"
-        ]
-      }
-    ]
-  },
   "dependencies": {
     "@types/boxen": "^2.1.0",
     "@types/chokidar": "^1.7.5",
     "@types/figlet": "^1.7.0",
     "@types/jsonschema": "^0.0.5",
     "@types/lru-cache": "^7.10.9",
+    "@types/lz-string": "^1.3.34",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "axios": "^1.13.1",
     "boxen": "^8.0.1",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
+    "cors": "^2.8.5",
     "execa": "^9.4.0",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.1",
     "figlet": "^1.9.3",
     "fs-extra": "^11.2.0",
     "handlebars": "^4.7.8",
+    "helmet": "^8.0.0",
     "ink": "^5.0.1",
     "ink-big-text": "^2.0.0",
     "ink-divider": "^4.1.1",
@@ -219,12 +118,16 @@
     "ink-text-input": "^6.0.0",
     "inquirer": "^9.2.23",
     "jsonschema": "^1.5.0",
+    "jsonwebtoken": "^9.0.2",
     "lru-cache": "^11.2.2",
+    "lz-string": "^1.5.0",
     "nanoid": "^5.0.7",
     "openai": "^6.8.1",
     "ora": "^8.1.0",
+    "prom-client": "^15.1.3",
     "react": "^18.3.1",
     "semver": "^7.6.3",
+    "socket.io": "^4.7.5",
     "validate-npm-package-name": "^5.0.1",
     "yaml": "^2.6.0"
   },
@@ -236,6 +139,8 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
     "@types/fs-extra": "^11.0.4",
     "@types/inquirer": "^9.0.7",
     "@types/jest": "^30.0.0",
@@ -249,6 +154,7 @@
     "chokidar": "^4.0.3",
     "eslint": "^9.12.0",
     "eslint-config-prettier": "^9.1.0",
+    "eslint-formatter-compact": "^9.0.1",
     "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-react": "^7.37.1",
     "eslint-plugin-react-hooks": "^5.1.0-rc-fb9a90fa48-20240614",
@@ -278,6 +184,183 @@
       "prettier --write"
     ]
   },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "node": true,
+      "es2022": true,
+      "jest": true
+    },
+    "extends": [
+      "eslint:recommended",
+      "@typescript-eslint/recommended",
+      "@typescript-eslint/recommended-requiring-type-checking",
+      "plugin:react/recommended",
+      "plugin:react-hooks/recommended",
+      "plugin:@typescript-eslint/strict",
+      "plugin:@typescript-eslint/stylistic",
+      "prettier"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+      "ecmaVersion": "latest",
+      "sourceType": "module",
+      "project": "./tsconfig.json",
+      "ecmaFeatures": {
+        "jsx": true
+      }
+    },
+    "plugins": [
+      "@typescript-eslint",
+      "react",
+      "react-hooks",
+      "prettier"
+    ],
+    "rules": {
+      "prettier/prettier": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          "argsIgnorePattern": "^_",
+          "caughtErrorsIgnorePattern": "^_",
+          "destructuredArrayIgnorePattern": "^_",
+          "varsIgnorePattern": "^_",
+          "ignoreRestSiblings": false
+        }
+      ],
+      "@typescript-eslint/explicit-function-return-type": [
+        "error",
+        {
+          "allowExpressions": true,
+          "allowTypedFunctionExpressions": true,
+          "allowHigherOrderFunctions": true,
+          "allowDirectConstAssertionInArrowFunctions": true,
+          "allowConciseArrowFunctionExpressionsStartingWithVoid": false
+        }
+      ],
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-non-null-assertion": "error",
+      "@typescript-eslint/prefer-nullish-coalescing": "error",
+      "@typescript-eslint/prefer-optional-chain": "error",
+      "@typescript-eslint/no-unnecessary-condition": "error",
+      "@typescript-eslint/strict-boolean-expressions": [
+        "error",
+        {
+          "allowString": false,
+          "allowNumber": false,
+          "allowNullableObject": false,
+          "allowNullableBoolean": false,
+          "allowNullableString": false,
+          "allowNullableNumber": false
+        }
+      ],
+      "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/await-thenable": "error",
+      "@typescript-eslint/no-misused-promises": "error",
+      "@typescript-eslint/require-await": "error",
+      "@typescript-eslint/return-await": [
+        "error",
+        "in-try-catch"
+      ],
+      "@typescript-eslint/no-unsafe-assignment": "error",
+      "@typescript-eslint/no-unsafe-call": "error",
+      "@typescript-eslint/no-unsafe-member-access": "error",
+      "@typescript-eslint/no-unsafe-return": "error",
+      "@typescript-eslint/no-unsafe-argument": "error",
+      "@typescript-eslint/prefer-as-const": "error",
+      "@typescript-eslint/no-var-requires": "error",
+      "@typescript-eslint/no-empty-function": "error",
+      "@typescript-eslint/no-inferrable-types": "error",
+      "@typescript-eslint/ban-ts-comment": "error",
+      "@typescript-eslint/consistent-type-definitions": [
+        "error",
+        "interface"
+      ],
+      "@typescript-eslint/consistent-type-exports": "error",
+      "@typescript-eslint/consistent-type-imports": "error",
+      "@typescript-eslint/no-duplicate-enum-values": "error",
+      "@typescript-eslint/no-duplicate-type-constituents": "error",
+      "@typescript-eslint/no-empty-interface": "error",
+      "@typescript-eslint/no-extra-non-null-assertion": "error",
+      "@typescript-eslint/no-import-type-side-effects": "error",
+      "@typescript-eslint/no-mixed-enums": "error",
+      "@typescript-eslint/no-non-null-asserted-nullish-coalescing": "error",
+      "@typescript-eslint/no-non-null-asserted-optional-chain": "error",
+      "@typescript-eslint/no-unnecessary-qualifier": "error",
+      "@typescript-eslint/no-unnecessary-type-arguments": "error",
+      "@typescript-eslint/no-unnecessary-type-assertion": "error",
+      "@typescript-eslint/no-unnecessary-type-constraint": "error",
+      "@typescript-eslint/no-unsafe-enum-comparison": "error",
+      "@typescript-eslint/no-useless-empty-export": "error",
+      "@typescript-eslint/array-type": [
+        "error",
+        {
+          "default": "array-simple",
+          "readonly": "generic"
+        }
+      ],
+      "@typescript-eslint/prefer-readonly": "error",
+      "@typescript-eslint/prefer-string-starts-ends-with": "error",
+      "@typescript-eslint/require-array-sort-compare": "error",
+      "@typescript-eslint/restrict-template-expressions": "error",
+      "@typescript-eslint/restrict-plus-operands": "error",
+      "@typescript-eslint/prefer-enum-initializers": "error",
+      "@typescript-eslint/prefer-for-of": "error",
+      "@typescript-eslint/prefer-function-type": "error",
+      "@typescript-eslint/prefer-literal-enum-member": "error",
+      "@typescript-eslint/prefer-readonly-parameter-types": "off",
+      "@typescript-eslint/prefer-reduce-type-parameter": "error",
+      "@typescript-eslint/prefer-return-this-type": "error",
+      "@typescript-eslint/switch-exhaustiveness-check": "error",
+      "@typescript-eslint/use-unknown-in-catch-callback-variable": "error",
+      "prefer-const": "error",
+      "no-var": "error",
+      "no-console": "warn",
+      "eqeqeq": [
+        "error",
+        "always"
+      ],
+      "curly": [
+        "error",
+        "all"
+      ],
+      "brace-style": [
+        "error",
+        "1tbs"
+      ],
+      "comma-dangle": [
+        "error",
+        "always-multiline"
+      ],
+      "quotes": [
+        "error",
+        "single",
+        {
+          "avoidEscape": true
+        }
+      ],
+      "semi": [
+        "error",
+        "always"
+      ],
+      "indent": "off",
+      "react/prop-types": "off",
+      "react/react-in-jsx-scope": "off",
+      "react/display-name": "off"
+    },
+    "settings": {
+      "react": {
+        "version": "detect"
+      }
+    },
+    "ignorePatterns": [
+      "dist/",
+      "node_modules/",
+      "*.js",
+      "coverage/",
+      "templates/"
+    ]
+  },
   "tsup": {
     "entry": {
       "index": "src/index.ts",
@@ -286,7 +369,7 @@
     "format": [
       "esm"
     ],
-    "dts": true,
+    "dts": false,
     "clean": true,
     "sourcemap": true,
     "minify": false,

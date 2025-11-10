@@ -59,7 +59,9 @@ export class GitAdapter {
       const commits = logOutput.trim().split('\n');
 
       for (const commit of commits) {
-        if (!commit) continue;
+        if (!commit) {
+          continue;
+        }
 
         const commitParts = commit.split('|');
         const hash = commitParts[0];
@@ -119,7 +121,9 @@ export class GitAdapter {
       const merges = logOutput.trim().split('\n');
 
       for (const merge of merges) {
-        if (!merge) continue;
+        if (!merge) {
+          continue;
+        }
 
         const mergeParts = merge.split('|');
         const hash = mergeParts[0];
@@ -171,7 +175,9 @@ export class GitAdapter {
       const branches = branchesOutput.trim().split('\n');
 
       for (const branch of branches) {
-        if (!branch) continue;
+        if (!branch) {
+          continue;
+        }
 
         const branchParts = branch.split('|');
         const branchName = branchParts[0];
@@ -323,7 +329,9 @@ export class GitAdapter {
       let untracked = 0;
 
       for (const line of lines) {
-        if (line.length === 0) continue;
+        if (line.length === 0) {
+          continue;
+        }
 
         const statusCode = line.substring(0, 2);
         if (!statusCode.startsWith(' ') && !statusCode.startsWith('?')) {

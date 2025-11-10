@@ -3,18 +3,28 @@
  */
 
 import { AgentLifecycleManager, AgentConfig } from '../agent-lifecycle-manager.js';
-import { TokenMetricsStream } from '../../monitoring/TokenMetricsStream.js';
+import { TokenMetricsStream } from '../../shared/monitoring/TokenMetricsStream.js';
+import {
+  BaseAgent,
+  AgentCapabilities,
+  AgentLimits,
+  AgentStatus,
+  AgentMetrics
+} from '../base-agent.js';
 
 // Mock agent implementation for testing
-class MockAgent {
+class MockAgent implements BaseAgent {
   public id: string;
   public name: string;
   public type: string;
   public role: string;
   public enabled: boolean;
-  public capabilities: any;
-  public limits: any;
+  public capabilities: AgentCapabilities;
+  public limits: AgentLimits;
   private shouldFail: boolean = false;
+
+  private status: AgentStatus;
+  private metrics: AgentMetrics;
 
   constructor(config: { id: string; type: string; shouldFail?: boolean }) {
     this.id = config.id;
@@ -22,7 +32,7 @@ class MockAgent {
     this.type = config.type;
     this.role = config.type;
     this.enabled = true;
-    this.shouldFail = config.shouldFail || false;
+    this.shouldFail = config.shouldFail ?? false;
     this.capabilities = {
       supportsTools: true,
       supportsImages: false,
@@ -46,21 +56,45 @@ class MockAgent {
       maxConcurrentTasks: 1,
       cooldownPeriod: 1000
     };
+    this.status = {
+      status: 'idle',
+      lastActivity: new Date(),
+      errorCount: 0,
+      uptime: 0
+    };
+    this.metrics = {
+      tasksCompleted: 0,
+      averageTaskTime: 0,
+      errorRate: 0,
+      tokensUsed: 0,
+      costIncurred: 0,
+      lastReset: new Date()
+    };
   }
 
   async initialize(): Promise<void> {
     if (this.shouldFail) {
       throw new Error('Mock agent initialization failed');
     }
+    this.status.status = 'idle';
+    this.status.lastActivity = new Date();
   }
 
-  async process(input: any): Promise<any> {
+  async process(input: unknown): Promise<unknown> {
+    this.status.status = 'busy';
+    this.status.currentTask = 'Mock processing';
+
     if (this.shouldFail) {
       throw new Error('Mock agent processing failed');
     }
 
     // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    this.status.status = 'idle';
+    delete this.status.currentTask;
+    this.status.lastActivity = new Date();
+    this.metrics.tasksCompleted++;
 
     return {
       success: true,
@@ -72,27 +106,16 @@ class MockAgent {
 
   async shutdown(): Promise<void> {
     // Simulate shutdown time
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    this.status.status = 'offline';
   }
 
-  getStatus(): any {
-    return {
-      status: 'idle',
-      lastActivity: new Date(),
-      errorCount: 0,
-      uptime: 0
-    };
+  getStatus(): AgentStatus {
+    return { ...this.status };
   }
 
-  getMetrics(): any {
-    return {
-      tasksCompleted: 0,
-      averageTaskTime: 0,
-      errorRate: 0,
-      tokensUsed: 0,
-      costIncurred: 0,
-      lastReset: new Date()
-    };
+  getMetrics(): AgentMetrics {
+    return { ...this.metrics };
   }
 }
 
@@ -301,7 +324,7 @@ describe('AgentLifecycleManager', () => {
     it('should execute task successfully', async () => {
       await manager.spawnAgent('task-test-agent');
 
-      const task = { type: 'test', data: 'test data' };
+      const task = { type: 'test', payload: { data: 'test data' } };
       const result = await manager.executeTask('task-test-agent', task, {
         timeout: 5000,
         trackTokens: true
@@ -314,7 +337,7 @@ describe('AgentLifecycleManager', () => {
     }, 10000);
 
     it('should fail to execute task on non-running agent', async () => {
-      const task = { type: 'test', data: 'test data' };
+      const task = { type: 'test', payload: { data: 'test data' } };
 
       await expect(manager.executeTask('task-test-agent', task)).rejects.toThrow(
         'Agent task-test-agent is not running'
@@ -324,11 +347,11 @@ describe('AgentLifecycleManager', () => {
     it('should handle task timeout', async () => {
       await manager.spawnAgent('task-test-agent');
 
-      const task = { type: 'test', data: 'test data' };
+      const task = { type: 'test', payload: { data: 'test data' } };
 
-      await expect(
-        manager.executeTask('task-test-agent', task, { timeout: 1 })
-      ).rejects.toThrow('Task execution timeout');
+      await expect(manager.executeTask('task-test-agent', task, { timeout: 1 })).rejects.toThrow(
+        'Task execution timeout'
+      );
     }, 10000);
   });
 
@@ -397,7 +420,7 @@ describe('AgentLifecycleManager', () => {
         }
       ];
 
-      configs.forEach(config => manager.registerAgent(config));
+      configs.forEach((config) => manager.registerAgent(config));
       (manager as any).loadAgentClass = jest.fn().mockResolvedValue(MockAgent);
     });
 
@@ -544,7 +567,7 @@ describe('AgentLifecycleManager', () => {
       manager.on('agent_stopped', () => events.push('stopped'));
 
       await manager.spawnAgent('event-test-agent');
-      await manager.executeTask('event-test-agent', { test: 'data' });
+      await manager.executeTask('event-test-agent', { type: 'test', payload: { test: 'data' } });
       await manager.stopAgent('event-test-agent');
 
       expect(events).toContain('spawning');

@@ -8,10 +8,25 @@ import { Signal } from '../shared/types';
 import { SignalFeatures } from './enhanced-signal-classifier';
 
 /**
+ * Interface for signal pattern definition
+ */
+export interface SignalPattern {
+  signalType: string;
+  keywords: string[];
+  category: string;
+  subcategory: string;
+  agentRole: string;
+  priority: number;
+  confidence: number;
+  context: string[];
+  examples: string[];
+}
+
+/**
  * Basic Signal Pattern Database implementation
  */
 export class SignalPatternDatabase {
-  private patterns: Map<string, any> = new Map();
+  private patterns: Map<string, SignalPattern> = new Map();
 
   constructor() {
     this.initializePatterns();
@@ -28,7 +43,10 @@ export class SignalPatternDatabase {
       category: 'development',
       subcategory: 'progress',
       agentRole: 'robo-developer',
-      confidence: 0.85
+      priority: 5,
+      confidence: 0.85,
+      context: ['development', 'implementation'],
+      examples: ['Development progress completed successfully']
     });
 
     // Quality assurance patterns
@@ -38,7 +56,10 @@ export class SignalPatternDatabase {
       category: 'quality',
       subcategory: 'testing',
       agentRole: 'robo-aqa',
-      confidence: 0.9
+      priority: 7,
+      confidence: 0.9,
+      context: ['testing', 'quality'],
+      examples: ['All tests are green']
     });
 
     // Blocker patterns
@@ -48,7 +69,10 @@ export class SignalPatternDatabase {
       category: 'coordination',
       subcategory: 'blocker',
       agentRole: 'conductor',
-      confidence: 0.95
+      priority: 9,
+      confidence: 0.95,
+      context: ['coordination', 'blocking'],
+      examples: ['Development is blocked by dependency']
     });
 
     // Bug fix patterns
@@ -58,7 +82,10 @@ export class SignalPatternDatabase {
       category: 'development',
       subcategory: 'bug-fix',
       agentRole: 'robo-developer',
-      confidence: 0.88
+      priority: 6,
+      confidence: 0.88,
+      context: ['development', 'bug-fix'],
+      examples: ['Bug has been fixed and tested']
     });
 
     // Merge patterns
@@ -68,15 +95,18 @@ export class SignalPatternDatabase {
       category: 'coordination',
       subcategory: 'merge',
       agentRole: 'robo-devops-sre',
-      confidence: 0.92
+      priority: 8,
+      confidence: 0.92,
+      context: ['coordination', 'merge'],
+      examples: ['Code has been merged to main branch']
     });
   }
 
   /**
    * Find similar patterns for a signal
    */
-  async findSimilarPatterns(signal: Signal, features: SignalFeatures): Promise<any[]> {
-    const patterns = [];
+  async findSimilarPatterns(signal: Signal, features: SignalFeatures): Promise<{pattern: string, match: SignalPattern, confidence: number}[]> {
+    const patterns: {pattern: string, match: SignalPattern, confidence: number}[] = [];
 
     // Find matching patterns based on signal type
     const typePattern = Array.from(this.patterns.entries()).find(([key, pattern]) =>
@@ -112,14 +142,14 @@ export class SignalPatternDatabase {
   /**
    * Add a new pattern to the database
    */
-  addPattern(key: string, pattern: any): void {
+  addPattern(key: string, pattern: SignalPattern): void {
     this.patterns.set(key, pattern);
   }
 
   /**
    * Get all patterns
    */
-  getAllPatterns(): Map<string, any> {
+  getAllPatterns(): Map<string, SignalPattern> {
     return new Map(this.patterns);
   }
 }

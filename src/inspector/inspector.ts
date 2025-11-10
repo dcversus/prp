@@ -21,18 +21,22 @@ import {
 } from './types';
 import {
   Signal,
-  InspectorPayload,
-  SignalClassification,
-  Recommendation,
-  PreparedContext,
   createLayerLogger,
   TimeUtils,
   HashUtils,
-  TokenCounter
+  TokenCounter,
+  AgentRole,
+  PreparedContext
 } from '../shared';
+import {
+  InspectorPayload,
+  SignalClassification,
+  Recommendation,
+  PreparedContext as InspectorPreparedContext
+} from './types';
 import type { ActivityEntry } from './types';
 import { guidelinesRegistry } from '../guidelines';
-import { storageManager } from '../storage';
+import { storageManager } from '../shared/storage.js';
 
 const logger = createLayerLogger('inspector');
 
@@ -217,7 +221,10 @@ export class Inspector extends EventEmitter {
     }
 
     while (this.state.queue.length > 0 && this.state.processing.size < this.config.maxConcurrentClassifications) {
-      const signal = this.state.queue.shift()!;
+      const signal = this.state.queue.shift();
+      if (!signal) {
+        break; // Queue is empty
+      }
 
       // Find processing entry
       const processing = Array.from(this.state.processing.values())
@@ -281,7 +288,7 @@ export class Inspector extends EventEmitter {
       // Step 4: Generate payload
       processing.status = 'generating_payload';
       // Generate payload for orchestrator
-    await this.generatePayload(classification, preparedContext);
+      await this.generatePayload(classification, preparedContext);
 
       // Step 5: Generate recommendations
       const recommendations = await this.generateRecommendations(classification, context);
@@ -291,7 +298,7 @@ export class Inspector extends EventEmitter {
         category: classification.category,
         subcategory: classification.category, // Use category as subcategory for now
         priority: classification.urgency === 'critical' ? 1 : classification.urgency === 'high' ? 3 : classification.urgency === 'medium' ? 5 : 7,
-        agentRole: classification.suggestedRole,
+        agentRole: (classification.suggestedRole as AgentRole) || 'robo-developer',
         escalationLevel: classification.urgency === 'critical' ? 1 : 0,
         deadline: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
         dependencies: [],
@@ -299,25 +306,35 @@ export class Inspector extends EventEmitter {
       };
 
       // Convert to inspector prepared context
-      const inspectorPreparedContext: import('./types').PreparedContext = {
+      const inspectorPreparedContextResult: InspectorPreparedContext = {
         id: HashUtils.generateId(),
         signalId: processing.signal.id,
-        content: preparedContext as import('./types').ContextData,
+        content: {
+          signalContent: preparedContext.summary,
+          agentContext: preparedContext.agentStates,
+          relevantFiles: preparedContext.fileReferences.map(path => ({
+            path,
+            content: '',
+            lastModified: new Date()
+          })),
+          environment: {}
+        },
         size: JSON.stringify(preparedContext).length,
         compressed: false,
-        tokenCount: TokenCounter.estimateTokensFromObject(preparedContext)
+        tokenCount: TokenCounter.estimateTokensFromObject(preparedContext),
+        summary: preparedContext.summary || ''
       };
 
       // Convert to inspector payload
-      const inspectorPayload: import('./types').InspectorPayload = {
+      const inspectorPayload: InspectorPayload = {
         id: HashUtils.generateId(),
         signalId: processing.signal.id,
         classification: inspectorClassification,
-        context: inspectorPreparedContext,
+        context: inspectorPreparedContextResult,
         recommendations: recommendations.map(rec => ({
           type: rec.type,
           priority: rec.priority.toString(),
-          description: rec.reasoning,
+          description: rec.reasoning || 'No description available',
           estimatedTime: 30, // Default 30 minutes
           prerequisites: []
         })),
@@ -331,11 +348,11 @@ export class Inspector extends EventEmitter {
         id: processing.id,
         signal: processing.signal,
         classification: inspectorClassification,
-        context: inspectorPreparedContext,
+        context: inspectorPreparedContextResult,
         payload: inspectorPayload,
         recommendations: Array.isArray(recommendations) ? recommendations.map((rec: Recommendation) => ({
           type: rec.type ?? 'unknown',
-          priority: rec.priority?.toString() ?? 'medium',
+          priority: rec.priority.toString() ?? 'medium',
           description: rec.reasoning ?? 'No description available',
           estimatedTime: 30,
           prerequisites: []
@@ -483,10 +500,15 @@ export class Inspector extends EventEmitter {
 
       // Return fallback classification
       return {
-        signal,
+        signal: signal.id,
         category: 'general',
+        subcategory: 'general',
+        priority: 5,
+        agentRole: 'robo-developer',
+        escalationLevel: 0,
+        deadline: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+        dependencies: [],
         urgency: 'medium',
-        requiresAction: true,
         suggestedRole: 'robo-developer',
         confidence: 0.5
       };
@@ -501,43 +523,29 @@ export class Inspector extends EventEmitter {
     context: ProcessingContext
   ): Promise<PreparedContext> {
     return {
+      id: HashUtils.generateId(),
       summary: this.generateContextSummary(classification, context),
+      keyPoints: [],
+      relevantData: {},
+      fileReferences: [],
+      agentStates: {},
       activePRPs: context.activePRPs,
-      blockedItems: this.identifyBlockedItems(),
-      recentActivity: context.recentActivity.slice(0, 10), // Last 10 activities
+      recentActivity: context.recentActivity.slice(0, 10).map(activity => JSON.stringify(activity)),
       tokenStatus: {
-          ...context.tokenStatus,
-          used: context.tokenStatus.totalUsed
-        },
-      agentStatus: context.agentStatus.map(agent => ({
-        id: agent.id,
-        name: agent.name,
-        status: agent.status,
-        currentTask: agent.currentTask ?? undefined,
-        lastActivity: agent.lastActivity,
-        tokenUsage: {
-          used: 0, // Default value since AgentStatusInfo doesn't have this
-          limit: 10000 // Default limit
-        },
-        capabilities: {
-          supportsTools: agent.capabilities.supportsTools,
-          supportsImages: agent.capabilities.supportsImages,
-          supportsSubAgents: agent.capabilities.supportsSubAgents,
-          supportsParallel: agent.capabilities.supportsParallel,
-          supportsCodeExecution: false,
-          maxContextLength: agent.capabilities.maxContextLength,
-          supportedModels: [],
-          supportedFileTypes: [],
-          canAccessInternet: false,
-          canAccessFileSystem: false,
-          canExecuteCommands: false
-        }
-      })),
+        used: context.tokenStatus.totalUsed,
+        totalUsed: context.tokenStatus.totalUsed,
+        totalLimit: context.tokenStatus.totalLimit,
+        approachingLimit: context.tokenStatus.approachingLimit,
+        criticalLimit: context.tokenStatus.criticalLimit,
+        agentBreakdown: context.tokenStatus.agentBreakdown
+      },
+      agentStatus: context.agentStatus.map(agent => agent.status),
       sharedNotes: context.sharedNotes.filter(note =>
         Array.isArray(note.relevantTo) && note.relevantTo.some(id =>
-          [classification.signal.id, ...context.activePRPs].includes(id)
+          [classification.signal, ...context.activePRPs].includes(id)
         )
-      )
+      ).map(note => note.id),
+      signal: classification.signal
     };
   }
 
@@ -548,19 +556,39 @@ export class Inspector extends EventEmitter {
     classification: SignalClassification,
     preparedContext: PreparedContext
   ): Promise<InspectorPayload> {
+    const inspectorPreparedContext: InspectorPreparedContext = {
+      id: preparedContext.id,
+      signalId: classification.signal || '',
+      content: {
+        signalContent: preparedContext.summary,
+        agentContext: preparedContext.agentStates,
+        relevantFiles: preparedContext.fileReferences.map(path => ({
+          path,
+          content: '',
+          lastModified: new Date()
+        })),
+        environment: {}
+      },
+      size: JSON.stringify(preparedContext).length,
+      compressed: false,
+      tokenCount: TokenCounter.estimateTokensFromObject(preparedContext),
+      summary: preparedContext.summary || ''
+    };
+
     const payload: InspectorPayload = {
       id: HashUtils.generateId(),
-      timestamp: TimeUtils.now(),
-      sourceSignals: [classification.signal],
-      classification: [classification],
+      signalId: classification.signal || '',
+      classification: classification,
+      context: inspectorPreparedContext,
       recommendations: [], // Will be filled in next step
-      context: preparedContext,
-      estimatedTokens: TokenCounter.estimateTokensFromObject(preparedContext),
-      priority: this.calculatePayloadPriority(classification)
+      timestamp: TimeUtils.now(),
+      size: JSON.stringify(preparedContext).length,
+      compressed: false,
+      estimatedTokens: TokenCounter.estimateTokensFromObject(preparedContext)
     };
 
     // Ensure payload is within size limits
-    if (payload.estimatedTokens > this.config.maxTokens) {
+    if (payload.estimatedTokens && payload.estimatedTokens > this.config.maxTokens) {
       payload.context = this.compressContext(payload.context);
       payload.estimatedTokens = TokenCounter.estimateTokensFromObject(payload.context);
     }
@@ -591,10 +619,11 @@ export class Inspector extends EventEmitter {
       // Return fallback recommendations
       return [{
         type: 'create_note',
-        target: classification.suggestedRole,
-        payload: { signalId: classification.signal.id },
+        priority: classification.urgency === 'critical' ? '10' : '5',
+        description: 'Default recommendation due to processing error',
         reasoning: 'Default recommendation due to processing error',
-        priority: classification.urgency === 'critical' ? 10 : 5
+        estimatedTime: 30,
+        prerequisites: []
       }];
     }
   }
@@ -602,32 +631,32 @@ export class Inspector extends EventEmitter {
   /**
    * Call the model (GPT-5 mini)
    */
-  private async callModel(prompt: string, options: Record<string, unknown> = {}): Promise<ModelResponse> {
+  private async callModel(prompt: string, _options: Record<string, unknown> = {}): Promise<ModelResponse> {
     const startTime = Date.now();
 
     try {
       // This would integrate with the actual model API
       // For now, simulate a response (options ignored in simulation)
-      void options; // Explicitly mark as used to avoid ESLint warning
+      // Options are used in actual implementation, ignored in simulation
       const response = await this.simulateModelCall(prompt);
 
       const modelResponse = response as unknown as InspectorModelResponse;
-    return {
+      return {
         id: HashUtils.generateId(),
         model: this.config.model,
         prompt,
         response: {
-        type: 'model_response',
-        payload: modelResponse.content,
-        timestamp: TimeUtils.now(),
-        source: 'inspector'
-      },
-        usage: {
-          promptTokens: modelResponse?.usage?.promptTokens ?? 0,
-          completionTokens: modelResponse?.usage?.completionTokens ?? 0,
-          totalTokens: modelResponse?.usage?.totalTokens ?? 0
+          type: 'model_response',
+          payload: modelResponse.content,
+          timestamp: TimeUtils.now(),
+          source: 'inspector'
         },
-        finishReason: String(modelResponse?.finish_reason ?? 'unknown'),
+        usage: {
+          promptTokens: modelResponse.usage?.promptTokens ?? 0,
+          completionTokens: modelResponse.usage?.completionTokens ?? 0,
+          totalTokens: modelResponse.usage?.totalTokens ?? 0
+        },
+        finishReason: String(modelResponse.finish_reason ?? 'unknown'),
         timestamp: TimeUtils.now(),
         processingTime: Date.now() - startTime
       };
@@ -841,11 +870,11 @@ Focus on accuracy and provide clear reasoning for your classification.`;
   }
 
   private getContextPreparationPrompt(): string {
-    return `Prepare context for the orchestrator based on the classification and available information.`;
+    return 'Prepare context for the orchestrator based on the classification and available information.';
   }
 
   private getRecommendationPrompt(): string {
-    return `Generate specific recommendations for handling the classified signal.`;
+    return 'Generate specific recommendations for handling the classified signal.';
   }
 
   private buildClassificationPrompt(signal: Signal, context: ProcessingContext): string {
@@ -874,22 +903,31 @@ Focus on accuracy and provide clear reasoning for your classification.`;
     try {
       const parsed = JSON.parse(String(response.response));
       return {
-        signal,
+        signal: signal.id,
         category: parsed.category ?? 'general',
+        subcategory: 'general',
+        priority: 5,
+        agentRole: (parsed.suggestedRole as AgentRole) || 'robo-developer',
+        escalationLevel: 0,
+        deadline: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+        dependencies: [],
         urgency: parsed.urgency ?? 'medium',
-        requiresAction: parsed.requiresAction !== false,
         suggestedRole: parsed.suggestedRole ?? 'developer',
-        confidence: parsed.confidence ?? 0.5,
-        guideline: parsed.guideline
+        confidence: parsed.confidence ?? 0.5
       };
     } catch (error) {
       const errorObj = error instanceof Error ? error : new Error(String(error));
       logger.warn('Inspector', 'Failed to parse classification response', { error: errorObj.message, stack: errorObj.stack });
       return {
-        signal,
+        signal: signal.id,
         category: 'general',
+        subcategory: 'general',
+        priority: 5,
+        agentRole: 'robo-developer',
+        escalationLevel: 0,
+        deadline: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+        dependencies: [],
         urgency: 'medium',
-        requiresAction: true,
         suggestedRole: 'robo-developer',
         confidence: 0.3
       };
@@ -910,20 +948,13 @@ Focus on accuracy and provide clear reasoning for your classification.`;
    * Utility methods
    */
   private generateContextSummary(classification: SignalClassification, context: ProcessingContext): string {
-    return `Signal ${classification.signal.type} (${classification.category}) requires ${classification.urgency} attention. ${context.activePRPs.length} active PRPs, ${context.agentStatus.length} agents available.`;
+    const signalType = (classification.signal as any)?.type ?? 'unknown';
+    return `Signal ${signalType} (${classification.category}) requires ${classification.urgency} attention. ${context.activePRPs.length} active PRPs, ${context.agentStatus.length} agents available.`;
   }
 
-  private identifyBlockedItems(): string[] {
-    // Implementation would identify blocked items from context
-    return [];
-  }
-
-  private calculatePayloadPriority(classification: SignalClassification): number {
-    const urgencyMap = { low: 1, medium: 5, high: 8, critical: 10 };
-    return urgencyMap[classification.urgency] ?? 5;
-  }
-
-  private compressContext(context: PreparedContext): PreparedContext {
+  
+  
+  private compressContext(context: InspectorPreparedContext): InspectorPreparedContext {
     // Implementation would compress context to fit within token limits
     return context;
   }
@@ -992,18 +1023,14 @@ Focus on accuracy and provide clear reasoning for your classification.`;
 
     // Update by category
     const category = result.classification.category;
-    if (!metrics.byCategory[category]) {
-      metrics.byCategory[category] = { count: 0, averageTime: 0, successRate: 1 };
-    }
+    metrics.byCategory[category] ??= { count: 0, averageTime: 0, successRate: 1 };
     metrics.byCategory[category].count++;
 
     // Update by urgency
     // Note: inspector types SignalClassification doesn't have urgency property
     // This would need to be mapped from the original classification if needed
     const urgency = 'medium'; // Default fallback
-    if (!metrics.byUrgency[urgency]) {
-      metrics.byUrgency[urgency] = { count: 0, averageTime: 0, tokenUsage: 0 };
-    }
+    metrics.byUrgency[urgency] ??= { count: 0, averageTime: 0, tokenUsage: 0 };
     metrics.byUrgency[urgency].count++;
     metrics.byUrgency[urgency].tokenUsage += result.tokenUsage.total;
   }
@@ -1048,7 +1075,7 @@ Focus on accuracy and provide clear reasoning for your classification.`;
    * Clear completed and failed results
    */
   clearResults(olderThan?: Date): void {
-    const cutoff = olderThan || TimeUtils.hoursAgo(1);
+    const cutoff = olderThan ?? TimeUtils.hoursAgo(1);
 
     Array.from(this.state.completed.entries()).forEach(([id, result]) => {
       if (result.timestamp < cutoff) {

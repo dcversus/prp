@@ -6,9 +6,9 @@
  */
 
 import { Box, Text } from 'ink';
-import { AgentCard as AgentCardType, TUIConfig } from '../types/TUIConfig.js';
 import { MusicIcon } from './MusicIcon.js';
 import { getRoleColors } from '../config/TUIConfig.js';
+import type { AgentCard as AgentCardType, TUIConfig } from '../../shared/types/TUIConfig.js';
 
 interface AgentCardProps {
   agent: AgentCardType;
@@ -39,7 +39,7 @@ export function AgentCard({ agent, config }: AgentCardProps) {
       </Box>
 
       {/* Output lines */}
-      {agent.output.map((line, index) => (
+      {agent.output.map((line: string, index: number) => (
         <Box key={index}>
           <Text color={config.colors.muted}>
             last ▸{' '}
