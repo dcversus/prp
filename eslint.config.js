@@ -26,22 +26,31 @@ export default [
       },
     },
     rules: {
-      // Practical rules for development
-      '@typescript-eslint/no-unused-vars': 'warn', // Downgrade to warn
-      '@typescript-eslint/no-require-imports': 'warn', // Downgrade to warn
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/prefer-nullish-coalescing': 'warn', // Downgrade to warn
-      '@typescript-eslint/prefer-optional-chain': 'warn', // Downgrade to warn
-      '@typescript-eslint/no-unnecessary-type-assertion': 'warn', // Downgrade to warn
-      '@typescript-eslint/no-non-null-assertion': 'warn', // Downgrade to warn
-      '@typescript-eslint/no-unnecessary-condition': 'warn', // Downgrade to warn
-      '@typescript-eslint/prefer-as-const': 'warn', // Downgrade to warn
-      '@typescript-eslint/prefer-string-starts-ends-with': 'off', // Disable for now
-      '@typescript-eslint/prefer-includes': 'warn', // Downgrade to warn
+      // Critical TypeScript rules - strict but practical
+      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/no-explicit-any': 'warn', // Allow any with warning for flexibility
+      '@typescript-eslint/prefer-nullish-coalescing': 'error',
+      '@typescript-eslint/prefer-optional-chain': 'error',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+      '@typescript-eslint/no-non-null-assertion': 'warn', // Allow with warning
+      '@typescript-eslint/no-unnecessary-condition': 'warn', // Downgrade to avoid false positives
+      '@typescript-eslint/prefer-as-const': 'error',
+      '@typescript-eslint/prefer-string-starts-ends-with': 'off', // Can be noisy
+      '@typescript-eslint/prefer-includes': 'error',
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/return-await': 'error',
+      '@typescript-eslint/no-for-in-array': 'error',
+      // Unsafe type rules - warn for visibility
+      '@typescript-eslint/no-unsafe-assignment': 'warn',
+      '@typescript-eslint/no-unsafe-call': 'warn',
+      '@typescript-eslint/no-unsafe-member-access': 'warn',
+      '@typescript-eslint/no-unsafe-return': 'warn',
 
-      // Base rules
+      // Base rules - strict
       'no-unused-vars': 'off', // Turned off in favor of TypeScript version
-      'no-console': 'warn',
+      'no-console': 'warn', // Allow console for debugging
       'no-undef': 'off', // Handled by TypeScript
       'no-unused-expressions': 'error',
       'no-case-declarations': 'error',
@@ -64,6 +73,14 @@ export default [
       'no-with': 'error',
       'radix': 'error',
       'yoda': 'error',
+      'eqeqeq': 'error', // Require === and !==
+      'curly': 'error', // Require curly braces
+      'brace-style': ['error', '1tbs'],
+      'comma-dangle': ['error', 'never'],
+      'quotes': ['error', 'single', { avoidEscape: true }],
+      'semi': ['error', 'always'],
+      'indent': ['error', 2, { SwitchCase: 1 }],
+      'max-len': ['error', { code: 150, ignoreUrls: true, ignoreStrings: true }],
     },
   },
   {
