@@ -1,0 +1,33 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "strictPropertyInitialization": false
+  },
+  "include": [
+    "src/cli.ts",
+    "src/shared/**/*",
+    "src/scanner/**/*",
+    "src/guidelines/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "templates",
+    "src/agents/**/*",
+    "src/tui/**/*",
+    "src/ui/**/*",
+    "src/orchestrator/**/*",
+    "src/cli/**/*",
+    "src/commands/**/*",
+    "src/monitoring/**/*",
+    "scripts/**/*",
+    "tests/**/*"
+  ]
+}
