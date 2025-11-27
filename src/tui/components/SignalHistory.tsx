@@ -7,14 +7,12 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Text, Box, useInput } from 'ink';
-import type {
-  SignalEvent,
-  SignalFilter,
-  SignalPriority,
-  TUIConfig
-} from '../../types.js';
-import { SignalDisplay } from './SignalDisplay.js';
-import { useSignalSubscription } from '../hooks/useSignalSubscription.js';
+
+import { useSignalSubscription } from '../hooks/useSignalSubscription';
+
+import { SignalDisplay } from './SignalDisplay';
+
+import type { SignalEvent, SignalFilter, SignalPriority, TUIConfig } from '../../types';
 
 export interface SignalHistoryProps {
   maxHeight?: number;
@@ -31,37 +29,38 @@ export interface SignalHistoryProps {
   config?: TUIConfig;
   onSignalSelect?: (signal: SignalEvent) => void;
   className?: string;
-}
+};
 
-interface GroupedSignals {
-  [key: string]: SignalEvent[];
-}
+type GroupedSignals = Record<string, SignalEvent[]>;
 
 interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   compact?: boolean;
-}
+};
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function SearchBar({ value, _onChange, placeholder = 'Search signals...', compact = false }: SearchBarProps): React.ReactElement {
+ 
+const SearchBar: React.FC<SearchBarProps> = ({
+  value,
+  onChange,
+  placeholder = 'Search signals...',
+  compact = false,
+}) => {
   return (
     <Box flexDirection="row" marginBottom={compact ? 0 : 1}>
       <Text color="#9CA3AF" dimColor>
         🔍
       </Text>
       <Text> </Text>
-      <Text color="#9CA3AF">
-        {placeholder}
-      </Text>
+      <Text color="#9CA3AF">{placeholder}</Text>
       <Text> </Text>
       <Text color="#E5E7EB" bold underline={value.length > 0}>
         {value || '(empty)'}
       </Text>
     </Box>
   );
-}
+};
 
 interface FilterPillProps {
   label: string;
@@ -69,9 +68,15 @@ interface FilterPillProps {
   active?: boolean;
   color?: string;
   onClick?: () => void;
-}
+};
 
-function FilterPill({ label, value, active = false, color = '#6B7280', onClick }: FilterPillProps): React.ReactElement {
+const FilterPill: React.FC<FilterPillProps> = ({
+  label,
+  value,
+  active = false,
+  color = '#6B7280',
+  onClick,
+}) => {
   if (onClick) {
     return (
       <Box marginRight={1}>
@@ -89,16 +94,20 @@ function FilterPill({ label, value, active = false, color = '#6B7280', onClick }
       </Text>
     </Box>
   );
-}
+};
 
 interface FilterBarProps {
   filter: SignalFilter;
   onFilterChange: (filter: SignalFilter) => void;
   compact?: boolean;
-}
+};
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function FilterBar({ filter, _onFilterChange, compact = false }: FilterBarProps): React.ReactElement {
+ 
+function FilterBar({
+  filter,
+  onFilterChange,
+  compact = false,
+}: FilterBarProps): React.ReactElement | null {
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filter.types?.length) {
@@ -139,21 +148,11 @@ function FilterBar({ filter, _onFilterChange, compact = false }: FilterBarProps)
       </Text>
 
       {filter.types && (
-        <FilterPill
-          label="Types"
-          value={filter.types.length}
-          active={true}
-          color="#8B5CF6"
-        />
+        <FilterPill label="Types" value={filter.types.length} active={true} color="#8B5CF6" />
       )}
 
       {filter.sources && (
-        <FilterPill
-          label="Sources"
-          value={filter.sources.length}
-          active={true}
-          color="#10B981"
-        />
+        <FilterPill label="Sources" value={filter.sources.length} active={true} color="#10B981" />
       )}
 
       {filter.priorities && (
@@ -166,48 +165,23 @@ function FilterBar({ filter, _onFilterChange, compact = false }: FilterBarProps)
       )}
 
       {filter.states && (
-        <FilterPill
-          label="State"
-          value={filter.states.length}
-          active={true}
-          color="#EF4444"
-        />
+        <FilterPill label="State" value={filter.states.length} active={true} color="#EF4444" />
       )}
 
       {filter.prpId && (
-        <FilterPill
-          label="PRP"
-          value={filter.prpId}
-          active={true}
-          color="#6366F1"
-        />
+        <FilterPill label="PRP" value={filter.prpId} active={true} color="#6366F1" />
       )}
 
       {filter.agentId && (
-        <FilterPill
-          label="Agent"
-          value={filter.agentId}
-          active={true}
-          color="#84CC16"
-        />
+        <FilterPill label="Agent" value={filter.agentId} active={true} color="#84CC16" />
       )}
 
       {filter.tags && filter.tags.length > 0 && (
-        <FilterPill
-          label="Tags"
-          value={filter.tags.length}
-          active={true}
-          color="#14B8A6"
-        />
+        <FilterPill label="Tags" value={filter.tags.length} active={true} color="#14B8A6" />
       )}
 
       {filter.search && (
-        <FilterPill
-          label="Search"
-          value={filter.search}
-          active={true}
-          color="#F97316"
-        />
+        <FilterPill label="Search" value={filter.search} active={true} color="#F97316" />
       )}
 
       {activeFilterCount === 0 && (
@@ -217,7 +191,7 @@ function FilterBar({ filter, _onFilterChange, compact = false }: FilterBarProps)
       )}
     </Box>
   );
-}
+};
 
 interface GroupHeaderProps {
   groupKey: string;
@@ -225,10 +199,16 @@ interface GroupHeaderProps {
   collapsed?: boolean;
   onToggle?: () => void;
   color?: string;
-}
+};
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function GroupHeader({ groupKey, count, collapsed = false, _onToggle, color = '#9CA3AF' }: GroupHeaderProps): React.ReactElement {
+ 
+const GroupHeader: React.FC<GroupHeaderProps> = ({
+  groupKey,
+  count,
+  collapsed = false,
+  onToggle,
+  color = '#9CA3AF',
+}) => {
   const icon = collapsed ? '▶' : '▼';
 
   return (
@@ -246,12 +226,12 @@ function GroupHeader({ groupKey, count, collapsed = false, _onToggle, color = '#
       </Text>
     </Box>
   );
-}
+};
 
 /**
  * Main Signal History Component
  */
-export function SignalHistory({
+export const SignalHistory = ({
   maxHeight = 20,
   maxEntries = 100,
   initialFilter,
@@ -261,13 +241,13 @@ export function SignalHistory({
   groupBy = 'none',
   sortBy = 'timestamp',
   sortOrder = 'desc',
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   _autoScroll = true,
   compact = false,
   config,
   onSignalSelect,
-  className
-}: SignalHistoryProps): React.ReactElement {
+  className,
+}: SignalHistoryProps): JSX.Element => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<SignalFilter>(initialFilter ?? {});
   const [currentGroupBy, setCurrentGroupBy] = useState(groupBy);
@@ -279,14 +259,14 @@ export function SignalHistory({
   // Get signal data
   const { signals, loading, error } = useSignalSubscription(undefined, filter, {
     historySize: maxEntries,
-    debounceDelay: 100
+    debounceDelay: 100,
   });
 
   // Update search in filter
   useEffect(() => {
-    setFilter(prev => ({
+    setFilter((prev) => ({
       ...prev,
-      search: searchQuery.trim() || undefined
+      search: searchQuery.trim() ?? undefined,
     }));
   }, [searchQuery]);
 
@@ -306,11 +286,16 @@ export function SignalHistory({
         case 'priority': {
           const getPriorityValue = (priority: SignalPriority): number => {
             switch (priority) {
-              case 'critical': return 4;
-              case 'high': return 3;
-              case 'medium': return 2;
-              case 'low': return 1;
-              default: return 0;
+              case 'critical':
+                return 4;
+              case 'high':
+                return 3;
+              case 'medium':
+                return 2;
+              case 'low':
+                return 1;
+              default:
+                return 0;
             }
           };
           comparison = getPriorityValue(b.priority) - getPriorityValue(a.priority);
@@ -343,7 +328,7 @@ export function SignalHistory({
 
     const groups: GroupedSignals = {};
 
-    processedSignals.forEach(signal => {
+    processedSignals.forEach((signal) => {
       let groupKey = '';
 
       switch (currentGroupBy) {
@@ -367,7 +352,7 @@ export function SignalHistory({
       }
 
       groups[groupKey] ??= [];
-      groups[groupKey].push(signal);
+      groups[groupKey]!.push(signal);
     });
 
     return groups;
@@ -379,7 +364,7 @@ export function SignalHistory({
       case 'q':
       case 'Q':
         if (showSearch) {
-          setSearchQuery(prev => prev.slice(0, -1));
+          setSearchQuery((prev) => prev.slice(0, -1));
         }
         break;
 
@@ -392,7 +377,7 @@ export function SignalHistory({
       case 'g':
         if (showGrouping && key.shift) {
           // Shift+G to toggle grouping
-          setCurrentGroupBy(prev => prev === 'none' ? 'type' : 'none');
+          setCurrentGroupBy((prev) => (prev === 'none' ? 'type' : 'none'));
         }
         break;
 
@@ -400,7 +385,7 @@ export function SignalHistory({
       case 'k':
         if (key.ctrl) {
           // Ctrl+J/K for navigation
-          setScrollOffset(prev => {
+          setScrollOffset((prev) => {
             if (input === 'j') {
               return Math.max(0, prev - 1);
             } else {
@@ -413,13 +398,13 @@ export function SignalHistory({
 
     // Handle text input for search
     if (showSearch && input.length === 1 && !key.ctrl && !key.meta) {
-      setSearchQuery(prev => prev + input);
+      setSearchQuery((prev) => prev + input);
     }
   });
 
   // Toggle group collapse
   const toggleGroupCollapse = useCallback((groupKey: string) => {
-    setCollapsedGroups(prev => {
+    setCollapsedGroups((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(groupKey)) {
         newSet.delete(groupKey);
@@ -432,33 +417,37 @@ export function SignalHistory({
 
   // Handle signal selection
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleSignalSelect = useCallback((signal: SignalEvent) => {
-    setSelectedSignal(signal.id);
-    onSignalSelect?.(signal);
-  }, [onSignalSelect]);
+  const handleSignalSelect = useCallback(
+    (signal: SignalEvent) => {
+      setSelectedSignal(signal.id);
+      onSignalSelect?.(signal);
+    },
+    [onSignalSelect],
+  );
 
   // Render signal content
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const renderSignal = useCallback((signal: SignalEvent, _index: number) => {
-    const isSelected = selectedSignal === signal.id;
+   
+  const renderSignal = useCallback(
+    (signal: SignalEvent, _index: number) => {
+      const isSelected = selectedSignal === signal.id;
 
-    return (
-      <Box key={signal.id} flexDirection="row">
-        <SignalDisplay
-          signal={signal}
-          compact={compact}
-          animated={true}
-          showTimestamp={!compact}
-          showDescription={!compact}
-          showSource={!compact}
-          config={config}
-        />
-        {isSelected && (
-          <Text color="#10B981"> ←</Text>
-        )}
-      </Box>
-    );
-  }, [selectedSignal, compact, config]);
+      return (
+        <Box key={signal.id} flexDirection="row">
+          <SignalDisplay
+            signal={signal}
+            compact={compact}
+            animated={true}
+            showTimestamp={!compact}
+            showDescription={!compact}
+            showSource={!compact}
+            config={config}
+          />
+          {isSelected && <Text color="#10B981"> ←</Text>}
+        </Box>
+      );
+    },
+    [selectedSignal, compact, config],
+  );
 
   // Render grouped signals
   const renderGroupedSignals = useCallback(() => {
@@ -467,7 +456,7 @@ export function SignalHistory({
 
     return (
       <Box flexDirection="column">
-        {groupKeys.map(groupKey => {
+        {groupKeys.map((groupKey) => {
           const groupSignals = groupedSignals[groupKey] || [];
           const isCollapsed = collapsedGroups.has(groupKey);
 
@@ -487,10 +476,11 @@ export function SignalHistory({
                   onToggle={() => toggleGroupCollapse(groupKey)}
                 />
               )}
-              {shouldRenderGroup && groupSignals.slice(0, maxHeight - totalRendered).map((signal, index) => {
-                totalRendered++;
-                return renderSignal(signal, index);
-              })}
+              {shouldRenderGroup &&
+                groupSignals.slice(0, maxHeight - totalRendered).map((signal, index) => {
+                  totalRendered++;
+                  return renderSignal(signal, index);
+                })}
               {totalRendered >= maxHeight && (
                 <Text color="#9CA3AF" dimColor italic marginTop={1}>
                   ... and {processedSignals.length - totalRendered} more
@@ -509,7 +499,7 @@ export function SignalHistory({
     collapsedGroups,
     toggleGroupCollapse,
     renderSignal,
-    processedSignals.length
+    processedSignals.length,
   ]);
 
   // Render header
@@ -524,7 +514,8 @@ export function SignalHistory({
           Signal History
         </Text>
         <Text color="#9CA3AF" dimColor>
-          {processedSignals.length} signal{processedSignals.length !== 1 ? 's' : ''} • Grouped by {currentGroupBy}
+          {processedSignals.length} signal{processedSignals.length !== 1 ? 's' : ''} • Grouped by{' '}
+          {currentGroupBy}
         </Text>
       </Box>
     );
@@ -547,9 +538,7 @@ export function SignalHistory({
     return (
       <Box flexDirection="column">
         {renderHeader()}
-        <Text color="#EF4444">
-          Error loading signals: {error.message}
-        </Text>
+        <Text color="#EF4444">Error loading signals: {error.message}</Text>
       </Box>
     );
   }
@@ -560,19 +549,9 @@ export function SignalHistory({
       <Box flexDirection="column">
         {renderHeader()}
         {showSearch && (
-          <SearchBar
-            value={searchQuery}
-            onChange={setSearchQuery}
-            compact={compact}
-          />
+          <SearchBar value={searchQuery} onChange={setSearchQuery} compact={compact} />
         )}
-        {showFilters && (
-          <FilterBar
-            filter={filter}
-            onFilterChange={setFilter}
-            compact={compact}
-          />
-        )}
+        {showFilters && <FilterBar filter={filter} onFilterChange={setFilter} compact={compact} />}
         <Text color="#9CA3AF" dimColor italic marginTop={1}>
           No signals found
         </Text>
@@ -585,21 +564,9 @@ export function SignalHistory({
     <Box flexDirection="column" className={className}>
       {renderHeader()}
 
-      {showSearch && (
-        <SearchBar
-          value={searchQuery}
-          onChange={setSearchQuery}
-          compact={compact}
-        />
-      )}
+      {showSearch && <SearchBar value={searchQuery} onChange={setSearchQuery} compact={compact} />}
 
-      {showFilters && (
-        <FilterBar
-          filter={filter}
-          onFilterChange={setFilter}
-          compact={compact}
-        />
-      )}
+      {showFilters && <FilterBar filter={filter} onFilterChange={setFilter} compact={compact} />}
 
       <Box flexDirection="column" height={Math.min(processedSignals.length, maxHeight)}>
         {renderGroupedSignals()}
@@ -614,23 +581,23 @@ export function SignalHistory({
       )}
     </Box>
   );
-}
+};
 
 /**
  * Compact Signal History Component for limited space
  */
-export function CompactSignalHistory({
+export const CompactSignalHistory = ({
   maxEntries = 5,
   filter,
-  config
+  config,
 }: {
   maxEntries?: number;
   filter?: SignalFilter;
   config?: TUIConfig;
-}): React.ReactElement {
+}): JSX.Element => {
   const { signals } = useSignalSubscription(undefined, filter, {
     historySize: maxEntries,
-    debounceDelay: 50
+    debounceDelay: 50,
   });
 
   return (
@@ -649,33 +616,33 @@ export function CompactSignalHistory({
       ))}
     </Box>
   );
-}
+};
 
 /**
  * Real-time Signal Ticker Component
  */
-export function SignalTicker({
+export const SignalTicker = ({
   maxItems = 3,
   filter,
   config,
-  refreshInterval = 2000
+  refreshInterval = 2000,
 }: {
   maxItems?: number;
   filter?: SignalFilter;
   config?: TUIConfig;
   refreshInterval?: number;
-}): React.ReactElement {
+}): JSX.Element => {
   const [tickerSignals, setTickerSignals] = useState<SignalEvent[]>([]);
 
   const { signals } = useSignalSubscription(undefined, filter, {
     historySize: maxItems * 2,
-    debounceDelay: refreshInterval / 2
+    debounceDelay: refreshInterval / 2,
   });
 
   // Update ticker signals periodically
   useEffect(() => {
     const interval = setInterval(() => {
-      setTickerSignals(prev => {
+      setTickerSignals((prev) => {
         const latestSignals = signals.slice(0, maxItems);
         return JSON.stringify(latestSignals) !== JSON.stringify(prev) ? latestSignals : prev;
       });
@@ -708,7 +675,7 @@ export function SignalTicker({
       ))}
     </Box>
   );
-}
+};
 
 // Export memoized versions for performance
 export const OptimizedSignalHistory = React.memo(SignalHistory);

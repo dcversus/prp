@@ -7,8 +7,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { useTheme } from '../../config/theme-provider.js';
-import type { FieldTextBlockProps } from './types.js';
+
+import { useTheme } from '../../config/theme-provider';
+
+import type { FieldTextBlockProps } from './types';
 
 const FieldTextBlock: React.FC<FieldTextBlockProps> = ({
   label,
@@ -21,7 +23,8 @@ const FieldTextBlock: React.FC<FieldTextBlockProps> = ({
   disabled = false,
   focused = false,
   rows = 3,
-  maxLength
+  maxLength,
+  multiline = false,
 }) => {
   const theme = useTheme();
   // const { columns } = useStdoutDimensions(); // TODO: Get terminal dimensions properly
@@ -41,87 +44,100 @@ const FieldTextBlock: React.FC<FieldTextBlockProps> = ({
   }, [focused]);
 
   // Handle input with multi-line support
-  useInput((input, key) => {
-    if (!isFocused || disabled) {
-      return;
-    }
-
-    if (key.escape) {
-      setIsFocused(false);
-      return;
-    }
-
-    if (key.return && !key.ctrl) {
-      // Add new line on Enter (Ctrl+Enter to submit)
-      const newValue = internalValue + '\n';
-      setInternalValue(newValue);
-      setCursorPosition(newValue.length);
-      onChange(newValue);
-      return;
-    }
-
-    if (key.backspace || key.delete) {
-      if (cursorPosition > 0) {
-        const newValue = internalValue.slice(0, cursorPosition - 1) + internalValue.slice(cursorPosition);
-        setInternalValue(newValue);
-        setCursorPosition(cursorPosition - 1);
-        onChange(newValue);
+  useInput(
+    (input, key) => {
+      if (!isFocused || disabled) {
+        return;
       }
-      return;
-    }
 
-    // Handle arrow keys for cursor movement
-    if (key.upArrow) {
-      const lines = internalValue.substring(0, cursorPosition).split('\n');
-      if (lines.length > 1) {
-        const currentLineIndex = lines.length - 1;
-        const prevLineIndex = currentLineIndex - 1;
-        const prevLineLength = lines[prevLineIndex]?.length ?? 0;
-        const currentColumn = lines[currentLineIndex]?.length ?? 0;
-        const newColumn = Math.min(currentColumn, prevLineLength);
-        const newPosition = internalValue.substring(0, cursorPosition).lastIndexOf('\n', cursorPosition - 2);
-        setCursorPosition(Math.max(0, newPosition + 1 + newColumn));
+      if (key.escape) {
+        setIsFocused(false);
+        return;
       }
-      return;
-    }
 
-    if (key.downArrow) {
-      const lines = internalValue.split('\n');
-      const beforeCursor = internalValue.substring(0, cursorPosition);
-      const currentLineIndex = beforeCursor.split('\n').length - 1;
-      const nextLineIndex = currentLineIndex + 1;
-
-      if (nextLineIndex < lines.length) {
-        const currentColumn = beforeCursor.split('\n').pop()?.length ?? 0;
-        const nextLineLength = lines[nextLineIndex]?.length ?? 0;
-        const newColumn = Math.min(currentColumn, nextLineLength);
-        const newPosition = internalValue.indexOf('\n', cursorPosition);
-        if (newPosition !== -1) {
-          const endOfNextLine = internalValue.indexOf('\n', newPosition + 1);
-          const lineEnd = endOfNextLine === -1 ? internalValue.length : endOfNextLine;
-          setCursorPosition(Math.min(newPosition + 1 + newColumn, lineEnd));
+      if (key.return) {
+        if (key.ctrl || !multiline) {
+          // Ctrl+Enter or Enter on single-line field completes the field
+          setIsFocused(false);
+          return;
+        } else {
+          // Add new line on Enter for multiline fields
+          const newValue = `${internalValue  }\n`;
+          setInternalValue(newValue);
+          setCursorPosition(newValue.length);
+          onChange(newValue);
+          return;
         }
       }
-      return;
-    }
 
-    if (key.leftArrow && cursorPosition > 0) {
-      setCursorPosition(cursorPosition - 1);
-      return;
-    }
+      if (key.backspace || key.delete) {
+        if (cursorPosition > 0) {
+          const newValue =
+            internalValue.slice(0, cursorPosition - 1) + internalValue.slice(cursorPosition);
+          setInternalValue(newValue);
+          setCursorPosition(cursorPosition - 1);
+          onChange(newValue);
+        }
+        return;
+      }
 
-    if (key.rightArrow && cursorPosition < internalValue.length) {
-      setCursorPosition(cursorPosition + 1);
-      return;
-    }
+      // Handle arrow keys for cursor movement
+      if (key.upArrow) {
+        const lines = internalValue.substring(0, cursorPosition).split('\n');
+        if (lines.length > 1) {
+          const currentLineIndex = lines.length - 1;
+          const prevLineIndex = currentLineIndex - 1;
+          const prevLineLength = lines[prevLineIndex]?.length ?? 0;
+          const currentColumn = lines[currentLineIndex]?.length ?? 0;
+          const newColumn = Math.min(currentColumn, prevLineLength);
+          const newPosition = internalValue
+            .substring(0, cursorPosition)
+            .lastIndexOf('\n', cursorPosition - 2);
+          setCursorPosition(Math.max(0, newPosition + 1 + newColumn));
+        }
+        return;
+      }
 
-    if (input && (!maxLength || internalValue.length < maxLength)) {
-      const newValue = internalValue.slice(0, cursorPosition) + input + internalValue.slice(cursorPosition);
-      setInternalValue(newValue);
-      setCursorPosition(cursorPosition + input.length);
-      onChange(newValue);
-    }
-  }, { isActive: isFocused });
+      if (key.downArrow) {
+        const lines = internalValue.split('\n');
+        const beforeCursor = internalValue.substring(0, cursorPosition);
+        const currentLineIndex = beforeCursor.split('\n').length - 1;
+        const nextLineIndex = currentLineIndex + 1;
+
+        if (nextLineIndex < lines.length) {
+          const currentColumn = beforeCursor.split('\n').pop()?.length ?? 0;
+          const nextLineLength = lines[nextLineIndex]?.length ?? 0;
+          const newColumn = Math.min(currentColumn, nextLineLength);
+          const newPosition = internalValue.indexOf('\n', cursorPosition);
+          if (newPosition !== -1) {
+            const endOfNextLine = internalValue.indexOf('\n', newPosition + 1);
+            const lineEnd = endOfNextLine === -1 ? internalValue.length : endOfNextLine;
+            setCursorPosition(Math.min(newPosition + 1 + newColumn, lineEnd));
+          }
+        }
+        return;
+      }
+
+      if (key.leftArrow && cursorPosition > 0) {
+        setCursorPosition(cursorPosition - 1);
+        return;
+      }
+
+      if (key.rightArrow && cursorPosition < internalValue.length) {
+        setCursorPosition(cursorPosition + 1);
+        return;
+      }
+
+      if (input && (!maxLength || internalValue.length < maxLength)) {
+        const newValue =
+          internalValue.slice(0, cursorPosition) + input + internalValue.slice(cursorPosition);
+        setInternalValue(newValue);
+        setCursorPosition(cursorPosition + input.length);
+        onChange(newValue);
+      }
+    },
+    { isActive: isFocused },
+  );
 
   // Display text with cursor
   const displayText = internalValue || (isFocused ? '' : placeholder);
@@ -138,9 +154,7 @@ const FieldTextBlock: React.FC<FieldTextBlockProps> = ({
         <Text color={theme.colors.neutrals.text} bold>
           {label}
         </Text>
-        {required && (
-          <Text color={theme.colors.status.error}> *</Text>
-        )}
+        {required && <Text color={theme.colors.status.error}> *</Text>}
       </Box>
 
       {/* Input field */}
@@ -149,36 +163,44 @@ const FieldTextBlock: React.FC<FieldTextBlockProps> = ({
         borderStyle={hasError ? 'double' : 'single'}
         borderColor={
           hasError
-            ? theme.colors.status.error
+            ? theme.colors.status?.error || theme.colors.status.error
             : isFocused
-              ? theme.colors.accent.orange
-              : theme.colors.neutrals.muted
+              ? theme.colors.accent?.orange || theme.colors.status.warn
+              : theme.colors.neutrals?.muted_hover || theme.colors.neutrals.muted_hover
         }
         paddingX={1}
-        paddingY={0}
-        height={visibleRows}
+        paddingY={1}
+        minHeight={visibleRows}
+        flexGrow={1}
       >
         {displayText.split('\n').map((line, lineIndex) => (
-          <Box key={lineIndex} flexDirection="row">
+          <Box key={lineIndex} flexDirection="row" marginBottom={0}>
             <Text
               color={
                 hasError
-                  ? theme.colors.status.error
+                  ? theme.colors.status?.error || theme.colors.status.error
                   : isEmpty
-                    ? theme.colors.neutrals.muted
+                    ? theme.colors.neutrals?.muted_hover || theme.colors.neutrals.muted_hover
                     : disabled
-                      ? theme.colors.neutrals.muted
-                      : theme.colors.neutrals.text
+                      ? theme.colors.neutrals?.muted_hover || theme.colors.neutrals.muted_hover
+                      : theme.colors.neutrals?.text || theme.colors.neutrals.text
               }
               dimColor={isEmpty || disabled}
             >
-              {line}
+              {line || (isFocused && lineIndex === displayText.split('\n').length - 1 ? '' : ' ')}
             </Text>
             {isFocused && lineIndex === displayText.split('\n').length - 1 && (
-              <Text color={theme.colors.accent.orange}>█</Text>
+              <Text color={theme.colors.accent?.orange || theme.colors.accent_orange}>█</Text>
             )}
           </Box>
         ))}
+
+        {/* Ensure minimum height when empty */}
+        {displayText.split('\n').length === 0 && (
+          <Box flexDirection="row">
+            <Text color={theme.colors.accent?.orange || theme.colors.accent_orange}>█</Text>
+          </Box>
+        )}
       </Box>
 
       {/* Character count */}
@@ -199,9 +221,7 @@ const FieldTextBlock: React.FC<FieldTextBlockProps> = ({
       {/* Error message */}
       {hasError && (
         <Box marginTop={0}>
-          <Text color={theme.colors.status.error}>
-            {error}
-          </Text>
+          <Text color={theme.colors.status.error}>{error}</Text>
         </Box>
       )}
 
@@ -217,8 +237,10 @@ const FieldTextBlock: React.FC<FieldTextBlockProps> = ({
       {/* Help text when focused */}
       {isFocused && (
         <Box marginTop={0}>
-          <Text color={theme.colors.neutrals.muted}>
-            [Enter] new line • [Esc] done • [↑↓] navigate • [Space] toggle multiline
+          <Text color={theme.colors.neutrals?.muted || theme.colors.muted}>
+            {multiline
+              ? '[Enter] new line • [Ctrl+Enter] done • [Esc] cancel • [↑↓] navigate'
+              : '[Enter] done • [Esc] cancel • [Tab] next field'}
           </Text>
         </Box>
       )}

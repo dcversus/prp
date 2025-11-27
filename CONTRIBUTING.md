@@ -241,24 +241,28 @@ prp/
 ### Component Responsibilities
 
 #### Scanner System (`src/scanner/`)
+
 - Monitors file system changes
 - Tracks git commits and branches
 - Detects signals in PRP files
 - Manages token accounting
 
 #### Inspector System (`src/inspector/`)
+
 - Processes signals with LLM
 - Classifies signal priority and context
 - Prepares data for orchestrator
 - Manages parallel execution
 
 #### Orchestrator System (`src/orchestrator/`)
+
 - Makes autonomous decisions
 - Spawns and manages agents
 - Coordinates parallel work
 - Tracks overall progress
 
 #### Agent System (`src/agents/`)
+
 - Specialized AI workers
 - Role-based task execution
 - Token limit management
@@ -269,6 +273,7 @@ prp/
 ### Core CLI Commands
 
 #### `prp init`
+
 Initialize a new PRP project.
 
 ```bash
@@ -284,6 +289,7 @@ Options:
 ```
 
 #### `prp orchestrator`
+
 Start the orchestrator with TUI.
 
 ```bash
@@ -302,6 +308,7 @@ Options:
 ### MCP API
 
 #### Authentication
+
 All MCP requests require JWT authentication:
 
 ```bash
@@ -315,6 +322,7 @@ API_SECRET=your-secret node dist/cli.js mcp start --port 8080
 #### Endpoints
 
 ##### GET `/health`
+
 Health check endpoint.
 
 ```json
@@ -326,17 +334,19 @@ Health check endpoint.
 ```
 
 ##### POST `/mcp/message`
+
 Send message to orchestrator.
 
 ```json
 {
   "message": "Create a new feature",
-  "prp": "PRP-001",
+  "prp": "PRP-001-comprehensive-cleanup",
   "priority": 8
 }
 ```
 
 ##### GET `/mcp/status`
+
 Get system status.
 
 ```json
@@ -346,14 +356,14 @@ Get system status.
       "id": "agent-1",
       "type": "robo-developer",
       "status": "active",
-      "prp": "PRP-001"
+      "prp": "PRP-001-comprehensive-cleanup"
     }
   ],
   "signals": [
     {
       "type": "dp",
       "priority": 7,
-      "prp": "PRP-001",
+      "prp": "PRP-001-comprehensive-cleanup",
       "description": "Development progress"
     }
   ]
@@ -363,6 +373,7 @@ Get system status.
 ### Agent API
 
 #### Spawn Agent
+
 ```typescript
 interface SpawnRequest {
   agentType: string;
@@ -384,6 +395,7 @@ interface SpawnResult {
 ```
 
 #### Agent Configuration
+
 ```typescript
 interface AgentConfig {
   id: string;
@@ -412,6 +424,7 @@ interface AgentConfig {
 ### Writing Tests
 
 #### Unit Test Example
+
 ```typescript
 import { SignalDetector } from '../src/scanner/signal-detector';
 
@@ -425,13 +438,14 @@ describe('SignalDetector', () => {
       type: 'dp',
       line: 2,
       content: 'Development progress',
-      priority: 7
+      priority: 7,
     });
   });
 });
 ```
 
 #### E2E Test Example
+
 ```typescript
 import { execSync } from 'child_process';
 import { existsSync } from 'fs';
@@ -473,26 +487,26 @@ npm run test:performance
 
 ### Signal Types
 
-| Signal | Name | Priority | Description |
-|--------|------|----------|-------------|
-| [HF] | Health Feedback | 10 | System health check |
-| [AA] | Admin Attention | 10 | Requires admin intervention |
-| [FF] | Fatal Error | 10 | System failure |
-| [BB] | Blocker | 9 | Technical blocker |
-| [af] | Feedback | 8 | Request feedback |
-| [gg] | Goal Clarification | 8 | Clarify requirements |
-| [dp] | Development Progress | 7 | Implementation progress |
-| [pr] | Pull Request | 7 | GitHub activity |
-| [rc] | Research Complete | 6 | Research finished |
-| [tw] | Tests Written | 5 | Tests implemented |
-| [bf] | Bug Fixed | 5 | Issue resolved |
-| [cq] | Code Quality | 4 | Quality check passed |
-| [cp] | CI Passed | 4 | Pipeline success |
-| [da] | Done Assessment | 3 | Ready for review |
-| [iv] | Implementation Verified | 2 | Manual verification |
-| [mg] | Merged | 2 | Code merged |
-| [rl] | Released | 1 | Deployment complete |
-| [ps] | Post-release Status | 1 | Production check |
+| Signal | Name                    | Priority | Description                 |
+| ------ | ----------------------- | -------- | --------------------------- |
+| [HF]   | Health Feedback         | 10       | System health check         |
+| [AA]   | Admin Attention         | 10       | Requires admin intervention |
+| [FF]   | Fatal Error             | 10       | System failure              |
+| [BB]   | Blocker                 | 9        | Technical blocker           |
+| [af]   | Feedback                | 8        | Request feedback            |
+| [gg]   | Goal Clarification      | 8        | Clarify requirements        |
+| [dp]   | Development Progress    | 7        | Implementation progress     |
+| [pr]   | Pull Request            | 7        | GitHub activity             |
+| [rc]   | Research Complete       | 6        | Research finished           |
+| [tw]   | Tests Written           | 5        | Tests implemented           |
+| [bf]   | Bug Fixed               | 5        | Issue resolved              |
+| [cq]   | Code Quality            | 4        | Quality check passed        |
+| [cp]   | CI Passed               | 4        | Pipeline success            |
+| [da]   | Done Assessment         | 3        | Ready for review            |
+| [iv]   | Implementation Verified | 2        | Manual verification         |
+| [mg]   | Merged                  | 2        | Code merged                 |
+| [rl]   | Released                | 1        | Deployment complete         |
+| [ps]   | Post-release Status     | 1        | Production check            |
 
 ### Signal Resolution Protocol
 
@@ -537,7 +551,7 @@ npm run test:performance
 
 ### Code Documentation
 
-```typescript
+````typescript
 /**
  * Signal detector for PRP content analysis
  *
@@ -547,7 +561,7 @@ npm run test:performance
  * @example
  * ```typescript
  * const detector = new SignalDetector();
- * const signals = detector.scanFile('PRP-001.md');
+ * const signals = detector.scanFile('PRP-001-comprehensive-cleanup.md');
  * console.log(`Found ${signals.length} signals`);
  * ```
  */
@@ -562,7 +576,7 @@ export class SignalDetector {
     // Implementation
   }
 }
-```
+````
 
 ### PRP Documentation
 
@@ -574,6 +588,7 @@ Each PRP must follow this structure:
 > User requirement quote (READ-ONLY)
 
 ## Feature Name
+
 Brief description of implementation approach.
 
 - `/src/file.ts` | Current status and next steps [signal]
@@ -581,11 +596,13 @@ Brief description of implementation approach.
 - [ ] Another checklist item
 
 ## Definition of Ready (DoR)
+
 - [ ] Requirements clarified
 - [ ] Implementation plan ready
 - [ ] Dependencies identified
 
 ## Definition of Done (DoD)
+
 - [ ] Code implemented
 - [ ] Tests written and passing
 - [ ] Documentation updated
@@ -616,11 +633,13 @@ Brief description of implementation approach.
    - Documentation updated
 
 2. **Version Bump**
+
    ```bash
    npm version patch|minor|major
    ```
 
 3. **Release**
+
    ```bash
    npm run build:prod
    npm publish
@@ -643,12 +662,14 @@ Thank you to all contributors who help make PRP better!
 For questions or support, please open an issue or reach out on Discord.
 
 ### Prerequisites
+
 - **Node.js**: 20.11.0+ (required)
 - **npm**: 10.0.0+ (required)
 - **Git**: Latest version
 - **Editor**: VS Code with TypeScript and ESLint extensions recommended
 
 ### Quick Start
+
 ```bash
 # Clone the repository
 git clone https://github.com/dcversus/prp.git
@@ -668,6 +689,7 @@ npm run build
 ```
 
 ### Development Commands
+
 ```bash
 npm run dev          # Start development with watch mode
 npm run build        # Build the project
@@ -746,6 +768,7 @@ graph TB
 ### Domain-Driven Design (DDD) Terminology
 
 #### Core Concepts
+
 - **PRP (Product Requirement Prompt)**: Primary artifact for defining development requirements
 - **Signal System**: Communication protocol between agents using standardized signal codes
 - **Agent**: Specialized AI entity with specific responsibilities (analyst, developer, QA, etc.)
@@ -753,6 +776,7 @@ graph TB
 - **Inspector**: Quality assurance component for signal classification and validation
 
 #### Bounded Contexts
+
 1. **CLI Context**: Command-line interface and user interaction
 2. **Orchestration Context**: Agent coordination and workflow management
 3. **Agent Context**: Individual agent behaviors and responsibilities
@@ -760,6 +784,7 @@ graph TB
 5. **Infrastructure Context**: Core services and utilities
 
 #### Domain Entities
+
 - **ProductRequirementPrompt**: Main requirement definition entity
 - **Signal**: Standardized communication message
 - **Agent**: Autonomous development participant
@@ -824,7 +849,7 @@ prp/
 │
 ├── PRPs/                          # Product Requirement Prompts
 │   ├── PRP-000-agents05.md        # Agent orchestration system
-│   ├── PRP-001-bootstrap-cli-created.md # CLI bootstrap
+│   ├── PRP-001-comprehensive-cleanup.md # Comprehensive codebase cleanup
 │   ├── PRP-002-landing-page-deployed.md # Landing page deployment
 │   └── ...                       # Additional PRPs for each feature
 │
@@ -847,6 +872,7 @@ prp/
 ### Responsibility Areas
 
 #### Agent Layer
+
 - **Robo-System Analyst**: Requirements gathering, PRP creation, stakeholder communication
 - **Robo-Developer**: Code implementation, feature development, technical solutions
 - **Robo-Quality Control**: Testing, quality assurance, validation
@@ -854,11 +880,13 @@ prp/
 - **Robo-DevOps/SRE**: Infrastructure, deployment, monitoring, reliability
 
 #### Infrastructure Layer
+
 - **Configuration**: Agent and system configuration management
 - **Scanner**: File system monitoring and signal detection
 - **Shared**: Common utilities, types, and cross-cutting concerns
 
 #### Orchestration Layer
+
 - **Orchestrator**: Agent coordination and workflow management
 - **Context Manager**: Runtime state and context management
 - **Signal Router**: Inter-agent communication routing
@@ -866,22 +894,18 @@ prp/
 ## 🔗 Feature References (PRPs)
 
 ### Core Features
+
 - **Agent System**: [PRP-000-agents05.md](./PRPs/PRP-000-agents05.md) - AI agent orchestration
-- **CLI Bootstrap**: [PRP-001-bootstrap-cli-created.md](./PRPs/PRP-001-bootstrap-cli-created.md) - CLI tool creation
+- **Comprehensive Cleanup**: [PRP-001-comprehensive-cleanup.md](./PRPs/PRP-001-comprehensive-cleanup.md) - Codebase cleanup and organization
 - **Landing Page**: [PRP-002-landing-page-deployed.md](./PRPs/PRP-002-landing-page-deployed.md) - Web interface
-- **Init Flow**: [PRP-003-init-flow.md](./PRPs/PRP-003-init-flow.md) - Project initialization
-- **TUI Implementation**: [PRP-004-tui-implementation.md](./PRPs/PRP-004-tui-implementation.md) - Terminal UI
-- **Template System**: [PRP-006-template-system-enhancement.md](./PRPs/PRP-006-template-system-enhancement.md) - Template engine
-- **Signal System**: [PRP-007-signal-system-implemented.md](./PRPs/PRP-007-signal-system-implemented.md) - Communication protocol
-- **Wiki.js Template**: [PRP-009-wikijs-template-deployed.md](./PRPs/PRP-009-wikijs-template-deployed.md) - Wiki template
-- **Nudge Endpoint**: [PRP-011-nudge-endpoint-integrated.md](./PRPs/PRP-011-nudge-endpoint-integrated.md) - Notification system
-- **Terminal Dashboard**: [PRP-012-terminal-dashboard-research.md](./PRPs/PRP-012-terminal-dashboard-research.md) - Dashboard research
+- **TUI Implementation**: [PRP-003-tui-implementation.md](./PRPs/PRP-003-tui-implementation.md) - Terminal UI
 
 ## 🛠 API Details
 
 ### Core APIs
 
 #### CLI API
+
 ```typescript
 // Main CLI interface
 interface CLIOptions {
@@ -896,6 +920,7 @@ export async function executeCommand(options: CLIOptions): Promise<void>;
 ```
 
 #### Agent API
+
 ```typescript
 // Base agent interface
 interface Agent {
@@ -911,11 +936,12 @@ enum AgentType {
   DEVELOPER = 'robo-developer',
   QUALITY_CONTROL = 'robo-quality-control',
   UX_UI_DESIGNER = 'robo-ux-ui-designer',
-  DEVOPS_SRE = 'robo-devops-sre'
+  DEVOPS_SRE = 'robo-devops-sre',
 }
 ```
 
 #### Orchestrator API
+
 ```typescript
 // Main orchestrator interface
 interface Orchestrator {
@@ -927,14 +953,15 @@ interface Orchestrator {
 ```
 
 #### Signal System API
+
 ```typescript
 // Signal structure
 interface Signal {
-  code: string;        // e.g., '[gg]', '[da]', '[bb]'
-  agent: string;       // Agent identifier
-  message: string;     // Signal message
-  timestamp: Date;     // When signal was emitted
-  context?: any;       // Additional context
+  code: string; // e.g., '[gg]', '[da]', '[bb]'
+  agent: string; // Agent identifier
+  message: string; // Signal message
+  timestamp: Date; // When signal was emitted
+  context?: any; // Additional context
 }
 
 // Signal processing
@@ -946,6 +973,7 @@ export class SignalProcessor {
 ```
 
 ### Configuration API
+
 ```typescript
 // Agent configuration
 interface AgentConfig {
@@ -988,12 +1016,14 @@ git checkout -b feature/your-feature-name
 ### 2. Understanding the Workflow
 
 #### PRP-First Development
+
 1. **Read the PRP**: Always start by reading the relevant PRP file for the feature you're working on
 2. **Understand Requirements**: Identify specific requirements and acceptance criteria
 3. **Signal-Based Communication**: Use the signal system for progress tracking and coordination
 4. **Update File List**: Maintain file lists in PRPs to track work progress
 
 #### Signal System Usage
+
 - Use signals defined in [AGENTS.md](./AGENTS.md) for all communication
 - Update PRP files with progress signals after completing tasks
 - Coordinate with other agents using appropriate signals
@@ -1002,6 +1032,7 @@ git checkout -b feature/your-feature-name
 ### 3. Making Changes
 
 #### Code Standards
+
 - **TypeScript**: All code must be written in TypeScript
 - **ESLint**: Must pass all ESLint checks
 - **Prettier**: Code must be formatted with Prettier
@@ -1009,12 +1040,14 @@ git checkout -b feature/your-feature-name
 - **Documentation**: Update documentation for API changes
 
 #### File Organization
+
 - Follow the established file structure
 - Keep files focused on single responsibilities
 - Use clear, descriptive naming conventions
 - Add appropriate TypeScript types and interfaces
 
 #### Testing Strategy
+
 ```typescript
 // Example test structure
 describe('Feature Name', () => {
@@ -1041,6 +1074,7 @@ describe('Feature Name', () => {
 ### 4. Opening Pull Requests
 
 #### PR Requirements
+
 1. **Branch Naming**: Use `feature/`, `bugfix/`, `hotfix/` prefixes
 2. **Commit Messages**: Follow conventional commit format
 3. **PR Description**: Include:
@@ -1051,33 +1085,41 @@ describe('Feature Name', () => {
    - Performance impact (if any)
 
 #### PR Template
+
 ```markdown
 ## Description
+
 Brief description of the changes made.
 
 ## Related PRP(s)
+
 - [PRP-XXX](link to PRP file)
 
 ## Changes Made
+
 - List of specific changes
 - New files added
 - Files modified/removed
 
 ## Testing
+
 - Unit tests: [x] Passing
 - Integration tests: [x] Passing
 - E2E tests: [x] Passing
 - Manual testing: [x] Completed
 
 ## Performance Impact
+
 - CLI startup: <2s target
 - Memory usage: <50MB target
 - Any performance concerns
 
 ## Breaking Changes
+
 List any breaking changes and migration steps.
 
 ## Checklist
+
 - [ ] Code follows style guidelines
 - [ ] Self-review completed
 - [ ] Documentation updated
@@ -1089,6 +1131,7 @@ List any breaking changes and migration steps.
 ### 5. Automated Review Process
 
 #### CI/CD Pipeline
+
 1. **Pre-commit Hooks**:
    - ESLint checks
    - Prettier formatting
@@ -1107,6 +1150,7 @@ List any breaking changes and migration steps.
    - No security vulnerabilities
 
 #### Automated Checks
+
 ```yaml
 # Example CI configuration
 name: PRP Quality Gates
@@ -1141,12 +1185,14 @@ jobs:
 ### 6. Code Review Process
 
 #### Review Guidelines
+
 1. **Technical Review**: Focus on code quality, architecture, and best practices
 2. **Functional Review**: Verify requirements from PRP are met
 3. **Performance Review**: Ensure performance standards are met
 4. **Security Review**: Check for security implications
 
 #### Review Checklist
+
 - [ ] Code follows project conventions
 - [ ] TypeScript types are correct and thorough
 - [ ] Error handling is appropriate
@@ -1159,9 +1205,11 @@ jobs:
 ## 🏆 Credit Attribution
 
 ### Contribution Recognition
+
 We believe in recognizing all contributions fairly and transparently.
 
 #### Types of Contributions
+
 1. **Code Contributions**: New features, bug fixes, improvements
 2. **Documentation**: Docs, guides, examples
 3. **Testing**: Test cases, test infrastructure
@@ -1169,33 +1217,42 @@ We believe in recognizing all contributions fairly and transparently.
 5. **Community**: Support, feedback, ideas
 
 #### Attribution Guidelines
+
 - **Code**: Include your name/email in commits and PR descriptions
 - **Documentation**: Add yourself to contributors list in relevant docs
 - **Ideas**: Mention originators in PRP references
 - **Reviews**: Acknowledge significant review contributions
 
 #### Contributors Section
+
 ```markdown
 ## Contributors
 
 ### Core Team
+
 - **Vasilisa Versus** - Project creator and maintainer
 - [Add other core team members]
 
 ### Feature Contributors
+
 - **Your Name** - [Feature/Contribution description] ([PR #123]())
 
 ### Documentation Contributors
+
 - **Your Name** - [Documentation contribution]
 
 ### Community Contributors
+
 - **Your Name** - [Community contribution, feedback, testing]
 ```
 
 #### Credit in PRPs
+
 When contributing to features, ensure proper attribution in PRP files:
+
 ```markdown
 ## Implementation Details
+
 - **Original implementation**: [Your Name] - [Date]
 - **Contributors**: [List of contributors with specific contributions]
 - **Based on**: [Previous work or inspiration]
@@ -1204,17 +1261,20 @@ When contributing to features, ensure proper attribution in PRP files:
 ## 📞 Getting Help
 
 ### Communication Channels
+
 - **GitHub Issues**: For bug reports and feature requests
 - **GitHub Discussions**: For general questions and community discussions
 - **PRP System**: For detailed development coordination
 
 ### Resources
+
 - [AGENTS.md](./AGENTS.md) - Agent guidelines and signal system
 - [docs/](./docs/) - Additional documentation
 - [examples/](./examples/) - Usage examples
 - [PRPs/](./PRPs/) - Feature requirements and implementation details
 
 ### Common Issues
+
 1. **Build Failures**: Check Node.js version (20.11.0+) and run `npm install`
 2. **Test Failures**: Ensure all dependencies are installed and run `npm run validate`
 3. **TypeScript Errors**: Run `npm run typecheck` for detailed error information
@@ -1223,18 +1283,21 @@ When contributing to features, ensure proper attribution in PRP files:
 ## 🎯 Development Best Practices
 
 ### Signal-Driven Development
+
 1. **Always read PRP first** - Understand requirements before implementation
 2. **Use signals for progress** - Update PRP files with appropriate signals
 3. **Coordinate with agents** - Use signal system for inter-agent communication
 4. **Document blockers** - Use `[bb]` signal for blocking issues
 
 ### Quality Standards
+
 1. **Test Coverage**: Minimum 80% coverage for new code
 2. **Performance**: CLI startup < 2s, memory usage < 50MB
 3. **TypeScript**: Strict typing, no `any` types unless absolutely necessary
 4. **Documentation**: Document all public APIs and complex logic
 
 ### Code Organization
+
 1. **Single Responsibility**: Each file/module should have one clear purpose
 2. **Dependency Management**: Minimize external dependencies
 3. **Error Handling**: Implement comprehensive error handling
@@ -1253,8 +1316,8 @@ A **signal** is an emotional/status indicator that tells other agents and contri
 When updating a PRP Progress Log, add a signal in the last column:
 
 ```markdown
-| Role | DateTime | Comment | Signal |
-|------|----------|---------|--------|
+| Role      | DateTime   | Comment                                     | Signal       |
+| --------- | ---------- | ------------------------------------------- | ------------ |
 | developer | 2025-10-28 | Implemented auth module, all tests passing. | ✅ CONFIDENT |
 ```
 
@@ -1273,12 +1336,14 @@ When updating a PRP Progress Log, add a signal in the last column:
 ### How to Read Signals
 
 **Before starting work on a PRP**:
+
 1. Read the entire PRP
 2. Check Progress Log for latest signal
 3. React to strongest signal (highest strength number)
 4. Follow the signal's algorithm (see AGENTS.md)
 
 **Example**:
+
 - If you see **BLOCKED** → Check blocker details, see if you can resolve it
 - If you see **TIRED** → Review inventory, continue where left off
 - If you see **CONFIDENT** → Review work, create PR if ready
@@ -1318,6 +1383,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 ```
 
 **Types:**
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -1327,6 +1393,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 - `chore`: Maintenance tasks
 
 **Examples:**
+
 ```
 feat(generators): add Vue.js template support
 fix(ui): correct spinner positioning in progress view
@@ -1391,10 +1458,7 @@ All public functions, classes, and interfaces should have JSDoc comments:
  * @returns Promise that resolves when generation is complete
  * @throws {Error} If target directory already exists
  */
-export async function generateProject(
-  options: ProjectOptions,
-  targetPath: string
-): Promise<void> {
+export async function generateProject(options: ProjectOptions, targetPath: string): Promise<void> {
   // Implementation
 }
 ```
@@ -1402,6 +1466,7 @@ export async function generateProject(
 ### README Updates
 
 When adding features:
+
 - Update the feature list
 - Add usage examples
 - Update command-line options
@@ -1415,12 +1480,15 @@ All changes should be documented in CHANGELOG.md under the `[Unreleased]` sectio
 ## [Unreleased]
 
 ### Added
+
 - New Vue.js template support
 
 ### Changed
+
 - Improved error messages in interactive mode
 
 ### Fixed
+
 - Fixed incorrect file permissions on generated scripts
 ```
 
@@ -1442,9 +1510,7 @@ Example generator structure:
 ```typescript
 import { GeneratorContext, FileToGenerate } from '../types.js';
 
-export async function generateVueProject(
-  context: GeneratorContext
-): Promise<FileToGenerate[]> {
+export async function generateVueProject(context: GeneratorContext): Promise<FileToGenerate[]> {
   const files: FileToGenerate[] = [];
 
   // Add package.json

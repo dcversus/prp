@@ -6,7 +6,10 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Box, Text } from 'ink';
-import { SignalEvent, SignalPriority, SignalPriorityEnum } from '../../types';
+
+import { SignalPriorityEnum } from '../../types';
+
+import type { SignalEvent, SignalPriority} from '../../types';
 
 export interface SignalTickerProps {
   signals: SignalEvent[];
@@ -16,7 +19,7 @@ export interface SignalTickerProps {
   showPriority?: boolean;
   colorCodePriority?: boolean;
   animation?: 'scroll' | 'fade' | 'typewriter';
-}
+};
 
 export const SignalTicker: React.FC<SignalTickerProps> = ({
   signals,
@@ -25,7 +28,7 @@ export const SignalTicker: React.FC<SignalTickerProps> = ({
   pauseOnHover = true,
   showPriority = true,
   colorCodePriority = true,
-  animation = 'scroll'
+  animation = 'scroll',
 }) => {
   const [visibleSignals, setVisibleSignals] = useState<SignalEvent[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -33,36 +36,39 @@ export const SignalTicker: React.FC<SignalTickerProps> = ({
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Priority color mapping
-  const getPriorityColor = useCallback((priority: SignalPriority): string => {
-    if (!colorCodePriority) {
-      return 'white';
-    }
-
-    switch (priority) {
-      case SignalPriorityEnum.CRITICAL:
-        return '#FF4444'; // Red
-      case SignalPriorityEnum.HIGH:
-        return '#FF8800'; // Orange
-      case SignalPriorityEnum.MEDIUM:
-        return '#FFAA00'; // Yellow
-      case SignalPriorityEnum.LOW:
-        return '#00AA00'; // Green
-      default:
+  const getPriorityColor = useCallback(
+    (priority: SignalPriority): string => {
+      if (!colorCodePriority) {
         return 'white';
-    }
-  }, [colorCodePriority]);
+      }
+
+      switch (priority) {
+        case SignalPriorityEnum.CRITICAL:
+          return '#FF4444'; // Red
+        case SignalPriorityEnum.HIGH:
+          return '#FF8800'; // Orange
+        case SignalPriorityEnum.MEDIUM:
+          return '#FFAA00'; // Yellow
+        case SignalPriorityEnum.LOW:
+          return '#00AA00'; // Green
+        default:
+          return 'white';
+      }
+    },
+    [colorCodePriority],
+  );
 
   // Filter and sort signals by priority and timestamp
   const getSortedSignals = useCallback(() => {
     return signals
-      .filter(signal => signal.state === 'active')
+      .filter((signal) => signal.state === 'active')
       .sort((a, b) => {
         // First by priority (critical first)
         const priorityOrder = {
           [SignalPriorityEnum.CRITICAL]: 0,
           [SignalPriorityEnum.HIGH]: 1,
           [SignalPriorityEnum.MEDIUM]: 2,
-          [SignalPriorityEnum.LOW]: 3
+          [SignalPriorityEnum.LOW]: 3,
         };
 
         const aPriority = priorityOrder[a.priority] ?? 999;
@@ -96,7 +102,7 @@ export const SignalTicker: React.FC<SignalTickerProps> = ({
     }
 
     intervalRef.current = setInterval(() => {
-      setCurrentIndex(prev => {
+      setCurrentIndex((prev) => {
         const totalSignals = getSortedSignals().length;
         if (totalSignals === 0) {
           return 0;
@@ -114,26 +120,27 @@ export const SignalTicker: React.FC<SignalTickerProps> = ({
   }, [isPaused, signals.length, speed, getSortedSignals]);
 
   // Animation rendering
-  const renderSignal = useCallback((signal: SignalEvent, index: number) => {
-    const priorityColor = getPriorityColor(signal.priority);
-    const prioritySymbol = showPriority ? `[${signal.priority.toUpperCase()[0]}] ` : '';
+  const renderSignal = useCallback(
+    (signal: SignalEvent, index: number) => {
+      const priorityColor = getPriorityColor(signal.priority);
+      const prioritySymbol = showPriority ? `[${signal.priority.toUpperCase()[0]}] ` : '';
 
-    return (
-      <Box key={signal.id}>
-        <Text
-          color={priorityColor}
-          bold={signal.priority === SignalPriorityEnum.CRITICAL}
-        >
-          {prioritySymbol}[{signal.signal}] {signal.title}
-        </Text>
-        {signal.source && (
-          <Text color="gray" dimColor>
-            {' '}({signal.source})
+      return (
+        <Box key={signal.id}>
+          <Text color={priorityColor} bold={signal.priority === SignalPriorityEnum.CRITICAL}>
+            {prioritySymbol}[{signal.signal}] {signal.title}
           </Text>
-        )}
-      </Box>
-    );
-  }, [getPriorityColor, showPriority]);
+          {signal.source && (
+            <Text color="gray" dimColor>
+              {' '}
+              ({signal.source})
+            </Text>
+          )}
+        </Box>
+      );
+    },
+    [getPriorityColor, showPriority],
+  );
 
   if (visibleSignals.length === 0) {
     return (
@@ -157,9 +164,7 @@ export const SignalTicker: React.FC<SignalTickerProps> = ({
       {/* Signal List */}
       <Box flexDirection="column">
         {visibleSignals.map((signal, index) => (
-          <Box key={`${signal.id}-${index}`}>
-            {renderSignal(signal, index)}
-          </Box>
+          <Box key={`${signal.id}-${index}`}>{renderSignal(signal, index)}</Box>
         ))}
       </Box>
 

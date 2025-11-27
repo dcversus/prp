@@ -55,20 +55,20 @@ export interface DocumentationInfo {
 }
 
 export interface CategoryScores {
-  codeQuality: number;      // 0-100
-  functionality: number;    // 0-100
-  performance: number;      // 0-100
-  documentation: number;    // 0-100
-  testCoverage: number;     // 0-100
-  implementation: number;   // 0-100
-  errorHandling: number;    // 0-100
-  security: number;         // 0-100
+  codeQuality: number; // 0-100
+  functionality: number; // 0-100
+  performance: number; // 0-100
+  documentation: number; // 0-100
+  testCoverage: number; // 0-100
+  implementation: number; // 0-100
+  errorHandling: number; // 0-100
+  security: number; // 0-100
 }
 
 export interface JudgeResult {
   success: boolean;
-  confidence: number;       // 0-1
-  overallScore: number;     // 0-100
+  confidence: number; // 0-1
+  overallScore: number; // 0-100
   categoryScores: CategoryScores;
   reasoning: string;
   detailedFeedback: {
@@ -81,7 +81,7 @@ export interface JudgeResult {
   errors?: string[];
   warnings?: string[];
   passFailThreshold?: number; // Score needed to pass
-  evaluationTime: number;    // Time taken to evaluate (ms)
+  evaluationTime: number; // Time taken to evaluate (ms)
 }
 
 export interface ComparisonResult {
@@ -107,24 +107,27 @@ interface RateLimitInfo {
 }
 
 export class LLMJudge {
-  private apiKey: string;
-  private provider: 'openai' | 'anthropic' | 'google';
-  private baseUrl: string;
-  private model: string;
-  private maxTokens: number = 4000;
-  private requestTimeout: number = 30000; // 30 seconds
-  private maxRetries: number = 3;
-  private baseBackoffMs: number = 1000;
-  private maxContentSize: number = 100000; // 100KB per chunk
+  private readonly apiKey: string;
+  private readonly provider: 'openai' | 'anthropic' | 'google';
+  private readonly baseUrl: string;
+  private readonly model: string;
+  private readonly maxTokens = 4000;
+  private readonly requestTimeout = 30000; // 30 seconds
+  private readonly maxRetries = 3;
+  private readonly baseBackoffMs = 1000;
+  private readonly maxContentSize = 100000; // 100KB per chunk
   private rateLimitInfo: RateLimitInfo | null = null;
 
   // Cache for repeated evaluations
-  private evaluationCache = new Map<string, { result: JudgeResult; timestamp: number }>();
-  private cacheExpiryMs: number = 300000; // 5 minutes
+  private readonly evaluationCache = new Map<string, { result: JudgeResult; timestamp: number }>();
+  private readonly cacheExpiryMs = 300000; // 5 minutes
 
   constructor() {
     // Get provider from environment, default to anthropic
-    this.provider = (process.env.AI_PROVIDER || 'anthropic').toLowerCase() as 'openai' | 'anthropic' | 'google';
+    this.provider = (process.env.AI_PROVIDER || 'anthropic').toLowerCase() as
+      | 'openai'
+      | 'anthropic'
+      | 'google';
 
     // Configure based on provider - REQUIRE real API keys for E2E tests
     switch (this.provider) {
@@ -133,7 +136,9 @@ export class LLMJudge {
         this.baseUrl = 'https://api.openai.com/v1';
         this.model = 'gpt-4-turbo-preview';
         if (!this.apiKey) {
-          throw new Error('❌ OPENAI_API_KEY is required for E2E testing. Set the environment variable to run real LLM evaluation tests.');
+          throw new Error(
+            '❌ OPENAI_API_KEY is required for E2E testing. Set the environment variable to run real LLM evaluation tests.'
+          );
         }
         break;
       case 'anthropic':
@@ -141,7 +146,9 @@ export class LLMJudge {
         this.baseUrl = 'https://api.anthropic.com';
         this.model = 'claude-3-5-sonnet-20241022';
         if (!this.apiKey) {
-          throw new Error('❌ ANTHROPIC_API_KEY is required for E2E testing. Set the environment variable to run real LLM evaluation tests.');
+          throw new Error(
+            '❌ ANTHROPIC_API_KEY is required for E2E testing. Set the environment variable to run real LLM evaluation tests.'
+          );
         }
         break;
       case 'google':
@@ -149,11 +156,15 @@ export class LLMJudge {
         this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
         this.model = 'gemini-1.5-pro-latest';
         if (!this.apiKey) {
-          throw new Error('❌ GOOGLE_API_KEY is required for E2E testing. Set the environment variable to run real LLM evaluation tests.');
+          throw new Error(
+            '❌ GOOGLE_API_KEY is required for E2E testing. Set the environment variable to run real LLM evaluation tests.'
+          );
         }
         break;
       default:
-        throw new Error(`❌ Unknown AI_PROVIDER: ${this.provider}. Supported providers: openai, anthropic, google`);
+        throw new Error(
+          `❌ Unknown AI_PROVIDER: ${this.provider}. Supported providers: openai, anthropic, google`
+        );
     }
 
     console.log(`✅ LLM Judge initialized with ${this.provider} provider for real E2E testing`);
@@ -192,10 +203,7 @@ export class LLMJudge {
     input2: JudgeInput,
     weights?: Partial<CategoryScores>
   ): Promise<ComparisonResult> {
-    const [result1, result2] = await Promise.all([
-      this.judge(input1),
-      this.judge(input2)
-    ]);
+    const [result1, result2] = await Promise.all([this.judge(input1), this.judge(input2)]);
 
     const defaultWeights: CategoryScores = {
       codeQuality: 20,
@@ -205,7 +213,7 @@ export class LLMJudge {
       testCoverage: 15,
       implementation: 10,
       errorHandling: 3,
-      security: 2
+      security: 2,
     };
 
     const finalWeights = { ...defaultWeights, ...weights };
@@ -220,13 +228,13 @@ export class LLMJudge {
 
     // Category comparison
     const categoryComparison: ComparisonResult['categoryComparison'] = {} as any;
-    (Object.keys(result1.categoryScores) as Array<keyof CategoryScores>).forEach(category => {
+    (Object.keys(result1.categoryScores) as Array<keyof CategoryScores>).forEach((category) => {
       const score1 = result1.categoryScores[category];
       const score2 = result2.categoryScores[category];
       categoryComparison[category] = {
         output1: score1,
         output2: score2,
-        better: score1 > score2 ? 1 : score2 > score1 ? 2 : 0
+        better: score1 > score2 ? 1 : score2 > score1 ? 2 : 0,
       };
     });
 
@@ -234,7 +242,8 @@ export class LLMJudge {
 
     let recommendation: string;
     if (scoreDifference < 5) {
-      recommendation = 'Both outputs are of similar quality. Consider combining the best aspects of both.';
+      recommendation =
+        'Both outputs are of similar quality. Consider combining the best aspects of both.';
     } else if (scoreDifference < 15) {
       recommendation = `Output ${winner} is moderately better, but Output ${winner === 1 ? 2 : 1} has some valuable aspects to consider.`;
     } else {
@@ -248,7 +257,7 @@ export class LLMJudge {
       scoreDifference,
       explanation: `Output 1 scored ${weightedScore1.toFixed(1)}/100, Output 2 scored ${weightedScore2.toFixed(1)}/100. ${result1.reasoning.substring(0, 100)}... | ${result2.reasoning.substring(0, 100)}...`,
       categoryComparison,
-      recommendation
+      recommendation,
     };
   }
 
@@ -257,8 +266,8 @@ export class LLMJudge {
    */
   async assertValidOutput(
     input: JudgeInput,
-    minConfidence: number = 0.7,
-    minScore: number = 60,
+    minConfidence = 0.7,
+    minScore = 60,
     requiredCategories?: Array<keyof CategoryScores>
   ): Promise<void> {
     const result = await this.judge(input);
@@ -287,7 +296,9 @@ export class LLMJudge {
 
     // Check for critical issues
     if (result.detailedFeedback.criticalIssues.length > 0) {
-      throw new Error(`🚨 Critical issues found: ${result.detailedFeedback.criticalIssues.join('; ')}`);
+      throw new Error(
+        `🚨 Critical issues found: ${result.detailedFeedback.criticalIssues.join('; ')}`
+      );
     }
   }
 
@@ -298,10 +309,10 @@ export class LLMJudge {
     const content = this.prepareContentForEvaluation(input);
 
     if (content.length > this.maxContentSize) {
-      return await this.evaluateWithChunking(input, content);
+      return this.evaluateWithChunking(input, content);
     }
 
-    return await this.makeAIRequest(input, content);
+    return this.makeAIRequest(input, content);
   }
 
   /**
@@ -319,7 +330,7 @@ export class LLMJudge {
       const chunkInput: JudgeInput = {
         ...input,
         context: `${input.context || ''} (Chunk ${i + 1}/${chunks.length})`,
-        output: chunk
+        output: chunk,
       };
 
       try {
@@ -360,7 +371,6 @@ export class LLMJudge {
         const response = await this.executeAIRequest(prompt);
 
         return this.parseAIResponse(response, input);
-
       } catch (error: any) {
         lastError = error;
 
@@ -376,7 +386,9 @@ export class LLMJudge {
         } else if (error.status >= 500 && attempt < this.maxRetries) {
           // Server error, retry
           const backoffTime = this.calculateBackoff(attempt);
-          console.log(`🔄 Server error ${error.status}, retry ${attempt}/${this.maxRetries} in ${backoffTime}ms`);
+          console.log(
+            `🔄 Server error ${error.status}, retry ${attempt}/${this.maxRetries} in ${backoffTime}ms`
+          );
           await this.delay(backoffTime);
           continue;
         } else {
@@ -407,15 +419,17 @@ export class LLMJudge {
           headers = {
             'Content-Type': 'application/json',
             'x-api-key': this.apiKey,
-            'anthropic-version': '2023-06-01'
+            'anthropic-version': '2023-06-01',
           };
           requestBody = {
             model: this.model,
             max_tokens: this.maxTokens,
-            messages: [{
-              role: 'user',
-              content: prompt
-            }]
+            messages: [
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
           };
           break;
 
@@ -423,32 +437,38 @@ export class LLMJudge {
           url = `${this.baseUrl}/chat/completions`;
           headers = {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`
+            Authorization: `Bearer ${this.apiKey}`,
           };
           requestBody = {
             model: this.model,
             max_tokens: this.maxTokens,
-            messages: [{
-              role: 'user',
-              content: prompt
-            }]
+            messages: [
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
           };
           break;
 
         case 'google':
           url = `${this.baseUrl}/models/${this.model}:generateContent`;
           headers = {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           };
           requestBody = {
-            contents: [{
-              parts: [{
-                text: prompt
-              }]
-            }],
+            contents: [
+              {
+                parts: [
+                  {
+                    text: prompt,
+                  },
+                ],
+              },
+            ],
             generationConfig: {
-              maxOutputTokens: this.maxTokens
-            }
+              maxOutputTokens: this.maxTokens,
+            },
           };
           break;
 
@@ -460,13 +480,15 @@ export class LLMJudge {
         method: 'POST',
         headers,
         body: JSON.stringify(requestBody),
-        signal: controller.signal
+        signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const error = new Error(`${this.provider} API error: ${response.status} ${response.statusText}`) as any;
+        const error = new Error(
+          `${this.provider} API error: ${response.status} ${response.statusText}`
+        ) as any;
         error.status = response.status;
         error.statusText = response.statusText;
 
@@ -481,7 +503,6 @@ export class LLMJudge {
       }
 
       return await response.json();
-
     } catch (error: any) {
       clearTimeout(timeoutId);
 
@@ -513,20 +534,36 @@ ${input.input}
 **OUTPUT TO EVALUATE**
 ${content}
 
-**EXPECTED RESULTS**${input.expectations ? `
-${input.expectations.map(e => `- ${e}`).join('\n')}` : `
+**EXPECTED RESULTS**${
+      input.expectations
+        ? `
+${input.expectations.map((e) => `- ${e}`).join('\n')}`
+        : `
 - Functional correctness
 - Proper error handling
 - Expected output format
-- Performance within acceptable limits`}
+- Performance within acceptable limits`
+    }
 
 **EVALUATION CRITERIA**
 ${evaluationCriteria}
 
-**ADDITIONAL METRICS**${input.performanceMetrics ? `
-- Performance: ${JSON.stringify(input.performanceMetrics, null, 2)}` : ''}${input.testCoverage ? `
-- Test Coverage: ${JSON.stringify(input.testCoverage, null, 2)}` : ''}${input.documentation ? `
-- Documentation: ${JSON.stringify(input.documentation, null, 2)}` : ''}
+**ADDITIONAL METRICS**${
+      input.performanceMetrics
+        ? `
+- Performance: ${JSON.stringify(input.performanceMetrics, null, 2)}`
+        : ''
+    }${
+      input.testCoverage
+        ? `
+- Test Coverage: ${JSON.stringify(input.testCoverage, null, 2)}`
+        : ''
+    }${
+      input.documentation
+        ? `
+- Documentation: ${JSON.stringify(input.documentation, null, 2)}`
+        : ''
+    }
 
 **REQUIRED RESPONSE FORMAT**
 Respond with a JSON object using this exact structure:
@@ -611,7 +648,7 @@ Provide only the JSON response, no additional text.`;
 - Error handling and edge cases
 - Performance and efficiency
 - Documentation and clarity
-- Testing and validation`
+- Testing and validation`,
     };
 
     return criteria[testType as keyof typeof criteria] || criteria.general;
@@ -655,13 +692,19 @@ Provide only the JSON response, no additional text.`;
         testCoverage: this.normalizeScore(parsed.categoryScores?.testCoverage),
         implementation: this.normalizeScore(parsed.categoryScores?.implementation),
         errorHandling: this.normalizeScore(parsed.categoryScores?.errorHandling),
-        security: this.normalizeScore(parsed.categoryScores?.security)
+        security: this.normalizeScore(parsed.categoryScores?.security),
       };
 
       // Calculate overall score as weighted average
       const weights: CategoryScores = {
-        codeQuality: 20, functionality: 25, performance: 15, documentation: 10,
-        testCoverage: 15, implementation: 10, errorHandling: 3, security: 2
+        codeQuality: 20,
+        functionality: 25,
+        performance: 15,
+        documentation: 10,
+        testCoverage: 15,
+        implementation: 10,
+        errorHandling: 3,
+        security: 2,
       };
 
       const overallScore = this.calculateWeightedScore(categoryScores, weights);
@@ -673,17 +716,24 @@ Provide only the JSON response, no additional text.`;
         categoryScores,
         reasoning: parsed.reasoning || 'No reasoning provided',
         detailedFeedback: {
-          strengths: Array.isArray(parsed.detailedFeedback?.strengths) ? parsed.detailedFeedback.strengths : [],
-          weaknesses: Array.isArray(parsed.detailedFeedback?.weaknesses) ? parsed.detailedFeedback.weaknesses : [],
-          recommendations: Array.isArray(parsed.detailedFeedback?.recommendations) ? parsed.detailedFeedback.recommendations : [],
-          criticalIssues: Array.isArray(parsed.detailedFeedback?.criticalIssues) ? parsed.detailedFeedback.criticalIssues : []
+          strengths: Array.isArray(parsed.detailedFeedback?.strengths)
+            ? parsed.detailedFeedback.strengths
+            : [],
+          weaknesses: Array.isArray(parsed.detailedFeedback?.weaknesses)
+            ? parsed.detailedFeedback.weaknesses
+            : [],
+          recommendations: Array.isArray(parsed.detailedFeedback?.recommendations)
+            ? parsed.detailedFeedback.recommendations
+            : [],
+          criticalIssues: Array.isArray(parsed.detailedFeedback?.criticalIssues)
+            ? parsed.detailedFeedback.criticalIssues
+            : [],
         },
         suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : [],
         errors: Array.isArray(parsed.errors) ? parsed.errors : [],
         warnings: Array.isArray(parsed.warnings) ? parsed.warnings : [],
-        evaluationTime: 0 // Will be set by caller
+        evaluationTime: 0, // Will be set by caller
       };
-
     } catch (error) {
       throw new Error(`Failed to parse ${this.provider} response: ${error}`);
     }
@@ -732,15 +782,24 @@ Provide only the JSON response, no additional text.`;
     return content;
   }
 
-  private aggregateChunkResults(chunkResults: JudgeResult[], _originalInput: JudgeInput): JudgeResult {
+  private aggregateChunkResults(
+    chunkResults: JudgeResult[],
+    _originalInput: JudgeInput
+  ): JudgeResult {
     if (chunkResults.length === 0) {
       throw new Error('No valid chunk results to aggregate');
     }
 
     // Average the scores across chunks
     const avgCategoryScores: CategoryScores = {
-      codeQuality: 0, functionality: 0, performance: 0, documentation: 0,
-      testCoverage: 0, implementation: 0, errorHandling: 0, security: 0
+      codeQuality: 0,
+      functionality: 0,
+      performance: 0,
+      documentation: 0,
+      testCoverage: 0,
+      implementation: 0,
+      errorHandling: 0,
+      security: 0,
     };
 
     let totalConfidence = 0;
@@ -752,8 +811,8 @@ Provide only the JSON response, no additional text.`;
     const allErrors: string[] = [];
     const allWarnings: string[] = [];
 
-    chunkResults.forEach(result => {
-      (Object.keys(avgCategoryScores) as Array<keyof CategoryScores>).forEach(category => {
+    chunkResults.forEach((result) => {
+      (Object.keys(avgCategoryScores) as Array<keyof CategoryScores>).forEach((category) => {
         avgCategoryScores[category] += result.categoryScores[category];
       });
 
@@ -764,12 +823,12 @@ Provide only the JSON response, no additional text.`;
       allWeaknesses.push(...result.detailedFeedback.weaknesses);
       allRecommendations.push(...result.detailedFeedback.recommendations);
       allCriticalIssues.push(...result.detailedFeedback.criticalIssues);
-      allErrors.push(...result.errors || []);
-      allWarnings.push(...result.warnings || []);
+      allErrors.push(...(result.errors || []));
+      allWarnings.push(...(result.warnings || []));
     });
 
     const chunkCount = chunkResults.length;
-    (Object.keys(avgCategoryScores) as Array<keyof CategoryScores>).forEach(category => {
+    (Object.keys(avgCategoryScores) as Array<keyof CategoryScores>).forEach((category) => {
       avgCategoryScores[category] = Math.round(avgCategoryScores[category] / chunkCount);
     });
 
@@ -777,7 +836,7 @@ Provide only the JSON response, no additional text.`;
     const unique = (arr: string[]) => Array.from(new Set(arr));
 
     return {
-      success: chunkResults.some(r => r.success),
+      success: chunkResults.some((r) => r.success),
       confidence: totalConfidence / chunkCount,
       overallScore: Math.round(totalOverallScore / chunkCount),
       categoryScores: avgCategoryScores,
@@ -786,12 +845,12 @@ Provide only the JSON response, no additional text.`;
         strengths: unique(allStrengths).slice(0, 10), // Limit to top 10
         weaknesses: unique(allWeaknesses).slice(0, 10),
         recommendations: unique(allRecommendations).slice(0, 10),
-        criticalIssues: unique(allCriticalIssues)
+        criticalIssues: unique(allCriticalIssues),
       },
       suggestions: unique(allRecommendations).slice(0, 5),
       errors: unique(allErrors),
       warnings: unique(allWarnings),
-      evaluationTime: 0
+      evaluationTime: 0,
     };
   }
 
@@ -800,7 +859,7 @@ Provide only the JSON response, no additional text.`;
     this.rateLimitInfo = {
       requestsRemaining: 0,
       resetTime: new Date(Date.now() + resetTime * 1000),
-      backoffMs: resetTime * 1000
+      backoffMs: resetTime * 1000,
     };
   }
 
@@ -809,7 +868,7 @@ Provide only the JSON response, no additional text.`;
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   private generateCacheKey(input: JudgeInput): string {
@@ -818,7 +877,7 @@ Provide only the JSON response, no additional text.`;
       action: input.action,
       outputLength: input.output.length,
       context: input.context,
-      type: input.evaluationType
+      type: input.evaluationType,
     };
     return JSON.stringify(keyData);
   }

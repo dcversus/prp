@@ -3,12 +3,9 @@
  *
  * Types specific to the infrastructure layer - scanner functionality.
  */
-
-import { FileChange, PRPFile, Signal } from '../shared/types';
-
+import type { FileChange, PRPFile, Signal } from '../shared/types';
 // Re-export FileChange for use within scanner domain
-export { FileChange };
-
+export type { FileChange };
 // Enhanced metadata interfaces for better type safety
 export interface TokenAccountingMetadata {
   operationType?: string;
@@ -25,7 +22,6 @@ export interface TokenAccountingMetadata {
   batchId?: string;
   customFields?: Record<string, string | number | boolean | null>;
 }
-
 export interface ScannerConfig {
   scanInterval: number; // milliseconds
   maxConcurrentScans: number;
@@ -42,7 +38,6 @@ export interface ScannerConfig {
     maxFileCount: number;
   };
 }
-
 export interface ScanResult {
   id: string;
   timestamp: Date;
@@ -59,7 +54,6 @@ export interface ScanResult {
   };
   errors?: string[];
 }
-
 export interface PRPUpdate {
   path: string;
   changeType: 'created' | 'modified' | 'deleted';
@@ -68,7 +62,6 @@ export interface PRPUpdate {
   detectedSignals: Signal[];
   lastModified: Date;
 }
-
 export interface TokenAccountingEntry {
   id: string;
   timestamp: Date;
@@ -84,7 +77,6 @@ export interface TokenAccountingEntry {
   layer: 'scanner' | 'inspector' | 'orchestrator' | 'agent';
   metadata: TokenAccountingMetadata;
 }
-
 export interface TokenAccountingReport {
   reportId: string;
   generatedAt: Date;
@@ -108,7 +100,6 @@ export interface TokenAccountingReport {
   };
   alerts: TokenAlert[];
 }
-
 export interface TokenAlert {
   id: string;
   type: 'approaching_limit' | 'limit_exceeded' | 'spike_detected' | 'unusual_activity';
@@ -130,7 +121,6 @@ export interface TokenAlert {
   resolved: boolean;
   resolvedAt?: Date;
 }
-
 // Enhanced breakdown interfaces for better type safety
 export interface AgentBreakdown {
   tokens: number;
@@ -138,27 +128,23 @@ export interface AgentBreakdown {
   operations: number;
   percentage: number;
 }
-
 export interface LayerBreakdown {
   tokens: number;
   cost: number;
   operations: number;
   percentage: number;
 }
-
 export interface ModelBreakdown {
   tokens: number;
   cost: number;
   operations: number;
   percentage: number;
 }
-
 export interface TimeSeriesData {
   timestamp: Date;
   tokens: number;
   cost: number;
 }
-
 // Interface for persisted data structure
 export interface PersistedAccountingData {
   entries?: TokenAccountingEntry[];
@@ -166,7 +152,6 @@ export interface PersistedAccountingData {
   lastSaved?: Date;
   version?: string;
 }
-
 // Enhanced signal data interfaces
 export interface SignalData {
   rawSignal?: string;
@@ -176,7 +161,6 @@ export interface SignalData {
   timestamp?: Date;
   metadata?: Record<string, unknown>;
 }
-
 export interface DetectedSignal {
   pattern: string;
   type: string;
@@ -186,7 +170,6 @@ export interface DetectedSignal {
   context: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
 }
-
 export interface FileChangeData {
   type?: 'added' | 'modified' | 'deleted' | 'renamed';
   path?: string;
@@ -195,7 +178,6 @@ export interface FileChangeData {
   content?: string;
   timestamp?: Date;
 }
-
 export interface FileWatcherChangeEvent {
   id: string;
   timestamp: Date;
@@ -203,7 +185,6 @@ export interface FileWatcherChangeEvent {
   type: 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir';
   processed: boolean;
 }
-
 export interface PRPScanResult {
   path: string;
   changeType: 'created' | 'modified' | 'deleted';
@@ -212,12 +193,21 @@ export interface PRPScanResult {
   detectedSignals: Signal[];
   lastModified: Date;
 }
-
 export interface WatcherInstance {
   close?: () => Promise<void>;
   closeSync?: () => void;
 }
-
+// Signal pattern interface for detector patterns
+export interface SignalPattern {
+  id: string;
+  name: string;
+  pattern: RegExp;
+  category: string;
+  priority: number;
+  description: string;
+  enabled: boolean;
+  custom: boolean;
+}
 export interface WorktreeMonitor {
   path: string;
   name: string;
@@ -234,7 +224,6 @@ export interface WorktreeMonitor {
     lastError?: string;
   };
 }
-
 export interface FileWatcher {
   worktreePath: string;
   patterns: string[];
@@ -243,7 +232,6 @@ export interface FileWatcher {
   events: FileWatcherEvent[];
   maxEvents: number;
 }
-
 export interface FileWatcherEvent {
   id: string;
   timestamp: Date;
@@ -255,7 +243,6 @@ export interface FileWatcherEvent {
   };
   processed: boolean;
 }
-
 export interface PRPParser {
   worktreePath: string;
   cache: Map<string, { content: string; lastModified: Date; signals: Signal[] }>;
@@ -267,7 +254,6 @@ export interface PRPParser {
     timestamp: Date;
   }>;
 }
-
 export interface SignalDetector {
   patterns: SignalPattern[];
   customPatterns: SignalPattern[];
@@ -275,7 +261,6 @@ export interface SignalDetector {
   cache: Map<string, Signal[]>;
   maxCacheSize: number;
 }
-
 export interface SignalPattern {
   id: string;
   name: string;
@@ -286,7 +271,6 @@ export interface SignalPattern {
   enabled: boolean;
   custom: boolean;
 }
-
 export interface ScannerMetrics {
   startTime: Date;
   totalScans: number;
@@ -310,7 +294,6 @@ export interface ScannerMetrics {
     error: number;
   };
 }
-
 export interface ScannerState {
   status: 'idle' | 'scanning' | 'paused' | 'error';
   currentScan?: string;
@@ -324,52 +307,43 @@ export interface ScannerState {
     stack?: string;
   };
 }
-
 // Scanner events
 export interface ScannerStartedEvent {
   scanId: string;
   worktree: string;
   scanType: 'full' | 'incremental';
 }
-
 export interface ScannerCompletedEvent {
   scanId: string;
   result: ScanResult;
 }
-
 export interface ScannerErrorEvent {
   scanId?: string;
   worktree: string;
   error: Error;
 }
-
 export interface TokenAlertEvent {
   alert: TokenAlert;
 }
-
 export interface WorktreeStatusChangeEvent {
   worktree: string;
   oldStatus: string;
   newStatus: string;
   details?: unknown;
 }
-
 export interface FileChangeEvent {
   worktree: string;
   event: FileWatcherEvent;
 }
-
 export interface PRPUpdateEvent {
   worktree: string;
   update: PRPUpdate;
 }
-
 export interface SignalDetectedEvent {
   worktree: string;
   signals: Signal[];
   source: string; // file path, agent, etc.
 }
-
 // Missing types that are imported in other files
 export interface WorktreeStatus {
   path: string;
@@ -378,7 +352,6 @@ export interface WorktreeStatus {
   changes?: FileChange[];
   signals?: Signal[];
 }
-
 export interface TokenUsage {
   agentId: string;
   agentType: string;
@@ -390,11 +363,265 @@ export interface TokenUsage {
   timestamp: Date;
   metadata?: TokenAccountingMetadata;
 }
-
 export interface ScanEvent {
   type: 'started' | 'completed' | 'error' | 'pause' | 'resume';
   scanId: string;
   worktree: string;
   timestamp: Date;
   data?: unknown;
+}
+
+// Tree-sitter Codemap Scanner Types
+
+export interface Position {
+  line: number;
+  column: number;
+}
+
+export interface FunctionInfo {
+  name: string;
+  type: 'declaration' | 'expression' | 'arrow';
+  position: Position;
+  size: number;
+  complexity: number;
+  nestingDepth: number;
+  parameters: Array<{
+    name: string;
+    type?: string;
+    optional: boolean;
+  }>;
+  returnType?: string;
+  isAsync: boolean;
+  isExported: boolean;
+}
+
+export interface ClassInfo {
+  name: string;
+  type: 'class' | 'interface' | 'abstract_class' | 'type';
+  position: Position;
+  size: number;
+  methods: FunctionInfo[];
+  properties: Array<{
+    name: string;
+    type?: string;
+    visibility: 'public' | 'private' | 'protected';
+    isStatic: boolean;
+  }>;
+  inheritance: string[];
+  decorators: string[];
+}
+
+export interface ImportInfo {
+  source: string;
+  imports: Array<{
+    name: string;
+    alias?: string;
+    isDefault: boolean;
+  }>;
+  type: 'import' | 'require';
+  position: Position;
+}
+
+export interface ExportInfo {
+  name: string;
+  type: string;
+  isDefault: boolean;
+  position: Position;
+}
+
+export interface VariableInfo {
+  name: string;
+  type?: string;
+  isConst: boolean;
+  isExported: boolean;
+  position: Position;
+}
+
+export interface CodeIssue {
+  type: 'style' | 'performance' | 'security' | 'complexity' | 'duplication';
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  message: string;
+  position: Position;
+  suggestion?: string;
+}
+
+export interface Dependency {
+  module: string;
+  type: 'import' | 'require';
+  imports: Array<{
+    name: string;
+    alias?: string;
+    isDefault: boolean;
+  }>;
+  isExternal: boolean;
+  position: Position;
+}
+
+export interface CrossFileReference {
+  sourceFile: string;
+  targetFile: string;
+  type: 'function_call' | 'class_instantiation' | 'type_reference' | 'variable_reference';
+  name: string;
+  position: Position;
+  targetPosition?: Position;
+}
+
+export interface ComplexityMetrics {
+  cyclomaticComplexity: number;
+  cognitiveComplexity: number;
+  maintainabilityIndex: number;
+  halsteadComplexity: {
+    operators: number;
+    operands: number;
+    difficulty: number;
+    effort: number;
+  };
+}
+
+export interface FileAnalysisMetrics {
+  linesOfCode: number;
+  functionsCount: number;
+  classesCount: number;
+  importsCount: number;
+  exportsCount: number;
+  variablesCount: number;
+  maxNestingDepth: number;
+  averageFunctionSize: number;
+  duplicateCodeBlocks: number;
+}
+
+export interface InterfaceInfo {
+  name: string;
+  properties: Record<string, unknown>;
+  methods: string[];
+  extends?: string[];
+  location: {
+    line: number;
+    column: number;
+  };
+}
+
+export interface TypeInfo {
+  name: string;
+  kind: 'alias' | 'union' | 'intersection' | 'generic';
+  definition: string;
+  location: {
+    line: number;
+    column: number;
+  };
+}
+
+export interface EnumInfo {
+  name: string;
+  members: Array<{
+    name: string;
+    value?: string | number;
+  }>;
+  location: {
+    line: number;
+    column: number;
+  };
+}
+
+export interface ModuleInfo {
+  name: string;
+  path: string;
+  exports: string[];
+  imports: string[];
+}
+
+export interface FileStructure {
+  functions: FunctionInfo[];
+  classes: ClassInfo[];
+  imports: ImportInfo[];
+  exports: ExportInfo[];
+  variables: VariableInfo[];
+  interfaces: InterfaceInfo[];
+  types: TypeInfo[];
+  enums: EnumInfo[];
+  modules: ModuleInfo[];
+}
+
+export interface CodeAnalysisResult {
+  filePath: string;
+  language: string;
+  size: number;
+  lastModified: Date;
+  structure: FileStructure;
+  metrics: FileAnalysisMetrics;
+  complexity: ComplexityMetrics;
+  dependencies: Dependency[];
+  issues: CodeIssue[];
+  crossFileReferences: CrossFileReference[];
+}
+
+export interface CodemapMetrics {
+  totalFiles: number;
+  totalLines: number;
+  totalFunctions: number;
+  totalClasses: number;
+  averageComplexity: number;
+  languageDistribution: Map<string, number>;
+  issueCount: number;
+  duplicateCodeBlocks: number;
+}
+
+export interface CodemapData {
+  version: string;
+  generatedAt: Date;
+  rootPath: string;
+  files: Map<string, CodeAnalysisResult>;
+  dependencies: Map<string, Set<string>>;
+  metrics: CodemapMetrics;
+  crossFileReferences: CrossFileReference[];
+}
+
+export interface FileAnalysis {
+  path: string;
+  language: string;
+  size: number;
+  linesOfCode: number;
+  complexity: number;
+  issues: number;
+  functions: FunctionInfo[];
+  classes: ClassInfo[];
+  imports: ImportInfo[];
+  exports: ExportInfo[];
+  dependencies: Dependency[];
+  lastModified: Date;
+}
+
+// Additional types needed by other files
+export interface FileInfo {
+  path: string;
+  language: string;
+  size: number;
+  linesOfCode: number;
+  lastModified: Date;
+  functions: FunctionInfo[];
+  classes: ClassInfo[];
+  imports: ImportInfo[];
+  exports: ExportInfo[];
+}
+
+export interface Codemap {
+  version: string;
+  generatedAt: Date;
+  rootPath: string;
+  files: Map<string, FileInfo>;
+  dependencies: Map<string, Set<string>>;
+  metrics: {
+    totalFiles: number;
+    totalLines: number;
+    totalFunctions: number;
+    totalClasses: number;
+    averageComplexity: number;
+    languageDistribution: Map<string, number>;
+  };
+  metadata: {
+    projectName: string;
+    commitHash: string;
+    generatedAt: string;
+    [key: string]: unknown;
+  };
 }

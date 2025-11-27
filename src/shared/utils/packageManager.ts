@@ -1,11 +1,9 @@
 /**
  * Package manager utilities
  */
-
 import { execa } from 'execa';
 
 export type PackageManager = 'npm' | 'yarn' | 'pnpm';
-
 export class PackageManagerUtils {
   /**
    * Detect which package manager to use
@@ -14,7 +12,6 @@ export class PackageManagerUtils {
     // Check for lock files
     try {
       const fs = await import('fs-extra');
-
       if (await fs.pathExists('pnpm-lock.yaml')) {
         return 'pnpm';
       }
@@ -26,14 +23,12 @@ export class PackageManagerUtils {
       return 'npm';
     }
   }
-
   /**
    * Install dependencies
    */
   async install(cwd: string, packageManager: PackageManager = 'npm'): Promise<void> {
     await execa(packageManager, ['install'], { cwd });
   }
-
   /**
    * Check if package manager is available
    */
@@ -46,5 +41,4 @@ export class PackageManagerUtils {
     }
   }
 }
-
 export const packageManagerUtils = new PackageManagerUtils();

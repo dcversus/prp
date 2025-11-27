@@ -6,9 +6,10 @@
  */
 
 import { Text } from 'ink';
-import { getRoleColors } from '../config/TUIConfig.js';
 
-export function RoboRolePill({ role, state = 'idle', size = 'normal' }: RoboRolePillProps) {
+import { getRoleColors } from '../config/TUIConfig';
+
+export const RoboRolePill = ({ role, state = 'idle', size = 'normal' }: RoboRolePillProps) => {
   // Use default color scheme since config is not available
   const defaultColors: ColorScheme = {
     // Accent / Orchestrator colors
@@ -57,7 +58,7 @@ export function RoboRolePill({ role, state = 'idle', size = 'normal' }: RoboRole
 
     // Signal colors
     signal_braces: '#FFB56B',
-    signal_placeholder: '#6C7078'
+    signal_placeholder: '#6C7078',
   };
   const colors = getRoleColors(role, defaultColors);
 
@@ -71,7 +72,9 @@ export function RoboRolePill({ role, state = 'idle', size = 'normal' }: RoboRole
 
   return (
     <Text backgroundColor={backgroundColor} color={textColor}>
-      {padding}{content}{padding}
+      {padding}
+      {content}
+      {padding}
     </Text>
   );
-}
+};

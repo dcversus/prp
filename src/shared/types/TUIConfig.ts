@@ -3,7 +3,6 @@
  *
  * TypeScript definitions for the Terminal User Interface configuration
  */
-
 export type Role =
   | 'robo-aqa'
   | 'robo-quality-control'
@@ -13,22 +12,19 @@ export type Role =
   | 'robo-ux-ui'
   | 'robo-legal-compliance'
   | 'orchestrator';
-
 export type SignalState = 'placeholder' | 'active' | 'progress' | 'resolved';
 export type AgentStatus = 'SPAWNING' | 'RUNNING' | 'IDLE' | 'ERROR';
 export type ScreenType = 'orchestrator' | 'info' | 'prp-context' | 'agent' | 'token-metrics';
+export type NavigationMode = 'global' | 'list' | 'agent' | 'input' | 'filter';
 export type Theme = 'dark' | 'light';
 export type LayoutMode = 'compact' | 'normal' | 'wide' | 'ultrawide';
-
 // Hex color literal types
 export type HexColor = `#${string}`;
-
 export interface ColorScheme {
   // Accent / Orchestrator colors
   accent_orange: HexColor;
   accent_orange_dim: HexColor;
   accent_orange_bg: HexColor;
-
   // Role colors (active versions)
   robo_aqa: HexColor;
   robo_quality_control: HexColor;
@@ -38,7 +34,6 @@ export interface ColorScheme {
   robo_ux_ui: HexColor;
   robo_legal_compliance: HexColor;
   orchestrator: HexColor;
-
   // Role colors (dim versions)
   robo_aqa_dim: HexColor;
   robo_quality_control_dim: HexColor;
@@ -48,7 +43,6 @@ export interface ColorScheme {
   robo_ux_ui_dim: HexColor;
   robo_legal_compliance_dim: HexColor;
   orchestrator_dim: HexColor;
-
   // Role background colors
   robo_aqa_bg: HexColor;
   robo_quality_control_bg: HexColor;
@@ -58,7 +52,6 @@ export interface ColorScheme {
   robo_ux_ui_bg: HexColor;
   robo_legal_compliance_bg: HexColor;
   orchestrator_bg: HexColor;
-
   // Neutral colors
   base_fg: HexColor;
   base_bg: HexColor;
@@ -67,12 +60,10 @@ export interface ColorScheme {
   warn: HexColor;
   ok: HexColor;
   gray: HexColor;
-
   // Signal colors
   signal_braces: HexColor;
   signal_placeholder: HexColor;
 }
-
 export interface AnimationConfig {
   enabled: boolean;
   intro: {
@@ -90,7 +81,6 @@ export interface AnimationConfig {
     blinkSpeed: number; // ms
   };
 }
-
 export interface LayoutConfig {
   responsive: boolean;
   breakpoints: {
@@ -104,19 +94,16 @@ export interface LayoutConfig {
     vertical: number;
   };
 }
-
 export interface InputConfig {
   maxTokens: number;
   tokenReserve: number; // 0-1
   pasteTimeout: number; // ms
 }
-
 export interface DebugConfig {
   enabled: boolean;
   maxLogLines: number;
   showFullJSON: boolean;
 }
-
 export interface TUIConfig {
   enabled: boolean;
   theme: Theme;
@@ -126,7 +113,6 @@ export interface TUIConfig {
   input: InputConfig;
   debug: DebugConfig;
 }
-
 export interface TerminalLayout {
   columns: number;
   rows: number;
@@ -138,9 +124,7 @@ export interface TerminalLayout {
     vertical: number;
   };
 }
-
 // Signal and Agent Types
-
 export interface SignalTag {
   code: string;
   role?: Role;
@@ -148,7 +132,6 @@ export interface SignalTag {
   latest?: boolean;
   animationFrame?: number;
 }
-
 export interface AgentCard {
   id: string;
   statusIcon: '♪' | '♩' | '♬' | '♫';
@@ -163,14 +146,12 @@ export interface AgentCard {
   active: string; // duration
   lastUpdate: Date;
 }
-
 export interface HistoryItem {
   source: 'system' | 'scanner' | 'inspector' | 'orchestrator';
   timestamp: string;
   data: Record<string, unknown>;
   compact?: boolean;
 }
-
 export interface PRPItem {
   name: string;
   status: AgentStatus;
@@ -179,7 +160,6 @@ export interface PRPItem {
   signals: SignalTag[];
   lastUpdate: Date;
 }
-
 export interface OrchestratorBlock {
   status: AgentStatus;
   prp: string;
@@ -189,7 +169,6 @@ export interface OrchestratorBlock {
   toolCall: string;
   lastUpdate: Date;
 }
-
 export interface InputState {
   value: string;
   pasteInfo?: {
@@ -199,9 +178,10 @@ export interface InputState {
   };
   isSubmitting: boolean;
 }
-
 export interface TUIState {
   currentScreen: ScreenType;
+  navigationMode: NavigationMode;
+  multiScreenMode: boolean;
   selectedPRP?: string;
   selectedAgent?: string;
   debugMode: boolean;
@@ -213,78 +193,62 @@ export interface TUIState {
   input: InputState;
   terminalLayout: TerminalLayout;
 }
-
 // Event Types
-
 export interface TerminalResizeEvent {
   columns: number;
   rows: number;
 }
-
 export interface SignalUpdateEvent {
   prpName: string;
   signal: SignalTag;
 }
-
 export interface AgentUpdateEvent {
   agentId: string;
   update: Partial<AgentCard>;
 }
-
 export interface PRPUpdateEvent {
   prpName: string;
   update: Partial<PRPItem>;
 }
-
 export interface HistoryUpdateEvent {
   item: HistoryItem;
 }
-
 export interface IntroCompleteEvent {
   success: boolean;
 }
-
 export interface InputSubmitEvent {
   value: string;
 }
-
 // Component Props
-
 export interface RoboRolePillProps {
   role: Role;
   state: 'idle' | 'active' | 'resolved';
   size?: 'small' | 'normal' | 'large';
 }
-
 export interface MusicIconProps {
   status: AgentStatus;
   animate?: boolean;
   size?: 'small' | 'normal' | 'large';
 }
-
 export interface SignalBarProps {
   signals: SignalTag[];
   animate?: boolean;
   config?: TUIConfig;
 }
-
 export interface AgentStatusLineProps {
   agent: AgentCard;
   showDetails?: boolean;
 }
-
 export interface ProgressIndicatorProps {
   value: number; // 0-100
   width?: number;
   showPercentage?: boolean;
   animated?: boolean;
 }
-
 export interface TokenMetricsScreenProps {
   isActive: boolean;
-  onNavigate: (screen: string) => void;
+  onNavigate: () => void;
 }
-
 export interface FooterProps {
   currentScreen: ScreenType;
   debugMode: boolean;
@@ -293,10 +257,68 @@ export interface FooterProps {
   config: TUIConfig;
   terminalLayout: TerminalLayout;
 }
-
 export interface InputBarProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: () => void;
   config: TUIConfig;
   terminalLayout: TerminalLayout;
 }
+
+// Utility functions for TUI components
+export interface RoleColors {
+  active: HexColor;
+  bg: HexColor;
+  dim: HexColor;
+}
+
+/**
+ * Get color scheme for a specific role
+ */
+export const getRoleColors = (role: Role, colors: ColorScheme): RoleColors => {
+  const roleKey = role.replace('-', '_') as keyof ColorScheme;
+  const activeKey = roleKey;
+  const bgKey = `${roleKey}_bg` as keyof ColorScheme;
+  const dimKey = `${roleKey}_dim` as keyof ColorScheme;
+
+  return {
+    active: colors[activeKey],
+    bg: colors[bgKey],
+    dim: colors[dimKey],
+  };
+};
+
+/**
+ * Get color for a signal based on its code and state
+ */
+export const getSignalColor = (
+  signalCode: string,
+  signalState: SignalState,
+  colors: ColorScheme,
+): HexColor => {
+  // Special signal codes with specific colors
+  if (signalCode.includes('[oa]') || signalCode.includes('[pc]')) {
+    return colors.accent_orange;
+  }
+  if (signalCode.includes('[br]') || signalCode.includes('[mg]')) {
+    return colors.ok;
+  }
+  if (signalCode.includes('[bb]')) {
+    return colors.warn;
+  }
+  if (signalCode.includes('[ff]')) {
+    return colors.error;
+  }
+
+  // Default colors based on state
+  switch (signalState) {
+    case 'active':
+      return colors.signal_braces;
+    case 'progress':
+      return colors.accent_orange;
+    case 'resolved':
+      return colors.ok;
+    case 'placeholder':
+    default:
+      return colors.signal_placeholder;
+  }
+};

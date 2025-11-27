@@ -4,26 +4,21 @@
  * Exports all init flow components and types for easy importing
  * following the modular architecture established in PRP-003
  */
-
 // Main init flow component
-export { default as InitFlow } from './InitFlow.js';
-
+export { default as InitFlow } from './InitFlow';
 // Core init shell and layout
-export { default as InitShell } from './InitShell.js';
-
+export { default as InitShell } from './InitShell';
 // Form field components
-export { default as FieldText } from './FieldText.js';
-export { default as FieldTextBlock } from './FieldTextBlock.js';
-export { default as FieldSelectCarousel } from './FieldSelectCarousel.js';
-export { default as FieldSecret } from './FieldSecret.js';
-export { default as FieldJSON } from './FieldJSON.js';
-export { default as FieldToggle } from './FieldToggle.js';
-export { default as FileTreeChecks, type TreeNode } from './FileTreeChecks.js';
-
+export { default as FieldText } from './FieldText';
+export { default as FieldTextBlock } from './FieldTextBlock';
+export { default as FieldSelectCarousel } from './FieldSelectCarousel';
+export { default as FieldSecret } from './FieldSecret';
+export { default as FieldJSON } from './FieldJSON';
+export { default as FieldToggle } from './FieldToggle';
+export { default as FileTreeChecks, type TreeNode } from './FileTreeChecks';
 // Specialized components
-export { default as AgentEditor } from './AgentEditor.js';
-export { default as GenerationProgress } from './GenerationProgress.js';
-
+export { default as AgentEditor } from './AgentEditor';
+export { default as GenerationProgress } from './GenerationProgress';
 // Export all types from types.ts
 export type {
   InitState,
@@ -41,13 +36,11 @@ export type {
   AgentEditorProps,
   GenerationEvent,
   GenerationProgressProps,
-  StepHeaderProps
-} from './types.js';
-
+  StepHeaderProps,
+} from './types';
 // Animation and intro components
-export { default as IntroSequence, MiniIntro } from './IntroSequence.js';
-export type { IntroSequenceProps } from './IntroSequence.js';
-
+export { default as IntroSequence, MiniIntro } from './IntroSequence';
+export type { IntroSequenceProps } from './IntroSequence';
 // Configuration integration
 export {
   generatePRPConfig,
@@ -56,7 +49,6 @@ export {
   convertAgentConfig,
   TEMPLATE_CONFIGS,
   type PRPConfig,
-  type PRPAgentConfig
-} from './ConfigIntegration.js';
-
+  type PRPAgentConfig,
+} from './ConfigIntegration';
 // Re-export for backward compatibility

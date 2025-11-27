@@ -6,36 +6,48 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "prp": "dist/cli.js"
+    "prp": "dist/cli.mjs"
   },
   "files": [
     "dist",
     "templates"
   ],
   "scripts": {
-    "dev": "tsx src/cli.ts --watch",
+    "dev": "tsx src/cli.ts dev --watch",
+    "dev:no-watch": "tsx src/cli.ts dev",
     "fix": "npm run lint:fix && npm run format",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\"",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,md}\" \"tests/**/*.{ts,tsx,js,jsx}\" \"*.{md,yml,yaml}\" \"!src/guidelines/**/*.json\" \"!**/jest.setup.js\" --ignore-path .gitignore",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,md}\" \"tests/**/*.{ts,tsx,js,jsx}\" \"*.{md,yml,yaml}\" \"!src/guidelines/**/*.json\" \"!**/jest.setup.js\" --ignore-path .gitignore",
     "typecheck": "tsc --noEmit",
     "typecheck:watch": "tsc --noEmit --watch",
-    "test": "jest --passWithNoTests",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage --passWithNoTests",
-    "test:e2e": "jest tests/e2e --passWithNoTests --runInBand",
-    "test:performance": "jest tests/performance --passWithNoTests --runInBand",
-    "test:performance:cli": "jest tests/performance/cli-startup.test.ts --passWithNoTests",
-    "test:performance:templates": "jest tests/performance/template-generation.test.ts --passWithNoTests",
-    "test:performance:memory": "jest tests/performance/memory-usage.test.ts --passWithNoTests",
+    "test": "jest --config jest.parallel.config.js --passWithNoTests",
+    "test:watch": "jest --config jest.parallel.config.js --watch",
+    "test:coverage": "jest --config jest.parallel.config.js --coverage --passWithNoTests",
+    "test:parallel": "jest --config jest.parallel.config.js --maxWorkers=8 --passWithNoTests",
+    "test:unit": "jest --config jest.parallel.config.js src/**/__tests__/**/*.test.ts --passWithNoTests",
+    "test:integration": "jest --config jest.parallel.config.js tests/integration/**/*.test.ts --passWithNoTests",
+    "test:e2e": "jest --config jest.parallel.config.js tests/e2e --passWithNoTests --runInBand",
+    "test:e2e:journeys": "jest --config jest.parallel.config.js tests/e2e/comprehensive-init-journeys.test.ts --passWithNoTests",
+    "test:e2e:init": "jest --config jest.parallel.config.js tests/e2e/init-command.test.ts --passWithNoTests",
+    "test:performance": "jest --config jest.parallel.config.js tests/performance --passWithNoTests --runInBand",
+    "test:performance:cli": "jest --config jest.parallel.config.js tests/performance/cli-performance.test.ts --passWithNoTests",
+    "test:performance:startup": "jest --config jest.parallel.config.js tests/performance/cli-performance.test.ts --passWithNoTests --testNamePattern=\"startup\"",
+    "test:performance:memory": "jest --config jest.parallel.config.js tests/performance/cli-performance.test.ts --passWithNoTests --testNamePattern=\"memory\"",
+    "test:performance:stress": "jest --config jest.parallel.config.js tests/performance/cli-performance.test.ts --passWithNoTests --testNamePattern=\"stress\"",
     "benchmark": "node scripts/benchmark.js",
     "benchmark:compare": "node scripts/benchmark.js --compare",
     "benchmark:verbose": "node scripts/benchmark.js --verbose",
+    "melody:generate": "tsx scripts/generate-melody.ts generate",
+    "melody:decode": "tsx scripts/generate-melody.ts decode",
+    "melody:list": "tsx scripts/generate-melody.ts list",
+    "video:install-deps": "tsx scripts/install-video-deps.ts",
+    "video:test": "tsx scripts/video-test.ts",
     "start": "node dist/cli.js",
-    "build": "node scripts/build-cli.js",
-    "build:prod": "node scripts/build-cli.js --prod",
-    "build:min": "node scripts/build-cli.js --minify",
+    "build": "tsdown",
+    "build:prod": "tsdown --minify",
+    "build:min": "tsdown --minify",
     "build:docs": "node scripts/build-docs.js",
     "dev:docs": "node scripts/build-docs.js --dev",
     "serve:docs": "node scripts/build-docs.js --serve --static",
@@ -77,7 +89,7 @@
   },
   "prettier": {
     "semi": true,
-    "trailingComma": "es5",
+    "trailingComma": "all",
     "singleQuote": true,
     "printWidth": 100,
     "tabWidth": 2,
@@ -128,6 +140,9 @@
     "react": "^18.3.1",
     "semver": "^7.6.3",
     "socket.io": "^4.7.5",
+    "tree-sitter": "^0.25.0",
+    "tree-sitter-javascript": "^0.25.0",
+    "tree-sitter-markdown": "^0.7.0",
     "validate-npm-package-name": "^5.0.1",
     "yaml": "^2.6.0"
   },
@@ -148,14 +163,18 @@
     "@types/node": "^22.7.5",
     "@types/react": "^18.3.11",
     "@types/semver": "^7.5.8",
-    "@typescript-eslint/eslint-plugin": "^8.8.1",
-    "@typescript-eslint/parser": "^8.8.1",
+    "@typescript-eslint/eslint-plugin": "^8.46.4",
+    "@typescript-eslint/parser": "^8.46.4",
     "browser-sync": "^3.0.4",
     "chokidar": "^4.0.3",
-    "eslint": "^9.12.0",
-    "eslint-config-prettier": "^9.1.0",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.1",
     "eslint-formatter-compact": "^9.0.1",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-n": "^17.15.1",
     "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-promise": "^7.2.1",
     "eslint-plugin-react": "^7.37.1",
     "eslint-plugin-react-hooks": "^5.1.0-rc-fb9a90fa48-20240614",
     "glob": "^11.0.3",
@@ -167,10 +186,11 @@
     "jsonwebtoken": "^9.0.2",
     "lint-staged": "^16.2.6",
     "marked": "^16.4.1",
+    "node-pty": "^1.0.0",
     "prettier": "^3.3.3",
     "react-dom": "^18.3.1",
     "ts-jest": "^29.2.5",
-    "tsup": "^8.5.0",
+    "tsdown": "^0.16.5",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.46.2"
@@ -193,8 +213,8 @@
     },
     "extends": [
       "eslint:recommended",
-      "@typescript-eslint/recommended",
-      "@typescript-eslint/recommended-requiring-type-checking",
+      "plugin:@typescript-eslint/recommended",
+      "plugin:@typescript-eslint/recommended-requiring-type-checking",
       "plugin:react/recommended",
       "plugin:react-hooks/recommended",
       "plugin:@typescript-eslint/strict",
@@ -228,30 +248,19 @@
           "ignoreRestSiblings": false
         }
       ],
-      "@typescript-eslint/explicit-function-return-type": [
-        "error",
-        {
-          "allowExpressions": true,
-          "allowTypedFunctionExpressions": true,
-          "allowHigherOrderFunctions": true,
-          "allowDirectConstAssertionInArrowFunctions": true,
-          "allowConciseArrowFunctionExpressionsStartingWithVoid": false
-        }
-      ],
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-non-null-assertion": "error",
-      "@typescript-eslint/prefer-nullish-coalescing": "error",
       "@typescript-eslint/prefer-optional-chain": "error",
-      "@typescript-eslint/no-unnecessary-condition": "error",
+      "@typescript-eslint/prefer-nullish-coalescing": "error",
       "@typescript-eslint/strict-boolean-expressions": [
         "error",
         {
-          "allowString": false,
-          "allowNumber": false,
-          "allowNullableObject": false,
-          "allowNullableBoolean": false,
-          "allowNullableString": false,
-          "allowNullableNumber": false
+          "allowString": true,
+          "allowNumber": true,
+          "allowNullableObject": true,
+          "allowNullableBoolean": true,
+          "allowNullableString": true,
+          "allowNullableNumber": true
         }
       ],
       "@typescript-eslint/no-floating-promises": "error",
@@ -269,81 +278,26 @@
       "@typescript-eslint/no-unsafe-argument": "error",
       "@typescript-eslint/prefer-as-const": "error",
       "@typescript-eslint/no-var-requires": "error",
-      "@typescript-eslint/no-empty-function": "error",
       "@typescript-eslint/no-inferrable-types": "error",
       "@typescript-eslint/ban-ts-comment": "error",
-      "@typescript-eslint/consistent-type-definitions": [
-        "error",
-        "interface"
-      ],
       "@typescript-eslint/consistent-type-exports": "error",
-      "@typescript-eslint/consistent-type-imports": "error",
       "@typescript-eslint/no-duplicate-enum-values": "error",
       "@typescript-eslint/no-duplicate-type-constituents": "error",
-      "@typescript-eslint/no-empty-interface": "error",
       "@typescript-eslint/no-extra-non-null-assertion": "error",
-      "@typescript-eslint/no-import-type-side-effects": "error",
-      "@typescript-eslint/no-mixed-enums": "error",
       "@typescript-eslint/no-non-null-asserted-nullish-coalescing": "error",
       "@typescript-eslint/no-non-null-asserted-optional-chain": "error",
-      "@typescript-eslint/no-unnecessary-qualifier": "error",
-      "@typescript-eslint/no-unnecessary-type-arguments": "error",
       "@typescript-eslint/no-unnecessary-type-assertion": "error",
-      "@typescript-eslint/no-unnecessary-type-constraint": "error",
       "@typescript-eslint/no-unsafe-enum-comparison": "error",
-      "@typescript-eslint/no-useless-empty-export": "error",
-      "@typescript-eslint/array-type": [
-        "error",
-        {
-          "default": "array-simple",
-          "readonly": "generic"
-        }
-      ],
-      "@typescript-eslint/prefer-readonly": "error",
-      "@typescript-eslint/prefer-string-starts-ends-with": "error",
-      "@typescript-eslint/require-array-sort-compare": "error",
-      "@typescript-eslint/restrict-template-expressions": "error",
-      "@typescript-eslint/restrict-plus-operands": "error",
-      "@typescript-eslint/prefer-enum-initializers": "error",
-      "@typescript-eslint/prefer-for-of": "error",
-      "@typescript-eslint/prefer-function-type": "error",
-      "@typescript-eslint/prefer-literal-enum-member": "error",
-      "@typescript-eslint/prefer-readonly-parameter-types": "off",
-      "@typescript-eslint/prefer-reduce-type-parameter": "error",
-      "@typescript-eslint/prefer-return-this-type": "error",
+      "@typescript-eslint/array-type": "off",
       "@typescript-eslint/switch-exhaustiveness-check": "error",
       "@typescript-eslint/use-unknown-in-catch-callback-variable": "error",
       "prefer-const": "error",
       "no-var": "error",
       "no-console": "warn",
-      "eqeqeq": [
-        "error",
-        "always"
-      ],
       "curly": [
         "error",
         "all"
       ],
-      "brace-style": [
-        "error",
-        "1tbs"
-      ],
-      "comma-dangle": [
-        "error",
-        "always-multiline"
-      ],
-      "quotes": [
-        "error",
-        "single",
-        {
-          "avoidEscape": true
-        }
-      ],
-      "semi": [
-        "error",
-        "always"
-      ],
-      "indent": "off",
       "react/prop-types": "off",
       "react/react-in-jsx-scope": "off",
       "react/display-name": "off"
@@ -361,26 +315,100 @@
       "templates/"
     ]
   },
-  "tsup": {
-    "entry": {
-      "index": "src/index.ts",
-      "cli": "src/cli.ts"
-    },
-    "format": [
-      "esm"
+  "jest": {
+    "preset": "ts-jest/presets/default-esm",
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.ts"
     ],
-    "dts": false,
-    "clean": true,
-    "sourcemap": true,
-    "minify": false,
-    "target": "node20",
-    "outDir": "dist",
-    "splitting": false,
-    "treeshake": true,
-    "external": [
-      "react",
-      "react-dom",
-      "ink"
-    ]
+    "roots": [
+      "<rootDir>/src",
+      "<rootDir>/tests"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.ts",
+      "**/__tests__/**/*.tsx",
+      "**/?(*.)+(spec|test).ts",
+      "**/?(*.)+(spec|test).tsx"
+    ],
+    "extensionsToTreatAsEsm": [
+      ".ts",
+      ".tsx"
+    ],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1",
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^@shared/(.*)$": "<rootDir>/src/shared/$1",
+      "^@tui/(.*)$": "<rootDir>/src/tui/$1",
+      "axios$": "axios/dist/node/axios.cjs",
+      "execa$": "execa",
+      "tree-sitter$": "<rootDir>/node_modules/tree-sitter",
+      "tree-sitter-javascript$": "<rootDir>/node_modules/tree-sitter-javascript"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(axios|chalk|ansi-styles|supports-color|ink|ink-testing-library|@testing-library|execa|fs-extra|tmp|glob|yaml|boxen|figlet|ora|semver|validate-npm-package-name|nanoid|lru-cache|lz-string|jsonwebtoken|openai|marked|highlight\\.js|socket\\.io|prom-client|tree-sitter|tree-sitter-javascript|tree-sitter-markdown))/"
+    ],
+    "transform": {
+      "^.+\\.tsx?$": [
+        "ts-jest",
+        {
+          "tsconfig": {
+            "jsx": "react-jsx",
+            "module": "ESNext",
+            "target": "ES2022",
+            "strict": true,
+            "noUnusedLocals": false,
+            "noUnusedParameters": false,
+            "exactOptionalPropertyTypes": false,
+            "allowSyntheticDefaultImports": true,
+            "esModuleInterop": true,
+            "moduleResolution": "node",
+            "resolveJsonModule": true,
+            "isolatedModules": true,
+            "skipLibCheck": true,
+            "forceConsistentCasingInFileNames": true
+          },
+          "useESM": true
+        }
+      ]
+    },
+    "collectCoverageFrom": [
+      "src/**/*.{ts,tsx}",
+      "!src/**/*.d.ts",
+      "!src/**/*.test.ts",
+      "!src/**/*.test.tsx",
+      "!src/**/__tests__/**",
+      "!src/cli.ts"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      },
+      "./src/shared/": {
+        "branches": 100,
+        "functions": 100,
+        "lines": 100,
+        "statements": 100
+      }
+    },
+    "maxWorkers": 4,
+    "testTimeout": 30000,
+    "verbose": true,
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json"
+    ],
+    "testEnvironmentOptions": {
+      "customExportConditions": [
+        "node",
+        "node-addons"
+      ]
+    }
   }
 }

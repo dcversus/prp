@@ -7,21 +7,24 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Box, Text, useInput } from 'ink';
-import type { InputBarProps } from '../../shared/types/TUIConfig.js';
-import {
-  PasteHandler,
-  PasteMetadata
-} from '../utils/paste-handler.js';
 
-export function InputBar({ value, onChange, config, terminalLayout }: InputBarProps) {
+import { PasteHandler } from '../utils/paste-handler';
+
+import type { PasteMetadata } from '../utils/paste-handler';
+import type { InputBarProps } from '../../shared/types/TUIConfig';
+
+export const InputBar = ({ value, onChange, config, terminalLayout }: InputBarProps) => {
   const [internalValue, setInternalValue] = useState(value);
   const [pasteInfo, setPasteInfo] = useState<PasteMetadata | null>(null);
-  const [tokenCaps, setTokenCaps] = useState<any>(null);
-  const [pasteHandler] = useState(() => new PasteHandler({
-    maxTokens: 200000, // Default from orchestrator caps
-    reservePercentage: 5,
-    enableHashing: true
-  }));
+  const [_tokenCaps, setTokenCaps] = useState<{ maxTokens: number; used: number } | null>(null);
+  const [pasteHandler] = useState(
+    () =>
+      new PasteHandler({
+        maxTokens: 200000, // Default from orchestrator caps
+        reservePercentage: 5,
+        enableHashing: true,
+      }),
+  );
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   // Update max tokens dynamically based on system caps
@@ -38,7 +41,7 @@ export function InputBar({ value, onChange, config, terminalLayout }: InputBarPr
 
   // Initialize token caps on mount
   useEffect(() => {
-    updateTokenCaps();
+    void updateTokenCaps();
   }, [updateTokenCaps]);
 
   // Sync with external value
@@ -52,53 +55,60 @@ export function InputBar({ value, onChange, config, terminalLayout }: InputBarPr
   }, [value]);
 
   // Handle paste processing
-  const handlePaste = useCallback((pastedContent: string) => {
-    try {
-      // Clear any existing error message
-      setErrorMessage('');
+  const handlePaste = useCallback(
+    (pastedContent: string) => {
+      try {
+        // Clear any existing error message
+        setErrorMessage('');
 
-      // Validate paste before processing
-      const validation = pasteHandler.validatePaste(pastedContent, internalValue);
+        // Validate paste before processing
+        const validation = pasteHandler.validatePaste(pastedContent, internalValue);
 
-      if (!validation.canAccept) {
-        setErrorMessage(validation.reason || 'Paste exceeds token limit');
-        return;
+        if (!validation.canAccept) {
+          setErrorMessage(validation.reason || 'Paste exceeds token limit');
+          return;
+        }
+
+        // Process the paste
+        const metadata = pasteHandler.processPaste(pastedContent, internalValue);
+
+        // Update internal value with processed content
+        const newValue = internalValue + metadata.processedContent;
+        setInternalValue(newValue);
+        setPasteInfo(metadata);
+
+        // Notify parent of change
+        onChange(newValue);
+
+        // Clear paste info after 3 seconds
+        setTimeout(() => {
+          setPasteInfo(null);
+        }, 3000);
+      } catch (error) {
+        setErrorMessage(
+          `Paste processing error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
       }
-
-      // Process the paste
-      const metadata = pasteHandler.processPaste(pastedContent, internalValue);
-
-      // Update internal value with processed content
-      const newValue = internalValue + metadata.processedContent;
-      setInternalValue(newValue);
-      setPasteInfo(metadata);
-
-      // Notify parent of change
-      onChange(newValue);
-
-      // Clear paste info after 3 seconds
-      setTimeout(() => {
-        setPasteInfo(null);
-      }, 3000);
-
-    } catch (error) {
-      setErrorMessage(`Paste processing error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }, [pasteHandler, internalValue, onChange]);
+    },
+    [pasteHandler, internalValue, onChange],
+  );
 
   // Expose methods for external integration
-  const clearError = useCallback(() => {
+  const _clearError = useCallback(() => {
     setErrorMessage('');
   }, []);
 
-  const getCurrentValue = useCallback(() => {
+  const _getCurrentValue = useCallback(() => {
     return internalValue;
   }, [internalValue]);
 
   // Expose paste handling method for external integration
-  const handleExternalPaste = useCallback((content: string) => {
-    handlePaste(content);
-  }, [handlePaste]);
+  const _handleExternalPaste = useCallback(
+    (content: string) => {
+      handlePaste(content);
+    },
+    [handlePaste],
+  );
 
   // Handle input changes
   useInput((input, key) => {
@@ -115,7 +125,8 @@ export function InputBar({ value, onChange, config, terminalLayout }: InputBarPr
             onChange(internalValue);
           }
           return;
-        case 'v': { // Ctrl+V - paste (simulated for terminal)
+        case 'v': {
+          // Ctrl+V - paste (simulated for terminal)
           // In terminal environments, we simulate paste detection
           // Real clipboard access would require terminal-specific APIs
           const simulatedPaste = getSimulatedPasteContent();
@@ -164,35 +175,26 @@ export function InputBar({ value, onChange, config, terminalLayout }: InputBarPr
     return null;
   };
 
-  // Render delimiter lines
-  const renderDelimiter = () => (
-    <Text color={config.colors.gray}>
-      {'─'.repeat(terminalLayout.columns)}
-    </Text>
-  );
-
-  // Render input with paste info and error messages
+  // Render input with paste info and error messages - matching PRP design exactly
   const renderInput = () => (
     <Box flexDirection="column">
-      <Box>
-        <Text color={config.colors.base_fg}>{'>'} </Text>
-        <Text color={config.colors.base_fg}>
-          {internalValue || 'paste or type here …'}
-        </Text>
-        {pasteInfo && (
-          <Text color={config.colors.muted}>
-            {' '}{pasteInfo.cut ?
-              `-- pasted ${pasteInfo.tokens} tokens | ${pasteInfo.hash} | cut_limit --` :
-              `-- pasted ${pasteInfo.tokens} tokens | ${pasteInfo.hash} --`
-            }
+      {pasteInfo ? (
+        <Box>
+          <Text color={config.colors.base_fg}>{'> '} </Text>
+          <Text color={config.colors.base_fg}>
+            Can you create something like this? -- pasted {pasteInfo.processedContent.length} tokens
+            | {pasteInfo.hash?.substring(0, 8)} --
           </Text>
-        )}
-      </Box>
+        </Box>
+      ) : (
+        <Box>
+          <Text color={config.colors.base_fg}>{'> '} </Text>
+          <Text color={config.colors.base_fg}>type or paste anything to</Text>
+        </Box>
+      )}
       {errorMessage && (
         <Box marginTop={1}>
-          <Text color={config.colors.error}>
-            ⚠️  {errorMessage}
-          </Text>
+          <Text color={config.colors.error}>⚠️ {errorMessage}</Text>
         </Box>
       )}
     </Box>
@@ -200,15 +202,23 @@ export function InputBar({ value, onChange, config, terminalLayout }: InputBarPr
 
   return (
     <Box flexDirection="column" width={terminalLayout.columns}>
-      {renderDelimiter()}
+      {/* Top delimiter line - matching PRP design exactly */}
+      <Box justifyContent="flex-start">
+        <Text color={config.colors.muted}>{'─'.repeat(Math.min(terminalLayout.columns, 120))}</Text>
+      </Box>
+
       {renderInput()}
-      {renderDelimiter()}
+
+      {/* Bottom delimiter line - matching PRP design exactly */}
+      <Box justifyContent="flex-start">
+        <Text color={config.colors.muted}>{'─'.repeat(Math.min(terminalLayout.columns, 120))}</Text>
+      </Box>
     </Box>
   );
-}
+};
 
 // Export component with additional methods for external integration
-export type InputBarRef = {
+export interface InputBarRef {
   handlePaste: (content: string) => void;
   clearError: () => void;
   getCurrentValue: () => string;

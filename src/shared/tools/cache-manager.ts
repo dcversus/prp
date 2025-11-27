@@ -3,9 +3,9 @@
  *
  * Shared caching utilities with LRU eviction, TTL support, and compression.
  */
-
 import { createHash } from 'crypto';
-import { TextProcessor, CompressionStrategy } from '../utils/text-processing';
+
+// import { TextProcessor, CompressionStrategy } from '../utils/text-processing';
 
 export interface CacheEntry<T = unknown> {
   key: string;
@@ -18,7 +18,6 @@ export interface CacheEntry<T = unknown> {
   compressed: boolean;
   metadata?: Record<string, unknown>;
 }
-
 export interface CacheConfig {
   maxSize?: number; // Maximum number of entries
   maxMemory?: number; // Maximum memory usage in bytes
@@ -28,7 +27,6 @@ export interface CacheConfig {
   enableMetrics?: boolean;
   cleanupInterval?: number; // Cleanup interval in milliseconds
 }
-
 export interface CacheStats {
   totalEntries: number;
   memoryUsage: number;
@@ -40,7 +38,6 @@ export interface CacheStats {
   oldestEntry?: Date;
   newestEntry?: Date;
 }
-
 export interface CacheMetrics {
   hits: number;
   misses: number;
@@ -52,17 +49,15 @@ export interface CacheMetrics {
   totalAccessTime: number;
   memoryUsage: number;
 }
-
 /**
  * Advanced Cache Manager with LRU, TTL, and Compression
  */
 export class CacheManager<T = unknown> {
-  private cache: Map<string, CacheEntry<T>> = new Map();
+  private readonly cache = new Map<string, CacheEntry<T>>();
   private accessOrder: string[] = [];
-  private config: Required<CacheConfig>;
+  private readonly config: Required<CacheConfig>;
   private metrics: CacheMetrics;
   private cleanupTimer?: NodeJS.Timeout;
-
   constructor(config: CacheConfig = {}) {
     this.config = {
       maxSize: config.maxSize ?? 1000,
@@ -71,9 +66,8 @@ export class CacheManager<T = unknown> {
       enableCompression: config.enableCompression ?? true,
       compressionThreshold: config.compressionThreshold ?? 1024, // 1KB
       enableMetrics: config.enableMetrics ?? true,
-      cleanupInterval: config.cleanupInterval ?? 60000 // 1 minute
+      cleanupInterval: config.cleanupInterval ?? 60000, // 1 minute
     };
-
     this.metrics = {
       hits: 0,
       misses: 0,
@@ -83,15 +77,13 @@ export class CacheManager<T = unknown> {
       compressions: 0,
       decompressions: 0,
       totalAccessTime: 0,
-      memoryUsage: 0
+      memoryUsage: 0,
     };
-
     // Start cleanup timer
     if (this.config.cleanupInterval > 0) {
       this.startCleanupTimer();
     }
   }
-
   /**
    * Set a value in cache
    */
@@ -101,12 +93,12 @@ export class CacheManager<T = unknown> {
     let finalValue = serializedValue;
     let compressed = false;
     let size = serializedValue.length;
-
     // Apply compression if enabled and threshold is met
     if (this.config.enableCompression && size >= this.config.compressionThreshold) {
       try {
         const compressedValue = this.compressData(serializedValue);
-        if (compressedValue.length < size * 0.8) { // Only use compression if it reduces size significantly
+        if (compressedValue.length < size * 0.8) {
+          // Only use compression if it reduces size significantly
           finalValue = compressedValue;
           compressed = true;
           size = compressedValue.length;
@@ -117,50 +109,44 @@ export class CacheManager<T = unknown> {
         // console.warn('Cache compression failed:', error);
       }
     }
-
     const now = new Date();
-    const expiresAt = ttl ? new Date(now.getTime() + ttl) :
-      this.config.defaultTTL ? new Date(now.getTime() + this.config.defaultTTL) :
-        undefined;
-
+    const expiresAt = ttl
+      ? new Date(now.getTime() + ttl)
+      : this.config.defaultTTL
+        ? new Date(now.getTime() + this.config.defaultTTL)
+        : undefined;
     const entry: CacheEntry<T> = {
       key,
-      value: compressed ? finalValue as unknown as T : value,
+      value: compressed ? (finalValue as unknown as T) : value,
       timestamp: now,
       expiresAt,
       accessCount: 0,
       lastAccessed: now,
       size,
       compressed,
-      metadata
+      metadata,
     };
-
     // Check if we need to evict entries
     this.ensureCapacity();
-
     // Set the entry
     this.cache.set(key, entry);
     this.updateAccessOrder(key);
-
     // Update metrics
     this.metrics.sets++;
     this.updateMemoryUsage();
     this.updateAccessTime(Date.now() - startTime);
   }
-
   /**
    * Get a value from cache
    */
   get(key: string): T | null {
     const startTime = Date.now();
     const entry = this.cache.get(key);
-
     if (!entry) {
       this.metrics.misses++;
       this.updateAccessTime(Date.now() - startTime);
       return null;
     }
-
     // Check if entry has expired
     if (entry.expiresAt && Date.now() > entry.expiresAt.getTime()) {
       this.delete(key);
@@ -168,14 +154,12 @@ export class CacheManager<T = unknown> {
       this.updateAccessTime(Date.now() - startTime);
       return null;
     }
-
     // Update access information
     entry.accessCount++;
     entry.lastAccessed = new Date();
     this.updateAccessOrder(key);
-
     // Decompress if necessary
-    let value = entry.value;
+    let {value} = entry;
     if (entry.compressed) {
       try {
         value = this.decompressData(entry.value as unknown as string) as unknown as T;
@@ -188,12 +172,10 @@ export class CacheManager<T = unknown> {
         return null;
       }
     }
-
     this.metrics.hits++;
     this.updateAccessTime(Date.now() - startTime);
     return value;
   }
-
   /**
    * Check if key exists in cache
    */
@@ -202,16 +184,13 @@ export class CacheManager<T = unknown> {
     if (!entry) {
       return false;
     }
-
     // Check if entry has expired
     if (entry.expiresAt && Date.now() > entry.expiresAt.getTime()) {
       this.delete(key);
       return false;
     }
-
     return true;
   }
-
   /**
    * Delete a key from cache
    */
@@ -224,7 +203,6 @@ export class CacheManager<T = unknown> {
     }
     return deleted;
   }
-
   /**
    * Clear all entries from cache
    */
@@ -234,26 +212,25 @@ export class CacheManager<T = unknown> {
     this.metrics.deletes += this.cache.size;
     this.updateMemoryUsage();
   }
-
   /**
    * Get multiple keys from cache
    */
   mget(keys: string[]): Array<{ key: string; value: T | null }> {
-    return keys.map(key => ({
+    return keys.map((key) => ({
       key,
-      value: this.get(key)
+      value: this.get(key),
     }));
   }
-
   /**
    * Set multiple key-value pairs
    */
-  mset(entries: Array<{ key: string; value: T; ttl?: number; metadata?: Record<string, unknown> }>): void {
+  mset(
+    entries: Array<{ key: string; value: T; ttl?: number; metadata?: Record<string, unknown> }>,
+  ): void {
     for (const { key, value, ttl, metadata } of entries) {
       this.set(key, value, ttl, metadata);
     }
   }
-
   /**
    * Delete multiple keys
    */
@@ -266,47 +243,46 @@ export class CacheManager<T = unknown> {
     }
     return deleted;
   }
-
   /**
    * Get all keys in cache
    */
   keys(): string[] {
     return Array.from(this.cache.keys());
   }
-
   /**
    * Get all values in cache
    */
   values(): T[] {
-    return Array.from(this.cache.values()).map(entry => {
-      if (entry.compressed) {
-        try {
-          return this.decompressData(entry.value as unknown as string) as unknown as T;
-        } catch (error) {
-          return null;
+    return Array.from(this.cache.values())
+      .map((entry) => {
+        if (entry.compressed) {
+          try {
+            return this.decompressData(entry.value as unknown as string) as unknown as T;
+          } catch (error) {
+            return null;
+          }
         }
-      }
-      return entry.value;
-    }).filter(value => value !== null) as T[];
+        return entry.value;
+      })
+      .filter((value) => value !== null) as T[];
   }
-
   /**
    * Get all entries as key-value pairs
    */
   entries(): Array<{ key: string; value: T }> {
-    return this.keys().map(key => ({
-      key,
-      value: this.get(key)!
-    })).filter(entry => entry.value !== null);
+    return this.keys()
+      .map((key) => ({
+        key,
+        value: this.get(key)!,
+      }))
+      .filter((entry) => entry.value !== null);
   }
-
   /**
    * Get cache size (number of entries)
    */
   size(): number {
     return this.cache.size;
   }
-
   /**
    * Get cache statistics
    */
@@ -314,13 +290,14 @@ export class CacheManager<T = unknown> {
     const totalRequests = this.metrics.hits + this.metrics.misses;
     const hitRate = totalRequests > 0 ? (this.metrics.hits / totalRequests) * 100 : 0;
     const missRate = totalRequests > 0 ? (this.metrics.misses / totalRequests) * 100 : 0;
-    const compressionRate = this.metrics.sets > 0 ? (this.metrics.compressions / this.metrics.sets) * 100 : 0;
+    const compressionRate =
+      this.metrics.sets > 0 ? (this.metrics.compressions / this.metrics.sets) * 100 : 0;
     const averageAccessTime = totalRequests > 0 ? this.metrics.totalAccessTime / totalRequests : 0;
-
-    const timestamps = Array.from(this.cache.values()).map(entry => entry.timestamp);
-    const oldestEntry = timestamps.length > 0 ? new Date(Math.min(...timestamps.map(t => t.getTime()))) : undefined;
-    const newestEntry = timestamps.length > 0 ? new Date(Math.max(...timestamps.map(t => t.getTime()))) : undefined;
-
+    const timestamps = Array.from(this.cache.values()).map((entry) => entry.timestamp);
+    const oldestEntry =
+      timestamps.length > 0 ? new Date(Math.min(...timestamps.map((t) => t.getTime()))) : undefined;
+    const newestEntry =
+      timestamps.length > 0 ? new Date(Math.max(...timestamps.map((t) => t.getTime()))) : undefined;
     return {
       totalEntries: this.cache.size,
       memoryUsage: this.metrics.memoryUsage,
@@ -330,17 +307,15 @@ export class CacheManager<T = unknown> {
       compressionRate,
       averageAccessTime,
       oldestEntry,
-      newestEntry
+      newestEntry,
     };
   }
-
   /**
    * Get detailed metrics
    */
   getMetrics(): CacheMetrics {
     return { ...this.metrics };
   }
-
   /**
    * Reset metrics
    */
@@ -354,30 +329,25 @@ export class CacheManager<T = unknown> {
       compressions: 0,
       decompressions: 0,
       totalAccessTime: 0,
-      memoryUsage: this.calculateMemoryUsage()
+      memoryUsage: this.calculateMemoryUsage(),
     };
   }
-
   /**
    * Force cleanup of expired entries
    */
   cleanup(): number {
     const now = Date.now();
     const toDelete: string[] = [];
-
     for (const [key, entry] of Array.from(this.cache.entries())) {
       if (entry.expiresAt && now > entry.expiresAt.getTime()) {
         toDelete.push(key);
       }
     }
-
     for (const key of toDelete) {
       this.delete(key);
     }
-
     return toDelete.length;
   }
-
   /**
    * Destroy cache manager and cleanup resources
    */
@@ -388,9 +358,7 @@ export class CacheManager<T = unknown> {
     }
     this.clear();
   }
-
   // Private helper methods
-
   /**
    * Ensure cache capacity limits are respected
    */
@@ -399,13 +367,11 @@ export class CacheManager<T = unknown> {
     while (this.cache.size >= this.config.maxSize) {
       this.evictLRU();
     }
-
     // Check memory limit
     while (this.calculateMemoryUsage() > this.config.maxMemory) {
       this.evictLRU();
     }
   }
-
   /**
    * Evict least recently used entry
    */
@@ -413,12 +379,10 @@ export class CacheManager<T = unknown> {
     if (this.accessOrder.length === 0) {
       return;
     }
-
     const lruKey = this.accessOrder.shift()!;
     this.cache.delete(lruKey);
     this.metrics.evictions++;
   }
-
   /**
    * Update access order for LRU
    */
@@ -426,7 +390,6 @@ export class CacheManager<T = unknown> {
     this.removeFromAccessOrder(key);
     this.accessOrder.push(key);
   }
-
   /**
    * Remove key from access order
    */
@@ -436,7 +399,6 @@ export class CacheManager<T = unknown> {
       this.accessOrder.splice(index, 1);
     }
   }
-
   /**
    * Calculate current memory usage
    */
@@ -447,14 +409,12 @@ export class CacheManager<T = unknown> {
     }
     return totalSize;
   }
-
   /**
    * Update memory usage metric
    */
   private updateMemoryUsage(): void {
     this.metrics.memoryUsage = this.calculateMemoryUsage();
   }
-
   /**
    * Update access time metric
    */
@@ -463,7 +423,6 @@ export class CacheManager<T = unknown> {
       this.metrics.totalAccessTime += accessTime;
     }
   }
-
   /**
    * Compress data using simple compression
    */
@@ -473,7 +432,6 @@ export class CacheManager<T = unknown> {
     let compressed = '';
     let count = 1;
     let prevChar = data[0];
-
     for (let i = 1; i < data.length; i++) {
       const char = data[i];
       if (char === prevChar && count < 255) {
@@ -488,24 +446,20 @@ export class CacheManager<T = unknown> {
         count = 1;
       }
     }
-
     // Handle last run
     if (count > 3) {
       compressed += `~${count}${prevChar}`;
     } else {
       compressed += prevChar.repeat(count);
     }
-
     return compressed;
   }
-
   /**
    * Decompress data
    */
   private decompressData(compressedData: string): string {
     let decompressed = '';
     let i = 0;
-
     while (i < compressedData.length) {
       if (compressedData[i] === '~' && i + 2 < compressedData.length) {
         // Run-length encoded sequence
@@ -518,10 +472,8 @@ export class CacheManager<T = unknown> {
         i++;
       }
     }
-
     return decompressed;
   }
-
   /**
    * Start cleanup timer
    */
@@ -530,7 +482,6 @@ export class CacheManager<T = unknown> {
       this.cleanup();
     }, this.config.cleanupInterval);
   }
-
   /**
    * Generate cache key from data
    */
@@ -539,7 +490,6 @@ export class CacheManager<T = unknown> {
     hash.update(JSON.stringify(data));
     return hash.digest('hex');
   }
-
   /**
    * Create a namespaced cache key
    */
@@ -547,7 +497,6 @@ export class CacheManager<T = unknown> {
     return `${namespace}:${key}`;
   }
 }
-
 /**
  * Specialized cache for token management
  */
@@ -557,10 +506,9 @@ export class TokenCache extends CacheManager<string> {
       ...config,
       defaultTTL: config.defaultTTL ?? 1800000, // 30 minutes
       maxSize: config.maxSize ?? 500,
-      enableCompression: config.enableCompression ?? false // Tokens are usually small
+      enableCompression: config.enableCompression ?? false, // Tokens are usually small
     });
   }
-
   /**
    * Cache token estimation
    */
@@ -568,7 +516,6 @@ export class TokenCache extends CacheManager<string> {
     const key = `tokens:${CacheManager.generateKey(text)}`;
     this.set(key, tokens.toString(), ttl, { textLength: text.length });
   }
-
   /**
    * Get cached token estimation
    */
@@ -577,7 +524,6 @@ export class TokenCache extends CacheManager<string> {
     const cached = this.get(key);
     return cached ? parseInt(cached, 10) : null;
   }
-
   /**
    * Cache cost calculation
    */
@@ -585,7 +531,6 @@ export class TokenCache extends CacheManager<string> {
     const key = `cost:${provider}:${tokens}`;
     this.set(key, cost.toString(), ttl, { tokens, provider });
   }
-
   /**
    * Get cached cost calculation
    */

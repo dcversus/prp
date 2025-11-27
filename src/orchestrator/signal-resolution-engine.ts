@@ -4,13 +4,12 @@
  * Comprehensive signal-to-action mapping system with decision trees,
  * workflow orchestration, and agent coordination for all 75+ signals.
  */
-
-import { Signal, PRPFile } from '../shared/types';
 import { createLayerLogger, HashUtils } from '../shared';
-import { OrchestratorCore } from '../orchestrator/orchestrator-core';
+
+import type { Signal, PRPFile } from '../shared/types';
+import type { OrchestratorCore } from "./orchestrator-core";
 
 const logger = createLayerLogger('orchestrator');
-
 /**
  * Signal resolution action types
  */
@@ -32,13 +31,11 @@ export interface ResolutionAction {
   retryCount?: number;
   escalationPath?: ResolutionAction[];
 }
-
 export interface ResolutionCondition {
   field: string;
   operator: 'equals' | 'contains' | 'greater_than' | 'less_than' | 'exists' | 'not_exists';
   value: unknown;
 }
-
 export interface SignalResolution {
   signalType: string;
   category: string;
@@ -50,32 +47,31 @@ export interface SignalResolution {
   successCriteria?: string[];
   failureHandling?: ResolutionAction[];
 }
-
 /**
  * Signal Resolution Engine
  */
 export class SignalResolutionEngine {
-  private orchestrator: OrchestratorCore;
-  private resolutions: Map<string, SignalResolution> = new Map();
-  private activeWorkflows: Map<string, {
-    signal: Signal;
-    resolution: SignalResolution;
-    startTime: Date;
-    currentStep: number;
-    status: 'running' | 'completed' | 'failed' | 'escalated';
-  }> = new Map();
-
+  private readonly orchestrator: OrchestratorCore;
+  private readonly resolutions = new Map<string, SignalResolution>();
+  private readonly activeWorkflows = new Map<
+    string,
+    {
+      signal: Signal;
+      resolution: SignalResolution;
+      startTime: Date;
+      currentStep: number;
+      status: 'running' | 'completed' | 'failed' | 'escalated';
+    }
+  >();
   constructor(orchestrator: OrchestratorCore) {
     this.orchestrator = orchestrator;
     this.initializeResolutions();
   }
-
   /**
    * Initialize all signal resolutions for 75+ signals
    */
   private initializeResolutions(): void {
     // === CRITICAL PRIORITY SIGNALS (9-10) ===
-
     // [FF] System Fatal Error
     this.resolutions.set('FF', {
       signalType: 'FF',
@@ -90,8 +86,8 @@ export class SignalResolutionEngine {
           channel: 'emergency',
           conditions: [
             { field: 'data.errorType', operator: 'equals', value: 'corruption' },
-            { field: 'data.recoverable', operator: 'equals', value: false }
-          ]
+            { field: 'data.recoverable', operator: 'equals', value: false },
+          ],
         },
         {
           type: 'agent_task',
@@ -100,7 +96,7 @@ export class SignalResolutionEngine {
           agentType: 'robo-devops-sre',
           task: 'Execute emergency recovery procedures and system diagnostics',
           timeout: 300000, // 5 minutes
-          retryCount: 3
+          retryCount: 3,
         },
         {
           type: 'signal',
@@ -110,9 +106,9 @@ export class SignalResolutionEngine {
           signalData: {
             incident: 'system-fatal-error',
             severity: 'critical',
-            escalation: 'auto-emergency'
-          }
-        }
+            escalation: 'auto-emergency',
+          },
+        },
       ],
       escalationPath: [
         {
@@ -120,22 +116,25 @@ export class SignalResolutionEngine {
           priority: 10,
           description: 'Send emergency notification to pager system',
           message: 'EMERGENCY: System failure requiring immediate human intervention',
-          channel: 'pager'
-        }
+          channel: 'pager',
+        },
       ],
       expectedDuration: 600000, // 10 minutes
-      successCriteria: ['system_stabilized', 'error_root_cause_identified', 'recovery_plan_executed'],
+      successCriteria: [
+        'system_stabilized',
+        'error_root_cause_identified',
+        'recovery_plan_executed',
+      ],
       failureHandling: [
         {
           type: 'escalation',
           priority: 10,
           description: 'Escalate to emergency response team',
           message: 'CRITICAL: Automatic recovery failed. Manual intervention required.',
-          channel: 'emergency-escalation'
-        }
-      ]
+          channel: 'emergency-escalation',
+        },
+      ],
     });
-
     // [bb] Blocker
     this.resolutions.set('bb', {
       signalType: 'bb',
@@ -148,12 +147,12 @@ export class SignalResolutionEngine {
           description: 'Assign blocker analysis to robo-developer agent',
           agentType: 'robo-developer',
           task: 'Analyze blocker and identify unblocking actions',
-          context: { analyzeBlocker: true, searchSolutions: true }
+          context: { analyzeBlocker: true, searchSolutions: true },
         },
         {
           type: 'prp_update',
           priority: 9,
-          description: 'Update PRP with blocker details and unblocking requirements'
+          description: 'Update PRP with blocker details and unblocking requirements',
         },
         {
           type: 'tool_call',
@@ -162,9 +161,9 @@ export class SignalResolutionEngine {
           toolName: 'search_documentation',
           toolParameters: {
             query: 'blocker resolution patterns',
-            context: 'technical dependency'
-          }
-        }
+            context: 'technical dependency',
+          },
+        },
       ],
       escalationPath: [
         {
@@ -172,23 +171,25 @@ export class SignalResolutionEngine {
           priority: 9,
           description: 'Research alternative approaches and workaround strategies',
           agentType: 'robo-system-analyst',
-          task: 'Research alternative approaches and workaround strategies'
+          task: 'Research alternative approaches and workaround strategies',
         },
         {
           type: 'notification',
           priority: 8,
           description: 'Notify team lead about blocker requiring escalation',
           message: 'Blocker requires escalation: unable to resolve with available resources',
-          channel: 'team-lead'
-        }
+          channel: 'team-lead',
+        },
       ],
       prerequisites: ['blocker_identified', 'impact_assessed'],
       expectedDuration: 1800000, // 30 minutes
-      successCriteria: ['blocker_resolved', 'workaround_implemented', 'alternative_path_identified']
+      successCriteria: [
+        'blocker_resolved',
+        'workaround_implemented',
+        'alternative_path_identified',
+      ],
     });
-
     // === HIGH PRIORITY SIGNALS (7-8) ===
-
     // [af] Feedback Request
     this.resolutions.set('af', {
       signalType: 'af',
@@ -201,23 +202,23 @@ export class SignalResolutionEngine {
           description: 'Analyze feedback request and provide informed recommendation',
           agentType: 'robo-system-analyst',
           task: 'Analyze feedback request and provide informed recommendation',
-          context: { analysisType: 'decision-support', provideOptions: true }
+          context: { analysisType: 'decision-support', provideOptions: true },
         },
         {
           type: 'tool_call',
           priority: 7,
-          description: 'Research best practices for requested decision using documentation and community sources',
+          description:
+            'Research best practices for requested decision using documentation and community sources',
           toolName: 'research_api',
           toolParameters: {
             query: 'best practices for requested decision',
-            sources: ['documentation', 'stackoverflow', 'github']
-          }
-        }
+            sources: ['documentation', 'stackoverflow', 'github'],
+          },
+        },
       ],
       expectedDuration: 900000, // 15 minutes
-      successCriteria: ['recommendation_provided', 'options_presented', 'rationale_documented']
+      successCriteria: ['recommendation_provided', 'options_presented', 'rationale_documented'],
     });
-
     // [no] Not Obvious
     this.resolutions.set('no', {
       signalType: 'no',
@@ -227,10 +228,11 @@ export class SignalResolutionEngine {
         {
           type: 'agent_task',
           priority: 8,
-          description: 'Decompose complex implementation into manageable components with risk analysis',
+          description:
+            'Decompose complex implementation into manageable components with risk analysis',
           agentType: 'robo-system-analyst',
           task: 'Decompose complex implementation into manageable components',
-          context: { decomposition: true, riskAnalysis: true }
+          context: { decomposition: true, riskAnalysis: true },
         },
         {
           type: 'signal',
@@ -239,19 +241,18 @@ export class SignalResolutionEngine {
           signalType: 'rr',
           signalData: {
             researchArea: 'implementation_complexity',
-            complexity: 'high'
-          }
+            complexity: 'high',
+          },
         },
         {
           type: 'prp_update',
           priority: 7,
-          description: 'Document complexity analysis and implementation approach'
-        }
+          description: 'Document complexity analysis and implementation approach',
+        },
       ],
       expectedDuration: 1800000, // 30 minutes
-      successCriteria: ['complexity_documented', 'implementation_plan_created', 'risks_identified']
+      successCriteria: ['complexity_documented', 'implementation_plan_created', 'risks_identified'],
     });
-
     // [ic] Incident
     this.resolutions.set('ic', {
       signalType: 'ic',
@@ -264,7 +265,7 @@ export class SignalResolutionEngine {
           description: 'Incident response and mitigation for production issues',
           agentType: 'robo-devops-sre',
           task: 'Incident response and mitigation',
-          context: { incidentResponse: true, mitigation: true }
+          context: { incidentResponse: true, mitigation: true },
         },
         {
           type: 'signal',
@@ -273,8 +274,8 @@ export class SignalResolutionEngine {
           signalType: 'ts',
           signalData: {
             incidentType: 'production',
-            priority: 'critical'
-          }
+            priority: 'critical',
+          },
         },
         {
           type: 'tool_call',
@@ -283,9 +284,9 @@ export class SignalResolutionEngine {
           toolName: 'monitoring_dashboard',
           toolParameters: {
             action: 'get_incident_metrics',
-            timeRange: 'last_15_minutes'
-          }
-        }
+            timeRange: 'last_15_minutes',
+          },
+        },
       ],
       escalationPath: [
         {
@@ -295,14 +296,13 @@ export class SignalResolutionEngine {
           signalType: 'JC',
           signalData: {
             incidentType: 'critical',
-            escalationTrigger: 'auto-escalation'
-          }
-        }
+            escalationTrigger: 'auto-escalation',
+          },
+        },
       ],
       expectedDuration: 600000, // 10 minutes
-      successCriteria: ['incident_contained', 'impact_assessed', 'mitigation_in_progress']
+      successCriteria: ['incident_contained', 'impact_assessed', 'mitigation_in_progress'],
     });
-
     // [JC] Jesus Christ (Critical Incident Resolved)
     this.resolutions.set('JC', {
       signalType: 'JC',
@@ -317,7 +317,7 @@ export class SignalResolutionEngine {
           task: 'Execute critical incident recovery and system restoration',
           context: { criticalIncident: true, systemRecovery: true },
           timeout: 600000, // 10 minutes
-          retryCount: 5
+          retryCount: 5,
         },
         {
           type: 'tool_call',
@@ -327,8 +327,8 @@ export class SignalResolutionEngine {
           toolParameters: {
             comprehensive: true,
             verifyServices: true,
-            checkDataIntegrity: true
-          }
+            checkDataIntegrity: true,
+          },
         },
         {
           type: 'signal',
@@ -338,16 +338,16 @@ export class SignalResolutionEngine {
           signalData: {
             incidentType: 'critical-resolved',
             triggerPostMortem: true,
-            preventionRequired: true
-          }
+            preventionRequired: true,
+          },
         },
         {
           type: 'notification',
           priority: 10,
           description: 'Notify stakeholders of critical incident resolution',
           message: 'CRITICAL INCIDENT RESOLVED: System recovery completed and services restored',
-          channel: 'all-channels'
-        }
+          channel: 'all-channels',
+        },
       ],
       escalationPath: [
         {
@@ -355,13 +355,17 @@ export class SignalResolutionEngine {
           priority: 10,
           description: 'Escalate to executive team if recovery fails',
           message: 'CRITICAL: Incident recovery failed - Executive intervention required',
-          channel: 'executive-pager'
-        }
+          channel: 'executive-pager',
+        },
       ],
       expectedDuration: 600000, // 10 minutes
-      successCriteria: ['services_restored', 'data_integrity_verified', 'stability_confirmed', 'stakeholders_notified']
+      successCriteria: [
+        'services_restored',
+        'data_integrity_verified',
+        'stability_confirmed',
+        'stakeholders_notified',
+      ],
     });
-
     // [oa] Orchestrator Attention
     this.resolutions.set('oa', {
       signalType: 'oa',
@@ -374,7 +378,7 @@ export class SignalResolutionEngine {
           description: 'Coordinate parallel work and resource allocation across multiple agents',
           agentType: 'robo-system-analyst',
           task: 'Coordinate parallel work and resource allocation',
-          context: { orchestration: true, resourcePlanning: true }
+          context: { orchestration: true, resourcePlanning: true },
         },
         {
           type: 'tool_call',
@@ -383,8 +387,8 @@ export class SignalResolutionEngine {
           toolName: 'get_active_agents',
           toolParameters: {
             includeStatus: true,
-            includeCapabilities: true
-          }
+            includeCapabilities: true,
+          },
         },
         {
           type: 'signal',
@@ -393,16 +397,14 @@ export class SignalResolutionEngine {
           signalType: 'pc',
           signalData: {
             coordinationType: 'resource-allocation',
-            complexity: 'multi-agent'
-          }
-        }
+            complexity: 'multi-agent',
+          },
+        },
       ],
       expectedDuration: 900000, // 15 minutes
-      successCriteria: ['resources_allocated', 'coordination_plan_created', 'agents_synchronized']
+      successCriteria: ['resources_allocated', 'coordination_plan_created', 'agents_synchronized'],
     });
-
     // === MEDIUM-HIGH PRIORITY SIGNALS (5-6) ===
-
     // [tr] Tests Red
     this.resolutions.set('tr', {
       signalType: 'tr',
@@ -415,7 +417,7 @@ export class SignalResolutionEngine {
           description: 'Analyze test failures and identify root causes for failing tests',
           agentType: 'robo-aqa',
           task: 'Analyze test failures and identify root causes',
-          context: { testAnalysis: true, rootCause: true }
+          context: { testAnalysis: true, rootCause: true },
         },
         {
           type: 'tool_call',
@@ -425,8 +427,8 @@ export class SignalResolutionEngine {
           toolParameters: {
             action: 'run_failing_tests',
             verbose: true,
-            generateReport: true
-          }
+            generateReport: true,
+          },
         },
         {
           type: 'signal',
@@ -435,14 +437,13 @@ export class SignalResolutionEngine {
           signalType: 'bf',
           signalData: {
             bugType: 'test_failure',
-            priority: 'high'
-          }
-        }
+            priority: 'high',
+          },
+        },
       ],
       expectedDuration: 1200000, // 20 minutes
-      successCriteria: ['root_cause_identified', 'fix_plan_created', 'tests_fixed']
+      successCriteria: ['root_cause_identified', 'fix_plan_created', 'tests_fixed'],
     });
-
     // [cf] CI Failed
     this.resolutions.set('cf', {
       signalType: 'cf',
@@ -455,7 +456,7 @@ export class SignalResolutionEngine {
           description: 'Analyze CI pipeline failure and restore build to working state',
           agentType: 'robo-devops-sre',
           task: 'Analyze CI pipeline failure and restore build',
-          context: { ciAnalysis: true, buildRestore: true }
+          context: { ciAnalysis: true, buildRestore: true },
         },
         {
           type: 'tool_call',
@@ -464,8 +465,8 @@ export class SignalResolutionEngine {
           toolName: 'ci_pipeline',
           toolParameters: {
             action: 'get_failure_logs',
-            pipeline: 'main'
-          }
+            pipeline: 'main',
+          },
         },
         {
           type: 'signal',
@@ -474,16 +475,18 @@ export class SignalResolutionEngine {
           signalType: 'bf',
           signalData: {
             bugType: 'ci_failure',
-            priority: 'high'
-          }
-        }
+            priority: 'high',
+          },
+        },
       ],
       expectedDuration: 900000, // 15 minutes
-      successCriteria: ['ci_restored', 'failure_root_cause_identified', 'prevention_measures_implemented']
+      successCriteria: [
+        'ci_restored',
+        'failure_root_cause_identified',
+        'prevention_measures_implemented',
+      ],
     });
-
     // === MEDIUM PRIORITY SIGNALS (3-4) ===
-
     // [dp] Development Progress
     this.resolutions.set('dp', {
       signalType: 'dp',
@@ -493,7 +496,7 @@ export class SignalResolutionEngine {
         {
           type: 'prp_update',
           priority: 3,
-          description: 'Document development progress and next steps'
+          description: 'Document development progress and next steps',
         },
         {
           type: 'tool_call',
@@ -502,21 +505,20 @@ export class SignalResolutionEngine {
           toolName: 'git_status',
           toolParameters: {
             includeUncommitted: true,
-            includeStaged: true
-          }
+            includeStaged: true,
+          },
         },
         {
           type: 'notification',
           priority: 2,
           description: 'Send development progress notification',
           message: 'Development progress update available',
-          channel: 'team-status'
-        }
+          channel: 'team-status',
+        },
       ],
       expectedDuration: 300000, // 5 minutes
-      successCriteria: ['progress_documented', 'next_steps_defined', 'status_updated']
+      successCriteria: ['progress_documented', 'next_steps_defined', 'status_updated'],
     });
-
     // [tp] Tests Prepared
     this.resolutions.set('tp', {
       signalType: 'tp',
@@ -529,7 +531,7 @@ export class SignalResolutionEngine {
           description: 'Review prepared tests for completeness and quality of coverage',
           agentType: 'robo-aqa',
           task: 'Review prepared tests for completeness and quality',
-          context: { testReview: true, coverageAnalysis: true }
+          context: { testReview: true, coverageAnalysis: true },
         },
         {
           type: 'tool_call',
@@ -538,8 +540,8 @@ export class SignalResolutionEngine {
           toolName: 'coverage_analyzer',
           toolParameters: {
             target: 'prepared_tests',
-            generateReport: true
-          }
+            generateReport: true,
+          },
         },
         {
           type: 'signal',
@@ -548,14 +550,13 @@ export class SignalResolutionEngine {
           signalType: 'tw',
           signalData: {
             testType: 'unit_and_integration',
-            readiness: 'confirmed'
-          }
-        }
+            readiness: 'confirmed',
+          },
+        },
       ],
       expectedDuration: 600000, // 10 minutes
-      successCriteria: ['tests_validated', 'coverage_adequate', 'implementation_ready']
+      successCriteria: ['tests_validated', 'coverage_adequate', 'implementation_ready'],
     });
-
     // [bf] Bug Fixed
     this.resolutions.set('bf', {
       signalType: 'bf',
@@ -568,7 +569,7 @@ export class SignalResolutionEngine {
           description: 'Verify bug fix and run regression tests to ensure no side effects',
           agentType: 'robo-aqa',
           task: 'Verify bug fix and run regression tests',
-          context: { verification: true, regression: true }
+          context: { verification: true, regression: true },
         },
         {
           type: 'tool_call',
@@ -577,8 +578,8 @@ export class SignalResolutionEngine {
           toolName: 'test_runner',
           toolParameters: {
             action: 'run_regression_tests',
-            focus: 'bug_area'
-          }
+            focus: 'bug_area',
+          },
         },
         {
           type: 'signal',
@@ -587,14 +588,13 @@ export class SignalResolutionEngine {
           signalType: 'tg',
           signalData: {
             testType: 'regression',
-            bugStatus: 'fixed_verified'
-          }
-        }
+            bugStatus: 'fixed_verified',
+          },
+        },
       ],
       expectedDuration: 900000, // 15 minutes
-      successCriteria: ['bug_verified_fixed', 'regression_tests_pass', 'no_side_effects']
+      successCriteria: ['bug_verified_fixed', 'regression_tests_pass', 'no_side_effects'],
     });
-
     // [tg] Tests Green
     this.resolutions.set('tg', {
       signalType: 'tg',
@@ -607,7 +607,7 @@ export class SignalResolutionEngine {
           description: 'Generate test report and update quality metrics with coverage data',
           agentType: 'robo-aqa',
           task: 'Generate test report and update quality metrics',
-          context: { reportGeneration: true, metricsUpdate: true }
+          context: { reportGeneration: true, metricsUpdate: true },
         },
         {
           type: 'tool_call',
@@ -616,8 +616,8 @@ export class SignalResolutionEngine {
           toolName: 'coverage_reporter',
           toolParameters: {
             format: 'detailed',
-            includeMetrics: true
-          }
+            includeMetrics: true,
+          },
         },
         {
           type: 'signal',
@@ -626,16 +626,14 @@ export class SignalResolutionEngine {
           signalType: 'cq',
           signalData: {
             qualityStatus: 'tests_passing',
-            readyForReview: true
-          }
-        }
+            readyForReview: true,
+          },
+        },
       ],
       expectedDuration: 300000, // 5 minutes
-      successCriteria: ['test_report_generated', 'quality_metrics_updated', 'readiness_confirmed']
+      successCriteria: ['test_report_generated', 'quality_metrics_updated', 'readiness_confirmed'],
     });
-
     // === COORDINATION SIGNALS ===
-
     // [pc] Parallel Coordination Needed
     this.resolutions.set('pc', {
       signalType: 'pc',
@@ -648,7 +646,7 @@ export class SignalResolutionEngine {
           description: 'Coordinate parallel work and resolve dependencies across multiple PRPs',
           agentType: 'robo-system-analyst',
           task: 'Coordinate parallel work and resolve dependencies',
-          context: { parallelCoordination: true, dependencyResolution: true }
+          context: { parallelCoordination: true, dependencyResolution: true },
         },
         {
           type: 'tool_call',
@@ -657,14 +655,17 @@ export class SignalResolutionEngine {
           toolName: 'get_active_prps',
           toolParameters: {
             includeDependencies: true,
-            includeAgents: true
-          }
-        }
+            includeAgents: true,
+          },
+        },
       ],
       expectedDuration: 600000, // 10 minutes
-      successCriteria: ['dependencies_resolved', 'coordination_plan_created', 'parallel_work_enabled']
+      successCriteria: [
+        'dependencies_resolved',
+        'coordination_plan_created',
+        'parallel_work_enabled',
+      ],
     });
-
     // [aa] Admin Attention
     this.resolutions.set('aa', {
       signalType: 'aa',
@@ -677,7 +678,7 @@ export class SignalResolutionEngine {
           description: 'Generate comprehensive report for admin review with detailed analysis',
           agentType: 'robo-system-analyst',
           task: 'Generate comprehensive report for admin review',
-          context: { reportGeneration: true, adminPreview: true }
+          context: { reportGeneration: true, adminPreview: true },
         },
         {
           type: 'signal',
@@ -686,16 +687,14 @@ export class SignalResolutionEngine {
           signalType: 'ap',
           signalData: {
             reportType: 'admin_preview',
-            readiness: 'comprehensive'
-          }
-        }
+            readiness: 'comprehensive',
+          },
+        },
       ],
       expectedDuration: 900000, // 15 minutes
-      successCriteria: ['report_generated', 'admin_preview_ready', 'action_items_identified']
+      successCriteria: ['report_generated', 'admin_preview_ready', 'action_items_identified'],
     });
-
     // === RELEASE SIGNALS ===
-
     // [mg] Merged
     this.resolutions.set('mg', {
       signalType: 'mg',
@@ -708,33 +707,34 @@ export class SignalResolutionEngine {
           description: 'Update deployment tracking and integration status after merge',
           agentType: 'robo-devops-sre',
           task: 'Update deployment tracking and integration status',
-          context: { mergeTracking: true, integrationUpdate: true }
+          context: { mergeTracking: true, integrationUpdate: true },
         },
         {
           type: 'tool_call',
           priority: 3,
-          description: 'Update deployment tracker with merge status and generate integration report',
+          description:
+            'Update deployment tracker with merge status and generate integration report',
           toolName: 'deployment_tracker',
           toolParameters: {
             action: 'update_merge_status',
-            generateReport: true
-          }
+            generateReport: true,
+          },
         },
         {
           type: 'signal',
           priority: 3,
-          description: 'Signal post-release status with deployment merged and ready for release preparation',
+          description:
+            'Signal post-release status with deployment merged and ready for release preparation',
           signalType: 'ps',
           signalData: {
             deploymentPhase: 'merged',
-            nextStep: 'release_preparation'
-          }
-        }
+            nextStep: 'release_preparation',
+          },
+        },
       ],
       expectedDuration: 300000, // 5 minutes
-      successCriteria: ['merge_tracked', 'integration_updated', 'release_preparation_started']
+      successCriteria: ['merge_tracked', 'integration_updated', 'release_preparation_started'],
     });
-
     // [rl] Released
     this.resolutions.set('rl', {
       signalType: 'rl',
@@ -747,7 +747,7 @@ export class SignalResolutionEngine {
           description: 'Perform post-release monitoring and validation of deployed features',
           agentType: 'robo-devops-sre',
           task: 'Post-release monitoring and validation',
-          context: { postRelease: true, monitoring: true }
+          context: { postRelease: true, monitoring: true },
         },
         {
           type: 'tool_call',
@@ -756,8 +756,8 @@ export class SignalResolutionEngine {
           toolName: 'monitoring_dashboard',
           toolParameters: {
             action: 'post_release_check',
-            timeRange: 'since_release'
-          }
+            timeRange: 'since_release',
+          },
         },
         {
           type: 'signal',
@@ -766,21 +766,22 @@ export class SignalResolutionEngine {
           signalType: 'ps',
           signalData: {
             deploymentPhase: 'released',
-            monitoring: 'active'
-          }
-        }
+            monitoring: 'active',
+          },
+        },
       ],
       expectedDuration: 600000, // 10 minutes
-      successCriteria: ['release_validated', 'monitoring_active', 'no_issues_detected']
+      successCriteria: ['release_validated', 'monitoring_active', 'no_issues_detected'],
     });
-
     logger.info('initializeResolutions', `Initialized ${this.resolutions.size} signal resolutions`);
   }
-
   /**
    * Process a signal through the resolution engine
    */
-  async processSignal(signal: Signal, prp?: PRPFile): Promise<{
+  async processSignal(
+    signal: Signal,
+    prp?: PRPFile,
+  ): Promise<{
     success: boolean;
     actions: ResolutionAction[];
     results: unknown[];
@@ -789,48 +790,42 @@ export class SignalResolutionEngine {
   }> {
     const startTime = Date.now();
     const resolution = this.resolutions.get(signal.type);
-
     if (!resolution) {
       logger.warn('processSignal', `No resolution found for signal type: ${signal.type}`);
       return {
         success: false,
         actions: [],
         results: [],
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     }
-
     logger.info('processSignal', `Processing signal: ${signal.type}`, {
       priority: resolution.priority,
       category: resolution.category,
-      actionCount: resolution.actions.length
+      actionCount: resolution.actions.length,
     });
-
     const workflowId = HashUtils.generateId();
     this.activeWorkflows.set(workflowId, {
       signal,
       resolution,
       startTime: new Date(),
       currentStep: 0,
-      status: 'running'
+      status: 'running',
     });
-
     try {
       const results = [];
       const actions = [...resolution.actions];
-
       // Check prerequisites
       if (resolution.prerequisites && resolution.prerequisites.length > 0) {
         const prereqResults = await this.checkPrerequisites(resolution.prerequisites, signal, prp);
         if (!prereqResults.met) {
           logger.warn('processSignal', 'Prerequisites not met', {
             prerequisites: resolution.prerequisites,
-            missing: prereqResults.missing
+            missing: prereqResults.missing,
           });
           // Continue with limited actions or escalate
         }
       }
-
       // Execute actions in priority order
       for (let i = 0; i < actions.length; i++) {
         const action = actions[i];
@@ -838,92 +833,91 @@ export class SignalResolutionEngine {
           logger.warn('processSignal', 'Action is undefined, skipping');
           continue;
         }
-
         const workflow = this.activeWorkflows.get(workflowId);
         if (workflow?.status !== 'running') {
           break;
         }
-
         workflow.currentStep = i + 1;
-
         // Check action conditions
         if (action.conditions && !this.evaluateConditions(action.conditions, signal, prp)) {
-          logger.debug('processSignal', 'Action conditions not met', { action: action.description });
+          logger.debug('processSignal', 'Action conditions not met', {
+            action: action.description,
+          });
           continue;
         }
-
         try {
           const result = await this.executeAction(action, signal, prp);
           results.push({ action: action.description, result, success: true });
-
           // Check if action result meets success criteria
-          if (resolution.successCriteria && !this.meetsSuccessCriteria(resolution.successCriteria, result)) {
+          if (
+            resolution.successCriteria &&
+            !this.meetsSuccessCriteria(resolution.successCriteria, result)
+          ) {
             logger.warn('processSignal', 'Action result does not meet success criteria', {
               action: action.description,
-              criteria: resolution.successCriteria
+              criteria: resolution.successCriteria,
             });
           }
-
         } catch (error) {
-          logger.error('processSignal', 'Action execution failed',
-            error instanceof Error ? error : new Error(error instanceof Error ? error.message : String(error)),
+          logger.error(
+            'processSignal',
+            'Action execution failed',
+            error instanceof Error
+              ? error
+              : new Error(error instanceof Error ? error.message : String(error)),
             {
-              action: action.description
-            }
+              action: action.description,
+            },
           );
-
           results.push({
             action: action.description,
             error: error instanceof Error ? error.message : String(error),
-            success: false
+            success: false,
           });
-
           // Handle failure based on resolution configuration
           if (resolution.failureHandling) {
             await this.handleFailure(resolution.failureHandling, signal, prp);
           }
         }
       }
-
       const duration = Date.now() - startTime;
       const workflow = this.activeWorkflows.get(workflowId);
-
       if (workflow) {
         workflow.status = 'completed';
         logger.info('processSignal', 'Signal processing completed', {
           signalType: signal.type,
           duration,
           actionsExecuted: results.length,
-          successRate: results.filter(r => r.success).length / results.length
+          successRate: results.filter((r) => r.success).length / results.length,
         });
       }
-
       return {
         success: true,
         actions,
         results,
-        duration
+        duration,
       };
-
     } catch (error) {
       const workflow = this.activeWorkflows.get(workflowId);
       if (workflow) {
         workflow.status = 'failed';
       }
-
-      logger.error('processSignal', 'Signal processing failed',
-        error instanceof Error ? error : new Error(error instanceof Error ? error.message : String(error)),
+      logger.error(
+        'processSignal',
+        'Signal processing failed',
+        error instanceof Error
+          ? error
+          : new Error(error instanceof Error ? error.message : String(error)),
         {
-          signalType: signal.type
-        }
+          signalType: signal.type,
+        },
       );
-
       return {
         success: false,
         actions: resolution.actions,
         results: [],
         duration: Date.now() - startTime,
-        escalation: true
+        escalation: true,
       };
     } finally {
       // Clean up workflow after delay for monitoring
@@ -932,43 +926,42 @@ export class SignalResolutionEngine {
       }, 300000); // Keep for 5 minutes for monitoring
     }
   }
-
   /**
    * Execute a single resolution action
    */
-  private async executeAction(action: ResolutionAction, signal: Signal, prp?: PRPFile): Promise<unknown> {
+  private async executeAction(
+    action: ResolutionAction,
+    signal: Signal,
+    prp?: PRPFile,
+  ): Promise<unknown> {
     switch (action.type) {
       case 'agent_task':
         return this.executeAgentTask(action, signal, prp);
-
       case 'signal':
         return this.emitSignal(action, signal);
-
       case 'notification':
         return this.sendNotification(action, signal);
-
       case 'tool_call':
         return this.executeToolCall(action, signal);
-
       case 'prp_update':
         return this.updatePRP(action, signal, prp);
-
       case 'escalation':
         return this.escalateSignal(action, signal, prp);
-
       default:
         throw new Error(`Unknown action type: ${action.type}`);
     }
   }
-
   /**
    * Execute agent task action
    */
-  private async executeAgentTask(action: ResolutionAction, signal: Signal, prp?: PRPFile): Promise<unknown> {
+  private async executeAgentTask(
+    action: ResolutionAction,
+    signal: Signal,
+    prp?: PRPFile,
+  ): Promise<unknown> {
     if (!action.agentType || !action.task) {
       throw new Error('Agent task action requires agentType and task');
     }
-
     return this.orchestrator.executeCommand('assign_agent_task', {
       agentType: action.agentType,
       task: action.task,
@@ -976,13 +969,12 @@ export class SignalResolutionEngine {
       context: {
         ...action.context,
         originalSignal: signal,
-        prp: prp
+        prp: prp,
       },
       timeout: action.timeout,
-      retryCount: action.retryCount
+      retryCount: action.retryCount,
     });
   }
-
   /**
    * Emit follow-up signal
    */
@@ -990,7 +982,6 @@ export class SignalResolutionEngine {
     if (!action.signalType) {
       throw new Error('Signal action requires signalType');
     }
-
     const followUpSignal: Signal = {
       id: HashUtils.generateId(),
       type: action.signalType,
@@ -1000,39 +991,36 @@ export class SignalResolutionEngine {
       data: {
         ...action.signalData,
         originalSignal: originalSignal.type,
-        triggeredBy: originalSignal.id
+        triggeredBy: originalSignal.id,
       },
       metadata: {
         ...originalSignal.metadata,
-        followUpTo: originalSignal.id
-      }
+        followUpTo: originalSignal.id,
+      },
+      resolved: false,
+      relatedSignals: [originalSignal.id],
     };
-
     return this.orchestrator.processSignal(followUpSignal);
   }
-
   /**
    * Send notification
    */
   private async sendNotification(action: ResolutionAction, signal: Signal): Promise<unknown> {
     const message = action.message ?? `Signal processed: ${signal.type}`;
     const channel = action.channel ?? 'default';
-
     logger.info('sendNotification', 'Sending notification', {
       message,
       channel,
-      priority: action.priority
+      priority: action.priority,
     });
-
     // Implementation would depend on notification system
     return {
       success: true,
       message,
       channel,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
   }
-
   /**
    * Execute tool call
    */
@@ -1040,80 +1028,78 @@ export class SignalResolutionEngine {
     if (!action.toolName) {
       throw new Error('Tool call action requires toolName');
     }
-
     return this.orchestrator.executeCommand('execute_tool', {
       toolName: action.toolName,
       parameters: {
         ...action.toolParameters,
-        signalContext: signal
-      }
+        signalContext: signal,
+      },
     });
   }
-
   /**
    * Update PRP
    */
-  private async updatePRP(action: ResolutionAction, signal: Signal, prp?: PRPFile): Promise<unknown> {
+  private async updatePRP(
+    action: ResolutionAction,
+    signal: Signal,
+    prp?: PRPFile,
+  ): Promise<unknown> {
     if (!prp) {
       throw new Error('PRP update action requires PRP context');
     }
-
     const updateContent = `[${signal.type}] ${action.description || 'Signal processed'} - ${new Date().toISOString()}\n`;
-
     // Update PRP progress section
     if (prp.content) {
-      prp.content = prp.content.replace(
-        /## progress/m,
-        `## progress\n${updateContent}`
-      );
+      prp.content = prp.content.replace(/## progress/m, `## progress\n${updateContent}`);
     }
-
     return this.orchestrator.executeCommand('update_prp', {
       prpName: prp.name,
       content: prp.content,
       signalUpdate: {
         signal: signal.type,
         action: action.description,
-        timestamp: new Date()
-      }
+        timestamp: new Date(),
+      },
     });
   }
-
   /**
    * Escalate signal
    */
-  private async escalateSignal(action: ResolutionAction, signal: Signal, prp?: PRPFile): Promise<unknown> {
+  private async escalateSignal(
+    action: ResolutionAction,
+    signal: Signal,
+    prp?: PRPFile,
+  ): Promise<unknown> {
     logger.warn('escalateSignal', 'Escalating signal', {
       signalType: signal.type,
-      escalationReason: action.description
+      escalationReason: action.description,
     });
-
     // Execute escalation actions
     if (action.escalationPath && action.escalationPath.length > 0) {
       for (const escalationAction of action.escalationPath) {
         await this.executeAction(escalationAction, signal, prp);
       }
     }
-
     return {
       escalated: true,
       reason: action.description,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
   }
-
   /**
    * Check if prerequisites are met
    */
-  private async checkPrerequisites(prerequisites: string[], signal: Signal, prp?: PRPFile): Promise<{
+  private async checkPrerequisites(
+    prerequisites: string[],
+    signal: Signal,
+    prp?: PRPFile,
+  ): Promise<{
     met: boolean;
     missing: string[];
   }> {
     const missing: string[] = [];
-
     for (const prereq of prerequisites) {
       let met = false;
-
       switch (prereq) {
         case 'blocker_identified':
           met = signal.data.blockerDetails !== undefined;
@@ -1130,26 +1116,26 @@ export class SignalResolutionEngine {
             met = prp.content.includes(prereq);
           }
       }
-
       if (!met) {
         missing.push(prereq);
       }
     }
-
     return {
       met: missing.length === 0,
-      missing
+      missing,
     };
   }
-
   /**
    * Evaluate action conditions
    */
-  private evaluateConditions(conditions: ResolutionCondition[], signal: Signal, prp?: PRPFile): boolean {
+  private evaluateConditions(
+    conditions: ResolutionCondition[],
+    signal: Signal,
+    prp?: PRPFile,
+  ): boolean {
     for (const condition of conditions) {
       const value = this.getFieldValue(condition.field, signal, prp);
       let met = false;
-
       switch (condition.operator) {
         case 'equals':
           met = value === condition.value;
@@ -1167,18 +1153,15 @@ export class SignalResolutionEngine {
           met = value !== undefined && value !== null;
           break;
         case 'not_exists':
-          met = value === undefined || value === null;
+          met = value === undefined ?? value === null;
           break;
       }
-
       if (!met) {
         return false;
       }
     }
-
     return true;
   }
-
   /**
    * Get field value from signal or PRP
    */
@@ -1188,7 +1171,7 @@ export class SignalResolutionEngine {
       return signal.data[dataField];
     } else if (field.startsWith('metadata.')) {
       const metadataField = field.substring(9);
-      return signal.metadata[metadataField];
+      return signal.metadata?.[metadataField];
     } else if (field.startsWith('prp.')) {
       // Handle PRP field access - use proper type indexing
       const prpField = field.substring(4);
@@ -1198,7 +1181,6 @@ export class SignalResolutionEngine {
       return (signal as unknown as Record<string, unknown>)[field];
     }
   }
-
   /**
    * Check if result meets success criteria
    */
@@ -1214,57 +1196,62 @@ export class SignalResolutionEngine {
     }
     return true;
   }
-
   /**
    * Handle failure with configured failure handling actions
    */
-  private async handleFailure(failureActions: ResolutionAction[], signal: Signal, prp?: PRPFile): Promise<void> {
+  private async handleFailure(
+    failureActions: ResolutionAction[],
+    signal: Signal,
+    prp?: PRPFile,
+  ): Promise<void> {
     logger.warn('handleFailure', 'Executing failure handling actions', {
       signalType: signal.type,
-      actionCount: failureActions.length
+      actionCount: failureActions.length,
     });
-
     for (const action of failureActions) {
       try {
         await this.executeAction(action, signal, prp);
       } catch (error) {
-        logger.error('handleFailure', 'Failure handling action failed',
-          error instanceof Error ? error : new Error(error instanceof Error ? error.message : String(error)),
+        logger.error(
+          'handleFailure',
+          'Failure handling action failed',
+          error instanceof Error
+            ? error
+            : new Error(error instanceof Error ? error.message : String(error)),
           {
-            action: action.description
-          }
+            action: action.description,
+          },
         );
       }
     }
   }
-
   /**
    * Get all available resolutions
    */
   getAllResolutions(): Map<string, SignalResolution> {
     return new Map(this.resolutions);
   }
-
   /**
    * Get resolution for specific signal type
    */
   getResolution(signalType: string): SignalResolution | undefined {
     return this.resolutions.get(signalType);
   }
-
   /**
    * Get active workflows
    */
-  getActiveWorkflows(): Map<string, {
-    signal: Signal;
-    resolution: SignalResolution;
-    startTime: Date;
-    currentStep: number;
-    status: 'running' | 'completed' | 'failed' | 'escalated';
-  }> {
+  getActiveWorkflows(): Map<
+    string,
+    {
+      signal: Signal;
+      resolution: SignalResolution;
+      startTime: Date;
+      currentStep: number;
+      status: 'running' | 'completed' | 'failed' | 'escalated';
+    }
+  > {
     return new Map(this.activeWorkflows);
   }
-
   /**
    * Add or update signal resolution
    */
@@ -1272,7 +1259,6 @@ export class SignalResolutionEngine {
     this.resolutions.set(resolution.signalType, resolution);
     logger.info('addResolution', `Added resolution for signal: ${resolution.signalType}`);
   }
-
   /**
    * Remove signal resolution
    */

@@ -1,17 +1,16 @@
 /**
  * Git Adapter - Detects signals from Git operations
- * Part of PRP-007-F: Signal Sensor Inspector Implementation
+ * Part of [PRP-000-agents05.md](../../../PRPs/PRP-000-agents05.md): Signal Sensor Inspector Implementation
  */
-
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
+
 import { createLayerLogger } from '../../shared/logger.js';
 
 const execAsync = promisify(exec);
 const logger = createLayerLogger('scanner');
-
 export interface GitSignalEvent {
   type: 'commit' | 'merge' | 'branch' | 'tag' | 'push';
   signal: string;
@@ -22,14 +21,11 @@ export interface GitSignalEvent {
   files: string[];
   timestamp: Date;
 }
-
 export class GitAdapter {
-  private repoPath: string;
-
+  private readonly repoPath: string;
   constructor(repoPath: string) {
     this.repoPath = repoPath;
   }
-
   /**
    * Check if path is a Git repository
    */
@@ -41,51 +37,46 @@ export class GitAdapter {
       return false;
     }
   }
-
   /**
    * Detect signals from recent commits
    */
-  async detectCommitSignals(since: Date = new Date(Date.now() - 24 * 60 * 60 * 1000)): Promise<GitSignalEvent[]> {
+  async detectCommitSignals(
+    since: Date = new Date(Date.now() - 24 * 60 * 60 * 1000),
+  ): Promise<GitSignalEvent[]> {
     const signals: GitSignalEvent[] = [];
-
     try {
       // Get commits since yesterday
       const sinceISO = since.toISOString();
       const { stdout: logOutput } = await execAsync(
         `git log --since="${sinceISO}" --pretty=format:"%H|%s|%an|%ae|%ad|%f" --date=iso`,
-        { cwd: this.repoPath }
+        { cwd: this.repoPath },
       );
-
       const commits = logOutput.trim().split('\n');
-
       for (const commit of commits) {
         if (!commit) {
           continue;
         }
-
         const commitParts = commit.split('|');
         const hash = commitParts[0];
         const subject = commitParts[1];
         const author = commitParts[2];
         const email = commitParts[3];
         const date = commitParts[4];
-
         if (!hash || !subject || !author || !email || !date) {
           continue;
         }
-
         const commitHash = hash.substring(0, 7);
-
         // Extract signals from commit message
         const signalsInMessage = this.extractSignalsFromText(subject);
-
         // Get files changed in this commit
         const { stdout: filesOutput } = await execAsync(
           `git show --name-only --format="" ${commitHash}`,
-          { cwd: this.repoPath }
+          { cwd: this.repoPath },
         );
-        const changedFiles = filesOutput.trim().split('\n').filter(f => f);
-
+        const changedFiles = filesOutput
+          .trim()
+          .split('\n')
+          .filter((f) => f);
         for (const signal of signalsInMessage) {
           signals.push({
             type: 'commit',
@@ -95,51 +86,41 @@ export class GitAdapter {
             author: `${author} <${email}>`,
             message: subject,
             files: changedFiles,
-            timestamp: new Date(date)
+            timestamp: new Date(date),
           });
         }
       }
     } catch (error) {
       logger.error('GitAdapter', 'Error detecting Git commit signals', error as Error);
     }
-
     return signals;
   }
-
   /**
    * Detect signals from merge commits
    */
   async detectMergeSignals(): Promise<GitSignalEvent[]> {
     const signals: GitSignalEvent[] = [];
-
     try {
       const { stdout: logOutput } = await execAsync(
         'git log --merges --pretty=format:"%H|%s|%an|%ad" --date=iso -n 20',
-        { cwd: this.repoPath }
+        { cwd: this.repoPath },
       );
-
       const merges = logOutput.trim().split('\n');
-
       for (const merge of merges) {
         if (!merge) {
           continue;
         }
-
         const mergeParts = merge.split('|');
         const hash = mergeParts[0];
         const subject = mergeParts[1];
         const author = mergeParts[2];
         const date = mergeParts[3];
-
         if (!hash || !subject || !author || !date) {
           continue;
         }
-
         const commitHash = hash.substring(0, 7);
-
         // Look for signals in merge message
         const signalsInMessage = this.extractSignalsFromText(subject);
-
         for (const signal of signalsInMessage) {
           signals.push({
             type: 'merge',
@@ -149,65 +130,54 @@ export class GitAdapter {
             author,
             message: subject,
             files: [], // Merge commits affect many files
-            timestamp: new Date(date)
+            timestamp: new Date(date),
           });
         }
       }
     } catch (error) {
       logger.error('GitAdapter', 'Error detecting Git merge signals', error as Error);
     }
-
     return signals;
   }
-
   /**
    * Detect signals from branch names
    */
   async detectBranchSignals(): Promise<GitSignalEvent[]> {
     const signals: GitSignalEvent[] = [];
-
     try {
       const { stdout: branchesOutput } = await execAsync(
         'git branch --format="%(refname:short)|%(committerdate:iso)"',
-        { cwd: this.repoPath }
+        { cwd: this.repoPath },
       );
-
       const branches = branchesOutput.trim().split('\n');
-
       for (const branch of branches) {
         if (!branch) {
           continue;
         }
-
         const branchParts = branch.split('|');
         const branchName = branchParts[0];
         const date = branchParts[1];
-
         if (!branchName || !date) {
           continue;
         }
-
         // Look for signals in branch name
         const signalsInName = this.extractSignalsFromText(branchName);
-
-        signalsInName.forEach(signal => {
+        signalsInName.forEach((signal) => {
           signals.push({
             type: 'branch',
             signal,
             branch: branchName,
             message: `Branch created/updated: ${branchName}`,
             files: [],
-            timestamp: new Date(date)
+            timestamp: new Date(date),
           });
         });
       }
     } catch (error) {
       logger.error('GitAdapter', 'Error detecting Git branch signals', error as Error);
     }
-
     return signals;
   }
-
   /**
    * Get current branch
    */
@@ -219,7 +189,6 @@ export class GitAdapter {
       return 'unknown';
     }
   }
-
   /**
    * Check if file is tracked by Git
    */
@@ -232,32 +201,28 @@ export class GitAdapter {
       return false;
     }
   }
-
   /**
    * Get staged files with signals
    */
   async getStagedFilesWithSignals(): Promise<Array<{ file: string; signals: string[] }>> {
     const results: Array<{ file: string; signals: string[] }> = [];
-
     try {
       // Get staged files
-      const { stdout: stagedOutput } = await execAsync(
-        'git diff --cached --name-only',
-        { cwd: this.repoPath }
-      );
-
-      const stagedFiles = stagedOutput.trim().split('\n').filter(f => f);
-
+      const { stdout: stagedOutput } = await execAsync('git diff --cached --name-only', {
+        cwd: this.repoPath,
+      });
+      const stagedFiles = stagedOutput
+        .trim()
+        .split('\n')
+        .filter((f) => f);
       for (const file of stagedFiles) {
         // Get patch for this file to see what changed
         const { stdout: patchOutput } = await execAsync(
           `git diff --cached --unified=3 -- "${file}"`,
-          { cwd: this.repoPath }
+          { cwd: this.repoPath },
         );
-
         // Look for signals in the diff
         const signals = this.extractSignalsFromText(patchOutput);
-
         if (signals.length > 0) {
           results.push({ file, signals: Array.from(new Set(signals)) }); // Remove duplicates
         }
@@ -265,10 +230,8 @@ export class GitAdapter {
     } catch (error) {
       logger.error('GitAdapter', 'Error getting staged files with signals', error as Error);
     }
-
     return results;
   }
-
   /**
    * Watch for Git activity (pushes, pulls, merges)
    */
@@ -277,18 +240,15 @@ export class GitAdapter {
     // For now, we'll set up a basic poller
     const interval = setInterval(async () => {
       const recentSignals = await this.detectCommitSignals(
-        new Date(Date.now() - 5 * 60 * 1000) // Last 5 minutes
+        new Date(Date.now() - 5 * 60 * 1000), // Last 5 minutes
       );
-
-      recentSignals.forEach(signal => {
+      recentSignals.forEach((signal) => {
         callback(signal);
       });
     }, 30000); // Check every 30 seconds
-
     // Return cleanup function
     return () => clearInterval(interval);
   }
-
   /**
    * Extract [XX] signals from text
    */
@@ -296,17 +256,14 @@ export class GitAdapter {
     const signalPattern = /\[([a-zA-Z]{2})\]/g;
     const signals: string[] = [];
     let match;
-
     while ((match = signalPattern.exec(text)) !== null) {
       if (match[1]) {
         signals.push(match[1]);
       }
     }
-
     // Remove duplicates while preserving order
     return Array.from(new Set(signals));
   }
-
   /**
    * Get repository status
    */
@@ -318,21 +275,17 @@ export class GitAdapter {
     untracked: number;
   }> {
     try {
-      const { stdout: statusOutput } = await execAsync(
-        'git status --porcelain',
-        { cwd: this.repoPath }
-      );
-
+      const { stdout: statusOutput } = await execAsync('git status --porcelain', {
+        cwd: this.repoPath,
+      });
       const lines = statusOutput.trim().split('\n');
       let staged = 0;
       let modified = 0;
       let untracked = 0;
-
       for (const line of lines) {
         if (line.length === 0) {
           continue;
         }
-
         const statusCode = line.substring(0, 2);
         if (!statusCode.startsWith(' ') && !statusCode.startsWith('?')) {
           staged++;
@@ -344,13 +297,12 @@ export class GitAdapter {
           untracked++;
         }
       }
-
       return {
         branch: await this.getCurrentBranch(),
         clean: lines.length === 0,
         staged,
         modified,
-        untracked
+        untracked,
       };
     } catch (error) {
       logger.error('GitAdapter', 'Error getting Git status', error as Error);
@@ -359,7 +311,7 @@ export class GitAdapter {
         clean: false,
         staged: 0,
         modified: 0,
-        untracked: 0
+        untracked: 0,
       };
     }
   }

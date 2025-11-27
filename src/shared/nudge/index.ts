@@ -4,7 +4,6 @@
  * Complete nudge communication system for PRP agents to communicate
  * with human users via dcmaidbot endpoint.
  */
-
 // Type exports
 export type {
   NudgeContext,
@@ -20,24 +19,14 @@ export type {
   AgentNudgeMessage,
   NudgeResponsePayload,
   GitHubDispatchEvent,
-  NudgeMessageTemplate
-} from './types.js';
-
-export {
-  NudgeError,
-  isValidNudgeType,
-  isValidUrgency,
-  isValidResponseType
-} from './types.js';
-
+  NudgeMessageTemplate,
+} from './types';
+export { NudgeError, isValidNudgeType, isValidUrgency, isValidResponseType } from './types';
 // Client exports
-export { NudgeClient, createNudgeClient } from './client.js';
-
+export { NudgeClient, createNudgeClient } from './client';
 // Wrapper exports
-export { NudgeWrapper, createNudgeWrapper } from './wrapper.js';
-
+export { NudgeWrapper, createNudgeWrapper } from './wrapper';
 // Agent integration exports
-export { AgentNudgeIntegration, createAgentNudgeIntegration } from './agent-integration.js';
-
+export { AgentNudgeIntegration, createAgentNudgeIntegration } from './agent-integration';
 // Default exports for convenience
-export { createAgentNudgeIntegration as default } from './agent-integration.js';
+export { createAgentNudgeIntegration as default } from './agent-integration';

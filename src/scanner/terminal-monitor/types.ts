@@ -3,9 +3,7 @@
  *
  * Types for the persistent storage system managing .prp/ directory.
  */
-
 // Types imported as needed in implementation files
-
 export interface StorageConfig {
   dataDir: string;
   cacheDir: string;
@@ -17,7 +15,6 @@ export interface StorageConfig {
   maxCacheSize: number;
   retentionPeriod: number;
 }
-
 export interface PersistentState {
   version: string;
   createdAt: Date;
@@ -32,7 +29,6 @@ export interface PersistentState {
   metrics: SystemMetrics;
   userPreferences: UserPreferences;
 }
-
 export interface WorktreeState {
   id: string;
   name: string;
@@ -51,7 +47,6 @@ export interface WorktreeState {
     errorCount: number;
   };
 }
-
 export interface FileChangeState {
   path: string;
   type: 'added' | 'modified' | 'deleted' | 'renamed';
@@ -60,7 +55,6 @@ export interface FileChangeState {
   hash?: string;
   processed: boolean;
 }
-
 export interface AgentState {
   id: string;
   name: string;
@@ -90,7 +84,6 @@ export interface AgentState {
     errorRate: number;
   };
 }
-
 export interface AgentLogEntry {
   id: string;
   timestamp: Date;
@@ -99,7 +92,6 @@ export interface AgentLogEntry {
   metadata?: Record<string, unknown>;
   tokenCost?: number;
 }
-
 export interface PRPState {
   id: string;
   name: string;
@@ -122,7 +114,6 @@ export interface PRPState {
   };
   checkpoints: CheckpointState[];
 }
-
 export interface ProgressEntryState {
   id: string;
   timestamp: Date;
@@ -132,7 +123,6 @@ export interface ProgressEntryState {
   actor: string;
   checkpoint?: string;
 }
-
 export interface CheckpointState {
   id: string;
   name: string;
@@ -142,7 +132,6 @@ export interface CheckpointState {
   requiredSignals: string[];
   outcomes: string[];
 }
-
 export interface SignalState {
   id: string;
   type: string;
@@ -163,14 +152,12 @@ export interface SignalState {
   childSignals: string[];
   parentSignal?: string;
 }
-
 export interface TokenState {
   accounting: TokenAccountingState;
   limits: TokenLimitsState;
   alerts: TokenAlertState[];
   reports: TokenReportState[];
 }
-
 export interface TokenAccountingState {
   totalUsed: number;
   totalCost: number;
@@ -181,7 +168,6 @@ export interface TokenAccountingState {
   byTime: TimeSeriesData[];
   lastUpdated: Date;
 }
-
 export interface AgentTokenUsage {
   agentId: string;
   tokens: number;
@@ -192,7 +178,6 @@ export interface AgentTokenUsage {
   weeklyUsage: number;
   monthlyUsage: number;
 }
-
 export interface LayerTokenUsage {
   layer: string;
   tokens: number;
@@ -200,7 +185,6 @@ export interface LayerTokenUsage {
   operations: number;
   lastUsed: Date;
 }
-
 export interface ModelTokenUsage {
   model: string;
   tokens: number;
@@ -208,14 +192,12 @@ export interface ModelTokenUsage {
   operations: number;
   lastUsed: Date;
 }
-
 export interface TimeSeriesData {
   timestamp: Date;
   tokens: number;
   cost: number;
   operations: number;
 }
-
 export interface TokenLimitsState {
   enabled: boolean;
   agentLimits: Record<string, TokenLimitConfig>;
@@ -225,7 +207,6 @@ export interface TokenLimitsState {
     critical: number; // percentage
   };
 }
-
 export interface TokenLimitConfig {
   daily?: number;
   weekly?: number;
@@ -234,7 +215,6 @@ export interface TokenLimitConfig {
   perTime?: number;
   timeWindow?: number;
 }
-
 export interface TokenAlertState {
   id: string;
   type: 'approaching_limit' | 'limit_exceeded' | 'spike_detected' | 'unusual_activity';
@@ -257,7 +237,6 @@ export interface TokenAlertState {
   resolvedAt?: Date;
   resolution?: string;
 }
-
 export interface TokenReportState {
   id: string;
   period: {
@@ -276,7 +255,6 @@ export interface TokenReportState {
   format: 'json' | 'csv' | 'html';
   filePath?: string;
 }
-
 export interface GuidelineState {
   enabled: string[]; // Guideline IDs
   disabled: string[];
@@ -284,7 +262,6 @@ export interface GuidelineState {
   executionHistory: GuidelineExecution[];
   activeExecutions: Record<string, GuidelineExecution>;
 }
-
 export interface GuidelineConfiguration {
   id: string;
   enabled: boolean;
@@ -299,7 +276,6 @@ export interface GuidelineConfiguration {
     orchestrator?: string;
   };
 }
-
 export interface GuidelineExecution {
   id: string;
   guidelineId: string;
@@ -312,7 +288,6 @@ export interface GuidelineExecution {
   result?: unknown;
   error?: string;
 }
-
 export interface GuidelineStepExecution {
   stepId: string;
   name: string;
@@ -327,7 +302,6 @@ export interface GuidelineStepExecution {
     cost: number;
   };
 }
-
 export interface NoteState {
   id: string;
   name: string;
@@ -354,7 +328,6 @@ export interface NoteState {
     permissions: Record<string, string[]>;
   };
 }
-
 export interface SystemMetrics {
   uptime: number;
   scans: {
@@ -392,7 +365,6 @@ export interface SystemMetrics {
     recent: ErrorEntry[];
   };
 }
-
 export interface ErrorEntry {
   id: string;
   timestamp: Date;
@@ -403,7 +375,6 @@ export interface ErrorEntry {
   resolved: boolean;
   resolvedAt?: Date;
 }
-
 export interface UserPreferences {
   theme: 'light' | 'dark' | 'auto';
   language: string;
@@ -434,7 +405,6 @@ export interface UserPreferences {
     dataRetention: number; // days
   };
 }
-
 export interface StorageStats {
   totalSize: number;
   fileCount: number;
@@ -442,12 +412,14 @@ export interface StorageStats {
   lastModified: Date;
   oldestFile?: Date;
   newestFile?: Date;
-  byType: Record<string, {
-    count: number;
-    size: number;
-  }>;
+  byType: Record<
+    string,
+    {
+      count: number;
+      size: number;
+    }
+  >;
 }
-
 export interface BackupMetadata {
   id: string;
   createdAt: Date;
@@ -459,7 +431,6 @@ export interface BackupMetadata {
   encrypted: boolean;
   checksum: string;
 }
-
 export interface KeychainData {
   version: string;
   encrypted: boolean;
@@ -470,7 +441,6 @@ export interface KeychainData {
     accessCount: number;
   };
 }
-
 export interface KeychainEntry {
   id: string;
   name: string;

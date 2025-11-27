@@ -22,12 +22,14 @@
 ## 🎯 Why PRP?
 
 Traditional project management struggles with:
+
 - ❌ Static requirements that become outdated
 - ❌ Poor communication between team members
 - ❌ Manual progress tracking and status reporting
 - ❌ Fragmented toolchains and context switching
 
 **PRP solves these problems** through:
+
 - ✅ **Dynamic Requirements** - PRPs evolve as your project grows
 - ✅ **Intelligent Coordination** - AI agents understand context and collaborate
 - ✅ **Real-time Visibility** - Signal-based progress tracking across all work
@@ -48,6 +50,7 @@ Every development task follows this cycle:
 7. **🔄 Loop** - Continue until DoD met or checkpoint reached
 
 **Orchestrator Rules:**
+
 - ❌ **NO QUESTIONS** to humans for decisions
 - ✅ **DECIDE AUTONOMOUSLY** based on signal analysis
 - ✅ **DOCUMENT** decisions in PRP progress log
@@ -55,6 +58,7 @@ Every development task follows this cycle:
 - ⚠️ **NUDGE** only for critical blocks (Priority 10)
 
 **Quick Start with PRPs**:
+
 ```bash
 # List all PRPs
 ls PRPs/
@@ -68,6 +72,7 @@ ls PRPs/
 ```
 
 **Signal Examples**:
+
 - 🔴 **ATTENTION** (10) - New work or need user input (triggers NUDGE system)
 - 🚫 **BLOCKED** (9) - Can't proceed, need external help
 - ✅ **CONFIDENT** (3) - Work done, ready for review
@@ -104,6 +109,7 @@ npm run dev
 ```
 
 That's it! 🎉 PRP will:
+
 - 📁 Analyze your project and detect your tech stack
 - 🤝 Set up AI agents tailored to your needs
 - 📊 Configure real-time monitoring and dashboards
@@ -130,11 +136,12 @@ prp orchestrator
 4. **🔄 Development Loop** - Continuous improvement and autonomous task execution
 
 **Example Output:**
+
 ```
 ✨ PRP Orchestrator Started
 📊 Active PRPs: 3 | Signals: 147 | Agents: 4
 🤖 Scanner: Watching for changes...
-🔍 Inspector: Analyzing [dp] signal in PRP-001
+🔍 Inspector: Analyzing [dp] signal in PRP-001-comprehensive-cleanup
 🎯 Orchestrator: Allocating resources to frontend optimization
 ```
 
@@ -149,6 +156,7 @@ prp
 ```
 
 The interactive CLI will guide you through:
+
 1. Project metadata (name, description, author)
 2. Template selection (FastAPI, NestJS, React, etc.)
 3. Feature selection (LICENSE, Code of Conduct, GitHub Actions, etc.)
@@ -189,14 +197,14 @@ Options:
 
 ## Supported Templates
 
-| Template | Description | Tech Stack |
-|----------|-------------|------------|
-| `none` | Minimal setup with docs only | N/A |
-| `fastapi` | FastAPI Python web service | Python, FastAPI, Uvicorn |
-| `nestjs` | NestJS TypeScript backend | TypeScript, NestJS, Node.js |
-| `react` | React web application | TypeScript, React, Vite |
-| `typescript-lib` | TypeScript library/package | TypeScript, Node.js |
-| `express` | Express.js backend | TypeScript, Express, Node.js |
+| Template         | Description                  | Tech Stack                   |
+| ---------------- | ---------------------------- | ---------------------------- |
+| `none`           | Minimal setup with docs only | N/A                          |
+| `fastapi`        | FastAPI Python web service   | Python, FastAPI, Uvicorn     |
+| `nestjs`         | NestJS TypeScript backend    | TypeScript, NestJS, Node.js  |
+| `react`          | React web application        | TypeScript, React, Vite      |
+| `typescript-lib` | TypeScript library/package   | TypeScript, Node.js          |
+| `express`        | Express.js backend           | TypeScript, Express, Node.js |
 
 More templates coming soon!
 
@@ -276,8 +284,11 @@ cd prp
 # Install dependencies
 npm install
 
-# Run in development mode
+# Run in development mode with hot reload
 npm run dev
+
+# Run in development mode without watch
+npm run dev:no-watch
 
 # Build
 npm run build
@@ -310,6 +321,48 @@ prp/
 └── docs/                   # Documentation
 ```
 
+## 🔧 Development Mode
+
+PRP includes an enhanced development mode with hot reload and intelligent worktree support:
+
+### Features
+
+- **🔄 Hot Reload** - Automatic orchestrator restart on file changes
+- **🌳 Smart Worktrees** - Automatic git worktree management for feature branches
+- **📁 File Watching** - Monitors source files, templates, and PRPs
+- **🎯 Branch Detection** - Different behavior based on current git branch
+
+### Usage
+
+```bash
+# Start development mode with hot reload (recommended)
+npm run dev
+
+# Start without watch mode
+npm run dev:no-watch
+
+# Start with debug logging
+npm run dev -- --debug
+
+# Use custom branch/worktree
+npx tsx src/cli.ts dev --branch feature-name --worktree /custom/path
+```
+
+### Worktree Logic
+
+- **Main branch** (`main`/`master`): Development in current directory
+- **Feature branches**: Automatic worktree creation at `.prp/worktrees/<branch>`
+- **File changes** trigger intelligent orchestrator restarts with 1-second debounce
+
+### Monitored Files
+
+- `src/**/*.ts`, `src/**/*.tsx` - Source code
+- `.prp/**/*.md`, `PRPs/**/*.md` - Requirements and context
+- `templates/**/*` - Project templates
+- Excludes: `node_modules`, `dist`, `coverage`, test files
+
+For detailed development setup, see [Development Mode Documentation](docs/development-mode.md).
+
 ## Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
@@ -321,12 +374,14 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## Credits
 
 Inspired by:
+
 - [Yeoman](https://yeoman.io/)
 - [Cookiecutter](https://github.com/cookiecutter/cookiecutter)
 - [create-react-app](https://create-react-app.dev/)
 - [Telefonica Open Source Scaffold](https://github.com/Telefonica/opensource-scaffold)
 
 Built with:
+
 - [Ink](https://github.com/vadimdemedes/ink) - React for CLIs
 - [Commander.js](https://github.com/tj/commander.js) - Command-line framework
 - [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
@@ -334,18 +389,21 @@ Built with:
 ## 📚 Documentation & Resources
 
 ### 🚀 Getting Started
+
 - **[📖 Quick Start Guide](docs/QUICK_START.md)** - Get PRP running in 5 minutes
 - **[📚 Complete Documentation](docs/README.md)** - Comprehensive documentation hub
 - **[❓ FAQ](docs/FAQ.md)** - Frequently asked questions
 - **[🔧 Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 
 ### 🛠️ Guides & References
+
 - **[📋 PRP Template](docs/PRP_TEMPLATE.md)** - Standardized PRP documentation template
 - **[📖 CLI Commands](docs/cli/README.md)** - Complete command reference
 - **[⚙️ Configuration Guide](docs/config/README.md)** - .prprc configuration reference
 - **[🏗️ Architecture Guide](docs/ARCHITECTURE.md)** - System design and architecture
 
 ### 🤝 Community & Support
+
 - **[💬 Discord Community](https://discord.gg/prp)** - Chat with the PRP community
 - **[🐛 GitHub Issues](https://github.com/dcversus/prp/issues)** - Bug reports and feature requests
 - **[📧 Email Support](mailto:support@prp.dev)** - Get help from the PRP team

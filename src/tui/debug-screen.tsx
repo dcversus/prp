@@ -6,8 +6,10 @@
  */
 
 import { EventEmitter } from 'events';
-import { EventBus } from '../shared/events';
+
 import { createLayerLogger } from '../shared/logger';
+
+import type { EventBus } from '../shared/events';
 
 export interface DebugEvent {
   id: string;
@@ -110,11 +112,11 @@ export interface DebugConfig {
 }
 
 export class TuiDebugScreen extends EventEmitter {
-  private config: DebugConfig;
-  private eventBus: EventBus;
-  private logger: ReturnType<typeof createLayerLogger>;
+  private readonly config: DebugConfig;
+  private readonly eventBus: EventBus;
+  private readonly logger: ReturnType<typeof createLayerLogger>;
   private events: DebugEvent[] = [];
-  private systemStatus: SystemStatus;
+  private readonly systemStatus: SystemStatus;
   private isActive = false;
   private isPaused = false;
   private refreshTimer: NodeJS.Timeout | null = null;
@@ -131,14 +133,14 @@ export class TuiDebugScreen extends EventEmitter {
       orchestrator: {
         status: 'idle',
         currentPrp: 'none',
-        CoT: []
+        CoT: [],
       },
       scanner: {
-        status: 'idle'
+        status: 'idle',
       },
       inspector: {
-        status: 'idle'
-      }
+        status: 'idle',
+      },
     };
 
     this.setupEventListeners();
@@ -166,7 +168,7 @@ export class TuiDebugScreen extends EventEmitter {
       priority: 'medium',
       type: 'debug_mode_enabled',
       data: { screen: 'debug', timestamp: new Date().toISOString() },
-      raw: 'system · Debug mode activated - Real-time event monitoring started'
+      raw: 'system · Debug mode activated - Real-time event monitoring started',
     });
   }
 
@@ -196,7 +198,7 @@ export class TuiDebugScreen extends EventEmitter {
 
     const debugEvent: DebugEvent = {
       id: `${event.source}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      ...event
+      ...event,
     };
 
     this.events.unshift(debugEvent);
@@ -229,16 +231,20 @@ export class TuiDebugScreen extends EventEmitter {
 
     // System Status Summary
     content.push('📊 SYSTEM STATUS');
-    content.push('┌' + '─'.repeat(process.stdout.columns - 2) + '┐');
+    content.push(`┌${  '─'.repeat(process.stdout.columns - 2)  }┐`);
 
     // Orchestrator status
-    content.push(`│ 🎼 Orchestrator: ${this.systemStatus.orchestrator.status.padEnd(20)} PRP: ${this.systemStatus.orchestrator.currentPrp.padEnd(25)} ${''.padEnd(process.stdout.columns - 67)}│`);
+    content.push(
+      `│ 🎼 Orchestrator: ${this.systemStatus.orchestrator.status.padEnd(20)} PRP: ${this.systemStatus.orchestrator.currentPrp.padEnd(25)} ${''.padEnd(process.stdout.columns - 67)}│`,
+    );
 
     // Agent count
-    const activeAgents = this.systemStatus.agents.filter(a => a.status === 'running').length;
-    content.push(`│ 🤖 Active Agents: ${activeAgents.toString().padEnd(15)} Total Events: ${this.events.length.toString().padEnd(15)} Status: ${this.isPaused ? 'PAUSED' : 'RUNNING'.padEnd(10)} ${''.padEnd(process.stdout.columns - 70)}│`);
+    const activeAgents = this.systemStatus.agents.filter((a) => a.status === 'running').length;
+    content.push(
+      `│ 🤖 Active Agents: ${activeAgents.toString().padEnd(15)} Total Events: ${this.events.length.toString().padEnd(15)} Status: ${this.isPaused ? 'PAUSED' : 'RUNNING'.padEnd(10)} ${''.padEnd(process.stdout.columns - 70)}│`,
+    );
 
-    content.push('└' + '─'.repeat(process.stdout.columns - 2) + '┘');
+    content.push(`└${  '─'.repeat(process.stdout.columns - 2)  }┘`);
     content.push('');
 
     // Recent Events
@@ -275,8 +281,12 @@ export class TuiDebugScreen extends EventEmitter {
 
     // Footer with controls
     content.push('─'.repeat(process.stdout.columns || 80));
-    content.push(`Controls: ${this.config.keyBindings.toggleFullJson.toUpperCase()} Toggle Full JSON | ${this.config.keyBindings.clearEvents.toUpperCase()} Clear | ${this.config.keyBindings.pauseUpdates.toUpperCase()} Pause | ${this.config.keyBindings.backToMain.toUpperCase()} Back`);
-    content.push(`Status: ${this.isPaused ? '⏸️ PAUSED' : '▶️ RUNNING'} | Events: ${this.events.length}/${this.config.maxEvents} | ${new Date().toLocaleTimeString()}`);
+    content.push(
+      `Controls: ${this.config.keyBindings.toggleFullJson.toUpperCase()} Toggle Full JSON | ${this.config.keyBindings.clearEvents.toUpperCase()} Clear | ${this.config.keyBindings.pauseUpdates.toUpperCase()} Pause | ${this.config.keyBindings.backToMain.toUpperCase()} Back`,
+    );
+    content.push(
+      `Status: ${this.isPaused ? '⏸️ PAUSED' : '▶️ RUNNING'} | Events: ${this.events.length}/${this.config.maxEvents} | ${new Date().toLocaleTimeString()}`,
+    );
 
     return content;
   }
@@ -295,7 +305,7 @@ export class TuiDebugScreen extends EventEmitter {
       priority: 'low',
       type: 'events_cleared',
       data: { clearedAt: new Date().toISOString() },
-      raw: 'system · Debug events cleared by user'
+      raw: 'system · Debug events cleared by user',
     });
   }
 
@@ -312,12 +322,13 @@ export class TuiDebugScreen extends EventEmitter {
    * Export events to file
    */
   async exportEvents(filePath?: string): Promise<void> {
-    const filename = filePath ?? `debug-export-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    const filename =
+      filePath ?? `debug-export-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
     const exportData = {
       exportedAt: new Date().toISOString(),
       totalEvents: this.events.length,
       systemStatus: this.systemStatus,
-      events: this.events
+      events: this.events,
     };
 
     try {
@@ -333,10 +344,13 @@ export class TuiDebugScreen extends EventEmitter {
         priority: 'low',
         type: 'events_exported',
         data: { filename, count: this.events.length },
-        raw: `system · Debug events exported to ${filename}`
+        raw: `system · Debug events exported to ${filename}`,
       });
     } catch (error) {
-      this.logger.error('exportEvents', `Failed to export events: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(
+        'exportEvents',
+        `Failed to export events: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -369,7 +383,7 @@ export class TuiDebugScreen extends EventEmitter {
       priority: 'medium',
       type: (data.type as string) || 'system_event',
       data,
-      raw: this.formatRawLogLine('system', data)
+      raw: this.formatRawLogLine('system', data),
     });
   }
 
@@ -377,7 +391,7 @@ export class TuiDebugScreen extends EventEmitter {
     const data = event.data as Record<string, unknown>;
     this.systemStatus.scanner = {
       status: 'scanning',
-      lastScan: new Date()
+      lastScan: new Date(),
     };
 
     this.addEvent({
@@ -386,7 +400,7 @@ export class TuiDebugScreen extends EventEmitter {
       priority: 'low',
       type: (data.type as string) || 'scan_event',
       data,
-      raw: this.formatRawLogLine('scanner', data)
+      raw: this.formatRawLogLine('scanner', data),
     });
   }
 
@@ -395,7 +409,7 @@ export class TuiDebugScreen extends EventEmitter {
     this.systemStatus.inspector = {
       status: 'inspecting',
       lastInspection: new Date(),
-      risk: data.risk ?? 0
+      risk: data.risk ?? 0,
     };
 
     this.addEvent({
@@ -404,7 +418,7 @@ export class TuiDebugScreen extends EventEmitter {
       priority: data.risk && data.risk > 7 ? 'high' : 'medium',
       type: data.type ?? 'inspection_event',
       data,
-      raw: this.formatRawLogLine('inspector', data)
+      raw: this.formatRawLogLine('inspector', data),
     });
   }
 
@@ -430,7 +444,7 @@ export class TuiDebugScreen extends EventEmitter {
       priority: 'high',
       type: (data.type as string) || 'orchestrator_event',
       data,
-      raw: this.formatRawLogLine('orchestrator', data)
+      raw: this.formatRawLogLine('orchestrator', data),
     });
   }
 
@@ -438,17 +452,17 @@ export class TuiDebugScreen extends EventEmitter {
     // Update signals based on events
     if (event.data && typeof event.data === 'object' && 'signals' in event.data) {
       const signals = (event.data as Record<string, unknown>).signals as string[];
-      this.systemStatus.signals = signals.map(code => ({
+      this.systemStatus.signals = signals.map((code) => ({
         code,
         state: 'active' as const,
-        latest: true
+        latest: true,
       }));
     }
 
     // Update agent status based on events
     if (event.source === 'agent' && event.data && typeof event.data === 'object') {
       const agentData = event.data as AgentData;
-      const existingAgent = this.systemStatus.agents.find(a => a.id === agentData.id);
+      const existingAgent = this.systemStatus.agents.find((a) => a.id === agentData.id);
 
       if (existingAgent) {
         Object.assign(existingAgent, agentData);
@@ -456,12 +470,12 @@ export class TuiDebugScreen extends EventEmitter {
         this.systemStatus.agents.push({
           id: agentData.id ?? 'unknown',
           role: agentData.role ?? 'unknown',
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+           
           status: (agentData.status as 'spawning' | 'running' | 'idle' | 'error') || 'idle',
           task: agentData.task ?? 'No task',
           progress: agentData.progress ?? 0,
           tokens: agentData.tokens ?? '0',
-          activeTime: agentData.activeTime ?? '00:00:00'
+          activeTime: agentData.activeTime ?? '00:00:00',
         });
       }
     }
@@ -480,7 +494,7 @@ export class TuiDebugScreen extends EventEmitter {
       lines.push(`${color}${event.source}\x1b[0m · ${timestamp} · ${event.type}`);
       if (this.config.showFullJson && event.data) {
         const jsonLines = this.formatJson(event.data);
-        lines.push(...jsonLines.map(line => `  ${line}`));
+        lines.push(...jsonLines.map((line) => `  ${line}`));
       } else {
         lines.push(`  ${JSON.stringify(event.data)}`);
       }
@@ -507,7 +521,12 @@ export class TuiDebugScreen extends EventEmitter {
           parts.push(`risk: ${record.risk}`);
         }
         if (record.files && Array.isArray(record.files)) {
-          parts.push(`files: [${(record.files as string[]).slice(0, 2).map((f: string) => `"${f.length > 10 ? f.substring(0, 10) + '…' : f}"`).join(', ')}]`);
+          parts.push(
+            `files: [${(record.files as string[])
+              .slice(0, 2)
+              .map((f: string) => `"${f.length > 10 ? `${f.substring(0, 10)  }…` : f}"`)
+              .join(', ')}]`,
+          );
         }
         if (record.why) {
           parts.push(`why: "${record.why}"`);
@@ -545,38 +564,40 @@ export class TuiDebugScreen extends EventEmitter {
   }
 
   private formatSignals(signals: SystemStatus['signals']): string {
-    return signals.map(signal => {
-      let color = '\x1b[90m'; // Default gray for placeholder
-      let code = signal.code;
+    return signals
+      .map((signal) => {
+        let color = '\x1b[90m'; // Default gray for placeholder
+        let {code} = signal;
 
-      if (signal.state === 'active') {
-        // Determine color based on signal type
-        if (signal.code.includes('aA')) {
-          color = this.config.colorScheme.agent;
-        } else if (signal.code.includes('pr')) {
-          color = '\x1b[94m';
-        } // Blue
-        else if (signal.code.includes('PR')) {
-          color = '\x1b[96m';
-        } // Cyan
-        else if (signal.code.includes('FF')) {
-          color = '\x1b[93m';
-        } // Yellow
-        else {
-          color = '\x1b[97m';
-        } // White
-      } else if (signal.state === 'resolved') {
-        color = '\x1b[37m'; // Dim white
-      }
+        if (signal.state === 'active') {
+          // Determine color based on signal type
+          if (signal.code.includes('aA')) {
+            color = this.config.colorScheme.agent;
+          } else if (signal.code.includes('pr')) {
+            color = '\x1b[94m';
+          } // Blue
+          else if (signal.code.includes('PR')) {
+            color = '\x1b[96m';
+          } // Cyan
+          else if (signal.code.includes('FF')) {
+            color = '\x1b[93m';
+          } // Yellow
+          else {
+            color = '\x1b[97m';
+          } // White
+        } else if (signal.state === 'resolved') {
+          color = '\x1b[37m'; // Dim white
+        }
 
-      if (signal.latest) {
-        code = `${color}${signal.code}\x1b[1m*\x1b[0m`; // Bold asterisk for latest
-      } else {
-        code = `${color}${signal.code}\x1b[0m`;
-      }
+        if (signal.latest) {
+          code = `${color}${signal.code}\x1b[1m*\x1b[0m`; // Bold asterisk for latest
+        } else {
+          code = `${color}${signal.code}\x1b[0m`;
+        }
 
-      return code;
-    }).join(' ');
+        return code;
+      })
+      .join(' ');
   }
 
   private formatAgent(agent: SystemStatus['agents'][0]): string[] {
@@ -584,19 +605,28 @@ export class TuiDebugScreen extends EventEmitter {
     const statusIcon = this.getStatusIcon(agent.status);
     const roleColor = this.getRoleColor(agent.role);
 
-    lines.push(`${statusIcon} ${agent.status.padEnd(10)} \x1b[1m${agent.id}\x1b[0m#${roleColor}${agent.role}\x1b[0m`);
-    lines.push(`   Task: ${agent.task} | DoD: ${agent.progress}% | Tokens: ${agent.tokens} | Active: ${agent.activeTime}`);
+    lines.push(
+      `${statusIcon} ${agent.status.padEnd(10)} \x1b[1m${agent.id}\x1b[0m#${roleColor}${agent.role}\x1b[0m`,
+    );
+    lines.push(
+      `   Task: ${agent.task} | DoD: ${agent.progress}% | Tokens: ${agent.tokens} | Active: ${agent.activeTime}`,
+    );
 
     return lines;
   }
 
   private getStatusIcon(status: string): string {
     switch (status) {
-      case 'spawning': return '♪';
-      case 'running': return '♬';
-      case 'idle': return '♫';
-      case 'error': return '✗';
-      default: return '•';
+      case 'spawning':
+        return '♪';
+      case 'running':
+        return '♬';
+      case 'idle':
+        return '♫';
+      case 'error':
+        return '✗';
+      default:
+        return '•';
     }
   }
 

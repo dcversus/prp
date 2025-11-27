@@ -1,8 +1,17 @@
-/**
- * Jest test setup file
- */
+// Jest setup file for ES modules
+// This file is loaded before all test files
 
-// Set test timeout for E2E tests
-if (typeof jest !== 'undefined') {
-  jest.setTimeout(60000);
-}
+// Import jest-dom matchers
+import '@testing-library/jest-dom';
+
+// Mock some global objects if needed
+const { TextEncoder, TextDecoder } = require('util');
+
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
+
+// Configure jest environment for modules
+Object.defineProperty(global, 'fetch', {
+  writable: true,
+  value: jest.fn(),
+});

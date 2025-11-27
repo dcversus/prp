@@ -3,10 +3,8 @@
  *
  * Simple implementation of signal pattern database for classification.
  */
-
-import { Signal } from '../shared/types';
-import { SignalFeatures } from './enhanced-signal-classifier';
-
+import type { Signal } from '../shared/types';
+import type { SignalFeatures } from './ensemble-classifier';
 /**
  * Interface for signal pattern definition
  */
@@ -21,17 +19,14 @@ export interface SignalPattern {
   context: string[];
   examples: string[];
 }
-
 /**
  * Basic Signal Pattern Database implementation
  */
 export class SignalPatternDatabase {
-  private patterns: Map<string, SignalPattern> = new Map();
-
+  private readonly patterns = new Map<string, SignalPattern>();
   constructor() {
     this.initializePatterns();
   }
-
   /**
    * Initialize basic signal patterns
    */
@@ -46,9 +41,8 @@ export class SignalPatternDatabase {
       priority: 5,
       confidence: 0.85,
       context: ['development', 'implementation'],
-      examples: ['Development progress completed successfully']
+      examples: ['Development progress completed successfully'],
     });
-
     // Quality assurance patterns
     this.patterns.set('tg-tests-green', {
       signalType: 'tg',
@@ -59,9 +53,8 @@ export class SignalPatternDatabase {
       priority: 7,
       confidence: 0.9,
       context: ['testing', 'quality'],
-      examples: ['All tests are green']
+      examples: ['All tests are green'],
     });
-
     // Blocker patterns
     this.patterns.set('bb-blocker', {
       signalType: 'bb',
@@ -72,9 +65,8 @@ export class SignalPatternDatabase {
       priority: 9,
       confidence: 0.95,
       context: ['coordination', 'blocking'],
-      examples: ['Development is blocked by dependency']
+      examples: ['Development is blocked by dependency'],
     });
-
     // Bug fix patterns
     this.patterns.set('bf-bug-fixed', {
       signalType: 'bf',
@@ -85,9 +77,8 @@ export class SignalPatternDatabase {
       priority: 6,
       confidence: 0.88,
       context: ['development', 'bug-fix'],
-      examples: ['Bug has been fixed and tested']
+      examples: ['Bug has been fixed and tested'],
     });
-
     // Merge patterns
     this.patterns.set('mg-merged', {
       signalType: 'mg',
@@ -98,54 +89,49 @@ export class SignalPatternDatabase {
       priority: 8,
       confidence: 0.92,
       context: ['coordination', 'merge'],
-      examples: ['Code has been merged to main branch']
+      examples: ['Code has been merged to main branch'],
     });
   }
-
   /**
    * Find similar patterns for a signal
    */
-  async findSimilarPatterns(signal: Signal, features: SignalFeatures): Promise<{pattern: string, match: SignalPattern, confidence: number}[]> {
-    const patterns: {pattern: string, match: SignalPattern, confidence: number}[] = [];
-
+  findSimilarPatterns(
+    signal: Signal,
+    features: SignalFeatures,
+  ): { pattern: string; match: SignalPattern; confidence: number }[] {
+    const patterns: { pattern: string; match: SignalPattern; confidence: number }[] = [];
     // Find matching patterns based on signal type
-    const typePattern = Array.from(this.patterns.entries()).find(([key, pattern]) =>
-      key.startsWith(signal.type) || pattern.signalType === signal.type
+    const typePattern = Array.from(this.patterns.entries()).find(
+      ([key, pattern]) => key.startsWith(signal.type) || pattern.signalType === signal.type,
     );
-
-    if (typePattern) {
+    if (typePattern !== undefined) {
       patterns.push({
         pattern: typePattern[0],
         match: typePattern[1],
-        confidence: typePattern[1].confidence
+        confidence: typePattern[1].confidence,
       });
     }
-
     // Add linguistic matches
     for (const keyword of features.linguistic.keywords) {
       const keywordPattern = Array.from(this.patterns.entries()).find(([, pattern]) =>
-        pattern.keywords.includes(keyword.toLowerCase())
+        pattern.keywords.includes(keyword.toLowerCase()),
       );
-
-      if (keywordPattern && !patterns.find(p => p.pattern === keywordPattern[0])) {
+      if (keywordPattern !== undefined && !patterns.find((p) => p.pattern === keywordPattern[0])) {
         patterns.push({
           pattern: keywordPattern[0],
           match: keywordPattern[1],
-          confidence: keywordPattern[1].confidence * 0.8 // Slightly lower confidence for keyword matches
+          confidence: keywordPattern[1].confidence * 0.8, // Slightly lower confidence for keyword matches
         });
       }
     }
-
     return patterns.slice(0, 5); // Return top 5 matches
   }
-
   /**
    * Add a new pattern to the database
    */
   addPattern(key: string, pattern: SignalPattern): void {
     this.patterns.set(key, pattern);
   }
-
   /**
    * Get all patterns
    */

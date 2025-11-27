@@ -7,8 +7,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { useTheme } from '../../config/theme-provider.js';
-import type { FieldSecretProps } from './types.js';
+
+import { useTheme } from '../../config/theme-provider';
+
+import type { FieldSecretProps } from './types';
 
 const FieldSecret: React.FC<FieldSecretProps> = ({
   label,
@@ -21,7 +23,7 @@ const FieldSecret: React.FC<FieldSecretProps> = ({
   required = false,
   disabled = false,
   focused = false,
-  reveal = false
+  reveal = false,
   // onRevealChange // TODO: Implement reveal change handler
 }) => {
   const theme = useTheme();
@@ -45,41 +47,44 @@ const FieldSecret: React.FC<FieldSecretProps> = ({
   }, [reveal]);
 
   // Handle input
-  useInput((input, key) => {
-    if (!isFocused || disabled) {
-      return;
-    }
+  useInput(
+    (input, key) => {
+      if (!isFocused || disabled) {
+        return;
+      }
 
-    if (key.escape) {
-      setIsFocused(false);
-      return;
-    }
+      if (key.escape) {
+        setIsFocused(false);
+        return;
+      }
 
-    if (key.return) {
-      setIsFocused(false);
-      return;
-    }
+      if (key.return) {
+        setIsFocused(false);
+        return;
+      }
 
-    if (key.backspace || key.delete) {
-      const newValue = internalValue.slice(0, -1);
-      setInternalValue(newValue);
-      onChange(newValue);
-      return;
-    }
+      if (key.backspace || key.delete) {
+        const newValue = internalValue.slice(0, -1);
+        setInternalValue(newValue);
+        onChange(newValue);
+        return;
+      }
 
-    // Ctrl+V to paste (common in terminals)
-    if (key.ctrl && input === 'v') {
-      // In a real implementation, you'd access clipboard here
-      // For now, just indicate paste ability
-      return;
-    }
+      // Ctrl+V to paste (common in terminals)
+      if (key.ctrl && input === 'v') {
+        // In a real implementation, you'd access clipboard here
+        // For now, just indicate paste ability
+        return;
+      }
 
-    if (input) {
-      const newValue = internalValue + input;
-      setInternalValue(newValue);
-      onChange(newValue);
-    }
-  }, { isActive: isFocused });
+      if (input) {
+        const newValue = internalValue + input;
+        setInternalValue(newValue);
+        onChange(newValue);
+      }
+    },
+    { isActive: isFocused },
+  );
 
   // const handleFocus = useCallback(() => {
   //   if (!disabled) {
@@ -98,7 +103,9 @@ const FieldSecret: React.FC<FieldSecretProps> = ({
     ? internalValue
     : internalValue
       ? '*'.repeat(internalValue.length)
-      : (isFocused ? '' : placeholder);
+      : isFocused
+        ? ''
+        : placeholder;
 
   const isEmpty = !internalValue && !isFocused;
   const hasError = !!error;
@@ -117,16 +124,11 @@ const FieldSecret: React.FC<FieldSecretProps> = ({
 
       {/* Input field */}
       <Box flexDirection="row" alignItems="center">
-        <Box
-          flexDirection="row"
-          paddingX={1}
-          paddingY={0}
-          flexGrow={1}
-        >
+        <Box flexDirection="row" paddingX={1} paddingY={0} flexGrow={1}>
           <Text
             color={
               hasError
-                ? (theme.colors.status as any)?.error ?? theme.colors.status.error
+                ? ((theme.colors.status as any)?.error ?? theme.colors.status.error)
                 : isEmpty
                   ? theme.colors.neutrals.muted
                   : disabled
@@ -136,7 +138,11 @@ const FieldSecret: React.FC<FieldSecretProps> = ({
             dimColor={isEmpty || disabled}
           >
             {displayValue}
-            {isFocused && <Text color={(theme.colors.accent as any)?.orange ?? theme.colors.accent.orange}>█</Text>}
+            {isFocused && (
+              <Text color={(theme.colors.accent as any)?.orange ?? theme.colors.accent.orange}>
+                █
+              </Text>
+            )}
           </Text>
         </Box>
 
@@ -144,7 +150,9 @@ const FieldSecret: React.FC<FieldSecretProps> = ({
         {internalValue && (
           <Box marginLeft={1}>
             <Text
-              color={isRevealed ? (theme.colors.accent as any)?.orange : theme.colors.neutrals.muted}
+              color={
+                isRevealed ? (theme.colors.accent as any)?.orange : theme.colors.neutrals.muted
+              }
             >
               {isRevealed ? '👁️' : '🔒'}
             </Text>
@@ -183,7 +191,8 @@ const FieldSecret: React.FC<FieldSecretProps> = ({
       {isFocused && (
         <Box marginTop={0}>
           <Text color={theme.colors.neutrals.muted}>
-            [Type] to enter • [Enter] done • [Esc] cancel • [Click eye] to {isRevealed ? 'hide' : 'show'}
+            [Type] to enter • [Enter] done • [Esc] cancel • [Click eye] to{' '}
+            {isRevealed ? 'hide' : 'show'}
           </Text>
         </Box>
       )}

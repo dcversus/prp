@@ -4,7 +4,6 @@
  * Common type definitions for tools that can be used across
  * orchestrator, agents, and other components.
  */
-
 export interface ToolParameter {
   type: 'string' | 'number' | 'boolean' | 'object' | 'array';
   description: string;
@@ -14,18 +13,16 @@ export interface ToolParameter {
   properties?: Record<string, ToolParameter>;
   items?: ToolParameter;
 }
-
-export interface ParameterDefinition {
-  [key: string]: ToolParameter;
-}
-
+export type ParameterDefinition = Record<string, ToolParameter>;
 export interface Tool {
   id: string;
   name: string;
   description: string;
   category: string;
   enabled: boolean;
-  parameters: ParameterDefinition | { type: string; properties?: Record<string, ToolParameter>; required?: string[] };
+  parameters:
+    | ParameterDefinition
+    | { type: string; properties?: Record<string, ToolParameter>; required?: string[] };
   execute: (params: Record<string, unknown>) => Promise<ToolResult>;
   timeout?: number;
   retries?: number;
@@ -34,7 +31,6 @@ export interface Tool {
     period: number;
   };
 }
-
 export interface ToolResult {
   success: boolean;
   data?: unknown;
@@ -46,7 +42,6 @@ export interface ToolResult {
     cost?: number;
   };
 }
-
 export interface ExecutionStats {
   calls: number;
   successes: number;
@@ -56,7 +51,6 @@ export interface ExecutionStats {
   totalTokensUsed: number;
   totalCost: number;
 }
-
 export interface RateLimit {
   calls: number;
   period: number; // in milliseconds

@@ -2,15 +2,21 @@
  * ♫ Agent Lifecycle Manager Tests
  */
 
-import { AgentLifecycleManager, AgentConfig } from '../agent-lifecycle-manager.js';
-import { TokenMetricsStream } from '../../shared/monitoring/TokenMetricsStream.js';
-import {
+import { AgentLifecycleManager, type AgentConfig } from '../agent-lifecycle-manager';
+import { TokenMetricsStream } from '../../shared/monitoring';
+
+import type {
   BaseAgent,
   AgentCapabilities,
   AgentLimits,
   AgentStatus,
-  AgentMetrics
-} from '../base-agent.js';
+  AgentMetrics,
+} from '../base-agent';
+
+// Interface for testing purposes
+interface TestableAgentLifecycleManager {
+  loadAgentClass(): Promise<new () => MockAgent>;
+}
 
 // Mock agent implementation for testing
 class MockAgent implements BaseAgent {
@@ -21,10 +27,11 @@ class MockAgent implements BaseAgent {
   public enabled: boolean;
   public capabilities: AgentCapabilities;
   public limits: AgentLimits;
-  private shouldFail: boolean = false;
+  private readonly shouldFail: boolean = false;
 
+  // eslint-disable-next-line @typescript-eslint/prefer-readonly
   private status: AgentStatus;
-  private metrics: AgentMetrics;
+  private readonly metrics: AgentMetrics;
 
   constructor(config: { id: string; type: string; shouldFail?: boolean }) {
     this.id = config.id;
@@ -44,7 +51,7 @@ class MockAgent implements BaseAgent {
       supportedFileTypes: ['.ts', '.js'],
       canAccessInternet: true,
       canAccessFileSystem: true,
-      canExecuteCommands: false
+      canExecuteCommands: false,
     };
     this.limits = {
       maxTokensPerRequest: 4000,
@@ -54,13 +61,13 @@ class MockAgent implements BaseAgent {
       maxExecutionTime: 30000,
       maxMemoryUsage: 512,
       maxConcurrentTasks: 1,
-      cooldownPeriod: 1000
+      cooldownPeriod: 1000,
     };
     this.status = {
       status: 'idle',
       lastActivity: new Date(),
       errorCount: 0,
-      uptime: 0
+      uptime: 0,
     };
     this.metrics = {
       tasksCompleted: 0,
@@ -68,19 +75,23 @@ class MockAgent implements BaseAgent {
       errorRate: 0,
       tokensUsed: 0,
       costIncurred: 0,
-      lastReset: new Date()
+      lastReset: new Date(),
     };
   }
 
-  async initialize(): Promise<void> {
-    if (this.shouldFail) {
-      throw new Error('Mock agent initialization failed');
-    }
-    this.status.status = 'idle';
-    this.status.lastActivity = new Date();
+  initialize(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (this.shouldFail) {
+        reject(new Error('Mock agent initialization failed'));
+        return;
+      }
+      this.status.status = 'idle';
+      this.status.lastActivity = new Date();
+      resolve();
+    });
   }
 
-  async process(input: unknown): Promise<unknown> {
+  async process(input?: unknown): Promise<unknown> {
     this.status.status = 'busy';
     this.status.currentTask = 'Mock processing';
 
@@ -100,7 +111,7 @@ class MockAgent implements BaseAgent {
       success: true,
       input,
       output: `Processed: ${JSON.stringify(input)}`,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 
@@ -146,13 +157,13 @@ describe('AgentLifecycleManager', () => {
           maxExecutionTime: 30000,
           requiresNetwork: true,
           requiresFileSystem: true,
-          parallelizable: false
+          parallelizable: false,
         },
         healthCheck: {
           enabled: true,
           intervalMs: 30000,
           timeoutMs: 10000,
-          maxFailures: 3
+          maxFailures: 3,
         },
         tokenLimits: {
           dailyLimit: 100000,
@@ -160,17 +171,19 @@ describe('AgentLifecycleManager', () => {
           costLimit: 10.0,
           alertThresholds: {
             warning: 70,
-            critical: 90
-          }
-        }
+            critical: 90,
+          },
+        },
       };
 
       expect(() => manager.registerAgent(config)).not.toThrow();
 
       const status = manager.getAgentStatus('test-agent-1');
       expect(status).toBeTruthy();
-      expect(status!.config.id).toBe('test-agent-1');
-      expect(status!.status.state).toBe('stopped');
+      if (status) {
+        expect(status.config.id).toBe('test-agent-1');
+        expect(status.status.state).toBe('stopped');
+      }
     });
 
     it('should throw error when registering duplicate agent', () => {
@@ -186,13 +199,13 @@ describe('AgentLifecycleManager', () => {
           maxExecutionTime: 30000,
           requiresNetwork: true,
           requiresFileSystem: true,
-          parallelizable: false
+          parallelizable: false,
         },
         healthCheck: {
           enabled: true,
           intervalMs: 30000,
           timeoutMs: 10000,
-          maxFailures: 3
+          maxFailures: 3,
         },
         tokenLimits: {
           dailyLimit: 100000,
@@ -200,15 +213,15 @@ describe('AgentLifecycleManager', () => {
           costLimit: 10.0,
           alertThresholds: {
             warning: 70,
-            critical: 90
-          }
-        }
+            critical: 90,
+          },
+        },
       };
 
       manager.registerAgent(config);
 
       expect(() => manager.registerAgent(config)).toThrow(
-        'Agent duplicate-agent is already registered'
+        'Agent duplicate-agent is already registered',
       );
     });
   });
@@ -229,13 +242,13 @@ describe('AgentLifecycleManager', () => {
           maxExecutionTime: 30000,
           requiresNetwork: true,
           requiresFileSystem: true,
-          parallelizable: false
+          parallelizable: false,
         },
         healthCheck: {
           enabled: true,
           intervalMs: 30000,
           timeoutMs: 10000,
-          maxFailures: 3
+          maxFailures: 3,
         },
         tokenLimits: {
           dailyLimit: 100000,
@@ -243,43 +256,43 @@ describe('AgentLifecycleManager', () => {
           costLimit: 10.0,
           alertThresholds: {
             warning: 70,
-            critical: 90
-          }
-        }
+            critical: 90,
+          },
+        },
       };
 
       manager.registerAgent(agentConfig);
 
       // Mock the dynamic import
       jest.doMock('../robo-developer.js', () => ({
-        default: MockAgent
+        default: MockAgent,
       }));
     });
 
     it('should spawn agent successfully', async () => {
       // Mock the loadAgentClass method
-      (manager as any).loadAgentClass = jest.fn().mockResolvedValue(MockAgent);
+      ;(manager as unknown as TestableAgentLifecycleManager).loadAgentClass = jest.fn().mockResolvedValue(MockAgent);
 
       await expect(manager.spawnAgent('spawn-test-agent')).resolves.not.toThrow();
 
       const status = manager.getAgentStatus('spawn-test-agent');
-      expect(status!.status.state).toBe('running');
-      expect(status!.startTime).toBeInstanceOf(Date);
+      expect(status?.status.state).toBe('running');
+      expect(status?.startTime).toBeInstanceOf(Date);
     }, 10000);
 
     it('should fail to spawn non-existent agent', async () => {
       await expect(manager.spawnAgent('non-existent-agent')).rejects.toThrow(
-        'Agent non-existent-agent is not registered'
+        'Agent non-existent-agent is not registered',
       );
     });
 
     it('should fail to spawn already running agent', async () => {
-      (manager as any).loadAgentClass = jest.fn().mockResolvedValue(MockAgent);
+      ;(manager as unknown as TestableAgentLifecycleManager).loadAgentClass = jest.fn().mockResolvedValue(MockAgent);
 
       await manager.spawnAgent('spawn-test-agent');
 
       await expect(manager.spawnAgent('spawn-test-agent')).rejects.toThrow(
-        'Agent spawn-test-agent is already running'
+        'Agent spawn-test-agent is already running',
       );
     }, 10000);
   });
@@ -298,13 +311,13 @@ describe('AgentLifecycleManager', () => {
           maxExecutionTime: 30000,
           requiresNetwork: true,
           requiresFileSystem: true,
-          parallelizable: false
+          parallelizable: false,
         },
         healthCheck: {
           enabled: false, // Disable health checks for testing
           intervalMs: 30000,
           timeoutMs: 10000,
-          maxFailures: 3
+          maxFailures: 3,
         },
         tokenLimits: {
           dailyLimit: 100000,
@@ -312,13 +325,13 @@ describe('AgentLifecycleManager', () => {
           costLimit: 10.0,
           alertThresholds: {
             warning: 70,
-            critical: 90
-          }
-        }
+            critical: 90,
+          },
+        },
       };
 
       manager.registerAgent(config);
-      (manager as any).loadAgentClass = jest.fn().mockResolvedValue(MockAgent);
+      ;(manager as unknown as TestableAgentLifecycleManager).loadAgentClass = jest.fn().mockResolvedValue(MockAgent);
     });
 
     it('should execute task successfully', async () => {
@@ -327,7 +340,7 @@ describe('AgentLifecycleManager', () => {
       const task = { type: 'test', payload: { data: 'test data' } };
       const result = await manager.executeTask('task-test-agent', task, {
         timeout: 5000,
-        trackTokens: true
+        trackTokens: true,
       });
 
       expect(result.success).toBe(true);
@@ -340,7 +353,7 @@ describe('AgentLifecycleManager', () => {
       const task = { type: 'test', payload: { data: 'test data' } };
 
       await expect(manager.executeTask('task-test-agent', task)).rejects.toThrow(
-        'Agent task-test-agent is not running'
+        'Agent task-test-agent is not running',
       );
     });
 
@@ -350,7 +363,7 @@ describe('AgentLifecycleManager', () => {
       const task = { type: 'test', payload: { data: 'test data' } };
 
       await expect(manager.executeTask('task-test-agent', task, { timeout: 1 })).rejects.toThrow(
-        'Task execution timeout'
+        'Task execution timeout',
       );
     }, 10000);
   });
@@ -370,13 +383,13 @@ describe('AgentLifecycleManager', () => {
             maxExecutionTime: 30000,
             requiresNetwork: true,
             requiresFileSystem: true,
-            parallelizable: false
+            parallelizable: false,
           },
           healthCheck: {
             enabled: false,
             intervalMs: 30000,
             timeoutMs: 10000,
-            maxFailures: 3
+            maxFailures: 3,
           },
           tokenLimits: {
             dailyLimit: 100000,
@@ -384,9 +397,9 @@ describe('AgentLifecycleManager', () => {
             costLimit: 10.0,
             alertThresholds: {
               warning: 70,
-              critical: 90
-            }
-          }
+              critical: 90,
+            },
+          },
         },
         {
           id: 'status-test-2',
@@ -400,13 +413,13 @@ describe('AgentLifecycleManager', () => {
             maxExecutionTime: 20000,
             requiresNetwork: false,
             requiresFileSystem: true,
-            parallelizable: true
+            parallelizable: true,
           },
           healthCheck: {
             enabled: false,
             intervalMs: 30000,
             timeoutMs: 10000,
-            maxFailures: 3
+            maxFailures: 3,
           },
           tokenLimits: {
             dailyLimit: 50000,
@@ -414,14 +427,14 @@ describe('AgentLifecycleManager', () => {
             costLimit: 5.0,
             alertThresholds: {
               warning: 70,
-              critical: 90
-            }
-          }
-        }
+              critical: 90,
+            },
+          },
+        },
       ];
 
       configs.forEach((config) => manager.registerAgent(config));
-      (manager as any).loadAgentClass = jest.fn().mockResolvedValue(MockAgent);
+      ;(manager as unknown as TestableAgentLifecycleManager).loadAgentClass = jest.fn().mockResolvedValue(MockAgent);
     });
 
     it('should get all agents status', () => {
@@ -434,23 +447,31 @@ describe('AgentLifecycleManager', () => {
     it('should get agents by type', () => {
       const developerAgents = manager.getAgentsByType('robo-developer');
       expect(developerAgents).toHaveLength(1);
-      expect(developerAgents[0]!.config.id).toBe('status-test-1');
+      expect(developerAgents[0]?.config.id).toBe('status-test-1');
 
       const qaAgents = manager.getAgentsByType('robo-quality-control');
       expect(qaAgents).toHaveLength(1);
-      expect(qaAgents[0]!.config.id).toBe('status-test-2');
+      expect(qaAgents[0]?.config.id).toBe('status-test-2');
     });
 
-    it('should get best agent based on priority', () => {
+    it('should get best agent based on priority', async () => {
+      // Spawn agents first so they are in running state
+      await manager.spawnAgent('status-test-1');
+      await manager.spawnAgent('status-test-2');
+
       const bestAgent = manager.getBestAgent();
       expect(bestAgent).toBeTruthy();
-      expect(bestAgent!.config.id).toBe('status-test-1'); // Higher priority
+      expect(bestAgent?.config.id).toBe('status-test-1'); // Higher priority
     });
 
-    it('should get best agent for specific type', () => {
+    it('should get best agent for specific type', async () => {
+      // Spawn agents first so they are in running state
+      await manager.spawnAgent('status-test-1');
+      await manager.spawnAgent('status-test-2');
+
       const bestDeveloper = manager.getBestAgent('robo-developer');
       expect(bestDeveloper).toBeTruthy();
-      expect(bestDeveloper!.config.type).toBe('robo-developer');
+      expect(bestDeveloper?.config.type).toBe('robo-developer');
     });
   });
 
@@ -470,13 +491,13 @@ describe('AgentLifecycleManager', () => {
           maxExecutionTime: 30000,
           requiresNetwork: true,
           requiresFileSystem: true,
-          parallelizable: false
+          parallelizable: false,
         },
         healthCheck: {
           enabled: false,
           intervalMs: 30000,
           timeoutMs: 10000,
-          maxFailures: 3
+          maxFailures: 3,
         },
         tokenLimits: {
           dailyLimit: 100000,
@@ -484,26 +505,26 @@ describe('AgentLifecycleManager', () => {
           costLimit: 10.0,
           alertThresholds: {
             warning: 70,
-            critical: 90
-          }
-        }
+            critical: 90,
+          },
+        },
       };
 
       manager.registerAgent(agentConfig);
-      (manager as any).loadAgentClass = jest.fn().mockResolvedValue(MockAgent);
+      ;(manager as unknown as TestableAgentLifecycleManager).loadAgentClass = jest.fn().mockResolvedValue(MockAgent);
     });
 
     it('should stop agent gracefully', async () => {
       await manager.spawnAgent('lifecycle-test-agent');
 
       const statusBeforeStop = manager.getAgentStatus('lifecycle-test-agent');
-      expect(statusBeforeStop!.status.state).toBe('running');
+      expect(statusBeforeStop?.status.state).toBe('running');
 
       await manager.stopAgent('lifecycle-test-agent', true);
 
       const statusAfterStop = manager.getAgentStatus('lifecycle-test-agent');
-      expect(statusAfterStop!.status.state).toBe('stopped');
-      expect(statusAfterStop!.startTime).toBeUndefined();
+      expect(statusAfterStop?.status.state).toBe('stopped');
+      expect(statusAfterStop?.startTime).toBeUndefined();
     }, 10000);
 
     it('should remove agent completely', async () => {
@@ -533,13 +554,13 @@ describe('AgentLifecycleManager', () => {
           maxExecutionTime: 30000,
           requiresNetwork: true,
           requiresFileSystem: true,
-          parallelizable: false
+          parallelizable: false,
         },
         healthCheck: {
           enabled: false,
           intervalMs: 30000,
           timeoutMs: 10000,
-          maxFailures: 3
+          maxFailures: 3,
         },
         tokenLimits: {
           dailyLimit: 100000,
@@ -547,13 +568,13 @@ describe('AgentLifecycleManager', () => {
           costLimit: 10.0,
           alertThresholds: {
             warning: 70,
-            critical: 90
-          }
-        }
+            critical: 90,
+          },
+        },
       };
 
       manager.registerAgent(config);
-      (manager as any).loadAgentClass = jest.fn().mockResolvedValue(MockAgent);
+      ;(manager as unknown as TestableAgentLifecycleManager).loadAgentClass = jest.fn().mockResolvedValue(MockAgent);
     });
 
     it('should emit events during agent lifecycle', async () => {

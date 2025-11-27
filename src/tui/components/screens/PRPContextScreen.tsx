@@ -6,18 +6,22 @@
  * the exact layout from the PRP specification
  */
 
-import React, { useState } from 'react';
+import React, { useState, JSX } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { SignalBar } from '../SignalBar.js';
-import { RoboRolePill } from '../RoboRolePill.js';
-import { MusicIcon } from '../MusicIcon.js';
-import { getRoleColors } from '../../config/TUIConfig.js';
+
+import { SignalBar } from '../SignalBar';
+import { RoboRolePill } from '../RoboRolePill';
+import { MusicIcon } from '../MusicIcon';
+import { getRoleColors } from '../../config/TUIConfig';
+
+import type { TUIConfig, PRPItem } from '../../../shared/types/TUIConfig';
+import type { TUIState, TerminalLayout } from '../../../shared/types/TUIState';
 
 interface PRPContextScreenProps {
   state: TUIState;
   config: TUIConfig;
   terminalLayout: TerminalLayout;
-}
+};
 
 // Mock context data generation
 const generateMockContext = (prpName: string): string[] => {
@@ -31,7 +35,7 @@ const generateMockContext = (prpName: string): string[] => {
       '+ Added: AQA pass for cross-links',
       '- Removed: legacy robo naming',
       '',
-      '… implementation details …'
+      '… implementation details …',
     ],
     'prp-landing': [
       `${prpName}`,
@@ -43,9 +47,9 @@ const generateMockContext = (prpName: string): string[] => {
       '+ Added: feature showcase',
       '- Removed: placeholder content',
       '',
-      '… design implementation …'
+      '… design implementation …',
     ],
-    'default': [
+    default: [
       `${prpName}`,
       '- scope: product requirement implementation',
       '- goals: deliver MVP functionality',
@@ -55,8 +59,8 @@ const generateMockContext = (prpName: string): string[] => {
       '+ Updated: documentation',
       '- Fixed: critical bugs',
       '',
-      '… progress continues …'
-    ]
+      '… progress continues …',
+    ],
   };
 
   return contexts[prpName] || contexts['default'];
@@ -71,7 +75,7 @@ const generateMockInstances = (prp: PRPItem) => {
       lastAction: 'parsing toc…',
       tokens: '9.2k',
       active: '00:00:51',
-      queries: 1
+      queries: 1,
     },
     {
       role: 'DEV',
@@ -79,7 +83,7 @@ const generateMockInstances = (prp: PRPItem) => {
       lastAction: 'building sections…',
       tokens: '3.1k',
       active: '00:00:14',
-      queries: 0
+      queries: 0,
     },
     {
       role: 'SYS',
@@ -87,18 +91,17 @@ const generateMockInstances = (prp: PRPItem) => {
       lastAction: 'role map…',
       tokens: '2.7k',
       active: '00:00:09',
-      queries: 0
-    }
+      queries: 0,
+    },
   ];
 
-  return baseInstances.map(instance => ({
+  return baseInstances.map((instance) => ({
     ...instance,
-    roleColor: instance.role === 'AQA' ? 'purple' :
-      instance.role === 'DEV' ? 'blue' : 'orange'
+    roleColor: instance.role === 'AQA' ? 'purple' : instance.role === 'DEV' ? 'blue' : 'orange',
   }));
 };
 
-export function PRPContextScreen({ state, config, terminalLayout }: PRPContextScreenProps) {
+export const PRPContextScreen = ({ state, config, terminalLayout }: PRPContextScreenProps) => {
   const [selectedPRP, setSelectedPRP] = useState<string>('');
   const [expandedContext, setExpandedContext] = useState(false);
 
@@ -126,14 +129,14 @@ export function PRPContextScreen({ state, config, terminalLayout }: PRPContextSc
     switch (input) {
       case 'left':
         if (prpArray.length > 0) {
-          const currentIndex = selectedPRP ? prpArray.findIndex(p => p.name === selectedPRP) : 0;
+          const currentIndex = selectedPRP ? prpArray.findIndex((p) => p.name === selectedPRP) : 0;
           const prevIndex = currentIndex > 0 ? currentIndex - 1 : prpArray.length - 1;
           setSelectedPRP(prpArray[prevIndex].name);
         }
         break;
       case 'right':
         if (prpArray.length > 0) {
-          const currentIndex = selectedPRP ? prpArray.findIndex(p => p.name === selectedPRP) : 0;
+          const currentIndex = selectedPRP ? prpArray.findIndex((p) => p.name === selectedPRP) : 0;
           const nextIndex = currentIndex < prpArray.length - 1 ? currentIndex + 1 : 0;
           setSelectedPRP(prpArray[nextIndex].name);
         }
@@ -161,9 +164,7 @@ export function PRPContextScreen({ state, config, terminalLayout }: PRPContextSc
         <Text color={config.colors.accent_orange} bold>
           ♫ @dcversus/prp - Context & Split View
         </Text>
-        <Text color={config.colors.muted}>
-          ⧗ {new Date().toLocaleString()}
-        </Text>
+        <Text color={config.colors.muted}>⧗ {new Date().toLocaleString()}</Text>
       </Box>
 
       <Text color={config.colors.muted}>
@@ -174,7 +175,7 @@ export function PRPContextScreen({ state, config, terminalLayout }: PRPContextSc
       <Box flexDirection="row" marginBottom={1}>
         {/* Left Column - PRP & Signals History */}
         <Box flexDirection="column" width={leftColumnWidth} marginRight={2}>
-          <Text color={config.colors.base_fg} bold marginBottom={1}>
+          <Text color={config.colors.base_fg as string} bold marginBottom={1}>
             A) PRP + SIGNALS HISTORY
           </Text>
 
@@ -182,14 +183,10 @@ export function PRPContextScreen({ state, config, terminalLayout }: PRPContextSc
             <Box flexDirection="column">
               {/* PRP header */}
               <Box marginBottom={1}>
-                <Text color={config.colors.base_fg}>
-                  ▸ {selectedPRPData.name}
-                </Text>
+                <Text color={config.colors.base_fg}>▸ {selectedPRPData.name}</Text>
                 {selectedPRPData.role && (
                   <Box>
-                    <Text color={config.colors.muted}>
-                      {' '}· {selectedPRPData.status}
-                    </Text>
+                    <Text color={config.colors.muted}> · {selectedPRPData.status}</Text>
                     <RoboRolePill role={selectedPRPData.role} state="active" size="small" />
                   </Box>
                 )}
@@ -203,23 +200,26 @@ export function PRPContextScreen({ state, config, terminalLayout }: PRPContextSc
               {/* History items */}
               <Box flexDirection="column">
                 {history
-                  .filter(item => item.source === 'system' || item.source === 'scanner' || item.source === 'inspector')
+                  .filter(
+                    (item: any) =>
+                      item.source === 'system' ||
+                      item.source === 'scanner' ||
+                      item.source === 'inspector',
+                  )
                   .slice(-3)
-                  .map((item, index) => (
+                  .map((item: any, index: number) => (
                     <Box key={index} flexDirection="column" marginBottom={1}>
                       <Box>
+                        <Text color={config.colors.muted}>{item.timestamp}</Text>
                         <Text color={config.colors.muted}>
-                          {item.timestamp}
-                        </Text>
-                        <Text color={config.colors.muted}>
-                          {' · '}{item.source}
+                          {' · '}
+                          {item.source}
                         </Text>
                       </Box>
                       <Text color={config.colors.muted} wrap="truncate">
                         {typeof item.data === 'object' && item.data !== null
-                          ? JSON.stringify(item.data).substring(0, 50) + '...'
-                          : String(item.data).substring(0, 50) + '...'
-                        }
+                          ? `${JSON.stringify(item.data).substring(0, 50)  }...`
+                          : `${String(item.data).substring(0, 50)  }...`}
                       </Text>
                     </Box>
                   ))}
@@ -236,9 +236,7 @@ export function PRPContextScreen({ state, config, terminalLayout }: PRPContextSc
               ))}
             </Box>
           ) : (
-            <Text color={config.colors.muted}>
-              ♪ No PRP selected
-            </Text>
+            <Text color={config.colors.muted}>♪ No PRP selected</Text>
           )}
         </Box>
 
@@ -265,20 +263,26 @@ export function PRPContextScreen({ state, config, terminalLayout }: PRPContextSc
               ) : (
                 // Compact context view
                 <>
-                  <Text color={config.colors.base_fg}>
-                    {selectedPRP}
+                  <Text color={config.colors.base_fg}>{selectedPRP}</Text>
+                  <Text color={config.colors.muted}>
+                    - scope:{' '}
+                    {selectedPRP.includes('bootstrap')
+                      ? 'workspace setup'
+                      : selectedPRP.includes('agents')
+                        ? 'agent consolidation'
+                        : selectedPRP.includes('tui')
+                          ? 'terminal interface'
+                          : 'product implementation'}
                   </Text>
                   <Text color={config.colors.muted}>
-                    - scope: {selectedPRP.includes('bootstrap') ? 'workspace setup' :
-                      selectedPRP.includes('agents') ? 'agent consolidation' :
-                        selectedPRP.includes('tui') ? 'terminal interface' :
-                          'product implementation'}
-                  </Text>
-                  <Text color={config.colors.muted}>
-                    - goals: {selectedPRP.includes('bootstrap') ? 'initialize project' :
-                      selectedPRP.includes('agents') ? 'unify taxonomy' :
-                        selectedPRP.includes('tui') ? 'build TUI' :
-                          'deliver MVP'}
+                    - goals:{' '}
+                    {selectedPRP.includes('bootstrap')
+                      ? 'initialize project'
+                      : selectedPRP.includes('agents')
+                        ? 'unify taxonomy'
+                        : selectedPRP.includes('tui')
+                          ? 'build TUI'
+                          : 'deliver MVP'}
                   </Text>
                   <Text color={config.colors.muted} wrap="truncate">
                     {mockContext.slice(3, 6).join(' ')}
@@ -287,15 +291,13 @@ export function PRPContextScreen({ state, config, terminalLayout }: PRPContextSc
               )}
             </Box>
           ) : (
-            <Text color={config.colors.muted}>
-              Select a PRP to view context
-            </Text>
+            <Text color={config.colors.muted}>Select a PRP to view context</Text>
           )}
         </Box>
 
         {/* Right Column - Split Claude Code Instances */}
         <Box flexDirection="column" width={rightColumnWidth}>
-          <Text color={config.colors.base_fg} bold marginBottom={1}>
+          <Text color={config.colors.base_fg as string} bold marginBottom={1}>
             C) SPLIT CLAUDE CODE (instances)
           </Text>
 
@@ -305,12 +307,8 @@ export function PRPContextScreen({ state, config, terminalLayout }: PRPContextSc
                 <Box key={index} flexDirection="column" marginBottom={1}>
                   <Box>
                     <MusicIcon status="RUNNING" animate={true} />
-                    <Text color={instance.roleColor}>
-                      {' '}{instance.role}
-                    </Text>
-                    <Text color={config.colors.muted}>
-                      {' '}last ▸ {instance.lastAction}
-                    </Text>
+                    <Text color={instance.roleColor}> {instance.role}</Text>
+                    <Text color={config.colors.muted}> last ▸ {instance.lastAction}</Text>
                   </Box>
                   <Text color={config.colors.muted}>
                     svc ▸ {instance.tokens} tok · {instance.active} · q {instance.queries}
@@ -319,9 +317,7 @@ export function PRPContextScreen({ state, config, terminalLayout }: PRPContextSc
               ))}
             </Box>
           ) : (
-            <Text color={config.colors.muted}>
-              ♪ No Claude Code instances
-            </Text>
+            <Text color={config.colors.muted}>♪ No Claude Code instances</Text>
           )}
         </Box>
       </Box>
@@ -333,21 +329,19 @@ export function PRPContextScreen({ state, config, terminalLayout }: PRPContextSc
       {/* Footer */}
       <Box justifyContent="space-between">
         <Box>
-          <Text color={config.colors.muted}>
-            Tab ↑ ↓ Enter
-          </Text>
-          <Text color={config.colors.muted}>
-            {'    '}
-          </Text>
+          <Text color={config.colors.muted}>Tab ↑ ↓ Enter</Text>
+          <Text color={config.colors.muted}>{'    '}</Text>
         </Box>
 
         <Text color={config.colors.muted}>
           {selectedPRP ? (
             <>
-              [signal: PR] "processing context"  agents {agents.size} · prp {prps.size} · ▲0
+              [signal: PR] "processing context" agents {agents.size} · prp {prps.size} · ▲0
             </>
           ) : (
-            <>idle · agents {agents.size} · prp {prps.size} · ▲0</>
+            <>
+              idle · agents {agents.size} · prp {prps.size} · ▲0
+            </>
           )}
         </Text>
       </Box>
@@ -355,9 +349,10 @@ export function PRPContextScreen({ state, config, terminalLayout }: PRPContextSc
       {/* Navigation hints */}
       <Box justifyContent="center" marginTop={1}>
         <Text color={config.colors.muted}>
-          Navigation: [Tab] screens | [←→] select PRP | [↑↓] history | [Enter] details | [D] toggle full context
+          Navigation: [Tab] screens | [←→] select PRP | [↑↓] history | [Enter] details | [D] toggle
+          full context
         </Text>
       </Box>
     </Box>
   );
-}
+};

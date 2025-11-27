@@ -552,13 +552,13 @@ jobs:
     name: Weekly Comprehensive Report
     runs-on: ubuntu-latest
     needs: [health-checks, performance-monitoring, security-monitoring, dependency-monitoring]
-    if: github.event.schedule == '0 10 * * 0'  # Only run on weekly schedule
+    if: github.event.schedule == '0 10 * * 0' # Only run on weekly schedule
 
     steps:
       - name: Download All Reports
         uses: actions/download-artifact@v4
         with:
-          pattern: "*-report-${{ github.run_number }}"
+          pattern: '*-report-${{ github.run_number }}'
           merge-multiple: true
           path: ./reports
 
@@ -625,7 +625,14 @@ jobs:
   monitoring-status:
     name: Monitoring Pipeline Status
     runs-on: ubuntu-latest
-    needs: [health-checks, performance-monitoring, security-monitoring, dependency-monitoring, weekly-report]
+    needs:
+      [
+        health-checks,
+        performance-monitoring,
+        security-monitoring,
+        dependency-monitoring,
+        weekly-report,
+      ]
     if: always()
 
     steps:

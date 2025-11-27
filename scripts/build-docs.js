@@ -11,13 +11,22 @@
  */
 
 // -- Need to update build-docs.js to process new documentation structure and implement Wiki.js integration [no] - robo-developer
+/**
  * - Multiple serving modes
  */
 
 import { watch } from 'chokidar';
 import { marked } from 'marked';
 import hljs from 'highlight.js';
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync, rmSync, statSync } from 'fs';
+import {
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  copyFileSync,
+  existsSync,
+  rmSync,
+  statSync,
+} from 'fs';
 import { glob } from 'glob';
 import browserSyncPkg from 'browser-sync';
 import { createServer } from 'http';
@@ -33,12 +42,8 @@ const CONFIG = {
   scriptsDir: __dirname,
   defaultPort: 3001,
   staticPort: 3002,
-  watchPatterns: [
-    '../docs/**/*.md',
-    '../scripts/build-docs-simple.js',
-    '../docs/index.html'
-  ],
-  reloadDelay: 500
+  watchPatterns: ['../docs/**/*.md', '../scripts/build-docs-simple.js', '../docs/index.html'],
+  reloadDelay: 500,
 };
 
 // Colors for terminal output
@@ -49,7 +54,7 @@ const COLORS = {
   yellow: '\x1b[33m',
   blue: '\x1b[34m',
   magenta: '\x1b[35m',
-  cyan: '\x1b[36m'
+  cyan: '\x1b[36m',
 };
 
 // Color helpers
@@ -61,13 +66,6 @@ function colorSuccess(message) {
   console.log(`${COLORS.green}✅ ${message}${COLORS.reset}`);
 }
 
-function colorWarning(message) {
-  console.log(`${COLORS.yellow}⚠️  ${message}${COLORS.reset}`);
-}
-
-function colorInfo(message) {
-  console.log(`${COLORS.blue}ℹ️  ${message}${COLORS.reset}`);
-}
 
 function colorCyan(message) {
   console.log(`${COLORS.cyan}${message}${COLORS.reset}`);
@@ -84,7 +82,7 @@ const MIME_TYPES = {
   '.gif': 'image/gif',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
-  '.pdf': 'application/pdf'
+  '.pdf': 'application/pdf',
 };
 
 /**
@@ -100,7 +98,7 @@ function parseArgs() {
     help: false,
     dev: false,
     prod: false,
-    production: false
+    production: false,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -208,10 +206,10 @@ function serveFile(res, filePath) {
     res.writeHead(200, {
       'Content-Type': mimeType,
       'Cache-Control': 'no-cache',
-      'Access-Control-Allow-Origin': '*'
+      'Access-Control-Allow-Origin': '*',
     });
     res.end(content);
-  } catch (error) {
+  } catch {
     serveError(res, 500, 'Internal Server Error');
   }
 }
@@ -266,7 +264,7 @@ function resolveFilePath(urlPath) {
 /**
  * Create static file server
  */
-function createStaticServer(port) {
+function createStaticServer(_port) {
   const server = createServer((req, res) => {
     const filePath = resolveFilePath(req.url);
 
@@ -368,8 +366,8 @@ async function startDevServer(port) {
     server: {
       baseDir: CONFIG.buildDir,
       serveStaticOptions: {
-        extensions: ['html']
-      }
+        extensions: ['html'],
+      },
     },
     port: port,
     open: true,
@@ -383,11 +381,11 @@ async function startDevServer(port) {
         color: 'white',
         fontSize: '14px',
         padding: '10px 20px',
-        borderRadius: '0 0 0 4px'
-      }
+        borderRadius: '0 0 0 4px',
+      },
     },
     callbacks: {
-      ready: function (err, bs) {
+      ready: function (_err, _bs) {
         console.log('\n' + '='.repeat(60));
         console.log(`${COLORS.cyan}🌐 Development Server with Live Reload${COLORS.reset}`);
         console.log('='.repeat(60));
@@ -397,19 +395,19 @@ async function startDevServer(port) {
         console.log('  • Edit files in /docs to trigger rebuild');
         console.log('  • Press Ctrl+C to stop the server');
         console.log('='.repeat(60));
-      }
-    }
+      },
+    },
   });
 
   // Setup file watchers
-  const watchers = CONFIG.watchPatterns.map(pattern => {
+  const watchers = CONFIG.watchPatterns.map((pattern) => {
     const watcher = watch(pattern, {
       persistent: true,
       ignoreInitial: true,
       awaitWriteFinish: {
         stabilityThreshold: 300,
-        pollInterval: 100
-      }
+        pollInterval: 100,
+      },
     });
 
     watcher.on('change', (path) => {
@@ -433,13 +431,13 @@ async function startDevServer(port) {
   // Graceful shutdown
   process.on('SIGINT', () => {
     console.log('\n🛑 Shutting down development server...');
-    watchers.forEach(watcher => watcher.close());
+    watchers.forEach((watcher) => watcher.close());
     bs.exit();
     process.exit(0);
   });
 
   console.log('👀 Watching patterns:');
-  CONFIG.watchPatterns.forEach(pattern => console.log(`  • ${pattern}`));
+  CONFIG.watchPatterns.forEach((pattern) => console.log(`  • ${pattern}`));
 }
 
 /**
@@ -453,14 +451,14 @@ async function buildWithWatch() {
   await buildDocs();
 
   // Setup file watchers
-  const watchers = CONFIG.watchPatterns.map(pattern => {
+  const watchers = CONFIG.watchPatterns.map((pattern) => {
     const watcher = watch(pattern, {
       persistent: true,
       ignoreInitial: true,
       awaitWriteFinish: {
         stabilityThreshold: 300,
-        pollInterval: 100
-      }
+        pollInterval: 100,
+      },
     });
 
     watcher.on('change', (path) => {
@@ -507,21 +505,21 @@ async function buildWithWatch() {
   // Graceful shutdown
   process.on('SIGINT', () => {
     console.log('\n🛑 Stopping file watchers...');
-    watchers.forEach(watcher => watcher.close());
+    watchers.forEach((watcher) => watcher.close());
     process.exit(0);
   });
 }
 
 // Configure marked for GitHub Flavored Markdown
 marked.setOptions({
-  highlight: function(code, lang) {
+  highlight: function (code, lang) {
     const language = hljs.getLanguage(lang) ? lang : 'plaintext';
     return hljs.highlight(code, { language }).value;
   },
   gfm: true,
   breaks: true,
   linkify: true,
-  typographer: true
+  typographer: true,
 });
 
 /**
@@ -538,16 +536,17 @@ function generateDocsNav(currentFilePath = '') {
     { name: 'CLI Commands', file: 'CLI_COMMANDS' },
     { name: 'DevOps Guide', file: 'DEVOPS_GUIDE' },
     { name: 'Troubleshooting', file: 'TROUBLESHOOTING' },
-    { name: 'FAQ', file: 'FAQ' }
+    { name: 'FAQ', file: 'FAQ' },
   ];
 
   let navHtml = `
     <div class="compact-nav">
       <div class="nav-items">`;
 
-  docsFiles.forEach(doc => {
+  docsFiles.forEach((doc) => {
     const href = `/docs/${doc.file.toLowerCase().replace(/_/g, '-')}.html`;
-    const isActive = currentFilePath && currentFilePath.includes(doc.file.toLowerCase().replace(/_/g, '-'));
+    const isActive =
+      currentFilePath && currentFilePath.includes(doc.file.toLowerCase().replace(/_/g, '-'));
     navHtml += `
               <a href="${href}" class="nav-item ${isActive ? 'active' : ''}">
                 <span class="nav-text"># ${doc.file}</span>
@@ -574,7 +573,7 @@ function extractFrontMatter(content) {
     const markdownContent = frontMatterMatch[2];
     const metadata = {};
 
-    frontMatter.split('\n').forEach(line => {
+    frontMatter.split('\n').forEach((line) => {
       const [key, ...values] = line.split(': ');
       if (key && values.length > 0) {
         metadata[key] = values.join(': ').trim();
@@ -590,7 +589,7 @@ function extractFrontMatter(content) {
 /**
  * Process a single markdown file to HTML with custom template
  */
-function processMarkdownWithTemplate(filePath, outputPath, template) {
+function processMarkdownWithTemplate(filePath, outputPath, _template) {
   const sourcePath = filePath;
 
   if (!existsSync(sourcePath)) {
@@ -616,12 +615,14 @@ function processMarkdownWithTemplate(filePath, outputPath, template) {
   const html = marked(markdownContent);
 
   // Extract title and description
-  const title = metadata.title ||
-                 markdownContent.match(/^#\s+(.+)$/m)?.[1] ||
-                 'Documentation';
+  const title = metadata.title || markdownContent.match(/^#\s+(.+)$/m)?.[1] || 'Documentation';
 
-  const description = metadata.description ||
-                     markdownContent.substring(0, 150).replace(/[#*\[*]/g, '').trim();
+  const description =
+    metadata.description ||
+    markdownContent
+      .substring(0, 150)
+      .replace(/[#*\[*]/g, '')
+      .trim();
 
   // Update template header to include Documentation link and GitHub with icon
   const updatedNav = `
@@ -661,7 +662,10 @@ function processMarkdownWithTemplate(filePath, outputPath, template) {
         </div>`;
 
   // Replace header navigation
-  let finalHtml = docsTemplate.replace(/<nav class="container">[\s\S]*?<\/nav>/, `<nav class="container">${updatedNav}</nav>`);
+  let finalHtml = docsTemplate.replace(
+    /<nav class="container">[\s\S]*?<\/nav>/,
+    `<nav class="container">${updatedNav}</nav>`
+  );
 
   // Insert docs navigation after </header> and before <main>
   finalHtml = finalHtml.replace(/<\/header>\s*<main>/, `</header>\n${docsNav}\n<main>`);
@@ -670,10 +674,16 @@ function processMarkdownWithTemplate(filePath, outputPath, template) {
   finalHtml = finalHtml.replace(/<main>[\s\S]*?<\/main>/, `<main>${docsMain}</main>`);
 
   // Update title
-  finalHtml = finalHtml.replace(/<title>.*?<\/title>/, `<title>${title} - PRP Documentation</title>`);
+  finalHtml = finalHtml.replace(
+    /<title>.*?<\/title>/,
+    `<title>${title} - PRP Documentation</title>`
+  );
 
   // Update meta description
-  finalHtml = finalHtml.replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${description}">`);
+  finalHtml = finalHtml.replace(
+    /<meta name="description" content="[^"]*">/,
+    `<meta name="description" content="${description}">`
+  );
 
   // Add docs-specific styles
   const docsStyles = `
@@ -934,7 +944,7 @@ function copyDirectory(src, dest) {
   // Copy all files recursively
   const files = glob.sync(`${sourceDir}/**/*`, { nodir: true });
 
-  files.forEach(file => {
+  files.forEach((file) => {
     const relativePath = file.replace(sourceDir, '');
     const destFile = join(destDir, relativePath);
 
@@ -950,7 +960,6 @@ function copyDirectory(src, dest) {
  */
 function convertReadmeToIndex() {
   const readmePath = join(__dirname, '../docs/README.md');
-  const outputPath = join(__dirname, '../build/docs/index.html');
 
   if (!existsSync(readmePath)) {
     console.warn('⚠️  docs/README.md not found, skipping index.html conversion');
@@ -999,7 +1008,7 @@ async function buildDocs() {
   if (existsSync(buildDir)) {
     // Remove all files except .gitkeep
     const files = glob.sync(`${buildDir}/**/*`, { nodir: true });
-    files.forEach(file => {
+    files.forEach((file) => {
       if (file !== `${buildDir}/.gitkeep`) {
         rmSync(file);
       }
@@ -1026,14 +1035,18 @@ async function buildDocs() {
 
   // 5. Process all markdown files to HTML (except README.md which is already processed)
   console.log('\n📝 Processing markdown files...');
-  const markdownFiles = glob.sync(join(__dirname, '../docs/**/*.md')).filter(file => !file.endsWith('README.md'));
+  const markdownFiles = glob
+    .sync(join(__dirname, '../docs/**/*.md'))
+    .filter((file) => !file.endsWith('README.md'));
 
   if (markdownFiles.length === 0) {
     console.log('ℹ️  No additional markdown files found (excluding README.md)');
   } else {
     // Process all markdown files using docs/index.html template for consistency
-    markdownFiles.forEach(filePath => {
-      const relativePath = filePath.replace(join(__dirname, '../docs/'), '').replace('.md', '.html');
+    markdownFiles.forEach((filePath) => {
+      const relativePath = filePath
+        .replace(join(__dirname, '../docs/'), '')
+        .replace('.md', '.html');
       processMarkdownWithTemplate(filePath, `docs/${relativePath}`, null);
     });
   }

@@ -4,8 +4,7 @@
  * Implements OWASP, NIST, and other security compliance frameworks
  * with automated compliance checking and reporting.
  */
-
-import { SecurityIntegration } from './security-integration';
+import type { SecurityIntegration } from './security-integration';
 
 export interface ComplianceFramework {
   name: string;
@@ -13,7 +12,6 @@ export interface ComplianceFramework {
   description: string;
   requirements: ComplianceRequirement[];
 }
-
 export interface ComplianceRequirement {
   id: string;
   category: string;
@@ -23,7 +21,6 @@ export interface ComplianceRequirement {
   controls: SecurityControl[];
   verification: ComplianceVerification;
 }
-
 export interface SecurityControl {
   id: string;
   title: string;
@@ -33,7 +30,6 @@ export interface SecurityControl {
   implementation: ControlImplementation;
   testing: ControlTesting;
 }
-
 export interface ControlImplementation {
   status: 'implemented' | 'partial' | 'planned' | 'not_implemented';
   evidence: string[];
@@ -41,7 +37,6 @@ export interface ControlImplementation {
   lastUpdated: Date;
   notes?: string;
 }
-
 export interface ControlTesting {
   method: 'automated' | 'manual' | 'hybrid';
   frequency: 'continuous' | 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annually';
@@ -49,14 +44,12 @@ export interface ControlTesting {
   lastResult?: 'pass' | 'fail' | 'partial';
   testDetails?: string;
 }
-
 export interface ComplianceVerification {
   automated: boolean;
   frequency: string;
   method: string;
   successCriteria: string[];
 }
-
 export interface ComplianceReport {
   frameworkName: string;
   frameworkVersion: string;
@@ -75,7 +68,6 @@ export interface ComplianceReport {
   recommendations: ComplianceRecommendation[];
   nextReviewDate: Date;
 }
-
 export interface ComplianceGap {
   requirementId: string;
   category: string;
@@ -87,7 +79,6 @@ export interface ComplianceGap {
   estimatedEffort: 'low' | 'medium' | 'high';
   priority: number;
 }
-
 export interface ComplianceRecommendation {
   category: string;
   title: string;
@@ -98,28 +89,24 @@ export interface ComplianceRecommendation {
   timeline: string;
   priority: number;
 }
-
 /**
  * Security Compliance Manager
  */
 export class SecurityCompliance {
   private static instance: SecurityCompliance;
-  private securityIntegration: SecurityIntegration;
-  private frameworks: Map<string, ComplianceFramework> = new Map();
-  private currentComplianceStatus = new Map<string, ComplianceReport>();
-
+  private readonly securityIntegration: SecurityIntegration;
+  private readonly frameworks = new Map<string, ComplianceFramework>();
+  private readonly currentComplianceStatus = new Map<string, ComplianceReport>();
   private constructor(securityIntegration: SecurityIntegration) {
     this.securityIntegration = securityIntegration;
     this.initializeFrameworks();
   }
-
   static getInstance(securityIntegration: SecurityIntegration): SecurityCompliance {
     if (!SecurityCompliance.instance) {
       SecurityCompliance.instance = new SecurityCompliance(securityIntegration);
     }
     return SecurityCompliance.instance;
   }
-
   /**
    * Run comprehensive compliance assessment
    */
@@ -128,7 +115,6 @@ export class SecurityCompliance {
     if (!framework) {
       throw new Error(`Compliance framework not found: ${frameworkName}`);
     }
-
     const report: ComplianceReport = {
       frameworkName: framework.name,
       frameworkVersion: framework.version,
@@ -140,66 +126,59 @@ export class SecurityCompliance {
         mandatoryRequirements: 0,
         mandatoryCompliant: 0,
         recommendedRequirements: 0,
-        recommendedCompliant: 0
+        recommendedCompliant: 0,
       },
       requirements: [],
       gaps: [],
       recommendations: [],
-      nextReviewDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) // 90 days
+      nextReviewDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
     };
-
     // Assess each requirement
     for (const requirement of framework.requirements) {
       const assessment = await this.assessRequirement(requirement);
       report.requirements.push(assessment);
-
       // Update summary
-      if (assessment.controls.every(control => control.implementation.status === 'implemented')) {
+      if (assessment.controls.every((control) => control.implementation.status === 'implemented')) {
         report.summary.implementedRequirements++;
       }
-
       if (requirement.level === 'mandatory') {
         report.summary.mandatoryRequirements++;
-        if (assessment.controls.every(control => control.implementation.status === 'implemented')) {
+        if (
+          assessment.controls.every((control) => control.implementation.status === 'implemented')
+        ) {
           report.summary.mandatoryCompliant++;
         }
       } else if (requirement.level === 'recommended') {
         report.summary.recommendedRequirements++;
-        if (assessment.controls.every(control => control.implementation.status === 'implemented')) {
+        if (
+          assessment.controls.every((control) => control.implementation.status === 'implemented')
+        ) {
           report.summary.recommendedCompliant++;
         }
       }
     }
-
     // Calculate overall compliance
     report.overallCompliance = Math.round(
-      (report.summary.implementedRequirements / report.summary.totalRequirements) * 100
+      (report.summary.implementedRequirements / report.summary.totalRequirements) * 100,
     );
-
     // Identify gaps and recommendations
     report.gaps = this.identifyComplianceGaps(report.requirements);
     report.recommendations = this.generateComplianceRecommendations(report.gaps);
-
     // Store current status
     this.currentComplianceStatus.set(frameworkName, report);
-
     return report;
   }
-
   /**
    * Get compliance status for all frameworks
    */
   async getAllComplianceStatus(): Promise<ComplianceReport[]> {
     const reports: ComplianceReport[] = [];
-
     for (const frameworkName of this.frameworks.keys()) {
       const report = await this.runComplianceAssessment(frameworkName);
       reports.push(report);
     }
-
     return reports;
   }
-
   /**
    * Generate compliance dashboard data
    */
@@ -209,65 +188,59 @@ export class SecurityCompliance {
     criticalGaps: ComplianceGap[];
     upcomingDeadlines: Array<{ framework: string; date: Date; daysRemaining: number }>;
     trends: Array<{ date: Date; score: number }>;
-    } {
+  } {
     const reports = Array.from(this.currentComplianceStatus.values());
-
     if (reports.length === 0) {
       return {
         overallScore: 0,
         frameworkScores: [],
         criticalGaps: [],
         upcomingDeadlines: [],
-        trends: []
+        trends: [],
       };
     }
-
     const overallScore = Math.round(
-      reports.reduce((sum, report) => sum + report.overallCompliance, 0) / reports.length
+      reports.reduce((sum, report) => sum + report.overallCompliance, 0) / reports.length,
     );
-
-    const frameworkScores = reports.map(report => ({
+    const frameworkScores = reports.map((report) => ({
       name: report.frameworkName,
       score: report.overallCompliance,
-      status: this.getComplianceStatus(report.overallCompliance)
+      status: this.getComplianceStatus(report.overallCompliance),
     }));
-
-    const allGaps = reports.flatMap(report => report.gaps);
+    const allGaps = reports.flatMap((report) => report.gaps);
     const criticalGaps = allGaps
-      .filter(gap => gap.riskLevel === 'critical' || gap.riskLevel === 'high')
+      .filter((gap) => gap.riskLevel === 'critical' || gap.riskLevel === 'high')
       .sort((a, b) => b.priority - a.priority)
       .slice(0, 10);
-
     const upcomingDeadlines = reports
-      .map(report => ({
+      .map((report) => ({
         framework: report.frameworkName,
         date: report.nextReviewDate,
-        daysRemaining: Math.ceil((report.nextReviewDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        daysRemaining: Math.ceil(
+          (report.nextReviewDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+        ),
       }))
-      .filter(deadline => deadline.daysRemaining <= 30)
+      .filter((deadline) => deadline.daysRemaining <= 30)
       .sort((a, b) => a.daysRemaining - b.daysRemaining);
-
     return {
       overallScore,
       frameworkScores,
       criticalGaps,
       upcomingDeadlines,
-      trends: [] // Would be populated with historical data
+      trends: [], // Would be populated with historical data
     };
   }
-
   /**
    * Export compliance report in various formats
    */
   exportComplianceReport(
     frameworkName: string,
-    format: 'json' | 'pdf' | 'excel' = 'json'
+    format: 'json' | 'pdf' | 'excel' = 'json',
   ): string | Buffer {
     const report = this.currentComplianceStatus.get(frameworkName);
     if (!report) {
       throw new Error(`No compliance report found for framework: ${frameworkName}`);
     }
-
     switch (format) {
       case 'json':
         return JSON.stringify(report, null, 2);
@@ -281,20 +254,15 @@ export class SecurityCompliance {
         throw new Error(`Unsupported export format: ${format}`);
     }
   }
-
   // Private methods
-
   private initializeFrameworks(): void {
     // OWASP ASVS Level 1
     this.frameworks.set('owasp-asvs-l1', this.createOWASPASVSFramework());
-
     // NIST Cybersecurity Framework
     this.frameworks.set('nist-csf', this.createNISTFramework());
-
     // CIS Controls
     this.frameworks.set('cis-controls', this.createCISFramework());
   }
-
   private createOWASPASVSFramework(): ComplianceFramework {
     return {
       name: 'OWASP Application Security Verification Standard',
@@ -318,14 +286,14 @@ export class SecurityCompliance {
                 status: 'implemented',
                 evidence: ['Password policy implemented in auth system'],
                 responsible: 'Security Team',
-                lastUpdated: new Date()
+                lastUpdated: new Date(),
               },
               testing: {
                 method: 'automated',
                 frequency: 'continuous',
                 lastTested: new Date(),
-                lastResult: 'pass'
-              }
+                lastResult: 'pass',
+              },
             },
             {
               id: 'V1-A2',
@@ -337,22 +305,22 @@ export class SecurityCompliance {
                 status: 'implemented',
                 evidence: ['PBKDF2 with SHA512 implemented'],
                 responsible: 'Security Team',
-                lastUpdated: new Date()
+                lastUpdated: new Date(),
               },
               testing: {
                 method: 'automated',
                 frequency: 'continuous',
                 lastTested: new Date(),
-                lastResult: 'pass'
-              }
-            }
+                lastResult: 'pass',
+              },
+            },
           ],
           verification: {
             automated: true,
             frequency: 'continuous',
             method: 'Static analysis and runtime testing',
-            successCriteria: ['All password policies enforced', 'Strong hashing verified']
-          }
+            successCriteria: ['All password policies enforced', 'Strong hashing verified'],
+          },
         },
         {
           id: 'ASVS-V4-1',
@@ -371,14 +339,14 @@ export class SecurityCompliance {
                 status: 'implemented',
                 evidence: ['InputValidator module implemented'],
                 responsible: 'Security Team',
-                lastUpdated: new Date()
+                lastUpdated: new Date(),
               },
               testing: {
                 method: 'automated',
                 frequency: 'continuous',
                 lastTested: new Date(),
-                lastResult: 'pass'
-              }
+                lastResult: 'pass',
+              },
             },
             {
               id: 'V4-I2',
@@ -390,27 +358,26 @@ export class SecurityCompliance {
                 status: 'implemented',
                 evidence: ['HTML sanitization implemented'],
                 responsible: 'Security Team',
-                lastUpdated: new Date()
+                lastUpdated: new Date(),
               },
               testing: {
                 method: 'automated',
                 frequency: 'continuous',
                 lastTested: new Date(),
-                lastResult: 'pass'
-              }
-            }
+                lastResult: 'pass',
+              },
+            },
           ],
           verification: {
             automated: true,
             frequency: 'continuous',
             method: 'Static analysis and fuzz testing',
-            successCriteria: ['All injection attempts blocked', 'Proper encoding verified']
-          }
-        }
-      ]
+            successCriteria: ['All injection attempts blocked', 'Proper encoding verified'],
+          },
+        },
+      ],
     };
   }
-
   private createNISTFramework(): ComplianceFramework {
     return {
       name: 'NIST Cybersecurity Framework',
@@ -435,22 +402,22 @@ export class SecurityCompliance {
                 evidence: ['Partial asset inventory maintained'],
                 responsible: 'IT Team',
                 lastUpdated: new Date(),
-                notes: 'Need to complete inventory for all components'
+                notes: 'Need to complete inventory for all components',
               },
               testing: {
                 method: 'manual',
                 frequency: 'quarterly',
                 lastTested: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-                lastResult: 'partial'
-              }
-            }
+                lastResult: 'partial',
+              },
+            },
           ],
           verification: {
             automated: false,
             frequency: 'quarterly',
             method: 'Manual review and audit',
-            successCriteria: ['All assets identified and classified', 'Inventory accuracy > 95%']
-          }
+            successCriteria: ['All assets identified and classified', 'Inventory accuracy > 95%'],
+          },
         },
         {
           id: 'NIST-PR-DS',
@@ -469,27 +436,26 @@ export class SecurityCompliance {
                 status: 'implemented',
                 evidence: ['AES-256-GCM encryption for credentials'],
                 responsible: 'Security Team',
-                lastUpdated: new Date()
+                lastUpdated: new Date(),
               },
               testing: {
                 method: 'automated',
                 frequency: 'continuous',
                 lastTested: new Date(),
-                lastResult: 'pass'
-              }
-            }
+                lastResult: 'pass',
+              },
+            },
           ],
           verification: {
             automated: true,
             frequency: 'continuous',
             method: 'Automated scanning and testing',
-            successCriteria: ['All sensitive data encrypted', 'Encryption keys properly managed']
-          }
-        }
-      ]
+            successCriteria: ['All sensitive data encrypted', 'Encryption keys properly managed'],
+          },
+        },
+      ],
     };
   }
-
   private createCISFramework(): ComplianceFramework {
     return {
       name: 'CIS Controls',
@@ -513,41 +479,38 @@ export class SecurityCompliance {
                 status: 'partial',
                 evidence: ['Basic asset inventory'],
                 responsible: 'IT Team',
-                lastUpdated: new Date()
+                lastUpdated: new Date(),
               },
               testing: {
                 method: 'manual',
                 frequency: 'monthly',
                 lastTested: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-                lastResult: 'partial'
-              }
-            }
+                lastResult: 'partial',
+              },
+            },
           ],
           verification: {
             automated: false,
             frequency: 'monthly',
             method: 'Manual audit and review',
-            successCriteria: ['All assets identified and tracked', 'Inventory completeness > 90%']
-          }
-        }
-      ]
+            successCriteria: ['All assets identified and tracked', 'Inventory completeness > 90%'],
+          },
+        },
+      ],
     };
   }
-
-  private async assessRequirement(requirement: ComplianceRequirement): Promise<ComplianceRequirement> {
+  private async assessRequirement(
+    requirement: ComplianceRequirement,
+  ): Promise<ComplianceRequirement> {
     const assessedRequirement = { ...requirement };
-
     // Assess each control
     assessedRequirement.controls = await Promise.all(
-      requirement.controls.map(control => this.assessControl(control))
+      requirement.controls.map((control) => this.assessControl(control)),
     );
-
     return assessedRequirement;
   }
-
   private async assessControl(control: SecurityControl): Promise<SecurityControl> {
     const assessedControl = { ...control };
-
     // Automated testing for technical controls
     if (control.type === 'technical' && control.testing.method === 'automated') {
       const testResult = await this.runAutomatedSecurityTest(control);
@@ -555,10 +518,8 @@ export class SecurityCompliance {
       assessedControl.testing.lastResult = testResult ? 'pass' : 'fail';
       assessedControl.testing.testDetails = testResult ? 'All tests passed' : 'Some tests failed';
     }
-
     return assessedControl;
   }
-
   private async runAutomatedSecurityTest(control: SecurityControl): Promise<boolean> {
     // Run security tests based on control type using security integration
     try {
@@ -573,42 +534,36 @@ export class SecurityCompliance {
           return await this.testAuditControls(control);
         default:
           // Use security integration for general security testing
-          return this.securityIntegration ?
-            await this.securityIntegration.runSecurityTest(control.id) :
-            true; // Fallback for demonstration
+          return this.securityIntegration
+            ? await this.securityIntegration.runSecurityTest(control.id)
+            : true; // Fallback for demonstration
       }
     } catch {
       // Security test failed
       return false;
     }
   }
-
   // Security test methods for different control categories
   private async testAuthenticationControls(control: SecurityControl): Promise<boolean> {
     // Implementation for authentication security tests
     return control.implementation.status === 'implemented';
   }
-
   private async testEncryptionControls(control: SecurityControl): Promise<boolean> {
     // Implementation for encryption security tests
     return control.implementation.status === 'implemented';
   }
-
   private async testAccessControls(control: SecurityControl): Promise<boolean> {
     // Implementation for access control security tests
     return control.implementation.status === 'implemented';
   }
-
   private async testAuditControls(control: SecurityControl): Promise<boolean> {
     // Implementation for audit security tests
     return control.implementation.status === 'implemented';
   }
-
   private identifyComplianceGaps(requirements: ComplianceRequirement[]): ComplianceGap[] {
     const gaps: ComplianceGap[] = [];
-
-    requirements.forEach(requirement => {
-      requirement.controls.forEach(control => {
+    requirements.forEach((requirement) => {
+      requirement.controls.forEach((control) => {
         if (control.implementation.status !== 'implemented') {
           gaps.push({
             requirementId: requirement.id,
@@ -619,26 +574,22 @@ export class SecurityCompliance {
             impact: `Non-compliance with ${requirement.category} requirement`,
             remediation: `Implement ${control.title}: ${control.description}`,
             estimatedEffort: this.estimateEffort(control),
-            priority: this.calculatePriority(requirement.level, control.implementation.status)
+            priority: this.calculatePriority(requirement.level, control.implementation.status),
           });
         }
       });
     });
-
     return gaps.sort((a, b) => b.priority - a.priority);
   }
-
   private generateComplianceRecommendations(gaps: ComplianceGap[]): ComplianceRecommendation[] {
     const recommendations: ComplianceRecommendation[] = [];
-
     // Group gaps by category
     const gapsByCategory = new Map<string, ComplianceGap[]>();
-    gaps.forEach(gap => {
+    gaps.forEach((gap) => {
       const categoryGaps = gapsByCategory.get(gap.category) ?? [];
       categoryGaps.push(gap);
       gapsByCategory.set(gap.category, categoryGaps);
     });
-
     // Generate recommendations for each category
     gapsByCategory.forEach((categoryGaps, category) => {
       if (categoryGaps.length > 0) {
@@ -649,22 +600,20 @@ export class SecurityCompliance {
           benefits: [
             'Improved security posture',
             'Reduced compliance risk',
-            'Better audit readiness'
+            'Better audit readiness',
           ],
-          implementationSteps: categoryGaps.map(gap => `- ${gap.remediation}`),
+          implementationSteps: categoryGaps.map((gap) => `- ${gap.remediation}`),
           estimatedCost: this.estimateCategoryCost(categoryGaps),
           timeline: '3-6 months',
-          priority: Math.max(...categoryGaps.map(gap => gap.priority))
+          priority: Math.max(...categoryGaps.map((gap) => gap.priority)),
         });
       }
     });
-
     return recommendations.sort((a, b) => b.priority - a.priority);
   }
-
   private assessRiskLevel(
     requirementLevel: 'mandatory' | 'recommended' | 'optional',
-    implementationStatus: ControlImplementation['status']
+    implementationStatus: ControlImplementation['status'],
   ): ComplianceGap['riskLevel'] {
     if (requirementLevel === 'mandatory' && implementationStatus === 'not_implemented') {
       return 'critical';
@@ -676,7 +625,6 @@ export class SecurityCompliance {
       return 'low';
     }
   }
-
   private estimateEffort(control: SecurityControl): 'low' | 'medium' | 'high' {
     // Simple estimation based on control type and testing method
     if (control.type === 'technical' && control.testing.method === 'automated') {
@@ -687,20 +635,17 @@ export class SecurityCompliance {
       return 'high';
     }
   }
-
   private calculatePriority(
     requirementLevel: 'mandatory' | 'recommended' | 'optional',
-    implementationStatus: ControlImplementation['status']
+    implementationStatus: ControlImplementation['status'],
   ): number {
     let priority = 0;
-
     if (requirementLevel === 'mandatory') {
       priority += 100;
     }
     if (requirementLevel === 'recommended') {
       priority += 50;
     }
-
     if (implementationStatus === 'not_implemented') {
       priority += 50;
     }
@@ -710,22 +655,22 @@ export class SecurityCompliance {
     if (implementationStatus === 'partial') {
       priority += 10;
     }
-
     return priority;
   }
-
   private estimateCategoryCost(gaps: ComplianceGap[]): 'low' | 'medium' | 'high' {
-    const effortScores = gaps.map(gap => {
+    const effortScores = gaps.map((gap) => {
       switch (gap.estimatedEffort) {
-        case 'low': return 1;
-        case 'medium': return 2;
-        case 'high': return 3;
-        default: return 2;
+        case 'low':
+          return 1;
+        case 'medium':
+          return 2;
+        case 'high':
+          return 3;
+        default:
+          return 2;
       }
     });
-
     const totalEffort = effortScores.reduce((sum, score) => sum + score, 0);
-
     if (totalEffort < 5) {
       return 'low';
     }
@@ -734,7 +679,6 @@ export class SecurityCompliance {
     }
     return 'high';
   }
-
   private getComplianceStatus(score: number): string {
     if (score >= 90) {
       return 'Excellent';
@@ -751,5 +695,4 @@ export class SecurityCompliance {
     return 'Critical';
   }
 }
-
 export default SecurityCompliance;

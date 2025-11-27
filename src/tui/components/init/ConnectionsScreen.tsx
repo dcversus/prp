@@ -9,14 +9,14 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 
 // Import field components
-import InitShell from './InitShell.js';
-import FieldSelectCarousel from './FieldSelectCarousel.js';
-import FieldSecret from './FieldSecret.js';
-import FieldText from './FieldText.js';
-import FieldJSON from './FieldJSON.js';
+import InitShell from './InitShell';
+import FieldSelectCarousel from './FieldSelectCarousel';
+import FieldSecret from './FieldSecret';
+import FieldText from './FieldText';
+import FieldJSON from './FieldJSON';
 
 // Import types
-import type { InitState } from './types.js';
+import type { InitState } from './types';
 
 interface ConnectionsScreenProps {
   state: InitState;
@@ -24,19 +24,18 @@ interface ConnectionsScreenProps {
   onNext: () => void;
   onBack: () => void;
   onCancel: () => void;
-}
+};
 
 const CONNECTION_PROVIDERS: string[] = ['openai', 'anthropic', 'glm', 'custom'];
 const AUTH_TYPES: string[] = ['oauth', 'api-key'];
 const CUSTOM_TYPES: string[] = ['openai', 'anthropic', 'glm'];
-
 
 const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
   state,
   onChange,
   onNext,
   onBack,
-  onCancel
+  onCancel,
 }) => {
   const [focusedField] = useState(0);
   const [apiKeyRevealed, setApiKeyRevealed] = useState(false);
@@ -51,12 +50,12 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
       if (!state.customConfig?.baseUrl?.trim()) {
         validation.baseUrl = {
           isValid: false,
-          message: 'Base URL is required for custom providers'
+          message: 'Base URL is required for custom providers',
         };
       } else if (!/^https?:\/\//.test(state.customConfig.baseUrl)) {
         validation.baseUrl = {
           isValid: false,
-          message: 'Base URL must start with http:// or https://'
+          message: 'Base URL must start with http:// or https://',
         };
       } else {
         validation.baseUrl = { isValid: true };
@@ -65,7 +64,7 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
       if (!state.customConfig?.apiToken?.trim()) {
         validation.apiToken = {
           isValid: false,
-          message: 'API token is required for custom providers'
+          message: 'API token is required for custom providers',
         };
       } else {
         validation.apiToken = { isValid: true };
@@ -78,7 +77,7 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
         } catch {
           validation.customArgs = {
             isValid: false,
-            message: 'Custom args must be valid JSON'
+            message: 'Custom args must be valid JSON',
           };
         }
       } else {
@@ -91,12 +90,12 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
       if (!state.apiKey?.trim()) {
         validation.apiKey = {
           isValid: false,
-          message: 'API key is required when using API key authentication'
+          message: 'API key is required when using API key authentication',
         };
       } else if (state.apiKey.length < 10) {
         validation.apiKey = {
           isValid: false,
-          message: 'API key appears to be too short'
+          message: 'API key appears to be too short',
         };
       } else {
         validation.apiKey = { isValid: true };
@@ -115,7 +114,7 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
     state.apiKey,
     state.customConfig?.baseUrl,
     state.customConfig?.apiToken,
-    state.customConfig?.customArgs
+    state.customConfig?.customArgs,
   ]);
 
   // Calculate total fields for current configuration
@@ -138,19 +137,21 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
   // Handle field changes
   const handleProviderChange = (index: number) => {
     const newProvider = CONNECTION_PROVIDERS[index] as 'openai' | 'anthropic' | 'custom';
-    const newAuthType = newProvider === 'custom' ? 'oauth' : (state.authType || 'oauth');
+    const newAuthType = newProvider === 'custom' ? 'oauth' : state.authType || 'oauth';
 
     onChange({
       ...state,
       provider: newProvider,
       authType: newAuthType,
-      apiKey: newProvider === 'custom' ? undefined : state.apiKey,
-      customConfig: newProvider === 'custom' ? {
-        type: 'openai',
-        baseUrl: '',
-        apiToken: '',
-        customArgs: ''
-      } : undefined
+      ...(newProvider !== 'custom' && state.apiKey && { apiKey: state.apiKey }),
+      ...(newProvider === 'custom' && {
+        customConfig: {
+          type: 'openai',
+          baseUrl: '',
+          apiToken: '',
+          customArgs: '',
+        },
+      }),
     });
   };
 
@@ -159,7 +160,7 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
     onChange({
       ...state,
       authType: newAuthType,
-      apiKey: AUTH_TYPES[index] === 'oauth' ? undefined : state.apiKey
+      ...(AUTH_TYPES[index] !== 'oauth' && state.apiKey && { apiKey: state.apiKey }),
     });
   };
 
@@ -167,18 +168,21 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
     onChange({ ...state, apiKey: value });
   };
 
-  const handleCustomConfigChange = (field: keyof NonNullable<InitState['customConfig']>, value: string) => {
+  const handleCustomConfigChange = (
+    field: keyof NonNullable<InitState['customConfig']>,
+    value: string,
+  ) => {
     onChange({
       ...state,
       customConfig: {
         ...state.customConfig,
-        [field]: value
-      } as NonNullable<InitState['customConfig']>
+        [field]: value,
+      } as NonNullable<InitState['customConfig']>,
     });
   };
 
   // Check if can proceed
-  const canProceed = Object.values(state.validation).every(v => v?.isValid ?? true);
+  const canProceed = Object.values(state.validation).every((v) => v?.isValid ?? true);
 
   // Render field based on focus
   const renderField = (fieldIndex: number) => {
@@ -204,7 +208,7 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
             selectedIndex={AUTH_TYPES.indexOf(state.authType)}
             onChange={handleAuthTypeChange}
             focused={isFocused}
-            notice={state.provider === 'custom' ? 'OAuth default for custom providers' : undefined}
+            {...(state.provider === 'custom' && { notice: 'OAuth default for custom providers' })}
           />
         );
 
@@ -219,7 +223,10 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
               reveal={apiKeyRevealed}
               onRevealChange={setApiKeyRevealed}
               focused={isFocused}
-              error={state.validation.apiKey?.isValid === false ? state.validation.apiKey.message : undefined}
+              {...(state.validation.apiKey?.isValid === false &&
+                state.validation.apiKey.message && {
+                  error: state.validation.apiKey.message,
+                })}
               tip="Paste with Ctrl+V (⌥V)"
             />
           );
@@ -233,7 +240,9 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
               label="Type"
               items={CUSTOM_TYPES}
               selectedIndex={CUSTOM_TYPES.indexOf(state.customConfig?.type ?? 'openai')}
-              onChange={(index) => handleCustomConfigChange('type', CUSTOM_TYPES[index] ?? 'openai')}
+              onChange={(index) =>
+                handleCustomConfigChange('type', CUSTOM_TYPES[index] ?? 'openai')
+              }
               focused={isFocused}
             />
           );
@@ -249,7 +258,9 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
               onChange={(value) => handleCustomConfigChange('baseUrl', value)}
               placeholder="https://llm.company.local/v1"
               focused={isFocused}
-              error={state.validation.baseUrl?.isValid === false ? state.validation.baseUrl.message : undefined}
+              {...(state.validation.baseUrl?.isValid === false && {
+                error: state.validation.baseUrl.message,
+              })}
             />
           );
         }
@@ -266,7 +277,9 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
               reveal={customTokenRevealed}
               onRevealChange={setCustomTokenRevealed}
               focused={isFocused}
-              error={state.validation.apiToken?.isValid === false ? state.validation.apiToken.message : undefined}
+              {...(state.validation.apiToken?.isValid === false && {
+                error: state.validation.apiToken.message,
+              })}
             />
           );
         }
@@ -281,7 +294,9 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
               onChange={(value) => handleCustomConfigChange('customArgs', value)}
               placeholder='{"timeout": 45000, "seed": 7}'
               focused={isFocused}
-              error={state.validation.customArgs?.isValid === false ? state.validation.customArgs.message : undefined}
+              {...(state.validation.customArgs?.isValid === false && {
+                error: state.validation.customArgs.message,
+              })}
             />
           );
         }
@@ -298,7 +313,11 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
   const getFooterKeys = () => {
     const keys = ['Enter', 'Esc'];
 
-    if (focusedField === 0 || focusedField === 1 || (focusedField === 3 && state.provider === 'custom')) {
+    if (
+      focusedField === 0 ||
+      focusedField === 1 ||
+      (focusedField === 3 && state.provider === 'custom')
+    ) {
       keys.push('←/→', 'switch');
     }
 
@@ -321,7 +340,7 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
       icon={canProceed ? '♫' : '♪'}
       footerKeys={getFooterKeys()}
       onBack={onBack}
-      onForward={canProceed ? onNext : undefined}
+      {...(canProceed && onNext && { onForward: onNext })}
       onCancel={onCancel}
     >
       <Box flexDirection="column" gap={1}>
@@ -334,9 +353,7 @@ const ConnectionsScreen: React.FC<ConnectionsScreenProps> = ({
 
         {/* Render all fields for current configuration */}
         {Array.from({ length: totalFields }, (_, index) => (
-          <Box key={index}>
-            {renderField(index)}
-          </Box>
+          <Box key={index}>{renderField(index)}</Box>
         ))}
       </Box>
     </InitShell>

@@ -7,7 +7,10 @@
 
 import React from 'react';
 import { Text, Box } from 'ink';
-import { renderTUI, TUITestInstance, TUITestRenderOptions } from './TUITestEnvironment.js';
+
+import { renderTUI } from './TUITestEnvironment';
+
+import type { TUITestInstance, TUITestRenderOptions } from './TUITestEnvironment';
 
 /**
  * Test result interface
@@ -25,7 +28,7 @@ export interface ComponentTestResult {
  */
 export function renderComponentForTesting(
   component: React.ReactElement,
-  options?: TUITestRenderOptions
+  options?: TUITestRenderOptions,
 ): ComponentTestResult {
   const instance = renderTUI(component, options);
   const lastFrame = instance.lastFrame();
@@ -36,8 +39,8 @@ export function renderComponentForTesting(
     // eslint-disable-next-line no-control-regex
     cleanContent: lastFrame.content.replace(/\x1b\[[0-9;]*m/g, ''),
     // eslint-disable-next-line no-control-regex
-    colorCodes: (lastFrame.content.match(/\x1b\[[0-9;]*m/g) ?? []),
-    dimensions: lastFrame.dimensions
+    colorCodes: lastFrame.content.match(/\x1b\[[0-9;]*m/g) ?? [],
+    dimensions: lastFrame.dimensions,
   };
 }
 
@@ -45,7 +48,7 @@ export function renderComponentForTesting(
  * Assertion helpers for component testing
  */
 export class ComponentAssertions {
-  private result: ComponentTestResult;
+  private readonly result: ComponentTestResult;
 
   constructor(result: ComponentTestResult) {
     this.result = result;
@@ -114,7 +117,7 @@ export class ComponentAssertions {
    * Assert that component renders multiline content
    */
   hasLineCount(expectedCount: number): this {
-    const lines = this.result.cleanContent.split('\n').filter(line => line.trim() !== '');
+    const lines = this.result.cleanContent.split('\n').filter((line) => line.trim() !== '');
     expect(lines.length).toBe(expectedCount);
     return this;
   }
@@ -123,7 +126,7 @@ export class ComponentAssertions {
    * Assert that component has specific text structure
    */
   hasStructure(expectedStructure: string[]): this {
-    const lines = this.result.cleanContent.split('\n').filter(line => line.trim() !== '');
+    const lines = this.result.cleanContent.split('\n').filter((line) => line.trim() !== '');
 
     expectedStructure.forEach((expectedLine, index) => {
       if (index < lines.length) {
@@ -143,24 +146,23 @@ export class ComponentAssertions {
     colorCodes: string[];
     dimensions: { columns: number; rows: number };
     lineCount: number;
-    } {
+  } {
     return {
       content: this.result.content,
       cleanContent: this.result.cleanContent,
       colorCodes: this.result.colorCodes,
       dimensions: this.result.dimensions,
-      lineCount: this.result.cleanContent.split('\n').filter(line => line.trim() !== '').length
+      lineCount: this.result.cleanContent.split('\n').filter((line) => line.trim() !== '').length,
     };
   }
 }
- 
 
 /**
  * Helper function to create assertions
  */
 export function expectComponent(
   component: React.ReactElement,
-  options?: TUITestRenderOptions
+  options?: TUITestRenderOptions,
 ): ComponentAssertions {
   const result = renderComponentForTesting(component, options);
   return new ComponentAssertions(result);
@@ -173,18 +175,30 @@ export class MockComponents {
   /**
    * Create a mock Text component
    */
-  static Text({ children, color, bold = false }: {
+  static Text({
+    children,
+    color,
+    bold = false,
+  }: {
     children: React.ReactNode;
     color?: string;
     bold?: boolean;
   }) {
-    return <Text color={color} bold={bold}>{children}</Text>;
+    return (
+      <Text color={color} bold={bold}>
+        {children}
+      </Text>
+    );
   }
 
   /**
    * Create a mock Box component
    */
-  static Box({ children, flexDirection = 'column', padding = 0 }: {
+  static Box({
+    children,
+    flexDirection = 'column',
+    padding = 0,
+  }: {
     children: React.ReactNode;
     flexDirection?: 'row' | 'column';
     padding?: number;
@@ -199,7 +213,11 @@ export class MockComponents {
   /**
    * Create a mock layout component
    */
-  static Layout({ children, showHeader = true, showFooter = true }: {
+  static Layout({
+    children,
+    showHeader = true,
+    showFooter = true,
+  }: {
     children: React.ReactNode;
     showHeader?: boolean;
     showFooter?: boolean;
@@ -220,7 +238,7 @@ export class MockComponents {
     status = 'IDLE',
     role = 'robo-developer',
     task = 'Test task',
-    progress = 50
+    progress = 50,
   }: {
     status?: string;
     role?: string;
@@ -240,16 +258,13 @@ export class MockComponents {
   /**
    * Create a mock signal bar component
    */
-  static SignalBar({ signals = ['[aa]', '[bb]', '[cc]'] }: {
-    signals?: string[];
-  }) {
+  static SignalBar({ signals = ['[aa]', '[bb]', '[cc]'] }: { signals?: string[] }) {
     return (
       <Text>
         {' '}
         {signals.map((signal, index) => (
           <Text key={index}>{signal} </Text>
-        ))}
-        {' '}
+        ))}{' '}
       </Text>
     );
   }
@@ -257,14 +272,12 @@ export class MockComponents {
   /**
    * Create a mock music icon component
    */
-  static MusicIcon({ status = 'IDLE' }: {
-    status?: string;
-  }) {
+  static MusicIcon({ status = 'IDLE' }: { status?: string }) {
     const icons = {
       SPAWNING: '♪',
       RUNNING: '♬',
       IDLE: '♫',
-      ERROR: '⚠'
+      ERROR: '⚠',
     };
 
     return <Text>{icons[status as keyof typeof icons] || '♫'}</Text>;
@@ -278,7 +291,7 @@ export class TestDataGenerators {
   /**
    * Generate mock signal data
    */
-  static generateSignals(count: number = 5): Array<{
+  static generateSignals(count = 5): Array<{
     code: string;
     state: string;
     latest: boolean;
@@ -289,14 +302,14 @@ export class TestDataGenerators {
     return Array.from({ length: count }, (_, index) => ({
       code: signalCodes[index % signalCodes.length],
       state: states[Math.floor(Math.random() * states.length)] as string,
-      latest: index === count - 1
+      latest: index === count - 1,
     }));
   }
 
   /**
    * Generate mock agent data
    */
-  static generateAgents(count: number = 3): Array<{
+  static generateAgents(count = 3): Array<{
     id: string;
     status: string;
     role: string;
@@ -312,14 +325,14 @@ export class TestDataGenerators {
       status: statuses[Math.floor(Math.random() * statuses.length)] as string,
       role: roles[Math.floor(Math.random() * roles.length)] as string,
       task: tasks[Math.floor(Math.random() * tasks.length)] as string,
-      progress: Math.floor(Math.random() * 100)
+      progress: Math.floor(Math.random() * 100),
     }));
   }
 
   /**
    * Generate mock PRP data
    */
-  static generatePRPs(count: number = 5): Array<{
+  static generatePRPs(count = 5): Array<{
     name: string;
     status: string;
     role?: string;
@@ -329,7 +342,7 @@ export class TestDataGenerators {
       name: `PRP-${String(index + 1).padStart(3, '0')}: Test PRP ${index + 1}`,
       status: 'active',
       role: 'robo-system-analyst',
-      signals: this.generateSignals(Math.floor(Math.random() * 3) + 1)
+      signals: this.generateSignals(Math.floor(Math.random() * 3) + 1),
     }));
   }
 }
@@ -343,7 +356,7 @@ export class PerformanceTester {
    */
   static async measureRenderTime(
     component: React.ReactElement,
-    iterations: number = 10
+    iterations = 10,
   ): Promise<{
     averageTime: number;
     minTime: number;
@@ -370,7 +383,7 @@ export class PerformanceTester {
       averageTime,
       minTime,
       maxTime,
-      totalTime
+      totalTime,
     };
   }
 
@@ -381,7 +394,7 @@ export class PerformanceTester {
     used: number;
     total: number;
     percentage: number;
-    } {
+  } {
     if (typeof process !== 'undefined' && typeof process.memoryUsage === 'function') {
       const usage = process.memoryUsage();
       const used = usage.heapUsed;
@@ -400,7 +413,7 @@ export class PerformanceTester {
   static async measureUpdatePerformance(
     initialComponent: React.ReactElement,
     updatedComponent: React.ReactElement,
-    updates: number = 5
+    updates = 5,
   ): Promise<{
     averageUpdateTime: number;
     minUpdateTime: number;
@@ -428,7 +441,7 @@ export class PerformanceTester {
     return {
       averageUpdateTime,
       minUpdateTime,
-      maxUpdateTime
+      maxUpdateTime,
     };
   }
 }
@@ -445,17 +458,17 @@ export class IntegrationTester {
     sizes: Array<{ columns: number; rows: number }> = [
       { columns: 80, rows: 24 },
       { columns: 100, rows: 30 },
-      { columns: 120, rows: 40 }
-    ]
+      { columns: 120, rows: 40 },
+    ],
   ): Array<{ size: { columns: number; rows: number }; result: ComponentTestResult }> {
-    return sizes.map(size => {
+    return sizes.map((size) => {
       const result = renderComponentForTesting(component, {
-        mockTerminal: { dimensions: size }
+        mockTerminal: { dimensions: size },
       });
 
       return {
         size,
-        result
+        result,
       };
     });
   }
@@ -465,7 +478,7 @@ export class IntegrationTester {
    */
   static async testAnimations(
     component: React.ReactElement,
-    duration: number = 2000
+    duration = 2000,
   ): Promise<{
     frames: Array<{ timestamp: number; content: string }>;
     frameCount: number;
@@ -473,7 +486,7 @@ export class IntegrationTester {
   }> {
     const instance = renderTUI(component, {
       captureFrames: true,
-      mockAnimations: false
+      mockAnimations: false,
     });
 
     const startTime = Date.now();
@@ -483,7 +496,7 @@ export class IntegrationTester {
       const frame = instance.lastFrame();
       frames.push({
         timestamp: Date.now() - startTime,
-        content: frame.content
+        content: frame.content,
       });
     };
 
@@ -494,7 +507,7 @@ export class IntegrationTester {
     const interval = setInterval(captureFrame, 50);
 
     // Wait for animation duration
-    await new Promise(resolve => setTimeout(resolve, duration));
+    await new Promise((resolve) => setTimeout(resolve, duration));
 
     clearInterval(interval);
     captureFrame(); // Final frame
@@ -503,7 +516,7 @@ export class IntegrationTester {
     return {
       frames,
       frameCount: frames.length,
-      duration
+      duration,
     };
   }
 
@@ -512,7 +525,7 @@ export class IntegrationTester {
    */
   static async testRealtimeUpdates(
     createComponent: (data: unknown) => React.ReactElement,
-    updates: Array<{ delay: number; data: unknown }> = []
+    updates: Array<{ delay: number; data: unknown }> = [],
   ): Promise<{
     frames: Array<{ timestamp: number; data: unknown; content: string }>;
     updateCount: number;
@@ -527,12 +540,12 @@ export class IntegrationTester {
     frames.push({
       timestamp: 0,
       data: updates[0]?.data ?? {},
-      content: instance.lastFrame().content
+      content: instance.lastFrame().content,
     });
 
     // Apply updates
     for (const update of updates) {
-      await new Promise(resolve => setTimeout(resolve, update.delay));
+      await new Promise((resolve) => setTimeout(resolve, update.delay));
 
       instance.rerender(createComponent(update.data));
       updateCount++;
@@ -540,7 +553,7 @@ export class IntegrationTester {
       frames.push({
         timestamp: Date.now(),
         data: update.data,
-        content: instance.lastFrame().content
+        content: instance.lastFrame().content,
       });
     }
 
@@ -548,7 +561,7 @@ export class IntegrationTester {
 
     return {
       frames,
-      updateCount
+      updateCount,
     };
   }
 }
@@ -560,5 +573,5 @@ export default {
   MockComponents,
   TestDataGenerators,
   PerformanceTester,
-  IntegrationTester
+  IntegrationTester,
 };

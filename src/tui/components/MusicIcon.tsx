@@ -5,15 +5,20 @@
  * with animation support for different agent states and melody synchronization
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useAnimationEngine, AnimationType } from '../animation/AnimationEngine.js';
+import React, { useState, useEffect, useRef, JSX } from 'react';
+import { Text } from 'ink';
+
+import { useAnimationEngine } from '../animation/AnimationEngine';
+
+import type { AnimationType } from '../animation/AnimationEngine';
+import type { AgentStatus, MusicIconProps } from '../../shared/types/TUIConfig';
 
 // Animation frame definitions for different agent states
 const ANIMATION_FRAMES: Record<AgentStatus, string[]> = {
-  SPAWNING: ['♪', '♩', '♪', '♬'],    // Spawn animation sequence
-  RUNNING: ['♪', '♬', '♫', '♬'],    // Working melody (4 fps loop)
-  IDLE: ['♫', ' '],                 // Idle blink at melody beat
-  ERROR: ['⚠', '⚠️', ' ']          // Error warning blink
+  SPAWNING: ['♪', '♩', '♪', '♬'], // Spawn animation sequence
+  RUNNING: ['♪', '♬', '♫', '♬'], // Working melody (4 fps loop)
+  IDLE: ['♫', ' '], // Idle blink at melody beat
+  ERROR: ['⚠', '⚠️', ' '], // Error warning blink
 };
 
 // Animation types for engine integration
@@ -21,25 +26,25 @@ const ANIMATION_TYPES: Record<AgentStatus, AnimationType> = {
   SPAWNING: 'spawn',
   RUNNING: 'melody',
   IDLE: 'idle',
-  ERROR: 'error'
+  ERROR: 'error',
 };
 
 // Color mappings for different statuses
 const STATUS_COLORS = {
-  SPAWNING: '#FFCC66',    // Yellow/orange for spawning
-  RUNNING: '#B8F28E',     // Green for active work
-  IDLE: '#9AA0A6',        // Gray for idle
-  ERROR: '#FF5555'        // Red for errors
+  SPAWNING: '#FFCC66', // Yellow/orange for spawning
+  RUNNING: '#B8F28E', // Green for active work
+  IDLE: '#9AA0A6', // Gray for idle
+  ERROR: '#FF5555', // Red for errors
 } as const;
 
 // Size configurations
 const SIZE_CONFIGS = {
   small: { symbol: '', padding: 0 },
   normal: { symbol: '', padding: 1 },
-  large: { symbol: '', padding: 2 }
+  large: { symbol: '', padding: 2 },
 } as const;
 
-export function MusicIcon({ status, animate = true, size = 'normal' }: MusicIconProps) {
+export const MusicIcon = ({ status, animate = true, size = 'normal' }: MusicIconProps) => {
   const { engine, registerSignalAnimation, getCurrentBeat } = useAnimationEngine();
   const [currentSymbol, setCurrentSymbol] = useState(ANIMATION_FRAMES[status][0]);
   const animationIdRef = useRef<string>('');
@@ -123,15 +128,11 @@ export function MusicIcon({ status, animate = true, size = 'normal' }: MusicIcon
   const shouldBold = status === 'RUNNING';
 
   return (
-    <Text
-      color={getStatusColor()}
-      bold={shouldBold}
-      dimColor={status === 'IDLE'}
-    >
+    <Text color={getStatusColor()} bold={shouldBold} dimColor={status === 'IDLE'}>
       {getSizeStyling()}
     </Text>
   );
-}
+};
 
 /**
  * Optimized MusicIcon component for use in lists with many agents
@@ -148,15 +149,15 @@ export const OptimizedMusicIcon = React.memo(MusicIcon, (prevProps, nextProps) =
 /**
  * Hook for creating music icon with custom configuration
  */
-export function useMusicIcon(
+export const useMusicIcon = (
   status: AgentStatus,
   options: {
     animate?: boolean;
     size?: 'small' | 'normal' | 'large';
     customFrames?: string[];
     customColors?: Partial<typeof STATUS_COLORS>;
-  } = {}
-) {
+  } = {},
+) => {
   const { animate = true, size = 'normal', customFrames, customColors } = options;
   const { engine } = useAnimationEngine();
 
@@ -177,7 +178,7 @@ export function useMusicIcon(
         isAnimating: true,
         startTime: Date.now(),
         lastUpdate: Date.now(),
-        direction: 'forward' as const
+        direction: 'forward' as const,
       };
 
       // Manually trigger frame updates for custom animation
@@ -188,7 +189,7 @@ export function useMusicIcon(
           id: customAnimationId,
           frame: state.frames[state.currentFrame],
           frameIndex: state.currentFrame,
-          state
+          state,
         });
       }, 1000 / 8); // 8 fps for custom animations
 
@@ -202,9 +203,9 @@ export function useMusicIcon(
     frames,
     color,
     animate,
-    size
+    size,
   };
-}
+};
 
 // Export types for external use
 export type { MusicIconProps, AgentStatus };

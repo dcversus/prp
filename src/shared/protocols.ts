@@ -3,15 +3,14 @@
  *
  * Commonly used guideline protocol definitions to avoid string assignment errors.
  */
-
 import type { GuidelineProtocol } from './types';
-
 /**
  * Signal Resolution Protocol - Standard protocol for resolving signals through analysis and action
  */
 export const SIGNAL_RESOLUTION_PROTOCOL: GuidelineProtocol = {
   id: 'signal_resolution',
-  description: 'Standard protocol for resolving signals through inspector analysis and orchestrator decision-making',
+  description:
+    'Standard protocol for resolving signals through inspector analysis and orchestrator decision-making',
   steps: [
     {
       id: 'signal_analysis',
@@ -19,7 +18,7 @@ export const SIGNAL_RESOLUTION_PROTOCOL: GuidelineProtocol = {
       description: 'Analyze the incoming signal to understand context and requirements',
       type: 'inspector_analysis',
       required: true,
-      nextSteps: ['decision_making']
+      nextSteps: ['decision_making'],
     },
     {
       id: 'decision_making',
@@ -27,7 +26,7 @@ export const SIGNAL_RESOLUTION_PROTOCOL: GuidelineProtocol = {
       description: 'Make decisions based on signal analysis and available context',
       type: 'orchestrator_decision',
       required: true,
-      nextSteps: ['action_execution']
+      nextSteps: ['action_execution'],
     },
     {
       id: 'action_execution',
@@ -35,7 +34,7 @@ export const SIGNAL_RESOLUTION_PROTOCOL: GuidelineProtocol = {
       description: 'Execute the decided actions and coordinate with agents',
       type: 'action_execution',
       required: false,
-      nextSteps: ['verification']
+      nextSteps: ['verification'],
     },
     {
       id: 'verification',
@@ -43,8 +42,8 @@ export const SIGNAL_RESOLUTION_PROTOCOL: GuidelineProtocol = {
       description: 'Verify that actions were completed successfully',
       type: 'verification',
       required: false,
-      nextSteps: []
-    }
+      nextSteps: [],
+    },
   ],
   decisionPoints: [
     {
@@ -55,31 +54,30 @@ export const SIGNAL_RESOLUTION_PROTOCOL: GuidelineProtocol = {
           id: 'escalate',
           label: 'Yes, escalate to admin',
           action: 'Escalate signal to admin with full context',
-          nextSteps: ['admin_notification']
+          nextSteps: ['admin_notification'],
         },
         {
           id: 'handle',
           label: 'No, handle within system',
           action: 'Process signal through normal workflow',
-          nextSteps: ['action_execution']
-        }
+          nextSteps: ['action_execution'],
+        },
       ],
-      requiresInput: false
-    }
+      requiresInput: false,
+    },
   ],
   successCriteria: [
     'Signal is fully processed and documented',
     'Required actions are completed or delegated',
     'Context is updated with signal resolution',
-    'Stakeholders are notified if necessary'
+    'Stakeholders are notified if necessary',
   ],
   fallbackActions: [
     'Log signal for manual review if automated processing fails',
     'Escalate to admin if resolution cannot be determined',
-    'Create note for follow-up if additional information is needed'
-  ]
+    'Create note for follow-up if additional information is needed',
+  ],
 };
-
 /**
  * Resource Report Protocol - Protocol for handling research and analysis reports
  */
@@ -93,7 +91,7 @@ export const RESOURCE_REPORT_PROTOCOL: GuidelineProtocol = {
       description: 'Gather and organize research data and findings',
       type: 'inspector_analysis',
       required: true,
-      nextSteps: ['analysis_synthesis']
+      nextSteps: ['analysis_synthesis'],
     },
     {
       id: 'analysis_synthesis',
@@ -101,7 +99,7 @@ export const RESOURCE_REPORT_PROTOCOL: GuidelineProtocol = {
       description: 'Synthesize research findings into actionable insights',
       type: 'inspector_analysis',
       required: true,
-      nextSteps: ['recommendation_generation']
+      nextSteps: ['recommendation_generation'],
     },
     {
       id: 'recommendation_generation',
@@ -109,7 +107,7 @@ export const RESOURCE_REPORT_PROTOCOL: GuidelineProtocol = {
       description: 'Generate specific recommendations based on research',
       type: 'orchestrator_decision',
       required: true,
-      nextSteps: ['report_finalization']
+      nextSteps: ['report_finalization'],
     },
     {
       id: 'report_finalization',
@@ -117,8 +115,8 @@ export const RESOURCE_REPORT_PROTOCOL: GuidelineProtocol = {
       description: 'Finalize and distribute research report',
       type: 'action_execution',
       required: false,
-      nextSteps: []
-    }
+      nextSteps: [],
+    },
   ],
   decisionPoints: [
     {
@@ -129,31 +127,30 @@ export const RESOURCE_REPORT_PROTOCOL: GuidelineProtocol = {
           id: 'complete',
           label: 'Research is complete',
           action: 'Proceed with recommendations',
-          nextSteps: ['recommendation_generation']
+          nextSteps: ['recommendation_generation'],
         },
         {
           id: 'incomplete',
           label: 'Additional research needed',
           action: 'Identify research gaps and plan additional work',
-          nextSteps: ['research_collection']
-        }
+          nextSteps: ['research_collection'],
+        },
       ],
-      requiresInput: false
-    }
+      requiresInput: false,
+    },
   ],
   successCriteria: [
     'All research questions are answered',
     'Findings are clearly documented and organized',
     'Recommendations are actionable and evidence-based',
-    'Report is distributed to relevant stakeholders'
+    'Report is distributed to relevant stakeholders',
   ],
   fallbackActions: [
     'Document research limitations and assumptions',
     'Schedule follow-up research if time-constrained',
-    'Escalate critical research gaps to project lead'
-  ]
+    'Escalate critical research gaps to project lead',
+  ],
 };
-
 /**
  * Operational Status Protocol - Protocol for system status monitoring and reporting
  */
@@ -167,7 +164,7 @@ export const OPERATIONAL_STATUS_PROTOCOL: GuidelineProtocol = {
       description: 'Collect current status from all system components',
       type: 'inspector_analysis',
       required: true,
-      nextSteps: ['health_assessment']
+      nextSteps: ['health_assessment'],
     },
     {
       id: 'health_assessment',
@@ -175,7 +172,7 @@ export const OPERATIONAL_STATUS_PROTOCOL: GuidelineProtocol = {
       description: 'Assess overall system health and identify issues',
       type: 'inspector_analysis',
       required: true,
-      nextSteps: ['status_reporting']
+      nextSteps: ['status_reporting'],
     },
     {
       id: 'status_reporting',
@@ -183,8 +180,8 @@ export const OPERATIONAL_STATUS_PROTOCOL: GuidelineProtocol = {
       description: 'Generate and distribute status report',
       type: 'action_execution',
       required: false,
-      nextSteps: []
-    }
+      nextSteps: [],
+    },
   ],
   decisionPoints: [
     {
@@ -195,31 +192,30 @@ export const OPERATIONAL_STATUS_PROTOCOL: GuidelineProtocol = {
           id: 'critical',
           label: 'Critical issues detected',
           action: 'Initiate immediate response procedures',
-          nextSteps: ['incident_response']
+          nextSteps: ['incident_response'],
         },
         {
           id: 'normal',
           label: 'No critical issues',
           action: 'Continue normal monitoring',
-          nextSteps: ['status_reporting']
-        }
+          nextSteps: ['status_reporting'],
+        },
       ],
-      requiresInput: false
-    }
+      requiresInput: false,
+    },
   ],
   successCriteria: [
     'All system components status is current',
     'Health indicators are within acceptable ranges',
     'Issues are identified and prioritized',
-    'Status report is generated and distributed'
+    'Status report is generated and distributed',
   ],
   fallbackActions: [
     'Use cached status data if collection fails',
     'Escalate communication failures to admin',
-    'Document status gaps for manual investigation'
-  ]
+    'Document status gaps for manual investigation',
+  ],
 };
-
 /**
  * Test Verification Protocol - Protocol for test verification and quality assurance
  */
@@ -233,7 +229,7 @@ export const TEST_VERIFICATION_PROTOCOL: GuidelineProtocol = {
       description: 'Analyze test results and coverage',
       type: 'inspector_analysis',
       required: true,
-      nextSteps: ['quality_assessment']
+      nextSteps: ['quality_assessment'],
     },
     {
       id: 'quality_assessment',
@@ -241,7 +237,7 @@ export const TEST_VERIFICATION_PROTOCOL: GuidelineProtocol = {
       description: 'Assess overall quality based on test results',
       type: 'inspector_analysis',
       required: true,
-      nextSteps: ['verification_decision']
+      nextSteps: ['verification_decision'],
     },
     {
       id: 'verification_decision',
@@ -249,7 +245,7 @@ export const TEST_VERIFICATION_PROTOCOL: GuidelineProtocol = {
       description: 'Make verification decisions based on quality assessment',
       type: 'orchestrator_decision',
       required: true,
-      nextSteps: ['verification_actions']
+      nextSteps: ['verification_actions'],
     },
     {
       id: 'verification_actions',
@@ -257,8 +253,8 @@ export const TEST_VERIFICATION_PROTOCOL: GuidelineProtocol = {
       description: 'Execute verification actions and coordinate next steps',
       type: 'action_execution',
       required: false,
-      nextSteps: []
-    }
+      nextSteps: [],
+    },
   ],
   decisionPoints: [
     {
@@ -269,31 +265,30 @@ export const TEST_VERIFICATION_PROTOCOL: GuidelineProtocol = {
           id: 'pass',
           label: 'Tests pass quality standards',
           action: 'Proceed with verification approval',
-          nextSteps: ['verification_actions']
+          nextSteps: ['verification_actions'],
         },
         {
           id: 'fail',
           label: 'Tests do not meet standards',
           action: 'Identify quality issues and improvement actions',
-          nextSteps: ['quality_improvement']
-        }
+          nextSteps: ['quality_improvement'],
+        },
       ],
-      requiresInput: false
-    }
+      requiresInput: false,
+    },
   ],
   successCriteria: [
     'All tests are passing or documented failures are understood',
     'Test coverage meets minimum requirements',
     'Quality metrics are within acceptable ranges',
-    'Verification decision is documented and communicated'
+    'Verification decision is documented and communicated',
   ],
   fallbackActions: [
     'Document test failures and create improvement plan',
     'Escalate critical quality issues to development team',
-    'Schedule additional testing if coverage is insufficient'
-  ]
+    'Schedule additional testing if coverage is insufficient',
+  ],
 };
-
 /**
  * Pull Request Protocol - Protocol for handling pull request related signals
  */
@@ -307,7 +302,7 @@ export const PULL_REQUEST_PROTOCOL: GuidelineProtocol = {
       description: 'Analyze pull request content and context',
       type: 'inspector_analysis',
       required: true,
-      nextSteps: ['review_assessment']
+      nextSteps: ['review_assessment'],
     },
     {
       id: 'review_assessment',
@@ -315,7 +310,7 @@ export const PULL_REQUEST_PROTOCOL: GuidelineProtocol = {
       description: 'Assess review status and identify issues',
       type: 'inspector_analysis',
       required: true,
-      nextSteps: ['merge_decision']
+      nextSteps: ['merge_decision'],
     },
     {
       id: 'merge_decision',
@@ -323,7 +318,7 @@ export const PULL_REQUEST_PROTOCOL: GuidelineProtocol = {
       description: 'Make merge decision based on assessment',
       type: 'orchestrator_decision',
       required: true,
-      nextSteps: ['merge_actions']
+      nextSteps: ['merge_actions'],
     },
     {
       id: 'merge_actions',
@@ -331,8 +326,8 @@ export const PULL_REQUEST_PROTOCOL: GuidelineProtocol = {
       description: 'Execute merge actions and coordinate post-merge tasks',
       type: 'action_execution',
       required: false,
-      nextSteps: []
-    }
+      nextSteps: [],
+    },
   ],
   decisionPoints: [
     {
@@ -343,49 +338,45 @@ export const PULL_REQUEST_PROTOCOL: GuidelineProtocol = {
           id: 'ready',
           label: 'Ready for merge',
           action: 'Proceed with merge process',
-          nextSteps: ['merge_actions']
+          nextSteps: ['merge_actions'],
         },
         {
           id: 'not_ready',
           label: 'Not ready for merge',
           action: 'Request changes or additional review',
-          nextSteps: ['change_request']
-        }
+          nextSteps: ['change_request'],
+        },
       ],
-      requiresInput: false
-    }
+      requiresInput: false,
+    },
   ],
   successCriteria: [
     'Pull request is reviewed and approved',
     'All review comments are addressed',
     'Merge conflicts are resolved',
-    'Post-merge tasks are coordinated'
+    'Post-merge tasks are coordinated',
   ],
   fallbackActions: [
     'Document merge blockers and create resolution plan',
     'Escalate merge conflicts to project lead',
-    'Schedule additional review if needed'
-  ]
+    'Schedule additional review if needed',
+  ],
 };
-
 // Protocol registry for easy access
 export const STANDARD_PROTOCOLS = {
   signal_resolution: SIGNAL_RESOLUTION_PROTOCOL,
   resource_report: RESOURCE_REPORT_PROTOCOL,
   operational_status: OPERATIONAL_STATUS_PROTOCOL,
   test_verification: TEST_VERIFICATION_PROTOCOL,
-  pull_request: PULL_REQUEST_PROTOCOL
+  pull_request: PULL_REQUEST_PROTOCOL,
 } as const;
-
 export type StandardProtocolId = keyof typeof STANDARD_PROTOCOLS;
-
 /**
  * Get a standard protocol by ID
  */
 export function getStandardProtocol(id: StandardProtocolId): GuidelineProtocol {
   return STANDARD_PROTOCOLS[id];
 }
-
 /**
  * Check if a protocol ID is a standard protocol
  */

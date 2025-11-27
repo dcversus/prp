@@ -11,28 +11,23 @@
 import React from 'react';
 import { render } from 'ink';
 
-// Import new wizard system
-import { InitWizard } from './components/wizard/index.js';
-import type { WizardState } from './components/wizard/index.js';
+// Import init components
+import { InitFlow } from './components/init/InitFlow';
 
-// Import TUI config
-import { createTUIConfig } from './config/TUIConfig.js';
+import type { WizardState } from './components/init/types';
 
 // Export the wizard for external use
 export const runInitWizard = async (): Promise<{ success: boolean; state?: WizardState }> => {
-  const config = createTUIConfig();
-
   return new Promise((resolve) => {
     const { waitUntilExit } = render(
-      <InitWizard
-        config={config}
+      <InitFlow
         onComplete={(state) => {
           resolve({ success: true, state });
         }}
         onCancel={() => {
           resolve({ success: false });
         }}
-      />
+      />,
     );
 
     waitUntilExit().catch(() => {
@@ -42,7 +37,7 @@ export const runInitWizard = async (): Promise<{ success: boolean; state?: Wizar
 };
 
 // Export the wizard component directly
-export { InitWizard };
-export type { WizardState } from './components/wizard/index.js';
+export { InitFlow };
+export type { WizardState } from './components/init/types';
 
-export default InitWizard;
+export default InitFlow;

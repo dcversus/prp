@@ -2,6 +2,8 @@
  * Type definitions for PRP
  */
 
+// Re-export LogLevel from shared types to avoid duplication
+export type { LogLevel } from './shared/types';
 export interface ProjectOptions {
   name: string;
   description: string;
@@ -26,7 +28,6 @@ export interface ProjectOptions {
   useAI: boolean;
   aiProvider?: AIProvider;
 }
-
 export type Template =
   | 'none'
   | 'fastapi'
@@ -37,11 +38,8 @@ export type Template =
   | 'svelte'
   | 'express'
   | 'wikijs';
-
 export type LicenseType = 'MIT' | 'Apache-2.0' | 'GPL-3.0' | 'BSD-3-Clause' | 'ISC' | 'Unlicense';
-
 export type AIProvider = 'openai' | 'anthropic' | 'google';
-
 export interface CLIOptions {
   name?: string;
   description?: string;
@@ -54,19 +52,16 @@ export interface CLIOptions {
   git?: boolean;
   install?: boolean;
 }
-
 export interface GeneratorContext {
   options: ProjectOptions;
   targetPath: string;
   templatePath: string;
 }
-
 export interface FileToGenerate {
   path: string;
   content: string;
   executable?: boolean;
 }
-
 export interface TemplateData {
   projectName: string;
   description: string;
@@ -88,18 +83,15 @@ export interface TemplateData {
   hasPrettier: boolean;
   hasDocker: boolean;
 }
-
 export interface GeneratorOptions {
   templatePath: string;
   targetPath: string;
   data: TemplateData;
 }
-
 export interface TemplateEngine {
   render(template: string, data: TemplateData): string;
   renderFile(filePath: string, data: TemplateData): Promise<string>;
 }
-
 // Additional types for CLI and logging
 export interface CommandResult {
   success: boolean;
@@ -111,16 +103,12 @@ export interface CommandResult {
   stderr?: string;
   duration?: number;
 }
-
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'verbose';
-
 // Validation result interface
 export interface ValidationResultBase {
   isValid: boolean;
   errors?: string[];
   warnings?: string[];
 }
-
 // CLI event interface
 export interface CLIEvent {
   type: string;
@@ -128,10 +116,8 @@ export interface CLIEvent {
   data?: Record<string, unknown>;
   source?: string;
 }
-
 // PRPConfig is imported from src/shared/config.ts to avoid duplication
-export type PRPConfig = import('./shared/config.js').PRPConfig;
-
+export type PRPConfig = import('./shared/config').PRPConfig;
 // Configuration settings interfaces
 export interface DebugSettings {
   enabled: boolean;
@@ -142,7 +128,6 @@ export interface DebugSettings {
   colors: boolean;
   profiling: boolean;
 }
-
 export interface QualitySettings {
   linting: {
     enabled: boolean;
@@ -164,7 +149,6 @@ export interface QualitySettings {
     thresholds: Record<string, number>;
   };
 }
-
 export interface BuildSettings {
   tool: 'webpack' | 'vite' | 'rollup' | 'esbuild' | 'tsc';
   optimization: boolean;
@@ -177,7 +161,6 @@ export interface BuildSettings {
     format: string[];
   };
 }
-
 export interface TestSettings {
   framework: 'jest' | 'vitest' | 'mocha' | 'jasmine';
   coverage: {
@@ -189,7 +172,6 @@ export interface TestSettings {
   setupFiles: string[];
   testMatch: string[];
 }
-
 export interface CISettings {
   platform: 'github' | 'gitlab' | 'bitbucket' | 'azure';
   workflows: {
@@ -205,7 +187,6 @@ export interface CISettings {
   };
   environment: Record<string, string>;
 }
-
 export interface DevelopmentSettings {
   watch: boolean;
   hotReload: boolean;
@@ -214,7 +195,6 @@ export interface DevelopmentSettings {
   proxy: Record<string, string>;
   server: string;
 }
-
 export interface PackageManagerSettings {
   manager: 'npm' | 'yarn' | 'pnpm';
   registry?: string;
@@ -223,7 +203,6 @@ export interface PackageManagerSettings {
   dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
 }
-
 // Settings config interface that contains all settings
 export interface SettingsConfig {
   debug: DebugSettings;
@@ -234,9 +213,7 @@ export interface SettingsConfig {
   development: DevelopmentSettings;
   packageManager: PackageManagerSettings;
 }
-
 // Interactive Template System Types
-
 export interface TemplateConfig {
   name: string;
   displayName: string;
@@ -249,7 +226,6 @@ export interface TemplateConfig {
   hooks?: GenerationHook[];
   estimatedTime?: number; // in seconds
 }
-
 export type TemplateCategory =
   | 'frontend'
   | 'backend'
@@ -261,20 +237,21 @@ export type TemplateCategory =
   | 'ml/ai'
   | 'devops'
   | 'static';
-
 export interface TemplateDependencies {
   required: Record<string, string>;
   optional: Record<string, string>;
   dev: Record<string, string>;
   peer?: Record<string, string>;
 }
-
 // Generic types for prompt validation and transformation
 export type PromptValidationFunction<T = string> = (input: T) => boolean | string;
 export type PromptFilterFunction<T = string> = (input: T) => T;
 export type PromptConditionFunction = (answers: Record<string, unknown>) => boolean;
-export type PromptTransformerFunction<T = string> = (input: T, answers: Record<string, unknown>, flags: Record<string, unknown>) => string;
-
+export type PromptTransformerFunction<T = string> = (
+  input: T,
+  answers: Record<string, unknown>,
+  flags: Record<string, unknown>,
+) => string;
 export interface PromptConfig {
   name: string;
   type: PromptType;
@@ -287,7 +264,6 @@ export interface PromptConfig {
   when?: PromptConditionFunction;
   transformer?: PromptTransformerFunction;
 }
-
 export type PromptType =
   | 'input'
   | 'confirm'
@@ -298,7 +274,6 @@ export type PromptType =
   | 'password'
   | 'editor'
   | 'number';
-
 export interface PromptChoice {
   name: string;
   value: string | number | boolean;
@@ -307,7 +282,6 @@ export interface PromptChoice {
   disabled?: boolean | string;
   checked?: boolean;
 }
-
 export interface GenerationHook {
   name: string;
   type: HookType;
@@ -315,9 +289,7 @@ export interface GenerationHook {
   description?: string;
   execute: (context: HookContext) => Promise<HookResult>;
 }
-
 export type HookType = 'pre' | 'generation' | 'post';
-
 export interface HookContext {
   generatorOptions: GeneratorContext;
   userAnswers: Record<string, unknown>;
@@ -326,7 +298,6 @@ export interface HookContext {
   startTime: number;
   progress: ProgressTracker;
 }
-
 export interface HookResult {
   success: boolean;
   message?: string;
@@ -334,7 +305,6 @@ export interface HookResult {
   warnings?: string[];
   errors?: string[];
 }
-
 export interface ProgressTracker {
   current: number;
   total: number;
@@ -343,14 +313,12 @@ export interface ProgressTracker {
   update: (step: string, increment?: number) => void;
   getProgress: () => { percent: number; elapsed: number; eta: number };
 }
-
 export interface ValidationResult {
   isValid: boolean;
   errors?: string[];
   warnings?: string[];
   suggestions?: string[];
 }
-
 export interface TemplateRegistry {
   templates: Map<string, TemplateConfig>;
   categories: Map<TemplateCategory, TemplateConfig[]>;
@@ -359,7 +327,6 @@ export interface TemplateRegistry {
   getByCategory: (category: TemplateCategory) => TemplateConfig[];
   getFeatured: () => TemplateConfig[];
 }
-
 export interface SearchFilters {
   category?: TemplateCategory;
   tags?: string[];
@@ -369,7 +336,6 @@ export interface SearchFilters {
   hasDocker?: boolean;
   hasCI?: boolean;
 }
-
 export interface InteractiveScaffoldingOptions {
   skipPrompts?: boolean;
   defaults?: Record<string, unknown>;
@@ -379,7 +345,6 @@ export interface InteractiveScaffoldingOptions {
   dryRun?: boolean;
   force?: boolean;
 }
-
 export interface UserAnswers {
   projectName: string;
   description: string;
@@ -397,19 +362,19 @@ export interface UserAnswers {
     openEditor?: boolean;
   };
 }
-
 export interface DependencyManager {
   resolveVersions: (dependencies: Record<string, string>) => Promise<Record<string, string>>;
   detectConflicts: (dependencies: Record<string, string>) => DependencyConflict[];
   getLatestVersion: (packageName: string) => Promise<string>;
   getVersionRange: (packageName: string, range: string) => Promise<string[]>;
   detectPackageManager: (projectPath: string) => PackageManagerType;
-  installDependencies: (dependencies: Record<string, string>, packageManager?: PackageManagerType) => Promise<void>;
+  installDependencies: (
+    dependencies: Record<string, string>,
+    packageManager?: PackageManagerType,
+  ) => Promise<void>;
   getPackageInfo: (packageName: string) => Promise<PackageInfo>;
 }
-
 export type PackageManagerType = 'npm' | 'yarn' | 'pnpm' | 'bun';
-
 export interface DependencyConflict {
   package: string;
   type: 'version' | 'peer' | 'optional';
@@ -418,7 +383,6 @@ export interface DependencyConflict {
   severity: 'error' | 'warning' | 'info';
   resolution?: string;
 }
-
 export interface PackageInfo {
   name: string;
   version: string;
@@ -435,7 +399,6 @@ export interface PackageInfo {
   lastModified?: string;
   downloadCount?: number;
 }
-
 export interface ScaffoldingSession {
   id: string;
   startTime: number;
@@ -447,14 +410,12 @@ export interface ScaffoldingSession {
   answers: Partial<UserAnswers>;
   logs: ScaffoldingLog[];
 }
-
 export interface ScaffoldingLog {
   timestamp: number;
   level: 'debug' | 'info' | 'warn' | 'error';
   message: string;
   data?: Record<string, unknown>;
 }
-
 export interface FeatureConfig {
   name: string;
   description: string;
@@ -465,7 +426,6 @@ export interface FeatureConfig {
   hooks?: GenerationHook[];
   enabled: boolean;
 }
-
 export interface TemplateFeatures {
   typescript: FeatureConfig;
   testing: FeatureConfig;
@@ -481,13 +441,11 @@ export interface TemplateFeatures {
   monitoring: FeatureConfig;
   deployment: FeatureConfig;
 }
-
 // Type definitions for ESLint/Prettier configurations
 export type ESLintConfig = Record<string, unknown>;
 export type ESLintRule = Record<string, unknown>;
 export type PrettierConfig = Record<string, unknown>;
 export type TypeScriptConfig = Record<string, unknown>;
-
 export interface CodeQualityConfig {
   eslint?: {
     enabled: boolean;
@@ -510,7 +468,6 @@ export interface CodeQualityConfig {
     e2e?: boolean;
   };
 }
-
 export interface ProjectStructure {
   src: string[];
   public?: string[];
@@ -520,7 +477,6 @@ export interface ProjectStructure {
   scripts?: string[];
   build?: string[];
 }
-
 export interface GenerationMetrics {
   template: string;
   startTime: number;
@@ -533,20 +489,16 @@ export interface GenerationMetrics {
   warnings: string[];
   userSatisfaction?: number; // 1-5 scale
 }
-
 // Signal System Types for PRP-007 Integration
-
 // Signal Type Enum for type safety
 export enum SignalTypeEnum {
   AGENT = 'agent',
   SYSTEM = 'system',
   SCANNER = 'scanner',
   INSPECTOR = 'inspector',
-  ORCHESTRATOR = 'orchestrator'
+  ORCHESTRATOR = 'orchestrator',
 }
-
 export type SignalType = SignalTypeEnum;
-
 // Signal Source Enum for all agent types
 export enum SignalSourceEnum {
   ROBO_SYSTEM_ANALYST = 'robo-system-analyst',
@@ -557,21 +509,17 @@ export enum SignalSourceEnum {
   ROBO_DEVOPS_SRE = 'robo-devops-sre',
   ORCHESTRATOR = 'orchestrator',
   SYSTEM = 'system',
-  SCANNER = 'scanner'
+  SCANNER = 'scanner',
 }
-
 export type SignalSource = SignalSourceEnum;
-
 // Signal Priority Enum
 export enum SignalPriorityEnum {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  CRITICAL = 'critical'
+  CRITICAL = 'critical',
 }
-
 export type SignalPriority = SignalPriorityEnum;
-
 // Signal Code Enum - All signals from AGENTS.md
 export enum SignalCodeEnum {
   // Critical Priority (9-10)
@@ -579,14 +527,12 @@ export enum SignalCodeEnum {
   BLOCKER = 'bb',
   GOAL_NOT_ACHIEVABLE = 'ff',
   JESUS_CHRIST = 'JC',
-
   // High Priority (7-8)
   FEEDBACK_REQUEST = 'af',
   NOT_OBVIOUS = 'no',
   INCIDENT = 'ic',
   ESCALATION_REQUIRED = 'er',
   ORCHESTRATOR_ATTENTION = 'oa',
-
   // Medium-High Priority (5-6)
   TESTS_RED = 'tr',
   CI_FAILED = 'cf',
@@ -594,7 +540,6 @@ export enum SignalCodeEnum {
   ADMIN_ATTENTION = 'aa',
   FILE_OWNERSHIP_CONFLICT = 'fo',
   DESIGN_ISSUE_IDENTIFIED = 'di',
-
   // Medium Priority (3-4)
   GOAL_CLARIFICATION = 'gg',
   VALIDATION_REQUIRED = 'vr',
@@ -610,7 +555,6 @@ export enum SignalCodeEnum {
   ADMIN_PREVIEW_READY = 'ap',
   DESIGN_REVIEW_REQUESTED = 'dr',
   PERFORMANCE_TESTING_DESIGN = 'pt',
-
   // Medium-Low Priority (2-3)
   DONE_ASSESSMENT = 'da',
   READY_FOR_PREPARATION = 'rp',
@@ -628,7 +572,6 @@ export enum SignalCodeEnum {
   RELEASED = 'rl',
   POST_MORTEM = 'pm',
   CLEANUP_COMPLETE = 'cc',
-
   // Design Signals
   DESIGN_UPDATE = 'du',
   DESIGN_SYSTEM_UPDATED = 'ds',
@@ -638,7 +581,6 @@ export enum SignalCodeEnum {
   DESIGN_FEEDBACK_RECEIVED = 'df',
   DESIGN_TESTING_COMPLETE = 'dt',
   DESIGN_PROTOTYPE_READY = 'dp_proto',
-
   // DevOps Signals
   INFRASTRUCTURE_DEPLOYED = 'id',
   CI_CD_PIPELINE_UPDATED = 'cd_pipeline',
@@ -658,7 +600,6 @@ export enum SignalCodeEnum {
   ALERT_OPTIMIZED = 'ao',
   POST_MORTEM_STARTED = 'ps_started',
   TROUBLESHOOTING_SESSION = 'ts',
-
   // Coordination Signals
   PARALLEL_COORDINATION_NEEDED = 'pc_coord',
   COMPONENT_COORDINATION = 'cc_coord',
@@ -666,11 +607,9 @@ export enum SignalCodeEnum {
   PARALLEL_ENVIRONMENT_READY = 'pe',
   FEATURE_FLAG_SERVICE_UPDATED = 'fs',
   DATABASE_SCHEMA_SYNC = 'ds_sync',
-  ROLLBACK_PREPARED = 'rb'
+  ROLLBACK_PREPARED = 'rb',
 }
-
 export type SignalCode = SignalCodeEnum;
-
 export interface SignalEvent {
   id: string;
   type: SignalType;
@@ -693,7 +632,6 @@ export interface SignalEvent {
     error?: Error;
   };
 }
-
 export interface SignalDisplay {
   signal: string;
   color: string;
@@ -704,7 +642,6 @@ export interface SignalDisplay {
   category: 'progress' | 'blocker' | 'feedback' | 'quality' | 'coordination' | 'system';
   role?: SignalSource;
 }
-
 export interface SignalFilter {
   types?: SignalType[];
   sources?: SignalSource[];
@@ -719,14 +656,12 @@ export interface SignalFilter {
   };
   search?: string;
 }
-
 export interface SignalSubscription {
   id: string;
   filter?: SignalFilter;
   handler: (signal: SignalEvent) => void;
   createdAt: Date;
 }
-
 export interface SignalAggregation {
   total: number;
   byType: Record<SignalType, number>;
@@ -736,7 +671,6 @@ export interface SignalAggregation {
   recent: SignalEvent[];
   critical: SignalEvent[];
 }
-
 export interface SignalHistoryOptions {
   maxEntries: number;
   sortBy: 'timestamp' | 'priority' | 'source';
@@ -744,7 +678,6 @@ export interface SignalHistoryOptions {
   groupBy?: 'type' | 'source' | 'prpId' | 'none';
   filter?: SignalFilter;
 }
-
 // Signal System Configuration
 export interface SignalSystemConfig {
   enabled: boolean;
@@ -767,7 +700,6 @@ export interface SignalSystemConfig {
     visual: boolean;
   };
 }
-
 // EventBus Integration Types
 export interface EventBusIntegration {
   subscribe: (eventType: string, handler: (event: SignalEvent) => void) => string;
@@ -777,7 +709,6 @@ export interface EventBusIntegration {
   getEventsByType: (type: string, count?: number) => SignalEvent[];
   clearHistory: () => void;
 }
-
 // Signal Hook Return Types
 export interface UseSignalSubscriptionReturn {
   signals: SignalEvent[];
@@ -789,7 +720,6 @@ export interface UseSignalSubscriptionReturn {
   refetch: () => Promise<void>;
   aggregation: SignalAggregation;
 }
-
 export interface UseSignalDisplayReturn {
   getSignalDisplay: (signal: string) => SignalDisplay | null;
   getAllSignals: () => SignalDisplay[];
@@ -797,7 +727,6 @@ export interface UseSignalDisplayReturn {
   getSignalsByPriority: (priority: SignalPriority) => SignalDisplay[];
   searchSignals: (query: string) => SignalDisplay[];
 }
-
 // Performance Monitoring Types
 export interface SignalPerformanceMetrics {
   totalSignals: number;

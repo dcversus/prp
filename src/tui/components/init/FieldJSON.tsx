@@ -7,15 +7,17 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { useTheme } from '../../config/theme-provider.js';
-import type { FieldJSONProps } from './types.js';
+
+import { useTheme } from '../../config/theme-provider';
+
+import type { FieldJSONProps } from './types';
 
 const FieldJSON: React.FC<FieldJSONProps> = ({
   label,
   text,
   onChange,
   placeholder = '',
-  focused = false
+  focused = false,
 }) => {
   const theme = useTheme();
   const [isFocused, setIsFocused] = useState(focused);
@@ -55,36 +57,39 @@ const FieldJSON: React.FC<FieldJSONProps> = ({
   }, []);
 
   // Handle input
-  useInput((input, key) => {
-    if (!isFocused) {
-      return;
-    }
+  useInput(
+    (input, key) => {
+      if (!isFocused) {
+        return;
+      }
 
-    if (key.escape) {
-      setIsFocused(false);
-      return;
-    }
+      if (key.escape) {
+        setIsFocused(false);
+        return;
+      }
 
-    if (key.return) {
-      setIsFocused(false);
-      return;
-    }
+      if (key.return) {
+        setIsFocused(false);
+        return;
+      }
 
-    if (key.backspace || key.delete) {
-      const newText = internalText.slice(0, -1);
-      setInternalText(newText);
-      onChange(newText);
-      validateJSON(newText);
-      return;
-    }
+      if (key.backspace || key.delete) {
+        const newText = internalText.slice(0, -1);
+        setInternalText(newText);
+        onChange(newText);
+        validateJSON(newText);
+        return;
+      }
 
-    if (input) {
-      const newText = internalText + input;
-      setInternalText(newText);
-      onChange(newText);
-      validateJSON(newText);
-    }
-  }, { isActive: isFocused });
+      if (input) {
+        const newText = internalText + input;
+        setInternalText(newText);
+        onChange(newText);
+        validateJSON(newText);
+      }
+    },
+    { isActive: isFocused },
+  );
 
   // const handleFocus = useCallback(() => {
   //   setIsFocused(true);
@@ -105,7 +110,11 @@ const FieldJSON: React.FC<FieldJSONProps> = ({
         {/* Validation indicator */}
         {internalText.length > 0 && (
           <Box marginLeft={1}>
-            <Text color={isValid ? (theme.colors.status as any)?.ok : (theme.colors.status as any)?.error}>
+            <Text
+              color={
+                isValid ? (theme.colors.status as any)?.ok : (theme.colors.status as any)?.error
+              }
+            >
               {isValid ? '✓' : '✗'}
             </Text>
           </Box>
@@ -114,20 +123,14 @@ const FieldJSON: React.FC<FieldJSONProps> = ({
 
       {/* Input field */}
       <Box flexDirection="row" alignItems="flex-start">
-        <Box
-          flexDirection="column"
-          paddingX={1}
-          paddingY={0}
-          flexGrow={1}
-          minHeight={3}
-        >
+        <Box flexDirection="column" paddingX={1} paddingY={0} flexGrow={1} minHeight={3}>
           {/* Multi-line display */}
           {displayText.split('\n').map((line, index) => (
             <Text
               key={index}
               color={
                 hasError
-                  ? (theme.colors.status as any)?.error ?? theme.colors.status.error
+                  ? ((theme.colors.status as any)?.error ?? theme.colors.status.error)
                   : isEmpty
                     ? theme.colors.neutrals.muted
                     : theme.colors.neutrals.text
@@ -136,7 +139,9 @@ const FieldJSON: React.FC<FieldJSONProps> = ({
             >
               {line || ' '}
               {isFocused && index === displayText.split('\n').length - 1 && (
-                <Text color={(theme.colors.accent as any)?.orange ?? theme.colors.accent.orange}>█</Text>
+                <Text color={(theme.colors.accent as any)?.orange ?? theme.colors.accent.orange}>
+                  █
+                </Text>
               )}
             </Text>
           ))}

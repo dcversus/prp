@@ -4,23 +4,23 @@
  * Centralized scheduling system with ping intervals for orchestrator coordination,
  * agent health monitoring, and task distribution.
  */
-
 import { createAgentNudgeIntegration } from '../shared/nudge/agent-integration';
 import { createLayerLogger } from '../shared';
 import {
   TaskManager,
-  TaskDefinition,
   TaskAssignment,
   TaskResult as TaskManagerResult,
-  TaskType,
-  TaskPriority as TaskManagerPriority,
   AssignmentStatus,
-  TaskOutcome
+  TaskOutcome,
 } from '../shared/tasks';
-import { Signal } from '../shared/types';
+
+import type {
+  TaskDefinition,
+  TaskType,
+  TaskPriority as TaskManagerPriority} from '../shared/tasks';
+import type { Signal } from '../shared/types';
 
 const logger = createLayerLogger('orchestrator-scheduler');
-
 /**
  * Scheduler task types
  */
@@ -32,9 +32,8 @@ export enum SchedulerTaskType {
   PING = 'ping',
   BULK_DELIVERY = 'bulk-delivery',
   ESCALATION = 'escalation',
-  STATUS_UPDATE = 'status-update'
+  STATUS_UPDATE = 'status-update',
 }
-
 /**
  * Task priority levels
  */
@@ -43,9 +42,8 @@ export enum TaskPriority {
   HIGH = 2,
   MEDIUM = 3,
   LOW = 4,
-  BACKGROUND = 5
+  BACKGROUND = 5,
 }
-
 /**
  * Scheduler task interface
  */
@@ -75,7 +73,6 @@ export interface SchedulerTask {
   };
   dependencies?: string[]; // Task IDs that must complete before this runs
 }
-
 /**
  * Task execution result
  */
@@ -87,7 +84,6 @@ export interface TaskResult {
   error?: Error;
   nextRun?: Date;
 }
-
 /**
  * Agent ping information
  */
@@ -103,7 +99,6 @@ export interface AgentPing {
   capabilities: string[];
   metadata?: unknown;
 }
-
 /**
  * Coordination group for parallel task execution
  */
@@ -119,7 +114,6 @@ export interface CoordinationGroup {
   createdAt: Date;
   lastRun?: Date;
 }
-
 /**
  * Shared Scheduler Configuration
  */
@@ -138,27 +132,25 @@ export interface SchedulerConfig {
   enableTaskManagement: boolean;
   enableAutoTaskAssignment: boolean;
 }
-
 /**
  * Shared Scheduler System
  */
 export class SharedScheduler {
-  private tasks: Map<string, SchedulerTask> = new Map();
-  private coordinationGroups: Map<string, CoordinationGroup> = new Map();
-  private agentPings: Map<string, AgentPing> = new Map();
-  private runningTasks: Map<string, Promise<TaskResult>> = new Map();
-  private config: SchedulerConfig;
-  private agentNudge: ReturnType<typeof createAgentNudgeIntegration>;
-  private intervals: Map<string, ReturnType<typeof setInterval>> = new Map();
+  private readonly tasks = new Map<string, SchedulerTask>();
+  private readonly coordinationGroups = new Map<string, CoordinationGroup>();
+  private readonly agentPings = new Map<string, AgentPing>();
+  private readonly runningTasks = new Map<string, Promise<TaskResult>>();
+  private readonly config: SchedulerConfig;
+  private readonly agentNudge: ReturnType<typeof createAgentNudgeIntegration>;
+  private readonly intervals = new Map<string, ReturnType<typeof setInterval>>();
   private taskManager?: TaskManager;
-  private metrics: {
+  private readonly metrics: {
     tasksExecuted: number;
     tasksSucceeded: number;
     tasksFailed: number;
     averageExecutionTime: number;
     uptime: Date;
   };
-
   constructor(config?: Partial<SchedulerConfig>) {
     this.config = {
       maxConcurrentTasks: 10,
@@ -174,58 +166,47 @@ export class SharedScheduler {
       enablePingMonitoring: true,
       enableTaskManagement: true,
       enableAutoTaskAssignment: true,
-      ...config
+      ...config,
     };
-
     this.agentNudge = createAgentNudgeIntegration();
     this.metrics = {
       tasksExecuted: 0,
       tasksSucceeded: 0,
       tasksFailed: 0,
       averageExecutionTime: 0,
-      uptime: new Date()
+      uptime: new Date(),
     };
-
     this.initializeScheduler();
   }
-
   /**
    * Initialize scheduler with default tasks
    */
   private async initializeScheduler(): Promise<void> {
     logger.info('SharedScheduler', 'Initializing shared scheduler system');
-
     // Initialize task manager if enabled
     if (this.config.enableTaskManagement) {
       await this.initializeTaskManager();
     }
-
     // Register default tasks
     this.registerDefaultTasks();
-
     // Start main scheduler loop
     this.startSchedulerLoop();
-
     // Start health monitoring
     if (this.config.enableHealthChecks) {
       this.startHealthMonitoring();
     }
-
     // Start ping monitoring
     if (this.config.enablePingMonitoring) {
       this.startPingMonitoring();
     }
-
     // Start cleanup process
     this.startCleanupProcess();
-
     logger.info('SharedScheduler', 'Shared scheduler initialized', {
       config: this.config,
       tasksCount: this.tasks.size,
-      taskManagerEnabled: this.config.enableTaskManagement
+      taskManagerEnabled: this.config.enableTaskManagement,
     });
   }
-
   /**
    * Initialize task manager
    */
@@ -234,21 +215,16 @@ export class SharedScheduler {
       this.taskManager = new TaskManager({
         enableAutoAssignment: this.config.enableAutoTaskAssignment,
         maxConcurrentTasksPerAgent: 3,
-        defaultTaskTimeout: this.config.taskTimeout
+        defaultTaskTimeout: this.config.taskTimeout,
       });
-
       await this.taskManager.initialize();
-
       // Register default agents
       this.registerDefaultAgents();
-
       // Set up task manager event listeners
       this.setupTaskManagerEventListeners();
-
       logger.info('SharedScheduler', 'Task manager initialized successfully');
     }
   }
-
   /**
    * Register default agents with task manager
    */
@@ -256,7 +232,6 @@ export class SharedScheduler {
     if (!this.taskManager) {
       return;
     }
-
     // Register standard agents
     const defaultAgents = [
       {
@@ -267,8 +242,8 @@ export class SharedScheduler {
         performance: {
           avgCompletionTime: 20 * 60 * 1000, // 20 minutes
           successRate: 95,
-          qualityScore: 85
-        }
+          qualityScore: 85,
+        },
       },
       {
         id: 'robo-aqa',
@@ -278,30 +253,42 @@ export class SharedScheduler {
         performance: {
           avgCompletionTime: 15 * 60 * 1000, // 15 minutes
           successRate: 98,
-          qualityScore: 90
-        }
+          qualityScore: 90,
+        },
       },
       {
         id: 'robo-system-analyst',
         type: 'robo-system-analyst',
-        capabilities: ['analysis', 'research', 'planning', 'documentation', 'requirements_analysis'],
+        capabilities: [
+          'analysis',
+          'research',
+          'planning',
+          'documentation',
+          'requirements_analysis',
+        ],
         maxWorkload: 2,
         performance: {
           avgCompletionTime: 25 * 60 * 1000, // 25 minutes
           successRate: 92,
-          qualityScore: 88
-        }
+          qualityScore: 88,
+        },
       },
       {
         id: 'robo-ux-ui-designer',
         type: 'robo-ux-ui-designer',
-        capabilities: ['design', 'user_experience', 'visual_design', 'prototyping', 'accessibility'],
+        capabilities: [
+          'design',
+          'user_experience',
+          'visual_design',
+          'prototyping',
+          'accessibility',
+        ],
         maxWorkload: 2,
         performance: {
           avgCompletionTime: 30 * 60 * 1000, // 30 minutes
           successRate: 90,
-          qualityScore: 87
-        }
+          qualityScore: 87,
+        },
       },
       {
         id: 'robo-devops-sre',
@@ -311,18 +298,15 @@ export class SharedScheduler {
         performance: {
           avgCompletionTime: 35 * 60 * 1000, // 35 minutes
           successRate: 94,
-          qualityScore: 89
-        }
-      }
+          qualityScore: 89,
+        },
+      },
     ];
-
-    defaultAgents.forEach(agent => {
+    defaultAgents.forEach((agent) => {
       this.taskManager?.registerAgent(agent);
     });
-
     logger.info('SharedScheduler', `Registered ${defaultAgents.length} default agents`);
   }
-
   /**
    * Set up task manager event listeners
    */
@@ -330,33 +314,29 @@ export class SharedScheduler {
     if (!this.taskManager) {
       return;
     }
-
     this.taskManager.on('task:created', ({ task, signal }) => {
       logger.info('SharedScheduler', 'Task created from signal', {
         taskId: task.id,
         taskType: task.type,
-        signalId: signal.id
+        signalId: signal.id,
       });
     });
-
     this.taskManager.on('task:assigned', ({ task, assignment, agent }) => {
       logger.info('SharedScheduler', 'Task assigned to agent', {
         taskId: task.id,
         assignmentId: assignment.id,
         agentId: agent.id,
-        agentType: agent.type
+        agentType: agent.type,
       });
     });
-
     this.taskManager.on('task:completed', ({ task, assignment, result, agent }) => {
       logger.info('SharedScheduler', 'Task completed', {
         taskId: task.id,
         assignmentId: assignment.id,
         outcome: result.outcome,
         duration: result.timestamps.duration,
-        agentId: agent.id
+        agentId: agent.id,
       });
-
       // Update scheduler metrics
       this.metrics.tasksExecuted++;
       if (result.outcome === TaskOutcome.SUCCESS) {
@@ -365,32 +345,32 @@ export class SharedScheduler {
         this.metrics.tasksFailed++;
       }
     });
-
     this.taskManager.on('agent:registered', ({ agent }) => {
       logger.info('SharedScheduler', 'Agent registered with task manager', {
         agentId: agent.id,
         type: agent.type,
-        capabilities: agent.capabilities.length
+        capabilities: agent.capabilities.length,
       });
     });
   }
-
   /**
    * Create task from signal
    */
-  createTaskFromSignal(signal: Signal, options?: {
-    type?: TaskType;
-    priority?: TaskManagerPriority;
-    title?: string;
-    description?: string;
-    requiredCapabilities?: string[];
-    parameters?: Record<string, unknown>;
-  }): TaskDefinition | null {
+  createTaskFromSignal(
+    signal: Signal,
+    options?: {
+      type?: TaskType;
+      priority?: TaskManagerPriority;
+      title?: string;
+      description?: string;
+      requiredCapabilities?: string[];
+      parameters?: Record<string, unknown>;
+    },
+  ): TaskDefinition | null {
     if (!this.taskManager || !this.config.enableTaskManagement) {
       logger.warn('SharedScheduler', 'Task management not enabled, cannot create task from signal');
       return null;
     }
-
     try {
       const task = this.taskManager.createTaskFromSignal(signal, options);
       logger.info('SharedScheduler', 'Task created from signal', {
@@ -398,32 +378,34 @@ export class SharedScheduler {
         signalId: signal.id,
         signalType: signal.type,
         taskType: task.type,
-        priority: task.priority
+        priority: task.priority,
       });
       return task;
     } catch (error) {
-      logger.error('SharedScheduler', 'Failed to create task from signal', error instanceof Error ? error : new Error(String(error)), {
-        signalId: signal.id,
-        signalType: signal.type
-      });
+      logger.error(
+        'SharedScheduler',
+        'Failed to create task from signal',
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          signalId: signal.id,
+          signalType: signal.type,
+        },
+      );
       return null;
     }
   }
-
   /**
    * Get task manager instance
    */
   getTaskManager(): TaskManager | undefined {
     return this.taskManager;
   }
-
   /**
    * Get task manager statistics
    */
   getTaskManagerStatistics() {
     return this.taskManager?.getStatistics() ?? null;
   }
-
   /**
    * Register default scheduler tasks
    */
@@ -438,7 +420,7 @@ export class SharedScheduler {
       schedule: {
         interval: this.config.healthCheckInterval,
         maxRetries: 3,
-        timeout: 30000
+        timeout: 30000,
       },
       handler: () => this.performHealthCheck(),
       metadata: {
@@ -446,10 +428,9 @@ export class SharedScheduler {
         runCount: 0,
         successCount: 0,
         failureCount: 0,
-        enabled: true
-      }
+        enabled: true,
+      },
     });
-
     // Agent ping coordination task
     this.registerTask({
       id: 'agent-ping-coordination',
@@ -460,7 +441,7 @@ export class SharedScheduler {
       schedule: {
         interval: this.config.pingInterval,
         maxRetries: 2,
-        timeout: 15000
+        timeout: 15000,
       },
       handler: () => this.coordinateAgentPings(),
       metadata: {
@@ -470,10 +451,9 @@ export class SharedScheduler {
         failureCount: 0,
         enabled: true,
         requiresCoordination: true,
-        coordinationGroupId: 'agent-monitoring'
-      }
+        coordinationGroupId: 'agent-monitoring',
+      },
     });
-
     // Bulk delivery coordination task
     this.registerTask({
       id: 'bulk-delivery-coordination',
@@ -484,7 +464,7 @@ export class SharedScheduler {
       schedule: {
         interval: 60000, // 1 minute
         maxRetries: 3,
-        timeout: 45000
+        timeout: 45000,
       },
       handler: () => this.coordinateBulkDelivery(),
       metadata: {
@@ -492,10 +472,9 @@ export class SharedScheduler {
         runCount: 0,
         successCount: 0,
         failureCount: 0,
-        enabled: true
-      }
+        enabled: true,
+      },
     });
-
     // Follow-up coordination task
     this.registerTask({
       id: 'follow-up-coordination',
@@ -506,7 +485,7 @@ export class SharedScheduler {
       schedule: {
         interval: 120000, // 2 minutes
         maxRetries: 2,
-        timeout: 30000
+        timeout: 30000,
       },
       handler: () => this.coordinateFollowUps(),
       metadata: {
@@ -514,10 +493,9 @@ export class SharedScheduler {
         runCount: 0,
         successCount: 0,
         failureCount: 0,
-        enabled: true
-      }
+        enabled: true,
+      },
     });
-
     // Cleanup task
     this.registerTask({
       id: 'cleanup',
@@ -528,7 +506,7 @@ export class SharedScheduler {
       schedule: {
         interval: this.config.cleanupInterval,
         maxRetries: 1,
-        timeout: 60000
+        timeout: 60000,
       },
       handler: () => this.performSystemCleanup(),
       metadata: {
@@ -536,14 +514,12 @@ export class SharedScheduler {
         runCount: 0,
         successCount: 0,
         failureCount: 0,
-        enabled: true
-      }
+        enabled: true,
+      },
     });
-
     // Create coordination groups
     this.createCoordinationGroups();
   }
-
   /**
    * Create coordination groups for parallel task execution
    */
@@ -558,9 +534,8 @@ export class SharedScheduler {
       requiresSync: true,
       syncTimeout: this.config.coordinationTimeout,
       status: 'idle',
-      createdAt: new Date()
+      createdAt: new Date(),
     });
-
     // Message coordination group
     this.coordinationGroups.set('message-coordination', {
       id: 'message-coordination',
@@ -571,14 +546,15 @@ export class SharedScheduler {
       requiresSync: false, // Can run in parallel
       syncTimeout: this.config.coordinationTimeout,
       status: 'idle',
-      createdAt: new Date()
+      createdAt: new Date(),
     });
   }
-
   /**
    * Register a new scheduler task
    */
-  registerTask(task: Omit<SchedulerTask, 'metadata'> & { metadata?: Partial<SchedulerTask['metadata']> }): void {
+  registerTask(
+    task: Omit<SchedulerTask, 'metadata'> & { metadata?: Partial<SchedulerTask['metadata']> },
+  ): void {
     const fullTask: SchedulerTask = {
       ...task,
       metadata: {
@@ -587,20 +563,17 @@ export class SharedScheduler {
         successCount: 0,
         failureCount: 0,
         enabled: true,
-        ...task.metadata
-      }
+        ...task.metadata,
+      },
     };
-
     this.tasks.set(task.id, fullTask);
-
     logger.info('SharedScheduler', 'Task registered', {
       taskId: task.id,
       type: task.type,
       priority: task.priority,
-      interval: task.schedule.interval
+      interval: task.schedule.interval,
     });
   }
-
   /**
    * Start main scheduler loop
    */
@@ -608,96 +581,91 @@ export class SharedScheduler {
     const schedulerInterval = setInterval(() => {
       this.processScheduledTasks();
     }, 10000); // Check every 10 seconds for tasks ready to run
-
     this.intervals.set('main-scheduler', schedulerInterval);
-
     logger.info('SharedScheduler', 'Main scheduler loop started');
   }
-
   /**
    * Process tasks that are ready to run
    */
   private async processScheduledTasks(): Promise<void> {
     const now = new Date();
     const readyTasks = Array.from(this.tasks.values())
-      .filter(task =>
-        task.metadata.enabled &&
-        (!task.metadata.nextRun || now >= task.metadata.nextRun) &&
-        !this.runningTasks.has(task.id)
+      .filter(
+        (task) =>
+          task.metadata.enabled &&
+          (!task.metadata.nextRun || now >= task.metadata.nextRun) &&
+          !this.runningTasks.has(task.id),
       )
       .sort((a, b) => a.priority - b.priority) // Lower number = higher priority
       .slice(0, this.config.maxConcurrentTasks - this.runningTasks.size);
-
     if (readyTasks.length === 0) {
       return;
     }
-
     logger.info('SharedScheduler', `Processing ${readyTasks.length} ready tasks`);
-
     // Process coordination groups first
-    const coordinationTasks = readyTasks.filter(task => task.metadata.requiresCoordination);
-    const independentTasks = readyTasks.filter(task => !task.metadata.requiresCoordination);
-
+    const coordinationTasks = readyTasks.filter((task) => task.metadata.requiresCoordination);
+    const independentTasks = readyTasks.filter((task) => !task.metadata.requiresCoordination);
     // Handle coordination tasks
     for (const task of coordinationTasks) {
       if (task.metadata.coordinationGroupId) {
         await this.processCoordinationTask(task, task.metadata.coordinationGroupId);
       }
     }
-
     // Handle independent tasks
     for (const task of independentTasks) {
       this.executeTask(task);
     }
   }
-
   /**
    * Process task that requires coordination
    */
-  private async processCoordinationTask(task: SchedulerTask, coordinationGroupId: string): Promise<void> {
+  private async processCoordinationTask(
+    task: SchedulerTask,
+    coordinationGroupId: string,
+  ): Promise<void> {
     const group = this.coordinationGroups.get(coordinationGroupId);
     if (!group) {
       logger.warn('SharedScheduler', 'Coordination group not found', {
         taskId: task.id,
-        coordinationGroupId
+        coordinationGroupId,
       });
       return;
     }
-
     // Check if all tasks in group are ready
-    const groupTasks = group.tasks.map(taskId => this.tasks.get(taskId)).filter(Boolean) as SchedulerTask[];
-    const readyTasks = groupTasks.filter(t =>
-      t.metadata.enabled &&
-      (!t.metadata.nextRun || new Date() >= t.metadata.nextRun) &&
-      !this.runningTasks.has(t.id)
+    const groupTasks = group.tasks
+      .map((taskId) => this.tasks.get(taskId))
+      .filter(Boolean) as SchedulerTask[];
+    const readyTasks = groupTasks.filter(
+      (t) =>
+        t.metadata.enabled &&
+        (!t.metadata.nextRun || new Date() >= t.metadata.nextRun) &&
+        !this.runningTasks.has(t.id),
     );
-
     if (readyTasks.length !== groupTasks.length) {
       logger.debug('SharedScheduler', 'Coordination group not ready', {
         groupId: coordinationGroupId,
         readyCount: readyTasks.length,
-        totalCount: groupTasks.length
+        totalCount: groupTasks.length,
       });
       return;
     }
-
     // Execute coordination group
     await this.executeCoordinationGroup(group, readyTasks);
   }
-
   /**
    * Execute coordination group
    */
-  private async executeCoordinationGroup(group: CoordinationGroup, tasks: SchedulerTask[]): Promise<void> {
+  private async executeCoordinationGroup(
+    group: CoordinationGroup,
+    tasks: SchedulerTask[],
+  ): Promise<void> {
     group.status = 'running';
     group.lastRun = new Date();
-
     logger.info('SharedScheduler', 'Executing coordination group', {
       groupId: group.id,
       taskCount: tasks.length,
-      requiresSync: group.requiresSync
+      requiresSync: group.requiresSync,
     });
-
     try {
       if (group.requiresSync) {
         // Execute tasks synchronously
@@ -706,23 +674,27 @@ export class SharedScheduler {
         }
       } else {
         // Execute tasks in parallel
-        const promises = tasks.map(task => this.executeTask(task));
+        const promises = tasks.map((task) => this.executeTask(task));
         await Promise.allSettled(promises);
       }
-
       group.status = 'completed';
       logger.info('SharedScheduler', 'Coordination group completed', {
-        groupId: group.id
+        groupId: group.id,
       });
-
     } catch (error) {
       group.status = 'failed';
-      logger.error('SharedScheduler', 'Coordination group failed', error instanceof Error ? error : new Error(error instanceof Error ? error.message : 'Unknown error'), {
-        groupId: group.id
-      });
+      logger.error(
+        'SharedScheduler',
+        'Coordination group failed',
+        error instanceof Error
+          ? error
+          : new Error(error instanceof Error ? error.message : 'Unknown error'),
+        {
+          groupId: group.id,
+        },
+      );
     }
   }
-
   /**
    * Execute individual task
    */
@@ -731,57 +703,57 @@ export class SharedScheduler {
       logger.debug('SharedScheduler', 'Task already running', { taskId: task.id });
       return;
     }
-
     const startTime = Date.now();
     task.metadata.lastRun = new Date();
     task.metadata.runCount++;
-
     logger.info('SharedScheduler', 'Executing task', {
       taskId: task.id,
       type: task.type,
-      runCount: task.metadata.runCount
+      runCount: task.metadata.runCount,
     });
-
     const taskPromise = this.runTaskWithTimeout(task, this.config.taskTimeout);
     this.runningTasks.set(task.id, taskPromise);
-
     try {
       const result = await taskPromise;
       const duration = Date.now() - startTime;
-
       if (result.success) {
         task.metadata.successCount++;
         this.metrics.tasksSucceeded++;
         logger.info('SharedScheduler', 'Task completed successfully', {
           taskId: task.id,
           duration,
-          runCount: task.metadata.runCount
+          runCount: task.metadata.runCount,
         });
       } else {
         task.metadata.failureCount++;
         this.metrics.tasksFailed++;
-        logger.error('SharedScheduler', 'Task failed', result.error || new Error('Task execution failed'), {
-          taskId: task.id,
-          runCount: task.metadata.runCount
-        });
+        logger.error(
+          'SharedScheduler',
+          'Task failed',
+          result.error || new Error('Task execution failed'),
+          {
+            taskId: task.id,
+            runCount: task.metadata.runCount,
+          },
+        );
       }
-
       // Update metrics
       this.updateMetrics(duration);
-
       // Schedule next run
       task.metadata.nextRun = result.nextRun || new Date(Date.now() + task.schedule.interval);
-
     } catch (error) {
       task.metadata.failureCount++;
       this.metrics.tasksFailed++;
       task.metadata.lastError = error instanceof Error ? error.message : 'Unknown error';
-
-      logger.error('SharedScheduler', 'Task execution failed', error instanceof Error ? error : new Error('Unknown error'), {
-        taskId: task.id,
-        errorMessage: error instanceof Error ? error.message : 'Unknown error'
-      });
-
+      logger.error(
+        'SharedScheduler',
+        'Task execution failed',
+        error instanceof Error ? error : new Error('Unknown error'),
+        {
+          taskId: task.id,
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        },
+      );
       // Schedule retry if applicable
       if (task.metadata.failureCount <= task.schedule.maxRetries) {
         task.metadata.nextRun = new Date(Date.now() + this.config.retryDelay);
@@ -789,15 +761,13 @@ export class SharedScheduler {
         task.metadata.enabled = false;
         logger.warn('SharedScheduler', 'Task disabled after max retries', {
           taskId: task.id,
-          failureCount: task.metadata.failureCount
+          failureCount: task.metadata.failureCount,
         });
       }
-
     } finally {
       this.runningTasks.delete(task.id);
     }
   }
-
   /**
    * Run task with timeout
    */
@@ -806,50 +776,45 @@ export class SharedScheduler {
       const timer = setTimeout(() => {
         reject(new Error(`Task timeout: ${task.id}`));
       }, timeout);
-
-      task.handler()
-        .then(result => {
+      task
+        .handler()
+        .then((result) => {
           clearTimeout(timer);
           resolve(result);
         })
-        .catch(error => {
+        .catch((error) => {
           clearTimeout(timer);
           resolve({
             success: false,
             duration: 0,
-            error
+            error,
           });
         });
     });
   }
-
   /**
    * Default task handlers
    */
   private async performHealthCheck(): Promise<TaskResult> {
     const startTime = Date.now();
-
     try {
       // Check system resources
       const memUsage = process.memoryUsage();
       const uptime = process.uptime();
       const activeTasks = this.runningTasks.size;
-
       // Check nudge system health
       const nudgeStatus = await this.agentNudge.testSystem();
-
       const health = {
         memory: {
           rss: memUsage.rss,
           heapUsed: memUsage.heapUsed,
-          heapTotal: memUsage.heapTotal
+          heapTotal: memUsage.heapTotal,
         },
         uptime,
         activeTasks,
         nudgeSystem: nudgeStatus,
-        timestamp: new Date()
+        timestamp: new Date(),
       };
-
       // Send health alert if needed
       if (memUsage.heapUsed / memUsage.heapTotal > 0.9) {
         await this.agentNudge.sendAdminAttention({
@@ -857,36 +822,31 @@ export class SharedScheduler {
           agentType: 'shared-scheduler',
           topic: 'High Memory Usage Alert',
           summary: 'System memory usage exceeds 90%',
-          details: `Memory usage: ${(memUsage.heapUsed / memUsage.heapTotal * 100).toFixed(2)}%`,
+          details: `Memory usage: ${((memUsage.heapUsed / memUsage.heapTotal) * 100).toFixed(2)}%`,
           actionRequired: 'Monitor system performance and consider restart',
-          priority: 'high'
+          priority: 'high',
         });
       }
-
       return {
         success: true,
         duration: Date.now() - startTime,
         message: 'Health check completed',
-        data: health
+        data: health,
       };
-
     } catch (error) {
       return {
         success: false,
         duration: Date.now() - startTime,
-        error: error instanceof Error ? error : new Error('Unknown health check error')
+        error: error instanceof Error ? error : new Error('Unknown health check error'),
       };
     }
   }
-
   private async coordinateAgentPings(): Promise<TaskResult> {
     const startTime = Date.now();
-
     try {
       // Simulate agent pings (in real implementation, this would ping actual agents)
       const agents = ['system-analyst', 'developer', 'aqa', 'orchestrator'];
       const pings: AgentPing[] = [];
-
       for (const agentId of agents) {
         const ping: AgentPing = {
           agentId,
@@ -897,19 +857,16 @@ export class SharedScheduler {
           memoryUsage: Math.random() * 100 + 50, // MB
           tokenUsage: Math.random() * 1000,
           currentTasks: [],
-          capabilities: []
+          capabilities: [],
         };
-
         this.agentPings.set(agentId, ping);
         pings.push(ping);
       }
-
       // Check for offline agents
-      const offlineAgents = agents.filter(agentId => {
+      const offlineAgents = agents.filter((agentId) => {
         const ping = this.agentPings.get(agentId);
-        return !ping || (Date.now() - ping.lastPing.getTime()) > 120000; // 2 minutes
+        return !ping || Date.now() - ping.lastPing.getTime() > 120000; // 2 minutes
       });
-
       if (offlineAgents.length > 0) {
         await this.agentNudge.sendAdminAttention({
           prpId: 'SYSTEM-MONITORING',
@@ -918,114 +875,103 @@ export class SharedScheduler {
           summary: `${offlineAgents.length} agent(s) offline`,
           details: `Offline agents: ${offlineAgents.join(', ')}`,
           actionRequired: 'Investigate agent connectivity',
-          priority: 'high'
+          priority: 'high',
         });
       }
-
       return {
         success: true,
         duration: Date.now() - startTime,
         message: `Coordinated pings for ${pings.length} agents`,
-        data: { pings, offlineAgents }
+        data: { pings, offlineAgents },
       };
-
     } catch (error) {
       return {
         success: false,
         duration: Date.now() - startTime,
-        error: error instanceof Error ? error : new Error('Unknown ping coordination error')
+        error: error instanceof Error ? error : new Error('Unknown ping coordination error'),
       };
     }
   }
-
   private async coordinateBulkDelivery(): Promise<TaskResult> {
     const startTime = Date.now();
-
     try {
       // This would integrate with the orchestrator scanner guidelines
       // for bulk delivery of aggregated signals
       logger.info('SharedScheduler', 'Coordinating bulk delivery');
-
       return {
         success: true,
         duration: Date.now() - startTime,
-        message: 'Bulk delivery coordination completed'
+        message: 'Bulk delivery coordination completed',
       };
-
     } catch (error) {
       return {
         success: false,
         duration: Date.now() - startTime,
-        error: error instanceof Error ? error : new Error('Unknown bulk delivery error')
+        error: error instanceof Error ? error : new Error('Unknown bulk delivery error'),
       };
     }
   }
-
   private async coordinateFollowUps(): Promise<TaskResult> {
     const startTime = Date.now();
-
     try {
       // This would integrate with the message handling guidelines
       // for follow-up coordination
       logger.info('SharedScheduler', 'Coordinating follow-ups');
-
       return {
         success: true,
         duration: Date.now() - startTime,
-        message: 'Follow-up coordination completed'
+        message: 'Follow-up coordination completed',
       };
-
     } catch (error) {
       return {
         success: false,
         duration: Date.now() - startTime,
-        error: error instanceof Error ? error : new Error('Unknown follow-up coordination error')
+        error: error instanceof Error ? error : new Error('Unknown follow-up coordination error'),
       };
     }
   }
-
   private async performSystemCleanup(): Promise<TaskResult> {
     const startTime = Date.now();
-
     try {
       // Clean up old agent pings
       const cutoffTime = Date.now() - 3600000; // 1 hour ago
       let cleanedPings = 0;
-
       for (const [agentId, ping] of this.agentPings.entries()) {
         if (ping.lastPing.getTime() < cutoffTime) {
           this.agentPings.delete(agentId);
           cleanedPings++;
         }
       }
-
       // Clean up completed coordination groups
       let cleanedGroups = 0;
       for (const [groupId, group] of this.coordinationGroups.entries()) {
-        if (group.status === 'completed' && group.lastRun &&
-            (Date.now() - group.lastRun.getTime()) > 3600000) {
-          logger.debug('SharedScheduler', `Resetting completed coordination group ${groupId} to idle`);
+        if (
+          group.status === 'completed' &&
+          group.lastRun &&
+          Date.now() - group.lastRun.getTime() > 3600000
+        ) {
+          logger.debug(
+            'SharedScheduler',
+            `Resetting completed coordination group ${groupId} to idle`,
+          );
           group.status = 'idle';
           cleanedGroups++;
         }
       }
-
       return {
         success: true,
         duration: Date.now() - startTime,
         message: 'System cleanup completed',
-        data: { cleanedPings, cleanedGroups }
+        data: { cleanedPings, cleanedGroups },
       };
-
     } catch (error) {
       return {
         success: false,
         duration: Date.now() - startTime,
-        error: error instanceof Error ? error : new Error('Unknown cleanup error')
+        error: error instanceof Error ? error : new Error('Unknown cleanup error'),
       };
     }
   }
-
   /**
    * Start health monitoring
    */
@@ -1036,10 +982,8 @@ export class SharedScheduler {
         this.executeTask(healthTask);
       }
     }, this.config.healthCheckInterval);
-
     this.intervals.set('health-monitoring', healthInterval);
   }
-
   /**
    * Start ping monitoring
    */
@@ -1050,10 +994,8 @@ export class SharedScheduler {
         this.executeTask(pingTask);
       }
     }, this.config.pingInterval);
-
     this.intervals.set('ping-monitoring', pingInterval);
   }
-
   /**
    * Start cleanup process
    */
@@ -1064,21 +1006,18 @@ export class SharedScheduler {
         this.executeTask(cleanupTask);
       }
     }, this.config.cleanupInterval);
-
     this.intervals.set('cleanup-process', cleanupInterval);
   }
-
   /**
    * Update scheduler metrics
    */
   private updateMetrics(duration: number): void {
     this.metrics.tasksExecuted++;
-
     // Calculate rolling average execution time
-    const totalDuration = this.metrics.averageExecutionTime * (this.metrics.tasksExecuted - 1) + duration;
+    const totalDuration =
+      this.metrics.averageExecutionTime * (this.metrics.tasksExecuted - 1) + duration;
     this.metrics.averageExecutionTime = totalDuration / this.metrics.tasksExecuted;
   }
-
   /**
    * Get scheduler status and metrics
    */
@@ -1108,11 +1047,10 @@ export class SharedScheduler {
       idle: number;
       failed: number;
     };
-    } {
+  } {
     const tasks = Array.from(this.tasks.values());
     const agents = Array.from(this.agentPings.values());
     const groups = Array.from(this.coordinationGroups.values());
-
     const tasksByType: Record<SchedulerTaskType, number> = {
       [SchedulerTaskType.HEALTH_CHECK]: 0,
       [SchedulerTaskType.COORDINATION]: 0,
@@ -1121,55 +1059,48 @@ export class SharedScheduler {
       [SchedulerTaskType.PING]: 0,
       [SchedulerTaskType.BULK_DELIVERY]: 0,
       [SchedulerTaskType.ESCALATION]: 0,
-      [SchedulerTaskType.STATUS_UPDATE]: 0
+      [SchedulerTaskType.STATUS_UPDATE]: 0,
     };
-
-    tasks.forEach(task => {
+    tasks.forEach((task) => {
       tasksByType[task.type]++;
     });
-
-    const activeAgents = agents.filter(ping =>
-      ping.status === 'active' &&
-      (Date.now() - ping.lastPing.getTime()) < 120000
+    const activeAgents = agents.filter(
+      (ping) => ping.status === 'active' && Date.now() - ping.lastPing.getTime() < 120000,
     );
-
     return {
       uptime: Date.now() - this.metrics.uptime.getTime(),
       metrics: { ...this.metrics },
       tasks: {
         total: tasks.length,
-        enabled: tasks.filter(t => t.metadata.enabled).length,
+        enabled: tasks.filter((t) => t.metadata.enabled).length,
         running: this.runningTasks.size,
-        byType: tasksByType
+        byType: tasksByType,
       },
       agents: {
         total: agents.length,
         active: activeAgents.length,
-        offline: agents.length - activeAgents.length
+        offline: agents.length - activeAgents.length,
       },
       coordinationGroups: {
         total: groups.length,
-        running: groups.filter(g => g.status === 'running').length,
-        idle: groups.filter(g => g.status === 'idle').length,
-        failed: groups.filter(g => g.status === 'failed').length
-      }
+        running: groups.filter((g) => g.status === 'running').length,
+        idle: groups.filter((g) => g.status === 'idle').length,
+        failed: groups.filter((g) => g.status === 'failed').length,
+      },
     };
   }
-
   /**
    * Get agent ping information
    */
   getAgentPings(): AgentPing[] {
     return Array.from(this.agentPings.values());
   }
-
   /**
    * Get coordination group status
    */
   getCoordinationGroups(): CoordinationGroup[] {
     return Array.from(this.coordinationGroups.values());
   }
-
   /**
    * Enable/disable task
    */
@@ -1178,13 +1109,10 @@ export class SharedScheduler {
     if (!task) {
       return false;
     }
-
     task.metadata.enabled = enabled;
     logger.info('SharedScheduler', `Task ${enabled ? 'enabled' : 'disabled'}`, { taskId });
-
     return true;
   }
-
   /**
    * Force execute task
    */
@@ -1193,46 +1121,37 @@ export class SharedScheduler {
     if (!task?.metadata.enabled) {
       return false;
     }
-
     await this.executeTask(task);
     return true;
   }
-
   /**
    * Shutdown scheduler
    */
   async shutdown(): Promise<void> {
     logger.info('SharedScheduler', 'Shutting down shared scheduler');
-
     // Clear all intervals
     this.intervals.forEach((interval, name) => {
       clearInterval(interval);
       logger.debug('SharedScheduler', `Cleared interval: ${name}`);
     });
     this.intervals.clear();
-
     // Shutdown task manager if initialized
     if (this.taskManager) {
       await this.taskManager.shutdown();
       this.taskManager = undefined;
     }
-
     // Wait for running tasks to complete or timeout
     const runningTaskPromises = Array.from(this.runningTasks.values());
     if (runningTaskPromises.length > 0) {
       logger.info('SharedScheduler', `Waiting for ${runningTaskPromises.length} tasks to complete`);
       await Promise.allSettled(runningTaskPromises);
     }
-
     logger.info('SharedScheduler', 'Shared scheduler shutdown completed');
   }
 }
-
 /**
  * Create shared scheduler instance
  */
-export const createSharedScheduler = (
-  config?: Partial<SchedulerConfig>
-): SharedScheduler => {
+export const createSharedScheduler = (config?: Partial<SchedulerConfig>): SharedScheduler => {
   return new SharedScheduler(config);
 };

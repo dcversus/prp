@@ -3,41 +3,53 @@
  *
  * Simple ensemble classifier implementation for signal classification.
  */
+import type { Signal } from '../shared/types';
+import type { ProcessingContext } from './types';
 
-import { Signal } from '../shared/types';
-import { ProcessingContext } from './types';
-import { SignalFeatures, EnsembleResult } from './enhanced-signal-classifier';
+// Local type definitions since enhanced-signal-classifier module doesn't exist
+export interface SignalFeatures {
+  type: string;
+  priority: number;
+  source: string;
+  timestamp: Date;
+  data: unknown;
+  metadata?: Record<string, unknown>;
+}
 
+export interface EnsembleResult {
+  classifications: any[];
+  confidence: number;
+  consensus: number;
+  timestamp: Date;
+}
 /**
  * Basic Ensemble Classifier implementation
  */
 export class EnsembleClassifier {
   public name: string;
-
-  constructor(name: string, _method: string = 'rule-based') {
+  constructor(name: string, _method = 'rule-based') {
     this.name = name;
     // Store method for future use when implementing multiple classification methods
+    void _method; // Mark as intentionally used
   }
-
   /**
    * Classify signal using the ensemble method
    */
-  async classify(
+  classify(
     signal: Signal,
     features: SignalFeatures,
-    context: ProcessingContext
-  ): Promise<EnsembleResult> {
+    context: ProcessingContext,
+  ): EnsembleResult {
     // Simple rule-based classification
     const category = this.determineCategory(signal, features);
     const subcategory = this.determineSubcategory(signal, features);
     const confidence = this.calculateConfidence(signal, features, context);
-
     return {
       category,
       subcategory,
       confidence,
       categoryConfidence: confidence,
-      categoryAlternatives: this.getAlternatives(category).map(alt => alt.category),
+      categoryAlternatives: this.getAlternatives(category).map((alt) => alt.category),
       successfulClassifiers: 1,
       priorityReasoning: this.generateReasoning(signal, features, category),
       classifications: [
@@ -45,141 +57,131 @@ export class EnsembleClassifier {
           category,
           subcategory,
           confidence,
-          reasoning: this.generateReasoning(signal, features, category)
-        }
+          reasoning: this.generateReasoning(signal, features, category),
+        },
       ],
       consensus: {
         achieved: true,
         confidence,
         agreementRatio: 1,
         conflictingClassifiers: 0,
-        selectedCategory: category
+        selectedCategory: category,
       },
-      timestamp: new Date()
+      timestamp: new Date(),
     } as unknown as EnsembleResult;
   }
-
   /**
    * Determine primary category based on signal type and features
    */
   private determineCategory(signal: Signal, _features: SignalFeatures): string {
     // Features parameter will be used for more sophisticated classification in future
     const signalTypeMap: Record<string, string> = {
-      'dp': 'development',
-      'tg': 'quality',        // Test green signals
-      'bf': 'development',    // Bug fixed
-      'mg': 'coordination',   // Merged
-      'bb': 'coordination',   // Blocker
-      'ur': 'coordination',   // Urgent
-      'af': 'coordination',   // Feedback request
-      'gg': 'analysis',       // Goal clarification
-      'ff': 'analysis',       // Goal not achievable
-      'vr': 'coordination',   // Validation required
-      'rc': 'quality',        // Review complete
-      'rr': 'quality',        // Review progress
-      'cf': 'quality',        // Code quality
-      'tr': 'quality',        // Tests red
-      'pc': 'coordination',   // Pre-release complete
-      'rg': 'coordination',   // Review progress
-      'rv': 'quality',        // Review verified
-      'cd': 'development',    // Cleanup done
-      'cc': 'development',    // Cleanup complete
-      'ps': 'coordination',   // Post-release status
-      'ic': 'coordination',   // Incident
-      'JC': 'coordination',   // Jesus Christ (incident resolved)
-      'pm': 'analysis'        // Post-mortem
+      dp: 'development',
+      tg: 'quality', // Test green signals
+      bf: 'development', // Bug fixed
+      mg: 'coordination', // Merged
+      bb: 'coordination', // Blocker
+      ur: 'coordination', // Urgent
+      af: 'coordination', // Feedback request
+      gg: 'analysis', // Goal clarification
+      ff: 'analysis', // Goal not achievable
+      vr: 'coordination', // Validation required
+      rc: 'quality', // Review complete
+      rr: 'quality', // Review progress
+      cf: 'quality', // Code quality
+      tr: 'quality', // Tests red
+      pc: 'coordination', // Pre-release complete
+      rg: 'coordination', // Review progress
+      rv: 'quality', // Review verified
+      cd: 'development', // Cleanup done
+      cc: 'development', // Cleanup complete
+      ps: 'coordination', // Post-release status
+      ic: 'coordination', // Incident
+      JC: 'coordination', // Jesus Christ (incident resolved)
+      pm: 'analysis', // Post-mortem
     };
-
     return signalTypeMap[signal.type] ?? 'general';
   }
-
   /**
    * Determine subcategory based on signal details
    */
   private determineSubcategory(signal: Signal, _features: SignalFeatures): string {
     // Features parameter will be used for more sophisticated classification in future
     const subcategoryMap: Record<string, string> = {
-      'dp': 'progress',
-      'tg': 'testing',
-      'bf': 'bug-fix',
-      'mg': 'merge',
-      'bb': 'blocker',
-      'ur': 'urgent',
-      'af': 'feedback',
-      'gg': 'clarification',
-      'ff': 'failure',
-      'vr': 'validation',
-      'rc': 'review',
-      'rr': 'review',
-      'cf': 'quality-check',
-      'tr': 'testing',
-      'pc': 'pre-release',
-      'rg': 'review',
-      'rv': 'review',
-      'cd': 'cleanup',
-      'cc': 'cleanup',
-      'ps': 'post-release',
-      'ic': 'incident',
-      'JC': 'incident',
-      'pm': 'post-mortem'
+      dp: 'progress',
+      tg: 'testing',
+      bf: 'bug-fix',
+      mg: 'merge',
+      bb: 'blocker',
+      ur: 'urgent',
+      af: 'feedback',
+      gg: 'clarification',
+      ff: 'failure',
+      vr: 'validation',
+      rc: 'review',
+      rr: 'review',
+      cf: 'quality-check',
+      tr: 'testing',
+      pc: 'pre-release',
+      rg: 'review',
+      rv: 'review',
+      cd: 'cleanup',
+      cc: 'cleanup',
+      ps: 'post-release',
+      ic: 'incident',
+      JC: 'incident',
+      pm: 'post-mortem',
     };
-
     return subcategoryMap[signal.type] ?? 'general';
   }
-
   /**
    * Calculate confidence based on signal clarity and context
    */
-  private calculateConfidence(signal: Signal, features: SignalFeatures, context: ProcessingContext): number {
+  private calculateConfidence(
+    signal: Signal,
+    features: SignalFeatures,
+    context: ProcessingContext,
+  ): number {
     let confidence = 0.6; // Higher base confidence to meet test expectations
-
     // Increase confidence based on signal clarity
     if (features.linguistic.clarity > 0.7) {
       confidence += 0.25;
     }
-
     // Increase confidence if signal has meaningful data
-    if (signal.data && Object.keys(signal.data).length > 0) {
+    if (signal.data !== null && signal.data !== undefined && Object.keys(signal.data).length > 0) {
       confidence += 0.15;
     }
-
     // Increase confidence for well-known signal types
     const knownTypes = ['dp', 'tg', 'bf', 'mg', 'bb', 'ur', 'rc', 'rr'];
     if (knownTypes.includes(signal.type)) {
       confidence += 0.15;
     }
-
     // Adjust based on contextual factors
-    if (context.agentStatus && context.agentStatus.length > 0) {
+    if (context.agentStatus !== undefined && context.agentStatus.length > 0) {
       confidence += 0.05;
     }
-
     // Add some variation for confidence distribution
-    confidence += (Math.random() * 0.1 - 0.05); // ±5% variation
-
+    confidence += Math.random() * 0.1 - 0.05; // ±5% variation
     return Math.min(Math.max(confidence, 0.3), 0.95); // Range: 30% - 95%
   }
-
   /**
    * Get alternative categories with lower confidence
    */
-  private getAlternatives(primaryCategory: string): Array<{ category: string; confidence: number }> {
+  private getAlternatives(
+    primaryCategory: string,
+  ): Array<{ category: string; confidence: number }> {
     const alternatives: Array<{ category: string; confidence: number }> = [];
-
     const alternativeCategories = ['development', 'quality', 'coordination', 'analysis', 'general'];
-
     for (const altCategory of alternativeCategories) {
       if (altCategory !== primaryCategory) {
         alternatives.push({
           category: altCategory,
-          confidence: 0.3 + Math.random() * 0.2 // Random confidence between 0.3-0.5
+          confidence: 0.3 + Math.random() * 0.2, // Random confidence between 0.3-0.5
         });
       }
     }
-
     return alternatives.slice(0, 2); // Return top 2 alternatives
   }
-
   /**
    * Generate reasoning for the classification
    */
@@ -188,9 +190,8 @@ export class EnsembleClassifier {
       `Signal type '${signal.type}' maps to category '${category}'`,
       `Linguistic clarity score: ${features.linguistic.clarity.toFixed(2)}`,
       `Signal contains ${features.linguistic.keywords.length} keywords`,
-      'Historical patterns support this classification'
+      'Historical patterns support this classification',
     ];
-
     return reasons.join('; ');
   }
 }

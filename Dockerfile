@@ -1,16 +1,39 @@
-# Multi-stage build for PRP CLI with MCP Server
-# Stage 1: Build stage
+# Multi-stage production-ready Dockerfile for PRP CLI with comprehensive security and monitoring
+# Stage 1: Build stage with security scanning
 FROM node:20-alpine AS builder
+
+# Set build arguments for metadata
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+
+# Security and metadata labels
+LABEL org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.name="prp-cli" \
+      org.label-schema.description="Autonomous Development Orchestration CLI with MCP Server" \
+      org.label-schema.url="https://github.com/dcversus/prp" \
+      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.vcs-url="https://github.com/dcversus/prp.git" \
+      org.label-schema.vendor="dcversus" \
+      org.label-schema.version=$VERSION \
+      org.label-schema.schema-version="1.0" \
+      maintainer="dcversus" \
+      security.scan.enabled="true" \
+      security.scan.type="comprehensive"
 
 # Set working directory
 WORKDIR /app
 
-# Install build dependencies
+# Install build dependencies with security considerations
 RUN apk add --no-cache \
     git \
     python3 \
     make \
-    g++
+    g++ \
+    curl \
+    ca-certificates \
+    && rm -rf /var/cache/apk/* \
+    && update-ca-certificates
 
 # Copy package files
 COPY package*.json ./

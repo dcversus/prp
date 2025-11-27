@@ -11,25 +11,31 @@
  * 7. Generation Progress
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import * as path from 'path';
+
+import React, { useState, useCallback, useRef, useMemo, JSX } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 
 // Import init components
-import InitShell from './InitShell.js';
-import FieldText from './FieldText.js';
-import FieldTextBlock from './FieldTextBlock.js';
-import FieldSelectCarousel from './FieldSelectCarousel.js';
-import FieldSecret from './FieldSecret.js';
-import FieldToggle from './FieldToggle.js';
-import FieldJSON from './FieldJSON.js';
-// import FileTreeChecks, { TreeNode } from './FileTreeChecks.js'; // Unused import
-import AgentEditor from './AgentEditor.js';
-import GenerationProgress from './GenerationProgress.js';
+import { setLoggerTUIMode } from '../../../shared/logger';
+import { detectProjectName } from '../../../shared/utils/version';
+import { createTUIConfig } from '../../config/TUIConfig';
+
+import InitShell from './InitShell';
+import FieldText from './FieldText';
+import FieldTextBlock from './FieldTextBlock';
+import FieldSelectCarousel from './FieldSelectCarousel';
+import FieldSecret from './FieldSecret';
+import FieldToggle from './FieldToggle';
+import FieldJSON from './FieldJSON';
+// import FileTreeChecks, { TreeNode } from './FileTreeChecks'; // Unused import
+import AgentEditor from './AgentEditor';
+import GenerationProgress from './GenerationProgress';
 
 // Import types and config
-import type { TUIConfig } from '../../../shared/types/TUIConfig.js';
-import { createTUIConfig } from '../../config/TUIConfig.js';
-import type { AgentConfig, TemplateFile, GenerationStep } from './types.js';
+
+import type { TUIConfig } from '../../../shared/types/TUIConfig';
+import type { AgentConfig, TemplateFile, GenerationStep } from './types';
 
 // Init state interface
 export interface InitState {
@@ -63,7 +69,7 @@ export interface InitState {
   configureFiles: boolean;
   selectedFiles: Set<string>;
   generatePromptQuote?: boolean;
-}
+};
 
 // Action history interface
 interface Action {
@@ -72,7 +78,7 @@ interface Action {
   type: 'info' | 'success' | 'warning' | 'error';
   message: string;
   details?: any;
-}
+};
 
 // Generation progress interfaces
 export interface InitFlowProps {
@@ -80,13 +86,15 @@ export interface InitFlowProps {
   onComplete?: (state: InitState) => void;
   onCancel?: () => void;
   initialState?: Partial<InitState>;
-}
+  isUpdateMode?: boolean;
+};
 
 export const InitFlow = ({
   config: externalConfig,
   onComplete,
   onCancel,
-  initialState = {}
+  initialState = {},
+  isUpdateMode = false,
 }: InitFlowProps) => {
   const { exit } = useApp();
   const [config] = useState(() => externalConfig || createTUIConfig());
@@ -94,38 +102,50 @@ export const InitFlow = ({
   const [actions, setActions] = useState<Action[]>([]);
   // const [musicState, // setMusicState] = useState<MusicNoteState>('awaiting'); // Unused variable
 
+  // Get current directory info and detect project name
+  const currentDir = useMemo(() => {
+    const cwd = process.cwd();
+    const dirName = path.basename(cwd);
+    const detectedProjectName = detectProjectName(cwd);
+    // Extract just the name part without the ♫ prefix for internal state
+    const cleanProjectName = detectedProjectName.replace(/^♫\s*/, '');
+    return { cwd, dirName, detectedProjectName, cleanProjectName };
+  }, []);
+
   // Initialize init state
   const [state, setState] = useState<InitState>({
-    step: 0,
-    projectName: '',
+    step: initialState.step !== undefined ? initialState.step : isUpdateMode ? 1 : 0, // Skip intro for update mode or use provided step
+    projectName: currentDir.cleanProjectName, // Default to detected project name (clean version)
     projectPrompt: '',
-    projectPath: '',
+    projectPath: currentDir.cleanProjectName, // Default to detected project name
     provider: 'anthropic',
     authType: 'oauth',
-    agents: [{
-      id: 'robo-developer',
-      type: 'developer',
-      limit: '100usd10k#dev',
-      cv: 'Full-stack developer with expertise in TypeScript, Node.js, and React',
-      warning_limit: '2k#robo-quality-control',
-      provider: 'anthropic',
-      yolo: false,
-      instructions_path: 'AGENTS.md',
-      sub_agents: true,
-      max_parallel: 5,
-      mcp: '.mcp.json',
-      compact_prediction: {
-        percent_threshold: 0.82,
-        auto_adjust: true,
-        cap: 24000
-      }
-    }],
+    agents: [
+      {
+        id: 'robo-developer',
+        type: 'developer',
+        limit: '100usd10k#dev',
+        cv: 'Full-stack developer with expertise in TypeScript, Node.js, and React',
+        warning_limit: '2k#robo-quality-control',
+        provider: 'anthropic',
+        yolo: false,
+        instructions_path: 'AGENTS.md',
+        sub_agents: true,
+        max_parallel: 5,
+        mcp: '.mcp.json',
+        compact_prediction: {
+          percent_threshold: 0.82,
+          auto_adjust: true,
+          cap: 24000,
+        },
+      },
+    ],
     integrations: {},
     template: 'typescript',
     configureFiles: false,
     selectedFiles: new Set(['src/', 'README.md', '.gitignore', 'package.json']),
     generatePromptQuote: true,
-    ...initialState
+    ...initialState,
   });
 
   // Generation state
@@ -139,7 +159,7 @@ export const InitFlow = ({
     { name: 'Initializing git...', status: 'pending' },
     { name: 'Installing dependencies...', status: 'pending' },
     { name: 'Creating first PRP...', status: 'pending' },
-    { name: 'Finalizing workspace...', status: 'pending' }
+    { name: 'Finalizing workspace...', status: 'pending' },
   ]);
 
   // Action logger
@@ -147,22 +167,22 @@ export const InitFlow = ({
     const newAction: Action = {
       ...action,
       id: Date.now().toString(),
-      timestamp: new Date()
+      timestamp: new Date(),
     };
-    setActions(prev => [...prev, newAction]);
+    setActions((prev) => [...prev, newAction]);
   }, []);
 
   // Step navigation
   const handleNext = useCallback(() => {
     if (state.step < 6) {
-      setState(prev => ({ ...prev, step: (prev.step + 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6 }));
+      setState((prev) => ({ ...prev, step: (prev.step + 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6 }));
       // setMusicState('awaiting');
     }
   }, [state.step]);
 
   const handleBack = useCallback(() => {
     if (state.step > 0) {
-      setState(prev => ({ ...prev, step: (prev.step - 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6 }));
+      setState((prev) => ({ ...prev, step: (prev.step - 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6 }));
       // setMusicState('awaiting');
     } else {
       onCancel?.();
@@ -178,61 +198,70 @@ export const InitFlow = ({
     }, 500);
   }, [handleNext]);
 
-  // Handle keyboard input
+  // Handle keyboard input - only for global navigation
   inputHandlerRef.current = (input, key) => {
-    // Handle Ctrl+C or Ctrl+D
+    // Handle Ctrl+C or Ctrl+D - proper exit with cleanup
     if (key.ctrl && (input === 'c' || input === 'd')) {
-      exit();
+      console.log('\x1b[?25h'); // Show cursor
+      setLoggerTUIMode(false); // Restore normal logging
+      onCancel?.();
+      process.exit(0);
       return;
     }
 
     // Handle q for quit
     if (input === 'q') {
-      exit();
+      console.log('\x1b[?25h'); // Show cursor
+      setLoggerTUIMode(false); // Restore normal logging
+      onCancel?.();
+      process.exit(0);
       return;
     }
 
-    // Handle escape
-    if (key.escape) {
+    // Handle escape - only when not in a text field
+    if (key.escape && !isInTextInputStep()) {
       handleBack();
       return;
     }
 
     // Handle Ctrl+R for restart/refresh
     if (key.ctrl && input === 'r') {
-      setState(prev => ({ ...prev, step: 0 }));
+      setState((prev) => ({ ...prev, step: 0 }));
       return;
     }
 
-    // Handle Enter on intro and generation steps
-    // Other steps handle their own input through form components
+    // Don't interfere with input on text/editing steps - let fields handle their own input
+    if (isInTextInputStep()) {
+      // Only handle escape key on text input steps
+      if (key.escape) {
+        handleBack();
+        return;
+      }
+      return;
+    }
+
+    // Handle Enter on intro and generation steps only (when not in text input)
     if (key.return) {
       if (state.step === 0) {
         // Intro step - advance to next
         handleStepComplete();
       } else if (state.step === 6) {
         // Generation step - exit
+        console.log('\x1b[?25h'); // Show cursor
+        setLoggerTUIMode(false); // Restore normal logging
         exit();
       }
       return;
     }
-
-    // Handle arrow keys for field navigation
-    if (state.step === 1 && key.upArrow || key.downArrow) {
-      // Arrow keys on project step for field switching
-      // The FieldText components handle their own focus
-      return;
-    }
-
-    // Handle tab for navigation between fields
-    if (key.tab) {
-      // Tab navigation between form fields is handled by components
-      
-    }
   };
 
-  // Apply input handler with cleanup on unmount
-  useInput(() => {}, { isActive: true }); // Empty input handler for now
+  // Apply input handler with proper keyboard event handling
+  useInput(inputHandlerRef.current as any, { isActive: true });
+
+  // Check if current step involves text input
+  const isInTextInputStep = () => {
+    return state.step === 1 || state.step === 2 || state.step === 4; // Project, Connections, Template steps
+  };
 
   // Template files tree
   const getTemplateFiles = useCallback((): TemplateFile[] => {
@@ -245,10 +274,31 @@ export const InitFlow = ({
         required: true,
         checked: true,
         children: [
-          { id: 'src/index', path: 'src/index.ts', name: 'index.ts', description: 'Entry point', required: true, checked: true },
-          { id: 'src/app', path: 'src/app.ts', name: 'app.ts', description: 'Main application', required: true, checked: true },
-          { id: 'src/cli', path: 'src/cli.ts', name: 'cli.ts', description: 'CLI interface', required: true, checked: true }
-        ]
+          {
+            id: 'src/index',
+            path: 'src/index.ts',
+            name: 'index.ts',
+            description: 'Entry point',
+            required: true,
+            checked: true,
+          },
+          {
+            id: 'src/app',
+            path: 'src/app.ts',
+            name: 'app.ts',
+            description: 'Main application',
+            required: true,
+            checked: true,
+          },
+          {
+            id: 'src/cli',
+            path: 'src/cli.ts',
+            name: 'cli.ts',
+            description: 'CLI interface',
+            required: true,
+            checked: true,
+          },
+        ],
       },
       {
         id: 'docs',
@@ -258,14 +308,57 @@ export const InitFlow = ({
         required: true,
         checked: true,
         children: [
-          { id: 'docs/readme', path: 'docs/README.md', name: 'README.md', description: 'Documentation', required: true, checked: true },
-          { id: 'docs/api', path: 'docs/api/', name: 'api/', description: 'API docs', required: false, checked: false, children: [] }
-        ]
+          {
+            id: 'docs/readme',
+            path: 'docs/README.md',
+            name: 'README.md',
+            description: 'Documentation',
+            required: true,
+            checked: true,
+          },
+          {
+            id: 'docs/api',
+            path: 'docs/api/',
+            name: 'api/',
+            description: 'API docs',
+            required: false,
+            checked: false,
+            children: [],
+          },
+        ],
       },
-      { id: 'package', path: 'package.json', name: 'package.json', description: 'Package configuration', required: true, checked: true },
-      { id: 'gitignore', path: '.gitignore', name: '.gitignore', description: 'Git ignore file', required: true, checked: true },
-      { id: 'license', path: 'LICENSE', name: 'LICENSE', description: 'License file', required: false, checked: false },
-      { id: 'contributing', path: 'CONTRIBUTING.md', name: 'CONTRIBUTING.md', description: 'Contributing guidelines', required: false, checked: false }
+      {
+        id: 'package',
+        path: 'package.json',
+        name: 'package.json',
+        description: 'Package configuration',
+        required: true,
+        checked: true,
+      },
+      {
+        id: 'gitignore',
+        path: '.gitignore',
+        name: '.gitignore',
+        description: 'Git ignore file',
+        required: true,
+        checked: true,
+      },
+      {
+        id: 'license',
+        path: 'LICENSE',
+        name: 'LICENSE',
+        description: 'License file',
+        required: false,
+        checked: false,
+      },
+      {
+        id: 'contributing',
+        path: 'CONTRIBUTING.md',
+        name: 'CONTRIBUTING.md',
+        description: 'Contributing guidelines',
+        required: false,
+        checked: false,
+      },
     ];
 
     if (state.template !== 'none') {
@@ -275,7 +368,7 @@ export const InitFlow = ({
         name: 'AGENTS.md',
         description: 'Agent configuration and role definitions',
         required: true,
-        checked: true
+        checked: true,
       });
 
       baseFiles.push({
@@ -284,7 +377,7 @@ export const InitFlow = ({
         name: '.prprc',
         description: 'Project configuration',
         required: true,
-        checked: true
+        checked: true,
       });
 
       baseFiles.push({
@@ -293,7 +386,7 @@ export const InitFlow = ({
         name: '.mcp.json',
         description: 'Model Context Protocol configuration',
         required: false,
-        checked: true
+        checked: true,
       });
 
       baseFiles.push({
@@ -312,11 +405,25 @@ export const InitFlow = ({
             required: false,
             checked: true,
             children: [
-              { id: 'github-ci', path: '.github/workflows/ci.yml', name: 'ci.yml', description: 'CI workflow', required: false, checked: true },
-              { id: 'github-review', path: '.github/workflows/claude-code-review.yml', name: 'claude-code-review.yml', description: 'Code review workflow', required: false, checked: true }
-            ]
-          }
-        ]
+              {
+                id: 'github-ci',
+                path: '.github/workflows/ci.yml',
+                name: 'ci.yml',
+                description: 'CI workflow',
+                required: false,
+                checked: true,
+              },
+              {
+                id: 'github-review',
+                path: '.github/workflows/claude-code-review.yml',
+                name: 'claude-code-review.yml',
+                description: 'Code review workflow',
+                required: false,
+                checked: true,
+              },
+            ],
+          },
+        ],
       });
     }
 
@@ -325,7 +432,7 @@ export const InitFlow = ({
 
   // File selection handler
   const handleFileToggle = useCallback((nodeId: string, checked: boolean) => {
-    setState(prev => {
+    setState((prev) => {
       const newSelectedFiles = new Set(prev.selectedFiles);
       if (checked) {
         newSelectedFiles.add(nodeId);
@@ -352,90 +459,93 @@ export const InitFlow = ({
       compact_prediction: {
         percent_threshold: 80,
         auto_adjust: true,
-        cap: 100
-      }
+        cap: 100,
+      },
     };
 
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
-      agents: [...prev.agents, newAgent]
+      agents: [...prev.agents, newAgent],
     }));
 
     addAction({
       type: 'info',
-      message: `Added agent: ${newAgent.id}`
+      message: `Added agent: ${newAgent.id}`,
     });
   }, [state.agents.length, state.provider, addAction]);
 
   const handleUpdateAgent = useCallback((index: number, agent: AgentConfig) => {
-    setState(prev => {
+    setState((prev) => {
       const newAgents = [...prev.agents];
       newAgents[index] = agent;
       return { ...prev, agents: newAgents };
     });
   }, []);
 
-  const handleRemoveAgent = useCallback((index: number) => {
-    setState(prev => ({
-      ...prev,
-      agents: prev.agents.filter((_, i) => i !== index)
-    }));
+  const handleRemoveAgent = useCallback(
+    (index: number) => {
+      setState((prev) => ({
+        ...prev,
+        agents: prev.agents.filter((_, i) => i !== index),
+      }));
 
-    addAction({
-      type: 'warning',
-      message: `Removed agent at position ${index + 1}`
-    });
-  }, [addAction]);
+      addAction({
+        type: 'warning',
+        message: `Removed agent at position ${index + 1}`,
+      });
+    },
+    [addAction],
+  );
 
   // Project generation
   const handleGenerate = useCallback(async () => {
-    setState(prev => ({ ...prev, step: 6 }));
+    setState((prev) => ({ ...prev, step: 6 }));
     // setMusicState('validating');
 
     // Simulate generation process
     for (let i = 0; i < generationSteps.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise((resolve) => setTimeout(resolve, 800));
 
-      setGenerationSteps(prev => {
+      setGenerationSteps((prev) => {
         const newSteps = [...prev];
         newSteps[i] = {
           ...newSteps[i],
           name: newSteps[i]?.name || 'Processing...',
           status: 'running' as const,
-          progress: 0
+          progress: 0,
         };
         return newSteps;
       });
 
       // Simulate progress
       for (let j = 0; j <= 100; j += 20) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        setGenerationSteps(prev => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        setGenerationSteps((prev) => {
           const newSteps = [...prev];
           newSteps[i] = {
             name: newSteps[i]?.name || 'Processing...',
             status: newSteps[i]?.status || 'running',
-            progress: j
+            progress: j,
           } as GenerationStep;
           return newSteps;
         });
       }
 
-      setGenerationSteps(prev => {
+      setGenerationSteps((prev) => {
         const newSteps = [...prev];
         newSteps[i] = {
           ...newSteps[i],
           name: newSteps[i]?.name || 'Processing...',
           status: 'completed' as const,
           progress: 100,
-          duration: 800 + Math.random() * 400
+          duration: 800 + Math.random() * 400,
         };
         return newSteps;
       });
 
       addAction({
         type: 'success',
-        message: `Completed: ${generationSteps[i]?.name || 'Unknown step'}`
+        message: `Completed: ${generationSteps[i]?.name || 'Unknown step'}`,
       });
     }
 
@@ -449,7 +559,10 @@ export const InitFlow = ({
   // Render current step
   const renderStep = () => {
     switch (state.step) {
-      case 0: // Intro
+      case 0: // Intro - skip intro for update mode
+        if (isUpdateMode) {
+          return <IntroStep onNext={handleStepComplete} isUpdateMode={true} />;
+        }
         return <IntroStep onNext={handleStepComplete} />;
 
       case 1: // Project Configuration
@@ -461,6 +574,7 @@ export const InitFlow = ({
             onNext={handleStepComplete}
             config={config}
             addAction={addAction}
+            isUpdateMode={isUpdateMode}
           />
         );
 
@@ -519,12 +633,7 @@ export const InitFlow = ({
 
       case 6: // Generation Progress
         return (
-          <GenerationStep
-            state={state}
-            config={config}
-            steps={generationSteps}
-            events={actions}
-          />
+          <GenerationStep state={state} config={config} steps={generationSteps} events={actions} />
         );
 
       default:
@@ -533,9 +642,15 @@ export const InitFlow = ({
   };
 
   // Step components (implemented as separate components for clarity)
-  const IntroStep = ({ onNext }: { onNext: () => void }) => (
+  const IntroStep = ({
+    onNext,
+    isUpdateMode = false,
+  }: {
+    onNext: () => void;
+    isUpdateMode?: boolean;
+  }) => (
     <InitShell
-      title="@dcversus/prp"
+      title={isUpdateMode ? 'Update Project' : currentDir.detectedProjectName}
       stepIndex={0}
       totalSteps={6}
       icon="♫"
@@ -544,7 +659,7 @@ export const InitFlow = ({
       <Box flexDirection="column" flexGrow={1} justifyContent="center" alignItems="center">
         <Box marginBottom={3}>
           <Text color={config.colors.accent_orange} bold>
-            ♫ @dcversus/prp
+            {currentDir.detectedProjectName}
           </Text>
         </Box>
 
@@ -552,77 +667,109 @@ export const InitFlow = ({
           <Text color={config.colors.muted} italic>
             "Tools should vanish; flow should remain."
           </Text>
-          <Text color={config.colors.muted}>
-            — workshop note
-          </Text>
+          <Text color={config.colors.muted}>— workshop note</Text>
         </Box>
 
         <Box marginBottom={3} flexDirection="column" alignItems="center">
-          <Text>This flow will provision your workspace and first PRP.</Text>
-          <Text>One input at a time. Minimal. Reversible.</Text>
+          {isUpdateMode ? (
+            <>
+              <Text>This flow will update your existing PRP project configuration.</Text>
+              <Text>Modify settings, add agents, or change integrations.</Text>
+            </>
+          ) : (
+            <>
+              <Text>This flow will provision your workspace and first PRP.</Text>
+              <Text>One input at a time. Minimal. Reversible.</Text>
+            </>
+          )}
         </Box>
 
         <Box marginTop={3}>
           <Text color={config.colors.muted} dimColor>
-            Press Enter to begin • Press Esc to exit
+            Press Enter to {isUpdateMode ? 'update' : 'begin'} • Press Esc to exit
           </Text>
         </Box>
       </Box>
     </InitShell>
   );
 
-  const ProjectStep = ({ state, setState, onBack, config }: any) => (
-    <InitShell
-      title="Project"
-      stepIndex={1}
-      totalSteps={6}
-      icon="♫"
-      footerKeys={['Enter', 'Esc', '↑/↓ move', '␣ toggle multiline']}
-      onBack={onBack}
-    >
-      <Box flexDirection="column" flexGrow={1}>
-        <FieldText
-          label="Project name"
-          value={state.projectName}
-          onChange={(value) => setState({
-            ...state,
-            projectName: value,
-            projectPath: value ? value.toLowerCase().replace(/[^a-z0-9]/g, '-') : ''
-          })}
-          notice="taken from package.json"
-          config={config}
-          autoFocus={true}
-        />
+  const ProjectStep = ({ state, setState, onBack, config, isUpdateMode = false }: any) => {
+    const [focusedField, setFocusedField] = useState<'name' | 'prompt'>('name');
 
-        <FieldTextBlock
-          label="Prompt"
-          value={state.projectPrompt}
-          onChange={(value) => setState({ ...state, projectPrompt: value })}
-          rows={8}
-          minHeight={4}
-          maxHeight={12}
-          tip="From this description we scaffold the MVP. Continue detailing in PRPs/…"
-          config={config}
-          multiline={true}
-          placeholder="Build an autonomous orchestration CLI that monitors PRPs, spawns agents, and enforces signal-driven workflow with TDD and Claude Code reviews."
-        />
+    // Handle Enter to advance to next step
+    const handleEnterKey = useCallback(() => {
+      handleStepComplete();
+    }, [handleStepComplete]);
 
-        <Box flexDirection="column" marginTop={1}>
-          <Box flexDirection="row" alignItems="center" marginBottom={1}>
-            <Text color={config.colors.muted}>Folder:</Text>
-            <Box marginLeft={1}>
-              <Text color={config.colors.accent_orange}>
-                {process.cwd()}/{state.projectPath || 'project-name'}
-              </Text>
+    return (
+      <InitShell
+        title={isUpdateMode ? 'Update Project' : 'Project'}
+        stepIndex={1}
+        totalSteps={6}
+        icon="♫"
+        footerKeys={['Enter', 'Esc', '␣ toggle multiline']}
+        onBack={onBack}
+      >
+        <Box flexDirection="column" flexGrow={1}>
+          <FieldText
+            label="Project name"
+            value={state.projectName}
+            onChange={(value) => {
+              const projectPath =
+                value && value !== currentDir.dirName
+                  ? value.toLowerCase().replace(/[^a-z0-9]/g, '-')
+                  : '';
+              setState({
+                ...state,
+                projectName: value,
+                projectPath: projectPath,
+              });
+            }}
+            notice={
+              state.projectName === currentDir.cleanProjectName
+                ? 'taken from package.json'
+                : 'will create subfolder'
+            }
+            config={config}
+            focused={focusedField === 'name'}
+            autoFocus={true}
+          />
+
+          <FieldTextBlock
+            label="Prompt"
+            value={state.projectPrompt}
+            onChange={(value) => setState({ ...state, projectPrompt: value })}
+            rows={8}
+            minHeight={4}
+            maxHeight={12}
+            tip="From this description we scaffold the MVP. Continue detailing in PRPs/…"
+            config={config}
+            multiline={true}
+            placeholder="Build an autonomous orchestration CLI that monitors PRPs, spawns agents, and enforces signal-driven workflow with TDD and Claude Code reviews."
+            focused={focusedField === 'prompt'}
+          />
+
+          <Box flexDirection="column" marginTop={1}>
+            <Box flexDirection="row" alignItems="center" marginBottom={1}>
+              <Text color={config.colors.muted}>Folder:</Text>
+              <Box marginLeft={1}>
+                <Text color={config.colors.accent_orange}>
+                  {state.projectPath
+                    ? path.join(currentDir.cwd, state.projectPath)
+                    : currentDir.cwd}
+                </Text>
+              </Box>
             </Box>
+            <Text color={config.colors.muted}>
+              {state.projectName !== currentDir.dirName
+                ? `Will create subfolder: ./${state.projectPath}`
+                : 'Will use current directory'}
+            </Text>
           </Box>
-          <Text color={config.colors.muted}>
-            Updates live as you edit Project name. Default: ./project-name
-          </Text>
         </Box>
-      </Box>
-    </InitShell>
-  );
+      </InitShell>
+    );
+  };
 
   const ConnectionsStep = ({ state, setState, onBack, config }: any) => (
     <InitShell
@@ -637,8 +784,11 @@ export const InitFlow = ({
         label="Provider"
         items={['OpenAI', 'Anthropic', 'Custom']}
         selectedIndex={['OpenAI', 'Anthropic', 'Custom'].indexOf(
-          state.provider === 'openai' ? 'OpenAI' :
-            state.provider === 'anthropic' ? 'Anthropic' : 'Custom'
+          state.provider === 'openai'
+            ? 'OpenAI'
+            : state.provider === 'anthropic'
+              ? 'Anthropic'
+              : 'Custom',
         )}
         onChange={(index) => {
           const providers = ['openai', 'anthropic', 'custom'];
@@ -670,26 +820,30 @@ export const InitFlow = ({
             label="Type"
             items={['OpenAI', 'Anthropic']}
             selectedIndex={state.customProvider?.type === 'anthropic' ? 1 : 0}
-            onChange={(index) => setState({
-              ...state,
-              customProvider: {
-                ...state.customProvider,
-                type: index === 1 ? 'anthropic' : 'openai',
-                baseUrl: state.customProvider?.baseUrl || 'https://llm.company.local/v1',
-                apiToken: state.customProvider?.apiToken || '',
-                customArgs: state.customProvider?.customArgs || '{"timeout": 45000, "seed": 7}'
-              }
-            })}
+            onChange={(index) =>
+              setState({
+                ...state,
+                customProvider: {
+                  ...state.customProvider,
+                  type: index === 1 ? 'anthropic' : 'openai',
+                  baseUrl: state.customProvider?.baseUrl || 'https://llm.company.local/v1',
+                  apiToken: state.customProvider?.apiToken || '',
+                  customArgs: state.customProvider?.customArgs || '{"timeout": 45000, "seed": 7}',
+                },
+              })
+            }
             config={config}
           />
 
           <FieldText
             label="Base URL"
             value={state.customProvider?.baseUrl || ''}
-            onChange={(value) => setState({
-              ...state,
-              customProvider: { ...state.customProvider, baseUrl: value }
-            })}
+            onChange={(value) =>
+              setState({
+                ...state,
+                customProvider: { ...state.customProvider, baseUrl: value },
+              })
+            }
             placeholder="https://llm.company.local/v1"
             config={config}
           />
@@ -697,20 +851,24 @@ export const InitFlow = ({
           <FieldSecret
             label="API token"
             value={state.customProvider?.apiToken || ''}
-            onChange={(value) => setState({
-              ...state,
-              customProvider: { ...state.customProvider, apiToken: value }
-            })}
+            onChange={(value) =>
+              setState({
+                ...state,
+                customProvider: { ...state.customProvider, apiToken: value },
+              })
+            }
             placeholder="***************"
           />
 
           <FieldJSON
             label="Custom args (JSON)"
             text={state.customProvider?.customArgs || '{}'}
-            onChange={(value) => setState({
-              ...state,
-              customProvider: { ...state.customProvider, customArgs: value }
-            })}
+            onChange={(value) =>
+              setState({
+                ...state,
+                customProvider: { ...state.customProvider, customArgs: value },
+              })
+            }
             config={config}
             placeholder='{"timeout": 45000, "seed": 7}'
           />
@@ -790,16 +948,12 @@ export const InitFlow = ({
 
       <Box flexDirection="column" marginTop={2}>
         <Text color={config.colors.muted} dimColor>
-          If GitHub:
-          Auth          [OAuth]   API URL / Token
-          Will create workflows and templates.
+          If GitHub: Auth [OAuth] API URL / Token Will create workflows and templates.
         </Text>
 
         <Box marginTop={1}>
           <Text color={config.colors.muted}>
-            If npm:
-            Auth          [OAuth]   Token
-            Registry      https://registry.npmjs.org
+            If npm: Auth [OAuth] Token Registry https://registry.npmjs.org
           </Text>
         </Box>
       </Box>
@@ -818,7 +972,9 @@ export const InitFlow = ({
       <FieldSelectCarousel
         label="Preset"
         items={['typescript', 'react', 'nestjs', 'fastapi', 'wikijs', 'none']}
-        selectedIndex={['typescript', 'react', 'nestjs', 'fastapi', 'wikijs', 'none'].indexOf(state.template)}
+        selectedIndex={['typescript', 'react', 'nestjs', 'fastapi', 'wikijs', 'none'].indexOf(
+          state.template,
+        )}
         onChange={(index) => {
           const templates = ['typescript', 'react', 'nestjs', 'fastapi', 'wikijs', 'none'] as const;
           setState({ ...state, template: templates[index] });
@@ -835,7 +991,13 @@ export const InitFlow = ({
       />
 
       {/* Default files preview */}
-      <Box flexDirection="column" marginTop={1} borderStyle="single" borderColor={config.colors.gray} padding={1}>
+      <Box
+        flexDirection="column"
+        marginTop={1}
+        borderStyle="single"
+        borderColor={config.colors.gray}
+        padding={1}
+      >
         <Box marginBottom={1}>
           <Text color={config.colors.accent_orange} bold>
             Default template files will be created:
@@ -855,9 +1017,7 @@ export const InitFlow = ({
         <Text color={config.colors.base_fg}> CLAUDE.md (symlink to AGENTS.md)</Text>
 
         <Box marginTop={1}>
-          <Text color={config.colors.muted}>
-            AGENTS.md and .prprc are mandatory.
-          </Text>
+          <Text color={config.colors.muted}>AGENTS.md and .prprc are mandatory.</Text>
         </Box>
       </Box>
 
@@ -873,17 +1033,17 @@ export const InitFlow = ({
 
   const GenerationStep = ({ config, steps, events }: any) => (
     <InitShell
-      title={steps.every((s: GenerationStep) => s.status === 'completed') ? 'Generation Complete' : 'Generating...'}
+      title={
+        steps.every((s: GenerationStep) => s.status === 'completed')
+          ? 'Generation Complete'
+          : 'Generating...'
+      }
       stepIndex={6}
       totalSteps={6}
       icon={steps.every((s: GenerationStep) => s.status === 'completed') ? '♫' : '⚠'}
       footerKeys={['Enter', 'Esc']}
     >
-      <GenerationProgress
-        isActive={true}
-        events={events}
-        config={config}
-      />
+      <GenerationProgress isActive={true} events={events} config={config} />
     </InitShell>
   );
 

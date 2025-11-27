@@ -4,15 +4,33 @@
  * Structured logging system with token usage tracking and performance monitoring.
  */
 
-import { createWriteStream, WriteStream } from 'fs';
-import { join } from 'path';
-import { FileUtils, PerformanceMonitor, TokenCounter } from './utils.js';
+import { createWriteStream, type WriteStream } from 'fs';
+import { join, dirname } from 'path';
+
+import { FileUtils, PerformanceMonitor, TokenCounter } from './utils';
+
 import type { LogLevel } from '../types';
 
 export interface LogEntry {
   timestamp: Date;
   level: LogLevel;
-  layer: 'scanner' | 'inspector' | 'orchestrator' | 'shared' | 'tui' | 'config' | 'signal-aggregation' | 'orchestrator-scheduler' | 'cli';
+  layer:
+    | 'scanner'
+    | 'inspector'
+    | 'orchestrator'
+    | 'shared'
+    | 'tui'
+    | 'config'
+    | 'signal-aggregation'
+    | 'orchestrator-scheduler'
+    | 'cli'
+    | 'mcp-server'
+    | 'budget'
+    | 'inspect'
+    | 'scan'
+    | 'signal-flow'
+    | 'token-accounting'
+    | 'workflow';
   component: string;
   message: string;
   metadata?: Record<string, unknown>;
@@ -54,9 +72,9 @@ export interface LoggerConfig {
  */
 export class Logger {
   private config: LoggerConfig;
-  private fileStreams: Map<string, WriteStream> = new Map();
-  private tokenMetrics: Map<string, { input: number; output: number; cost: number }> = new Map();
-  private performanceMetrics: Map<string, { count: number; totalDuration: number }> = new Map();
+  private readonly fileStreams = new Map<string, WriteStream>();
+  private readonly tokenMetrics = new Map<string, { input: number; output: number; cost: number }>();
+  private readonly performanceMetrics = new Map<string, { count: number; totalDuration: number }>();
 
   constructor(config: Partial<LoggerConfig> = {}) {
     this.config = {
@@ -69,10 +87,10 @@ export class Logger {
       enableTokenTracking: true,
       enablePerformanceTracking: true,
       structuredOutput: true,
-      ...config
+      ...config,
     };
 
-    this.initializeFileStreams();
+    void this.initializeFileStreams();
   }
 
   private async initializeFileStreams(): Promise<void> {
@@ -82,7 +100,24 @@ export class Logger {
 
     await FileUtils.ensureDir(this.config.logDir);
 
-    const layers = ['scanner', 'inspector', 'orchestrator', 'shared', 'tui', 'config', 'signal-aggregation', 'orchestrator-scheduler', 'cli'];
+    const layers = [
+      'scanner',
+      'inspector',
+      'orchestrator',
+      'shared',
+      'tui',
+      'config',
+      'signal-aggregation',
+      'orchestrator-scheduler',
+      'cli',
+      'mcp-server',
+      'budget',
+      'inspect',
+      'scan',
+      'signal-flow',
+      'token-accounting',
+      'workflow',
+    ];
     const today = new Date().toISOString().split('T')[0];
 
     for (const layer of layers) {
@@ -108,21 +143,25 @@ export class Logger {
         metadata: entry.metadata,
         tokenUsage: entry.tokenUsage,
         performance: entry.performance,
-        error: entry.error ? {
-          name: entry.error.name,
-          message: entry.error.message
-        } : undefined
+        error: entry.error
+          ? {
+              name: entry.error.name,
+              message: entry.error.message,
+            }
+          : undefined,
       });
     } else {
       const parts = [
         entry.timestamp.toISOString(),
         `[${entry.level.toUpperCase()}]`,
         `[${entry.layer}:${entry.component}]`,
-        entry.message
+        entry.message,
       ];
 
       if (entry.tokenUsage) {
-        parts.push(`(tokens: ${entry.tokenUsage.total}, cost: $${entry.tokenUsage.cost.toFixed(6)})`);
+        parts.push(
+          `(tokens: ${entry.tokenUsage.total}, cost: $${entry.tokenUsage.cost.toFixed(6)})`,
+        );
       }
 
       if (entry.performance) {
@@ -133,9 +172,9 @@ export class Logger {
     }
   }
 
-  private async writeLogEntry(entry: LogEntry): Promise<void> {
+  private writeLogEntry(entry: LogEntry): void {
     // CI mode: output JSON only, no colors, no formatting
-    if (this.config.ciMode) {
+    if (this.config.ciMode === true) {
       const ciJson = {
         timestamp: entry.timestamp.toISOString(),
         level: entry.level,
@@ -145,23 +184,25 @@ export class Logger {
         metadata: entry.metadata,
         tokenUsage: entry.tokenUsage,
         performance: entry.performance,
-        error: entry.error ? {
-          name: entry.error.name,
-          message: entry.error.message
-        } : undefined
+        error: entry.error
+          ? {
+              name: entry.error.name,
+              message: entry.error.message,
+            }
+          : undefined,
       };
-      process.stdout.write(JSON.stringify(ciJson) + '\n');
+      process.stdout.write(`${JSON.stringify(ciJson)  }\n`);
       return;
     }
 
     // TUI mode: disable console output to avoid interfering with Ink interface
-    if (this.config.tuiMode) {
+    if (this.config.tuiMode === true) {
       // Only write to file, no console output
       if (this.config.enableFile) {
         const formatted = this.formatLogEntry(entry);
         const stream = this.fileStreams.get(entry.layer);
         if (stream) {
-          stream.write(formatted + '\n');
+          stream.write(`${formatted  }\n`);
         }
       }
       return;
@@ -173,32 +214,32 @@ export class Logger {
     if (this.config.enableConsole) {
       const colorize = (text: string, level: LogLevel) => {
         const colors: Record<LogLevel, string> = {
-          'debug': '\x1b[36m', // cyan
-          'verbose': '\x1b[37m', // white
-          'info': '\x1b[32m',  // green
-          'warn': '\x1b[33m',  // yellow
-          'error': '\x1b[31m' // red
+          debug: '\x1b[36m', // cyan
+          verbose: '\x1b[37m', // white
+          info: '\x1b[32m', // green
+          warn: '\x1b[33m', // yellow
+          error: '\x1b[31m', // red
         };
         return `${colors[level]}${text}\x1b[0m`;
       };
 
-      process.stdout.write(colorize(formatted, entry.level) + '\n');
+      process.stdout.write(`${colorize(formatted, entry.level)  }\n`);
     }
 
     // File output (only if not in TUI mode, since TUI mode already handled file output above)
-    if (this.config.enableFile && !this.config.tuiMode) {
+    if (this.config.enableFile === true && (this.config.tuiMode === undefined || this.config.tuiMode === false)) {
       const stream = this.fileStreams.get(entry.layer);
       if (stream) {
-        stream.write(formatted + '\n');
+        stream.write(`${formatted  }\n`);
       }
     }
 
     // Update metrics
-    if (entry.tokenUsage && this.config.enableTokenTracking) {
+    if (entry.tokenUsage !== undefined && this.config.enableTokenTracking === true) {
       this.updateTokenMetrics(entry.layer, entry.tokenUsage);
     }
 
-    if (entry.performance && this.config.enablePerformanceTracking) {
+    if (entry.performance !== undefined && this.config.enablePerformanceTracking === true) {
       this.updatePerformanceMetrics(entry.performance);
     }
   }
@@ -212,7 +253,7 @@ export class Logger {
     this.tokenMetrics.set(layer, {
       input: current.input + usage.input,
       output: current.output + usage.output,
-      cost: current.cost + usage.cost
+      cost: current.cost + usage.cost,
     });
   }
 
@@ -221,11 +262,39 @@ export class Logger {
       return;
     }
 
-    const current = this.performanceMetrics.get(performance.operation) ?? { count: 0, totalDuration: 0 };
+    const current = this.performanceMetrics.get(performance.operation) ?? {
+      count: 0,
+      totalDuration: 0,
+    };
     this.performanceMetrics.set(performance.operation, {
       count: current.count + 1,
-      totalDuration: current.totalDuration + performance.duration
+      totalDuration: current.totalDuration + performance.duration,
     });
+  }
+
+  // Helper method to create log entries with proper optional property handling
+  private createLogEntry(
+    level: LogLevel,
+    layer: LogEntry['layer'],
+    component: string,
+    message: string,
+    metadata?: Record<string, unknown>,
+    additionalFields?: Partial<LogEntry>,
+  ): LogEntry {
+    const logEntry: LogEntry = {
+      timestamp: new Date(),
+      level,
+      layer,
+      component,
+      message,
+      ...additionalFields,
+    };
+
+    if (metadata) {
+      logEntry.metadata = metadata;
+    }
+
+    return logEntry;
   }
 
   // Logging methods
@@ -233,60 +302,39 @@ export class Logger {
     layer: LogEntry['layer'],
     component: string,
     message: string,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): void {
     if (!this.shouldLog('debug')) {
       return;
     }
 
-    this.writeLogEntry({
-      timestamp: new Date(),
-      level: 'debug',
-      layer,
-      component,
-      message,
-      metadata
-    });
+    this.writeLogEntry(this.createLogEntry('debug', layer, component, message, metadata));
   }
 
   info(
     layer: LogEntry['layer'],
     component: string,
     message: string,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): void {
     if (!this.shouldLog('info')) {
       return;
     }
 
-    this.writeLogEntry({
-      timestamp: new Date(),
-      level: 'info',
-      layer,
-      component,
-      message,
-      metadata
-    });
+    this.writeLogEntry(this.createLogEntry('info', layer, component, message, metadata));
   }
 
   warn(
     layer: LogEntry['layer'],
     component: string,
     message: string,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): void {
     if (!this.shouldLog('warn')) {
       return;
     }
 
-    this.writeLogEntry({
-      timestamp: new Date(),
-      level: 'warn',
-      layer,
-      component,
-      message,
-      metadata
-    });
+    this.writeLogEntry(this.createLogEntry('warn', layer, component, message, metadata));
   }
 
   error(
@@ -294,25 +342,25 @@ export class Logger {
     component: string,
     message: string,
     error?: Error,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): void {
     if (!this.shouldLog('error')) {
       return;
     }
 
-    this.writeLogEntry({
-      timestamp: new Date(),
-      level: 'error',
-      layer,
-      component,
-      message,
-      metadata,
-      error: error ? {
+    const additionalFields: Partial<LogEntry> = {};
+
+    if (error) {
+      additionalFields.error = {
         name: error.name,
         message: error.message,
-        stack: error.stack
-      } : undefined
-    });
+        ...(error.stack !== undefined && error.stack.length > 0 && { stack: error.stack }),
+      };
+    }
+
+    this.writeLogEntry(
+      this.createLogEntry('error', layer, component, message, metadata, additionalFields),
+    );
   }
 
   fatal(
@@ -320,25 +368,25 @@ export class Logger {
     component: string,
     message: string,
     error?: Error,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): void {
     if (!this.shouldLog('error')) {
       return;
     }
 
-    this.writeLogEntry({
-      timestamp: new Date(),
-      level: 'error',
-      layer,
-      component,
-      message,
-      metadata,
-      error: error ? {
+    const additionalFields: Partial<LogEntry> = {};
+
+    if (error) {
+      additionalFields.error = {
         name: error.name,
         message: error.message,
-        stack: error.stack
-      } : undefined
-    });
+        ...(error.stack !== undefined && error.stack.length > 0 && { stack: error.stack }),
+      };
+    }
+
+    this.writeLogEntry(
+      this.createLogEntry('error', layer, component, message, metadata, additionalFields),
+    );
   }
 
   // Specialized logging methods
@@ -349,7 +397,7 @@ export class Logger {
     input: number,
     output: number,
     model: string,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): void {
     if (!this.config.enableTokenTracking) {
       return;
@@ -365,7 +413,7 @@ export class Logger {
       component,
       message: `Token usage for ${operation}`,
       metadata: { ...metadata, model, operation },
-      tokenUsage: { input, output, total, cost }
+      tokenUsage: { input, output, total, cost },
     });
   }
 
@@ -374,7 +422,7 @@ export class Logger {
     component: string,
     operation: string,
     duration: number,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): void {
     if (!this.config.enablePerformanceTracking) {
       return;
@@ -382,27 +430,32 @@ export class Logger {
 
     const memoryBefore = PerformanceMonitor.getMemoryUsage();
 
-    this.writeLogEntry({
-      timestamp: new Date(),
-      level: 'debug',
-      layer,
-      component,
-      message: `Performance: ${operation}`,
-      metadata,
+    const additionalFields: Partial<LogEntry> = {
       performance: {
         operation,
         duration,
         memoryBefore: memoryBefore.heapUsed,
-        memoryAfter: PerformanceMonitor.getMemoryUsage().heapUsed
-      }
-    });
+        memoryAfter: PerformanceMonitor.getMemoryUsage().heapUsed,
+      },
+    };
+
+    this.writeLogEntry(
+      this.createLogEntry(
+        'debug',
+        layer,
+        component,
+        `Performance: ${operation}`,
+        metadata,
+        additionalFields,
+      ),
+    );
   }
 
   signal(
     layer: LogEntry['layer'],
     component: string,
     signal: string,
-    details: Record<string, unknown>
+    details: Record<string, unknown>,
   ): void {
     this.writeLogEntry({
       timestamp: new Date(),
@@ -410,7 +463,7 @@ export class Logger {
       layer,
       component,
       message: `Signal: ${signal}`,
-      metadata: details
+      metadata: details,
     });
   }
 
@@ -426,7 +479,7 @@ export class Logger {
     for (const [operation, metrics] of performanceEntries) {
       result[operation] = {
         count: metrics.count,
-        averageDuration: metrics.totalDuration / metrics.count
+        averageDuration: metrics.totalDuration / metrics.count,
       };
     }
 
@@ -438,8 +491,16 @@ export class Logger {
     this.performanceMetrics.clear();
   }
 
+  getConfig(): LoggerConfig {
+    return { ...this.config };
+  }
+
+  setOptions(options: Partial<LoggerConfig>): void {
+    this.config = { ...this.config, ...options };
+  }
+
   // Cleanup
-  async shutdown(): Promise<void> {
+  shutdown(): void {
     const streamValues = Array.from(this.fileStreams.values());
     for (const stream of streamValues) {
       stream.end();
@@ -448,25 +509,82 @@ export class Logger {
   }
 }
 
-// Global logger instance
-export const logger = new Logger();
+// Global logger instance - initialized with minimal default config
+export const logger = new Logger({
+  level: 'info',
+  enableConsole: false, // Disable console output by default
+  enableFile: false, // Disable file output by default
+  structuredOutput: false, // Disable structured output by default
+  enableTokenTracking: false,
+  enablePerformanceTracking: false,
+});
+
+// Initialize logger with proper options based on CLI context
+export const initializeLogger = (options: {
+  ci?: boolean;
+  debug?: boolean;
+  logLevel?: string;
+  logFile?: string;
+  noColor?: boolean;
+  tuiMode?: boolean;
+}): void => {
+  const config: Partial<LoggerConfig> = {
+    level: (options.logLevel as LogLevel) ?? 'info',
+    enableConsole: true, // Enable console output by default after initialization
+    enableFile: true,
+    structuredOutput: false, // Default to non-structured output
+    ciMode: options.ci ?? false,
+    tuiMode: options.tuiMode ?? false,
+  };
+
+  // CI mode: JSON output to stdout only, no file logging
+  if (options.ci === true) {
+    config.ciMode = true;
+    config.enableConsole = false; // We'll handle console output manually in CI mode
+    config.enableFile = false;
+    config.structuredOutput = true; // Use structured output for CI JSON
+  }
+
+  // TUI mode: Disable console output to avoid interfering with Ink
+  if (options.tuiMode === true) {
+    config.tuiMode = true;
+    config.enableConsole = false;
+    config.enableFile = true; // Keep file logging for TUI mode
+  }
+
+  // Debug mode: Enable verbose logging and performance tracking
+  if (options.debug === true) {
+    config.level = 'debug';
+    config.enableTokenTracking = true;
+    config.enablePerformanceTracking = true;
+  }
+
+  // Custom log file
+  if (options.logFile !== undefined && options.logFile.length > 0) {
+    config.logDir = dirname(options.logFile);
+  }
+
+  logger.setOptions(config);
+}
 
 // Configure logger for CI mode
-export function setLoggerCIMode(enabled: boolean): void {
-  (logger as any).config.ciMode = enabled;
-  if (enabled) {
-    // In CI mode, disable console output formatting
-    (logger as any).config.enableConsole = false;
-  }
+export const setLoggerCIMode = (enabled: boolean): void => {
+  const currentConfig = logger.getConfig();
+  logger.setOptions({
+    ...currentConfig,
+    ciMode: enabled,
+    enableConsole: enabled ? false : currentConfig.enableConsole,
+  });
 }
 
 // Configure logger for TUI mode
-export function setLoggerTUIMode(enabled: boolean): void {
-  (logger as any).config.tuiMode = enabled;
-  if (enabled) {
-    // In TUI mode, disable console output to avoid interfering with Ink
-    (logger as any).config.enableConsole = false;
-  }
+export const setLoggerTUIMode = (enabled: boolean): void => {
+  const currentConfig = logger.getConfig();
+  logger.setOptions({
+    ...currentConfig,
+    tuiMode: enabled,
+    enableConsole: enabled ? false : currentConfig.enableConsole,
+  });
 }
 
 // Layer-specific convenience methods
@@ -486,41 +604,51 @@ export const createLayerLogger = (layer: LogEntry['layer']) => ({
   fatal: (component: string, message: string, error?: Error, metadata?: Record<string, unknown>) =>
     logger.fatal(layer, component, message, error, metadata),
 
-  tokenUsage: (component: string, operation: string, input: number, output: number, model: string, metadata?: Record<string, unknown>) =>
-    logger.tokenUsage(layer, component, operation, input, output, model, metadata),
+  tokenUsage: (
+    component: string,
+    operation: string,
+    input: number,
+    output: number,
+    model: string,
+    metadata?: Record<string, unknown>,
+  ) => logger.tokenUsage(layer, component, operation, input, output, model, metadata),
 
-  performance: (component: string, operation: string, duration: number, metadata?: Record<string, unknown>) =>
-    logger.performance(layer, component, operation, duration, metadata),
+  performance: (
+    component: string,
+    operation: string,
+    duration: number,
+    metadata?: Record<string, unknown>,
+  ) => logger.performance(layer, component, operation, duration, metadata),
 
   signal: (component: string, signal: string, details: Record<string, unknown>) =>
-    logger.signal(layer, component, signal, details)
+    logger.signal(layer, component, signal, details),
 });
 
 // Performance monitoring wrapper
-export function withPerformanceTracking<T>(
+export const withPerformanceTracking = <T>(
   layer: LogEntry['layer'],
   component: string,
   operation: string,
   fn: () => T | Promise<T>,
-  metadata?: Record<string, unknown>
-): Promise<T> {
+  metadata?: Record<string, unknown>,
+): Promise<T> => {
   return PerformanceMonitor.measureAsync(operation, async () => {
     const result = await fn();
     const duration = PerformanceMonitor.endTimer(operation);
     logger.performance(layer, component, operation, duration, metadata);
     return result;
-  }).then(measured => measured.result);
+  }).then((measured) => measured.result);
 }
 
 // Token usage tracking for common operations
-export function trackTokenUsage(
+export const trackTokenUsage = (
   layer: LogEntry['layer'],
   component: string,
   operation: string,
   inputTokens: number,
   outputTokens: number,
   model: string,
-  metadata?: Record<string, unknown>
-): void {
+  metadata?: Record<string, unknown>,
+): void => {
   logger.tokenUsage(layer, component, operation, inputTokens, outputTokens, model, metadata);
 }

@@ -3,9 +3,9 @@
  *
  * Abstract worker pool implementation with task queue management and load balancing.
  */
-
 import { EventEmitter } from 'events';
-import { Worker } from 'worker_threads';
+
+import type { Worker } from 'worker_threads';
 
 export interface TaskData {
   id: string;
@@ -19,7 +19,6 @@ export interface TaskData {
   timeout: number;
   dependencies?: string[];
 }
-
 export interface WorkerInfo {
   id: number;
   worker: Worker;
@@ -31,7 +30,6 @@ export interface WorkerInfo {
   startTime: Date | null;
   errorCount: number;
 }
-
 export interface WorkerConfig {
   id: number;
   maxConcurrent: number;
@@ -41,7 +39,6 @@ export interface WorkerConfig {
   heartbeatInterval: number;
   maxIdleTime: number;
 }
-
 export interface WorkerPoolConfig {
   maxWorkers?: number;
   maxConcurrentPerWorker?: number;
@@ -54,7 +51,6 @@ export interface WorkerPoolConfig {
   gracefulShutdownTimeout?: number;
   maxIdleTime?: number;
 }
-
 export interface WorkerPoolStatus {
   totalWorkers: number;
   activeWorkers: number;
@@ -74,7 +70,6 @@ export interface WorkerPoolStatus {
     lastHeartbeat: Date;
   }>;
 }
-
 export type WorkerMessageType =
   | 'task:start'
   | 'task:execute'
@@ -85,7 +80,6 @@ export type WorkerMessageType =
   | 'worker:heartbeat'
   | 'worker:error'
   | 'worker:shutdown';
-
 export interface WorkerMessage {
   type: WorkerMessageType;
   taskId?: string;
@@ -98,24 +92,21 @@ export interface WorkerMessage {
   };
   timestamp: Date;
 }
-
 /**
  * Abstract Worker Pool Implementation
  */
 export abstract class WorkerPool extends EventEmitter {
   protected config: Required<WorkerPoolConfig>;
-  protected workers: Map<number, WorkerInfo> = new Map();
+  protected workers = new Map<number, WorkerInfo>();
   protected taskQueue: TaskData[] = [];
-  protected processingTasks: Map<string, TaskData> = new Map();
-  protected completedTasks: Map<string, unknown> = new Map();
-  protected failedTasks: Map<string, Error> = new Map();
+  protected processingTasks = new Map<string, TaskData>();
+  protected completedTasks = new Map<string, unknown>();
+  protected failedTasks = new Map<string, Error>();
   protected isRunning = false;
   protected shutdownRequested = false;
   protected workerIdCounter = 0;
-
   constructor(config: WorkerPoolConfig = {}) {
     super();
-
     this.config = {
       maxWorkers: config.maxWorkers ?? 2,
       maxConcurrentPerWorker: config.maxConcurrentPerWorker ?? 3,
@@ -126,12 +117,10 @@ export abstract class WorkerPool extends EventEmitter {
       enableHealthChecks: config.enableHealthChecks ?? true,
       healthCheckInterval: config.healthCheckInterval ?? 30000,
       gracefulShutdownTimeout: config.gracefulShutdownTimeout ?? 30000,
-      maxIdleTime: config.maxIdleTime ?? 300000 // 5 minutes
+      maxIdleTime: config.maxIdleTime ?? 300000, // 5 minutes
     };
-
     this.setupEventHandlers();
   }
-
   /**
    * Start the worker pool
    */
@@ -139,30 +128,23 @@ export abstract class WorkerPool extends EventEmitter {
     if (this.isRunning) {
       throw new Error('Worker pool is already running');
     }
-
     this.isRunning = true;
     this.shutdownRequested = false;
-
     try {
       // Initialize worker pool
       await this.initializeWorkerPool();
-
       // Start task processing loop
       this.startTaskProcessingLoop();
-
       // Start health checks if enabled
       if (this.config.enableHealthChecks) {
         this.startHealthChecks();
       }
-
       this.emit('pool:started', { workerCount: this.workers.size });
-
     } catch (error) {
       this.isRunning = false;
       throw error;
     }
   }
-
   /**
    * Stop the worker pool
    */
@@ -170,27 +152,20 @@ export abstract class WorkerPool extends EventEmitter {
     if (!this.isRunning) {
       return;
     }
-
     this.shutdownRequested = true;
-
     try {
       // Wait for current tasks to complete or timeout
       await this.waitForShutdown();
-
       // Terminate all workers
       await this.terminateAllWorkers();
-
       this.workers.clear();
       this.isRunning = false;
-
       this.emit('pool:stopped');
-
     } catch (error) {
       this.isRunning = false;
       throw error;
     }
   }
-
   /**
    * Add task to queue
    */
@@ -201,33 +176,32 @@ export abstract class WorkerPool extends EventEmitter {
       id: taskId,
       createdAt: new Date(),
       scheduledAt: new Date(),
-      attempts: 0
+      attempts: 0,
     };
-
     // Insert task based on priority (higher priority first)
     this.insertTaskByPriority(fullTask);
-
     this.emit('task:queued', fullTask);
     return taskId;
   }
-
   /**
    * Get worker pool status
    */
   getStatus(): WorkerPoolStatus {
-    const activeWorkers = Array.from(this.workers.values()).filter(w => w.status === 'busy').length;
-    const idleWorkers = Array.from(this.workers.values()).filter(w => w.status === 'idle').length;
-    const busyWorkers = Array.from(this.workers.values()).filter(w => w.status === 'busy').length;
-    const failedWorkers = Array.from(this.workers.values()).filter(w => w.status === 'failed').length;
-
-    const workerDetails = Array.from(this.workers.values()).map(worker => ({
+    const activeWorkers = Array.from(this.workers.values()).filter(
+      (w) => w.status === 'busy',
+    ).length;
+    const idleWorkers = Array.from(this.workers.values()).filter((w) => w.status === 'idle').length;
+    const busyWorkers = Array.from(this.workers.values()).filter((w) => w.status === 'busy').length;
+    const failedWorkers = Array.from(this.workers.values()).filter(
+      (w) => w.status === 'failed',
+    ).length;
+    const workerDetails = Array.from(this.workers.values()).map((worker) => ({
       id: worker.id,
       status: worker.status,
       tasksProcessed: worker.tasksProcessed,
       currentTask: worker.currentTask,
-      lastHeartbeat: worker.lastHeartbeat
+      lastHeartbeat: worker.lastHeartbeat,
     }));
-
     return {
       totalWorkers: this.workers.size,
       activeWorkers,
@@ -239,38 +213,33 @@ export abstract class WorkerPool extends EventEmitter {
       completedTasks: this.completedTasks.size,
       averageResponseTime: this.calculateAverageResponseTime(),
       throughput: this.calculateThroughput(),
-      workerDetails
+      workerDetails,
     };
   }
-
   /**
    * Get task by ID
    */
   getTask(taskId: string): TaskData | null {
     // Check in queue
-    const queuedTask = this.taskQueue.find(t => t.id === taskId);
+    const queuedTask = this.taskQueue.find((t) => t.id === taskId);
     if (queuedTask) {
       return queuedTask;
     }
-
     // Check in processing
-    return this.processingTasks.get(taskId) || null;
+    return this.processingTasks.get(taskId) ?? null;
   }
-
   /**
    * Get completed task result
    */
   getCompletedTask(taskId: string): unknown | null {
-    return this.completedTasks.get(taskId) || null;
+    return this.completedTasks.get(taskId) ?? null;
   }
-
   /**
    * Get failed task error
    */
   getFailedTask(taskId: string): Error | null {
-    return this.failedTasks.get(taskId) || null;
+    return this.failedTasks.get(taskId) ?? null;
   }
-
   /**
    * Clear completed and failed tasks
    */
@@ -279,14 +248,11 @@ export abstract class WorkerPool extends EventEmitter {
     this.failedTasks.clear();
     this.emit('tasks:cleared');
   }
-
   // Abstract methods to be implemented by concrete worker pools
-
   /**
    * Create a worker instance - must be implemented by subclass
    */
   protected abstract createWorker(workerId: number): Promise<Worker>;
-
   /**
    * Handle worker message - can be overridden by subclass
    */
@@ -295,67 +261,54 @@ export abstract class WorkerPool extends EventEmitter {
     if (!worker) {
       return;
     }
-
     switch (message.type) {
       case 'worker:ready':
         worker.status = 'idle';
         worker.startTime = new Date();
         break;
-
       case 'worker:heartbeat':
         worker.lastHeartbeat = new Date();
         break;
-
       case 'task:start':
         if (message.taskId) {
           this.handleTaskStart(workerId, message.taskId);
         }
         break;
-
       case 'task:complete':
         if (message.taskId && message.data) {
           this.handleTaskComplete(workerId, message.taskId, message.data);
         }
         break;
-
       case 'task:error':
         if (message.taskId && message.error) {
           this.handleTaskError(workerId, message.taskId, message.error);
         }
         break;
-
       case 'worker:error':
         worker.status = 'failed';
         worker.errorCount++;
         this.emit('worker:error', { workerId, error: message.error });
         break;
-
       case 'worker:shutdown':
         worker.status = 'shutdown';
         break;
     }
   }
-
   // Protected helper methods
-
   /**
    * Initialize worker pool
    */
   protected async initializeWorkerPool(): Promise<void> {
     const workerPromises = [];
-
     for (let i = 0; i < this.config.maxWorkers; i++) {
       workerPromises.push(this.createWorker(i));
     }
-
     const workers = await Promise.allSettled(workerPromises);
-
     // Check if at least one worker was created successfully
-    const successfulWorkers = workers.filter(result => result.status === 'fulfilled');
+    const successfulWorkers = workers.filter((result) => result.status === 'fulfilled');
     if (successfulWorkers.length === 0) {
       throw new Error('Failed to create any workers');
     }
-
     // Log failed workers
     workers.forEach((result, index) => {
       if (result.status === 'rejected') {
@@ -363,7 +316,6 @@ export abstract class WorkerPool extends EventEmitter {
       }
     });
   }
-
   /**
    * Insert task by priority
    */
@@ -378,7 +330,6 @@ export abstract class WorkerPool extends EventEmitter {
     }
     this.taskQueue.splice(insertIndex, 0, task);
   }
-
   /**
    * Start task processing loop
    */
@@ -387,115 +338,96 @@ export abstract class WorkerPool extends EventEmitter {
       if (this.shutdownRequested) {
         return;
       }
-
       // Get available workers
-      const availableWorkers = Array.from(this.workers.values())
-        .filter(w => w.status === 'idle');
-
+      const availableWorkers = Array.from(this.workers.values()).filter((w) => w.status === 'idle');
       // Process tasks if we have available workers and tasks in queue
       while (availableWorkers.length > 0 && this.taskQueue.length > 0) {
         const worker = availableWorkers.shift();
         const task = this.taskQueue.shift();
-
         if (worker && task) {
           this.assignTaskToWorker(worker, task);
         }
       }
-
       // Schedule next iteration
       setImmediate(processLoop);
     };
-
     processLoop();
   }
-
   /**
    * Assign task to worker
    */
   protected assignTaskToWorker(worker: WorkerInfo, task: TaskData): void {
     // Move task from queue to processing
     this.processingTasks.set(task.id, task);
-
     // Update worker status
     worker.status = 'busy';
     worker.currentTask = task.id;
-
     // Send task to worker
     worker.worker.postMessage({
       type: 'task:execute',
       taskId: task.id,
       data: task.data,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
-
     this.emit('task:assigned', { taskId: task.id, workerId: worker.id });
   }
-
   /**
    * Handle task start
    */
   protected handleTaskStart(workerId: number, taskId: string): void {
     const worker = this.workers.get(workerId);
     const task = this.processingTasks.get(taskId);
-
     if (worker && task) {
       worker.currentTask = taskId;
       this.emit('task:started', { taskId, workerId });
     }
   }
-
   /**
    * Handle task completion
    */
   protected handleTaskComplete(workerId: number, taskId: string, result: unknown): void {
     const worker = this.workers.get(workerId);
     const task = this.processingTasks.get(taskId);
-
     if (worker && task) {
       // Update worker status
       worker.status = 'idle';
       worker.currentTask = null;
       worker.tasksProcessed++;
-
       // Move task from processing to completed
       this.processingTasks.delete(taskId);
       this.completedTasks.set(taskId, result);
-
       this.emit('task:completed', { taskId, workerId, result });
     }
   }
-
   /**
    * Handle task error
    */
-  protected handleTaskError(workerId: number, taskId: string, error: Error | Record<string, unknown>): void {
+  protected handleTaskError(
+    workerId: number,
+    taskId: string,
+    error: Error | Record<string, unknown>,
+  ): void {
     const worker = this.workers.get(workerId);
     const task = this.processingTasks.get(taskId);
-
     if (worker && task) {
       worker.status = 'idle';
       worker.currentTask = null;
-
       const taskError = error instanceof Error ? error : new Error(String(error));
-
       // Retry logic
       if (task.attempts < task.maxAttempts) {
         task.attempts++;
         setTimeout(() => {
           this.insertTaskByPriority(task);
         }, this.config.retryDelay);
-
         this.emit('task:retry', { taskId, workerId, attempt: task.attempts });
       } else {
         // Max retries exceeded
         this.processingTasks.delete(taskId);
         this.failedTasks.set(taskId, taskError);
-
         this.emit('task:failed', { taskId, workerId, error: taskError });
       }
     }
   }
-
   /**
    * Start health checks
    */
@@ -504,23 +436,19 @@ export abstract class WorkerPool extends EventEmitter {
       this.performHealthCheck();
     }, this.config.healthCheckInterval);
   }
-
   /**
    * Perform health check
    */
   protected performHealthCheck(): void {
     const now = new Date();
     const staleThreshold = this.config.healthCheckInterval * 2;
-
     for (const [workerId, worker] of Array.from(this.workers.entries())) {
       const timeSinceHeartbeat = now.getTime() - worker.lastHeartbeat.getTime();
-
       if (timeSinceHeartbeat > staleThreshold) {
         worker.status = 'failed';
         this.emit('worker:stale', { workerId, timeSinceHeartbeat });
-
         // Create replacement worker
-        this.createWorker(workerId).catch(error => {
+        this.createWorker(workerId).catch((error) => {
           this.emit('worker:replacement:failed', { workerId, error });
         });
       } else {
@@ -528,12 +456,11 @@ export abstract class WorkerPool extends EventEmitter {
         worker.worker.postMessage({
           type: 'worker:heartbeat',
           workerId,
-          timestamp: now
+          timestamp: now,
         });
       }
     }
   }
-
   /**
    * Wait for shutdown
    */
@@ -545,7 +472,6 @@ export abstract class WorkerPool extends EventEmitter {
           resolve();
         }
       }, 1000);
-
       // Force shutdown after timeout
       setTimeout(() => {
         clearInterval(checkInterval);
@@ -553,18 +479,15 @@ export abstract class WorkerPool extends EventEmitter {
       }, this.config.gracefulShutdownTimeout);
     });
   }
-
   /**
    * Terminate all workers
    */
   protected async terminateAllWorkers(): Promise<void> {
-    const terminationPromises = Array.from(this.workers.values()).map(worker =>
-      this.terminateWorker(worker)
+    const terminationPromises = Array.from(this.workers.values()).map((worker) =>
+      this.terminateWorker(worker),
     );
-
     await Promise.allSettled(terminationPromises);
   }
-
   /**
    * Terminate a single worker
    */
@@ -574,27 +497,23 @@ export abstract class WorkerPool extends EventEmitter {
       worker.worker.postMessage({
         type: 'worker:shutdown',
         workerId: worker.id,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
-
       // Wait for graceful shutdown or force terminate
       await new Promise<void>((resolve) => {
         const timeout = setTimeout(() => {
           worker.worker.terminate();
           resolve();
         }, 5000);
-
         worker.worker.once('exit', () => {
           clearTimeout(timeout);
           resolve();
         });
       });
-
     } catch (error) {
       this.emit('worker:termination:error', { workerId: worker.id, error });
     }
   }
-
   /**
    * Setup event handlers
    */
@@ -604,20 +523,17 @@ export abstract class WorkerPool extends EventEmitter {
       await this.stop();
       process.exit(0);
     });
-
     process.on('SIGTERM', async () => {
       await this.stop();
       process.exit(0);
     });
   }
-
   /**
    * Generate task ID
    */
   protected generateTaskId(): string {
     return `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
-
   /**
    * Calculate average response time
    */
@@ -626,14 +542,14 @@ export abstract class WorkerPool extends EventEmitter {
     // Implementation depends on specific use case
     return 0;
   }
-
   /**
    * Calculate throughput
    */
   protected calculateThroughput(): number {
     const firstWorker = Array.from(this.workers.values())[0];
-    const timeRunning = Date.now() - (this.workers.size > 0 && firstWorker ?
-      firstWorker.createdAt.getTime() : Date.now());
+    const timeRunning =
+      Date.now() -
+      (this.workers.size > 0 && firstWorker ? firstWorker.createdAt.getTime() : Date.now());
     return this.completedTasks.size / Math.max(1, timeRunning / 60000); // per minute
   }
 }

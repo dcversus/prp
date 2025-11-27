@@ -7,23 +7,25 @@
 
 import { useState, useEffect } from 'react';
 import { Text } from 'ink';
-import type { TUIConfig } from '../../../shared/types/TUIConfig.js';
-import { createLayerLogger } from '../../../shared/logger.js';
-import { getVersion } from '../../../shared/utils/version.js';
+
+import { createLayerLogger } from '../../../shared/logger';
+import { getVersion } from '../../../shared/utils/version';
+
+import type { TUIConfig } from '../../../shared/types/TUIConfig';
 
 const logger = createLayerLogger('tui');
 
 interface IntroSequenceProps {
   config: TUIConfig;
   onComplete: (success: boolean) => void;
-}
+};
 
 interface Frame {
   content: string[][];
   delay: number;
-}
+};
 
-export function IntroSequence({ config, onComplete }: IntroSequenceProps) {
+export const IntroSequence = ({ config, onComplete }: IntroSequenceProps) => {
   const [frame, setFrame] = useState(0);
   const [frames, setFrames] = useState<Frame[]>([]);
 
@@ -89,7 +91,7 @@ export function IntroSequence({ config, onComplete }: IntroSequenceProps) {
       ))}
     </>
   );
-}
+};
 
 /**
  * Generate intro animation frames based on the specification
@@ -114,7 +116,9 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
 
   for (let i = 0; i < totalFrames; i++) {
     const progress = i / totalFrames;
-    const content: string[][] = Array(rows).fill(null).map(() => Array(columns).fill(' '));
+    const content: string[][] = Array(rows)
+      .fill(null)
+      .map(() => Array(columns).fill(' '));
 
     // Phase 1: 0.0-1.0s - Fade-in radial vignette; single ♪ appears center
     if (progress < 0.1) {
@@ -126,7 +130,7 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
         for (let x = 0; x < columns; x++) {
           const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
           const maxDistance = Math.sqrt(Math.pow(centerX, 2) + Math.pow(centerY, 2));
-          const vignetteAlpha = Math.max(0, 1 - (distance / maxDistance));
+          const vignetteAlpha = Math.max(0, 1 - distance / maxDistance);
           const finalAlpha = vignetteAlpha * alpha;
 
           if (finalAlpha > 0.1) {
@@ -253,7 +257,7 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
           if (distance < glowRadius) {
             const row = content[y];
             if (row?.[x] === ' ') {
-              const alpha = 1 - (distance / glowRadius);
+              const alpha = 1 - distance / glowRadius;
               if (alpha > 0.3 && Math.random() > 0.8) {
                 row[x] = '·';
               }
@@ -277,7 +281,7 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
       const titleLines = [
         '♫ @dcversus/prp',
         'Autonomous Development Orchestration',
-        `v${getVersion()} - Three-Layer Architecture`
+        `v${getVersion()} - Three-Layer Architecture`,
       ];
 
       titleLines.forEach((line, lineIndex) => {
@@ -303,7 +307,7 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
 
       // Fade out background elements
       if (titleProgress > 0.5) {
-        const fadeAlpha = 1 - ((titleProgress - 0.5) / 0.5);
+        const fadeAlpha = 1 - (titleProgress - 0.5) / 0.5;
         for (let y = 0; y < rows; y++) {
           for (let x = 0; x < columns; x++) {
             const row = content[y];
@@ -319,9 +323,9 @@ function generateIntroFrames(config: TUIConfig): Frame[] {
 
     frames.push({
       content,
-      delay: frameDelay
+      delay: frameDelay,
     });
   }
 
   return frames;
-}
+};

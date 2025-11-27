@@ -4,10 +4,11 @@
  * Provides beautiful terminal UI for interactive initialization using React Ink
  */
 
-/* eslint-disable no-console */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
+ 
 
 import { runInitWizard } from '../tui/init-wizard.js';
+import { logger } from '../shared/logger';
 
 export interface TUIOptions {
   showProgress: boolean;
@@ -16,8 +17,8 @@ export interface TUIOptions {
 }
 
 export class TUIOutput {
-  private options: TUIOptions;
-  private steps: string[] = [];
+  private readonly options: TUIOptions;
+  private readonly steps: string[] = [];
   private isRunning = false;
 
   constructor(options: Partial<TUIOptions> = {}) {
@@ -25,7 +26,7 @@ export class TUIOutput {
       showProgress: true,
       showColors: true,
       showIcons: true,
-      ...options
+      ...options,
     };
   }
 
@@ -35,17 +36,25 @@ export class TUIOutput {
   showHeader(): void {
     // Using console.log for TUI output is intentional - these are user-facing terminal displays
     process.stdout.write('\n');
-    process.stdout.write('╭─────────────────────────────────────────────────────────────────────────────╮\n');
-    process.stdout.write('│                             🚀 PRP INITIALIZER                              │\n');
-    process.stdout.write('│                     Interactive Project Bootstrap                          │\n');
-    process.stdout.write('╰─────────────────────────────────────────────────────────────────────────────╯\n');
+    process.stdout.write(
+      '╭─────────────────────────────────────────────────────────────────────────────╮\n',
+    );
+    process.stdout.write(
+      '│                             🚀 PRP INITIALIZER                              │\n',
+    );
+    process.stdout.write(
+      '│                     Interactive Project Bootstrap                          │\n',
+    );
+    process.stdout.write(
+      '╰─────────────────────────────────────────────────────────────────────────────╯\n',
+    );
     process.stdout.write('\n');
   }
 
   /**
    * Run the React Ink wizard from PRP-003
    */
-  async runWizard(): Promise<any> {
+  async runWizard(): Promise<unknown> {
     if (this.isRunning) {
       throw new Error('Wizard is already running');
     }
@@ -66,24 +75,30 @@ export class TUIOutput {
    * @deprecated Use runWizard() instead
    */
   showWizardIntro(): void {
-    console.log('♫ @dcversus/prp                                                     ⧗ 2025-11-05 04:12:00');
-    console.log();
+    logger.debug(
+      '♫ @dcversus/prp                                                     ⧗ 2025-11-05 04:12:00',
+    );
+    logger.debug();
     if (this.options.showColors) {
-      console.log('\x1b[90m"Tools should vanish; flow should remain." — workshop note\x1b[0m');
+      logger.debug('\x1b[90m"Tools should vanish; flow should remain." — workshop note\x1b[0m');
     } else {
-      console.log('"Tools should vanish; flow should remain." — workshop note');
+      logger.debug('"Tools should vanish; flow should remain." — workshop note');
     }
-    console.log();
-    console.log('     This wizard will provision your workspace and first PRP.');
-    console.log('     One input at a time. Minimal. Reversible.');
-    console.log();
-    console.log('───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────');
-    console.log('> press Enter');
-    console.log('───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────');
+    logger.debug();
+    logger.debug('     This wizard will provision your workspace and first PRP.');
+    logger.debug('     One input at a time. Minimal. Reversible.');
+    logger.debug();
+    logger.debug(
+      '───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────',
+    );
+    logger.debug('> press Enter');
+    logger.debug(
+      '───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────',
+    );
     if (this.options.showColors) {
-      console.log('Enter    Esc');
+      logger.debug('Enter    Esc');
     } else {
-      console.log('Enter    Esc');
+      logger.debug('Enter    Esc');
     }
   }
 
@@ -91,9 +106,9 @@ export class TUIOutput {
    * Show wizard step header
    */
   showWizardStep(_step: number, icon: string, title: string): void {
-    console.log();
-    console.log(`${icon}  ${title}`);
-    console.log();
+    logger.debug();
+    logger.debug(`${icon}  ${title}`);
+    logger.debug();
   }
 
   /**
@@ -111,9 +126,9 @@ export class TUIOutput {
     const step = `${stepNumber.toString().padStart(2, ' ')}. ${icon} ${description}`;
 
     if (this.options.showColors) {
-      console.log(`\x1b[36m${step}\x1b[0m`);
+      logger.debug(`\x1b[36m${step}\x1b[0m`);
     } else {
-      console.log(step);
+      logger.debug(step);
     }
   }
 
@@ -128,9 +143,9 @@ export class TUIOutput {
     process.stdout.write('\x1b[1A\x1b[K');
 
     if (this.options.showColors) {
-      console.log(`\x1b[32m${step}\x1b[0m`);
+      logger.debug(`\x1b[32m${step}\x1b[0m`);
     } else {
-      console.log(step);
+      logger.debug(step);
     }
   }
 
@@ -145,13 +160,13 @@ export class TUIOutput {
     process.stdout.write('\x1b[1A\x1b[K');
 
     if (this.options.showColors) {
-      console.log(`\x1b[31m${step}\x1b[0m`);
+      logger.debug(`\x1b[31m${step}\x1b[0m`);
     } else {
-      console.log(step);
+      logger.debug(step);
     }
 
     if (error) {
-      console.log(`   ${error}`);
+      logger.debug(`   ${error}`);
     }
   }
 
@@ -163,13 +178,17 @@ export class TUIOutput {
     let i = 0;
 
     const interval = setInterval(() => {
-      process.stdout.write(`\r\x1b[K${this.options.showColors ? '\x1b[36m' : ''}${spinner[i]} ${description}${this.options.showColors ? '\x1b[0m' : ''}`);
+      process.stdout.write(
+        `\r\x1b[K${this.options.showColors ? '\x1b[36m' : ''}${spinner[i]} ${description}${this.options.showColors ? '\x1b[0m' : ''}`,
+      );
       i = (i + 1) % spinner.length;
     }, 100);
 
     return () => {
       clearInterval(interval);
-      process.stdout.write(`\r\x1b[K${this.options.showColors ? '\x1b[32m' : ''}✅ ${description}${this.options.showColors ? '\x1b[0m' : ''}\n`);
+      process.stdout.write(
+        `\r\x1b[K${this.options.showColors ? '\x1b[32m' : ''}✅ ${description}${this.options.showColors ? '\x1b[0m' : ''}\n`,
+      );
     };
   }
 
@@ -178,7 +197,7 @@ export class TUIOutput {
    */
   showFileCreated(filePath: string): void {
     const icon = this.options.showIcons ? '📝' : '+';
-    console.log(`   ${icon} Created: ${filePath}`);
+    logger.debug(`   ${icon} Created: ${filePath}`);
   }
 
   /**
@@ -186,75 +205,81 @@ export class TUIOutput {
    */
   showDirectoryCreated(dirPath: string): void {
     const icon = this.options.showIcons ? '📁' : '+';
-    console.log(`   ${icon} Created directory: ${dirPath}`);
+    logger.debug(`   ${icon} Created directory: ${dirPath}`);
   }
 
   /**
    * Show LLM generation
    */
   showLLMGeneration(prompt: string): void {
-    console.log();
-    console.log('🤖 Generating project files with AI...');
-    console.log(`   Prompt: "${prompt.substring(0, 60)}${prompt.length > 60 ? '...' : ''}"`);
-    console.log();
+    logger.debug();
+    logger.debug('🤖 Generating project files with AI...');
+    logger.debug(`   Prompt: "${prompt.substring(0, 60)}${prompt.length > 60 ? '...' : ''}"`);
+    logger.debug();
   }
 
   /**
    * Show LLM generated files
    */
-  showLLMGenerated(files: { readme?: string; firstPrp?: string; agentsUserSection?: string }): void {
+  showLLMGenerated(files: {
+    readme?: string;
+    firstPrp?: string;
+    agentsUserSection?: string;
+  }): void {
     if (files.readme) {
-      console.log('   📖 Generated: README.md');
+      logger.debug('   📖 Generated: README.md');
     }
     if (files.firstPrp) {
-      console.log('   📋 Generated: First PRP file');
+      logger.debug('   📋 Generated: First PRP file');
     }
     if (files.agentsUserSection) {
-      console.log('   🤝 Generated: Agents.md user section');
+      logger.debug('   🤝 Generated: Agents.md user section');
     }
-    console.log();
+    logger.debug();
   }
 
   /**
    * Show success message
    */
   showSuccess(projectName: string, projectPath: string): void {
-    console.log();
-    console.log('╭─────────────────────────────────────────────────────────────────────────────╮');
-    console.log('│                          ✅ INITIALIZATION COMPLETE                        │');
-    console.log('╰─────────────────────────────────────────────────────────────────────────────╯');
-    console.log();
-    console.log(`🎉 Project "${projectName}" initialized successfully!`);
-    console.log();
-    console.log('📂 Project location:');
-    console.log(`   ${projectPath}`);
-    console.log();
-    console.log('🚀 Next steps:');
-    console.log(`   cd ${projectPath}`);
-    console.log('   npx prp                    # Start orchestrator');
-    console.log('   npx prp orchestrator       # Direct orchestrator start');
-    console.log();
+    logger.debug();
+    logger.debug('╭─────────────────────────────────────────────────────────────────────────────╮');
+    logger.debug('│                          ✅ INITIALIZATION COMPLETE                        │');
+    logger.debug('╰─────────────────────────────────────────────────────────────────────────────╯');
+    logger.debug();
+    logger.debug(`🎉 Project "${projectName}" initialized successfully!`);
+    logger.debug();
+    logger.debug('📂 Project location:');
+    logger.debug(`   ${projectPath}`);
+    logger.debug();
+    logger.debug('🚀 Next steps:');
+    logger.debug(`   cd ${projectPath}`);
+    logger.debug('   npx prp                    # Start orchestrator');
+    logger.debug('   npx prp orchestrator       # Direct orchestrator start');
+    logger.debug();
   }
 
   /**
    * Show error message
    */
   showError(error: Error | string): void {
-    console.log();
-    console.log('╭─────────────────────────────────────────────────────────────────────────────╮');
-    console.log('│                           ❌ INITIALIZATION FAILED                           │');
-    console.log('╰─────────────────────────────────────────────────────────────────────────────╯');
-    console.log();
+    logger.debug();
+    logger.debug('╭─────────────────────────────────────────────────────────────────────────────╮');
+    logger.debug(
+      '│                           ❌ INITIALIZATION FAILED                           │',
+    );
+    logger.debug('╰─────────────────────────────────────────────────────────────────────────────╯');
+    logger.debug();
 
     const errorMessage = error instanceof Error ? error.message : error;
-    console.log('Error details:');
-    console.log(`   ${errorMessage}`);
-    console.log();
+    logger.debug('Error details:');
+    logger.debug(`   ${errorMessage}`);
+    logger.debug();
 
     if (error instanceof Error && error.stack) {
-      console.log('Stack trace:');
-      console.log(`   ${error.stack.split('\n').join('\n   ')}`);
-      console.log();
+      logger.debug('Stack trace:');
+      logger.debug(`   ${error.stack.split('\n').join('\n   ')}`);
+      logger.debug();
     }
   }
 
@@ -263,7 +288,7 @@ export class TUIOutput {
    */
   showWarning(message: string): void {
     const icon = this.options.showIcons ? '⚠️' : '!';
-    console.log(`${icon} Warning: ${message}`);
+    logger.debug(`${icon} Warning: ${message}`);
   }
 
   /**
@@ -271,7 +296,7 @@ export class TUIOutput {
    */
   showInfo(message: string): void {
     const icon = this.options.showIcons ? 'ℹ️' : 'i';
-    console.log(`${icon} ${message}`);
+    logger.debug(`${icon} ${message}`);
   }
 
   /**
@@ -279,9 +304,7 @@ export class TUIOutput {
    */
   askQuestion(question: string, defaultValue?: string): Promise<string> {
     return new Promise((resolve) => {
-      const prompt = defaultValue
-        ? `${question} (${defaultValue}): `
-        : `${question}: `;
+      const prompt = defaultValue ? `${question} (${defaultValue}): ` : `${question}: `;
 
       process.stdout.write(prompt);
 
@@ -296,11 +319,13 @@ export class TUIOutput {
           process.stdin.setRawMode(false);
           process.stdin.pause();
           process.stdin.removeListener('data', onData);
-          console.log();
+          logger.debug();
           resolve(input || defaultValue || '');
-        } else if (data === '\u0003') { // Ctrl+C
+        } else if (data === '\u0003') {
+          // Ctrl+C
           process.exit(130);
-        } else if (data === '\u007F') { // Backspace
+        } else if (data === '\u007F') {
+          // Backspace
           input = input.slice(0, -1);
           process.stdout.write('\b \b');
         } else if (data >= ' ' && data <= '~') {
@@ -316,7 +341,7 @@ export class TUIOutput {
   /**
    * Ask yes/no question
    */
-  askYesNo(question: string, defaultValue: boolean = true): Promise<boolean> {
+  askYesNo(question: string, defaultValue = true): Promise<boolean> {
     const defaultText = defaultValue ? 'Y/n' : 'y/N';
     return new Promise((resolve) => {
       const prompt = `${question} (${defaultText}): `;
@@ -343,7 +368,7 @@ export class TUIOutput {
           result = defaultValue;
         }
 
-        console.log(result ? 'Yes' : 'No');
+        logger.debug(result ? 'Yes' : 'No');
         resolve(result);
       };
 

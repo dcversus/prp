@@ -4,16 +4,18 @@
  * Specialized testing environment for TUI components with
  * mock terminal, animation control, and visual regression support
  */
-
-import React from 'react';
 import { EventEmitter } from 'events';
+
 import { render } from 'ink-testing-library';
+
+import { logger } from '../shared/logger';
+
+import type React from 'react';
 
 export interface MockTerminalDimensions {
   columns: number;
   rows: number;
 }
-
 export interface MockTerminalConfig {
   dimensions: MockTerminalDimensions;
   colors: boolean;
@@ -21,20 +23,17 @@ export interface MockTerminalConfig {
   supportsUnicode: boolean;
   supportsTrueColor: boolean;
 }
-
 export interface TUITestRenderOptions extends Omit<RenderOptions, 'stdin' | 'stdout' | 'stderr'> {
   mockTerminal?: Partial<MockTerminalConfig>;
   mockAnimations?: boolean;
   animationSpeed?: number;
   captureFrames?: boolean;
 }
-
 export interface TUITestFrame {
   timestamp: number;
   content: string;
   dimensions: MockTerminalDimensions;
 }
-
 export interface TUITestInstance {
   unmount: () => void;
   rerender: (element: React.ReactElement) => void;
@@ -46,75 +45,60 @@ export interface TUITestInstance {
   wait: (ms?: number) => Promise<void>;
   waitFor: (matcher: (frame: TUITestFrame) => boolean, timeout?: number) => Promise<TUITestFrame>;
 }
-
 /**
  * Mock terminal implementation for testing
  */
 export class MockTerminal extends EventEmitter {
-  private config: MockTerminalConfig;
+  private readonly config: MockTerminalConfig;
   private input: string[] = [];
-  private inputIndex: number = 0;
+  private inputIndex = 0;
   private output: string[] = [];
   private dimensions: MockTerminalDimensions;
-
   constructor(config: Partial<MockTerminalConfig> = {}) {
     super();
-
     this.config = {
       dimensions: { columns: 80, rows: 24 },
       colors: true,
       interactive: true,
       supportsUnicode: true,
       supportsTrueColor: true,
-      ...config
+      ...config,
     };
-
     this.dimensions = this.config.dimensions;
   }
-
   get columns(): number {
     return this.dimensions.columns;
   }
-
   get rows(): number {
     return this.dimensions.rows;
   }
-
   get isTTY(): boolean {
     return this.config.interactive;
   }
-
   write(data: string): void {
     this.output.push(data);
     this.emit('data', data);
   }
-
   setRawMode(_enable: boolean): void {
     // Mock implementation
   }
-
   resume(): void {
     // Mock implementation
   }
-
   pause(): void {
     // Mock implementation
   }
-
   // EventEmitter methods are already available from parent class
   // No need to override them
-
   // Test-specific methods
   setDimensions(columns: number, rows: number): void {
     this.dimensions = { columns, rows };
     this.emit('resize', columns, rows);
   }
-
   setInput(inputs: string[]): void {
     this.input = inputs;
     this.inputIndex = 0;
   }
-
   readInput(): string | null {
     if (this.inputIndex < this.input.length) {
       const input = this.input[this.inputIndex++];
@@ -122,93 +106,76 @@ export class MockTerminal extends EventEmitter {
     }
     return null;
   }
-
   getOutput(): string[] {
     return [...this.output];
   }
-
   clearOutput(): void {
     this.output = [];
   }
 }
-
 /**
  * Animation controller for testing
  */
 export class AnimationController {
-  private isPaused: boolean = false;
-  private speed: number = 1.0;
-  private frameCallbacks: Map<string, () => void> = new Map();
-  private currentFrame: number = 0;
-
-  constructor(speed: number = 1.0) {
+  private isPaused = false;
+  private speed = 1.0;
+  private readonly frameCallbacks = new Map<string, () => void>();
+  private currentFrame = 0;
+  constructor(speed = 1.0) {
     this.speed = speed;
   }
-
   pause(): void {
     this.isPaused = true;
   }
-
   resume(): void {
     this.isPaused = false;
   }
-
   setSpeed(speed: number): void {
     this.speed = Math.max(0.1, Math.min(10, speed));
   }
-
   nextFrame(): void {
     if (!this.isPaused) {
       this.currentFrame++;
-      this.frameCallbacks.forEach(callback => callback());
+      this.frameCallbacks.forEach((callback) => callback());
     }
   }
-
   registerCallback(id: string, callback: () => void): void {
     this.frameCallbacks.set(id, callback);
   }
-
   unregisterCallback(id: string): void {
     this.frameCallbacks.delete(id);
   }
-
   getCurrentFrame(): number {
     return this.currentFrame;
   }
-
   isAnimationPaused(): boolean {
     return this.isPaused;
   }
 }
-
 /**
  * TUI Test Environment
  */
 export class TUITestEnvironment {
-  private mockTerminal: MockTerminal;
+  private readonly mockTerminal: MockTerminal;
   private animationController: AnimationController | null = null;
-  private options: TUITestRenderOptions;
-
+  private readonly options: TUITestRenderOptions;
   constructor(options: TUITestRenderOptions = {}) {
     this.options = {
       mockTerminal: {},
       mockAnimations: true,
       animationSpeed: 1.0,
       captureFrames: true,
-      ...options
+      ...options,
     };
-
     this.mockTerminal = new MockTerminal(this.options.mockTerminal);
     this.animationController = new AnimationController(this.options.animationSpeed);
   }
-
   /**
    * Render a TUI component for testing
    */
   render(element: React.ReactElement): TUITestInstance {
     const frames: TUITestFrame[] = [];
     const startTime = Date.now();
-
     const mockStdin = {
       isTTY: true,
       setRawMode: () => {},
@@ -218,18 +185,15 @@ export class TUITestEnvironment {
       off: () => {},
       removeListener: () => {},
       write: () => {},
-      destroy: () => {}
+      destroy: () => {},
     };
-
     const mockStdout = {
       isTTY: this.mockTerminal.isTTY,
       columns: this.mockTerminal.columns,
       rows: this.mockTerminal.rows,
-      write: (data: string) => this.mockTerminal.write(data)
+      write: (data: string) => this.mockTerminal.write(data),
     };
-
     const { lastFrame, unmount, rerender } = render(element);
-
     // Capture frames if enabled
     if (this.options.captureFrames) {
       const captureInterval = setInterval(() => {
@@ -239,11 +203,10 @@ export class TUITestEnvironment {
           content,
           dimensions: {
             columns: this.mockTerminal.columns,
-            rows: this.mockTerminal.rows
-          }
+            rows: this.mockTerminal.rows,
+          },
         });
       }, 16); // ~60fps
-
       // Cleanup function to be called on unmount
       const originalUnmount = unmount;
       return {
@@ -260,8 +223,8 @@ export class TUITestEnvironment {
             content,
             dimensions: {
               columns: this.mockTerminal.columns,
-              rows: this.mockTerminal.rows
-            }
+              rows: this.mockTerminal.rows,
+            },
           };
         },
         getInput: () => this.mockTerminal.getOutput().join(''),
@@ -270,13 +233,13 @@ export class TUITestEnvironment {
           // Simulate key press
           this.mockTerminal.emit('keypress', key);
         },
-        wait: async (ms: number = 100) => {
-          await new Promise(resolve => setTimeout(resolve, ms));
+        wait: async (ms = 100) => {
+          await new Promise((resolve) => setTimeout(resolve, ms));
           if (!this.animationController.isAnimationPaused()) {
             this.animationController.nextFrame();
           }
         },
-        waitFor: async (matcher: (frame: TUITestFrame) => boolean, timeout: number = 5000) => {
+        waitFor: async (matcher: (frame: TUITestFrame) => boolean, timeout = 5000) => {
           const startTime = Date.now();
           return new Promise((resolve, reject) => {
             const checkFrame = () => {
@@ -285,10 +248,9 @@ export class TUITestEnvironment {
                 content: lastFrame(),
                 dimensions: {
                   columns: this.mockTerminal.columns,
-                  rows: this.mockTerminal.rows
-                }
+                  rows: this.mockTerminal.rows,
+                },
               };
-
               if (matcher(frame)) {
                 resolve(frame);
               } else if (Date.now() - startTime > timeout) {
@@ -297,13 +259,11 @@ export class TUITestEnvironment {
                 setTimeout(checkFrame, 16);
               }
             };
-
             checkFrame();
           });
-        }
+        },
       };
     }
-
     return {
       unmount,
       rerender,
@@ -315,8 +275,8 @@ export class TUITestEnvironment {
           content,
           dimensions: {
             columns: this.mockTerminal.columns,
-            rows: this.mockTerminal.rows
-          }
+            rows: this.mockTerminal.rows,
+          },
         };
       },
       getInput: () => this.mockTerminal.getOutput().join(''),
@@ -324,36 +284,32 @@ export class TUITestEnvironment {
       press: (key: string) => {
         this.mockTerminal.emit('keypress', key);
       },
-      wait: async (ms: number = 100) => {
-        await new Promise(resolve => setTimeout(resolve, ms));
+      wait: async (ms = 100) => {
+        await new Promise((resolve) => setTimeout(resolve, ms));
       },
-      waitFor: async (_matcher: (frame: TUITestFrame) => boolean, _timeout: number = 5000) => {
+      waitFor: async (_matcher: (frame: TUITestFrame) => boolean, _timeout = 5000) => {
         throw new Error('Frame capture not enabled');
-      }
+      },
     };
   }
-
   /**
    * Get mock terminal instance
    */
   getTerminal(): MockTerminal {
     return this.mockTerminal;
   }
-
   /**
    * Get animation controller
    */
   getAnimationController(): AnimationController {
     return this.animationController;
   }
-
   /**
    * Set terminal dimensions
    */
   setDimensions(columns: number, rows: number): void {
     this.mockTerminal.setDimensions(columns, rows);
   }
-
   /**
    * Test utility functions
    */
@@ -362,9 +318,9 @@ export class TUITestEnvironment {
       /**
        * Wait for text to appear in output
        */
-      waitForText: async (text: string, timeout: number = 5000): Promise<boolean> => {
+      waitForText: async (text: string, timeout = 5000): Promise<boolean> => {
         const startTime = Date.now();
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
           const checkText = () => {
             const output = this.mockTerminal.getOutput().join('');
             if (output.includes(text)) {
@@ -378,7 +334,6 @@ export class TUITestEnvironment {
           checkText();
         });
       },
-
       /**
        * Count occurrences of text in output
        */
@@ -387,7 +342,6 @@ export class TUITestEnvironment {
         const matches = output.match(new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'));
         return matches ? matches.length : 0;
       },
-
       /**
        * Extract color codes from output
        */
@@ -398,7 +352,6 @@ export class TUITestEnvironment {
         const matches = output.match(colorRegex);
         return matches ?? [];
       },
-
       /**
        * Check if output contains specific color
        */
@@ -410,7 +363,6 @@ export class TUITestEnvironment {
         const codes = matches ?? [];
         return codes.includes(colorCode);
       },
-
       /**
        * Get clean text without ANSI codes
        */
@@ -419,23 +371,20 @@ export class TUITestEnvironment {
         // eslint-disable-next-line no-control-regex
         return output.replace(/\x1b\[[0-9;]*m/g, '');
       },
-
       /**
        * Simulate resize event
        */
       simulateResize: (columns: number, rows: number) => {
         this.setDimensions(columns, rows);
       },
-
       /**
        * Clear terminal output
        */
       clearTerminal: () => {
         this.mockTerminal.clearOutput();
-      }
+      },
     };
   }
-
   /**
    * Cleanup test environment
    */
@@ -444,37 +393,38 @@ export class TUITestEnvironment {
     this.animationController = null;
   }
 }
-
 /**
  * Default test environment instance
  */
 export const defaultTestEnvironment = new TUITestEnvironment();
-
 /**
  * Convenience function to render TUI components
  */
-export function renderTUI(element: React.ReactElement, options?: TUITestRenderOptions): TUITestInstance {
+export function renderTUI(
+  element: React.ReactElement,
+  options?: TUITestRenderOptions,
+): TUITestInstance {
   const environment = new TUITestEnvironment(options);
   return environment.render(element);
 }
-
 /**
  * Visual regression utilities
  */
 export class VisualRegression {
-  private baselineFrames: Map<string, TUITestFrame[]> = new Map();
-
+  private readonly baselineFrames = new Map<string, TUITestFrame[]>();
   /**
    * Capture baseline frames for comparison
    */
   captureBaseline(name: string, frames: TUITestFrame[]): void {
     this.baselineFrames.set(name, frames);
   }
-
   /**
    * Compare frames against baseline
    */
-  compareAgainstBaseline(name: string, frames: TUITestFrame[]): {
+  compareAgainstBaseline(
+    name: string,
+    frames: TUITestFrame[],
+  ): {
     matches: boolean;
     differences: Array<{
       frameIndex: number;
@@ -487,36 +437,38 @@ export class VisualRegression {
     if (!baseline) {
       throw new Error(`No baseline found for test: ${name}`);
     }
-
     const differences: Array<{
       frameIndex: number;
       baselineFrame: TUITestFrame;
       currentFrame: TUITestFrame;
       diff: string;
     }> = [];
-
     const maxFrames = Math.max(baseline.length, frames.length);
-
     for (let i = 0; i < maxFrames; i++) {
       const baselineFrame = baseline[i];
       const currentFrame = frames[i];
-
       if (!baselineFrame || !currentFrame || baselineFrame.content !== currentFrame.content) {
         differences.push({
           frameIndex: i,
-          baselineFrame: baselineFrame ?? { timestamp: 0, content: '', dimensions: { columns: 0, rows: 0 } },
-          currentFrame: currentFrame ?? { timestamp: 0, content: '', dimensions: { columns: 0, rows: 0 } },
-          diff: this.generateDiff(baselineFrame?.content ?? '', currentFrame?.content ?? '')
+          baselineFrame: baselineFrame ?? {
+            timestamp: 0,
+            content: '',
+            dimensions: { columns: 0, rows: 0 },
+          },
+          currentFrame: currentFrame ?? {
+            timestamp: 0,
+            content: '',
+            dimensions: { columns: 0, rows: 0 },
+          },
+          diff: this.generateDiff(baselineFrame?.content ?? '', currentFrame?.content ?? ''),
         });
       }
     }
-
     return {
       matches: differences.length === 0,
-      differences
+      differences,
     };
   }
-
   /**
    * Generate diff between two strings
    */
@@ -526,37 +478,31 @@ export class VisualRegression {
     const lines2 = current.split('\n');
     const maxLines = Math.max(lines1.length, lines2.length);
     const diff: string[] = [];
-
     for (let i = 0; i < maxLines; i++) {
       const line1 = lines1[i] ?? '';
       const line2 = lines2[i] ?? '';
-
       if (line1 !== line2) {
         diff.push(`Line ${i + 1}: "${line1}" -> "${line2}"`);
       }
     }
-
     return diff.join('\n');
   }
-
   /**
    * Save baseline frames to file
    */
   saveBaseline(name: string, _frames: TUITestFrame[], filePath: string): void {
     // In a real implementation, this would write to file system
-    // eslint-disable-next-line no-console
-    console.log(`Would save baseline ${name} to ${filePath}`);
+     
+    logger.debug(`Would save baseline ${name} to ${filePath}`);
   }
-
   /**
    * Load baseline frames from file
    */
   loadBaseline(name: string, filePath: string): TUITestFrame[] | null {
     // In a real implementation, this would read from file system
-    // eslint-disable-next-line no-console
-    console.log(`Would load baseline ${name} from ${filePath}`);
+     
+    logger.debug(`Would load baseline ${name} from ${filePath}`);
     return null;
   }
 }
-
 export default TUITestEnvironment;

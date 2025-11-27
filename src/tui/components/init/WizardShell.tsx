@@ -14,17 +14,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
-import { useTheme } from '../../config/theme-provider.js';
-import { useTerminalDimensions } from '../../hooks/useTerminalDimensions.js';
-import type { InitShellProps } from './types.js';
+
+import { useTheme } from '../../config/theme-provider';
+import { useTerminalDimensions } from '../../hooks/useTerminalDimensions';
+
+import type { InitShellProps } from './types';
 
 // Music note states for animation (matching PRP spec)
 const MUSIC_NOTES = {
-  awaiting: '♪',      // Awaiting input
-  validating: '♩',    // Parsing data
-  confirmed: '♬',     // Spawning agents
-  error: '♫',         // Error state (changed from ⚠ to ♫)
-  steady: '♫'         // Steady state
+  awaiting: '♪', // Awaiting input
+  validating: '♩', // Parsing data
+  confirmed: '♬', // Spawning agents
+  error: '♫', // Error state (changed from ⚠ to ♫)
+  steady: '♫', // Steady state
 } as const;
 
 export type MusicNoteState = keyof typeof MUSIC_NOTES;
@@ -46,7 +48,7 @@ const StepHeader: React.FC<{
   useEffect(() => {
     if (currentFrame < targetNote) {
       const interval = setInterval(() => {
-        setCurrentFrame(prev => {
+        setCurrentFrame((prev) => {
           const next = (prev + 1) % noteSequence.length;
           if (next === targetNote) {
             clearInterval(interval);
@@ -83,16 +85,10 @@ const BottomDelimiter: React.FC<{
 
   return (
     <Box flexDirection="column" marginTop={2}>
-      <Text color={theme.colors.neutrals.muted}>
-        {'─'.repeat(Math.min(width - 10, 100))}
-      </Text>
+      <Text color={theme.colors.neutrals.muted}>{'─'.repeat(Math.min(width - 10, 100))}</Text>
       <Box flexDirection="row" justifyContent="space-between" marginTop={0} paddingX={1}>
         <Box flexGrow={1}>
-          {onCancel && (
-            <Text color={theme.colors.neutrals.text_dim}>
-              cancel (Esc)
-            </Text>
-          )}
+          {onCancel && <Text color={theme.colors.neutrals.text_dim}>cancel (Esc)</Text>}
         </Box>
         <Box flexDirection="row" gap={2}>
           {keys.map((key, index) => (
@@ -102,9 +98,7 @@ const BottomDelimiter: React.FC<{
           ))}
         </Box>
       </Box>
-      <Text color={theme.colors.neutrals.muted}>
-        {'─'.repeat(Math.min(width - 10, 100))}
-      </Text>
+      <Text color={theme.colors.neutrals.muted}>{'─'.repeat(Math.min(width - 10, 100))}</Text>
     </Box>
   );
 };
@@ -116,7 +110,7 @@ export const WizardShell: React.FC<InitShellProps> = ({
   title,
   icon,
   children,
-  footerKeys
+  footerKeys,
   /* onBack, */
   /* onForward, */
   /* onCancel */
@@ -133,10 +127,11 @@ export const WizardShell: React.FC<InitShellProps> = ({
     const colorterm = process.env.COLORTERM?.toLowerCase();
     const term = process.env.TERM?.toLowerCase();
 
-    const hasTrueColor = colorterm?.includes('truecolor') ||
-                       colorterm?.includes('24bit') ||
-                       term?.includes('24bit') ||
-                       process.env.TMUX !== undefined; // tmux often supports TrueColor
+    const hasTrueColor =
+      colorterm?.includes('truecolor') ||
+      colorterm?.includes('24bit') ||
+      term?.includes('24bit') ||
+      process.env.TMUX !== undefined; // tmux often supports TrueColor
 
     setTrueColorSupported(hasTrueColor);
 
@@ -163,15 +158,15 @@ export const WizardShell: React.FC<InitShellProps> = ({
   const getGradientColors = () => {
     if (isDayMode) {
       return {
-        bg1: '#111315',  // Day bg1
-        bg2: '#1a1f24',  // Day bg2
-        bg3: '#21262d'  // Day bg3
+        bg1: '#111315', // Day bg1
+        bg2: '#1a1f24', // Day bg2
+        bg3: '#21262d', // Day bg3
       };
     } else {
       return {
-        bg1: '#0b0c0d',  // Night bg1
-        bg2: '#121416',  // Night bg2
-        bg3: '#171a1d'  // Night bg3
+        bg1: '#0b0c0d', // Night bg1
+        bg2: '#121416', // Night bg2
+        bg3: '#171a1d', // Night bg3
       };
     }
   };
@@ -204,30 +199,32 @@ export const WizardShell: React.FC<InitShellProps> = ({
       let bgColor;
 
       // Calculate distance from center for radial effect
-      const distance = Math.sqrt(
-        Math.pow(y - centerY, 2)
-      );
+      const distance = Math.sqrt(Math.pow(y - centerY, 2));
       const normalizedDistance = distance / maxDistance;
 
       // Select color based on distance (center-weighted: 0.6 center weight)
-      if (normalizedDistance < 0.4) { // Center area (40% - center weight 0.6)
+      if (normalizedDistance < 0.4) {
+        // Center area (40% - center weight 0.6)
         bgColor = gradientColors.bg1;
-      } else if (normalizedDistance < 0.8) { // Middle area
+      } else if (normalizedDistance < 0.8) {
+        // Middle area
         bgColor = gradientColors.bg2;
-      } else { // Edge area
+      } else {
+        // Edge area
         bgColor = gradientColors.bg3;
       }
 
       // Apply breathing animation to alpha (simulated via color selection)
       const shouldBrighten = bgAlpha > 0.95;
-      const finalBgColor = shouldBrighten && normalizedDistance < 0.3
-        ? gradientColors.bg2  // Slightly brighter center during breathing peak
-        : bgColor;
+      const finalBgColor =
+        shouldBrighten && normalizedDistance < 0.3
+          ? gradientColors.bg2 // Slightly brighter center during breathing peak
+          : bgColor;
 
       gradientRows.push(
         <Text key={y} backgroundColor={finalBgColor} color={finalBgColor}>
           {' '.repeat(width)}
-        </Text>
+        </Text>,
       );
     }
 
@@ -240,10 +237,7 @@ export const WizardShell: React.FC<InitShellProps> = ({
       {renderRadialGradient()}
 
       {/* Main content container */}
-      <Box
-        flexDirection="column"
-        flexGrow={1}
-      >
+      <Box flexDirection="column" flexGrow={1}>
         {/* Header with music icon */}
         <StepHeader
           icon={icon as MusicNoteState}
@@ -258,7 +252,7 @@ export const WizardShell: React.FC<InitShellProps> = ({
         </Box>
 
         {/* Bottom delimiter with keyboard shortcuts */}
-        <BottomDelimiter keys={footerKeys} onCancel={undefined} />
+        <BottomDelimiter keys={footerKeys} />
       </Box>
     </Box>
   );

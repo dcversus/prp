@@ -4,25 +4,34 @@
  * 10-second ASCII art animation with music symbol progression,
  * radial vignette, starfield background, and title wipe-in.
  * Based on PRP-004 specifications for retro chip demo vibe.
+ *
+ * Supports both procedural ASCII generation and video-to-ASCII conversion.
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Text } from 'ink';
-import type { TUIConfig } from '../../shared/types/TUIConfig.js';
-import { createLayerLogger } from '../../shared/logger.js';
-import { getVersion } from '../../shared/utils/version.js';
+
+import { createLayerLogger } from '../../shared/logger';
+import { getVersion } from '../../shared/utils/version';
+import { videoToASCII, type VideoFrame, type VideoProcessingOptions } from '../utils/video-to-ascii';
+
+import type { TUIConfig } from '../../shared/types/TUIConfig';
 
 const logger = createLayerLogger('tui');
 
 interface VideoIntroProps {
   config: TUIConfig;
   onComplete: (success: boolean) => void;
-}
+  videoPath?: string; // Optional video file to convert to ASCII
+  videoOptions?: VideoProcessingOptions; // Video processing options
+  mode?: 'procedural' | 'video' | 'text'; // Animation mode
+  textContent?: string[]; // Text content for text mode
+};
 
 interface AnimationFrame {
   content: string[];
   delay: number;
-}
+};
 
 interface Star {
   x: number;
@@ -30,36 +39,74 @@ interface Star {
   symbol: '·' | '*';
   speed: number;
   brightness: number;
-}
+};
 
 interface OrbitNote {
   symbol: '♪' | '♩' | '♬';
   angle: number;
   radius: number;
   color: string;
-}
+};
 
-export function VideoIntro({ config, onComplete }: VideoIntroProps) {
+export const VideoIntro = ({
+  config,
+  onComplete,
+  videoPath,
+  videoOptions,
+  mode = 'procedural',
+  textContent
+}: VideoIntroProps) => {
   const [frameIndex, setFrameIndex] = useState(0);
   const [stars, setStars] = useState<Star[]>([]);
   const [orbitNotes, setOrbitNotes] = useState<OrbitNote[]>([]);
   const [currentSymbol, setCurrentSymbol] = useState<'♪' | '♩' | '♬' | '♫'>('♪');
   const [radialAlpha, setRadialAlpha] = useState(0);
+  const [videoFrames, setVideoFrames] = useState<VideoFrame[]>([]);
+  const [isLoadingVideo, setIsLoadingVideo] = useState(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
 
   // Animation configuration
-  const animationConfig = useMemo(() => ({
-    totalFrames: 120, // 10 seconds @ 12fps
-    fps: 12,
-    frameDelay: 83, // ~1000/12 ms
-    terminalSize: {
-      width: process.stdout.columns || 120,
-      height: process.stdout.rows || 34
+  const animationConfig = useMemo(
+    () => ({
+      totalFrames: 120, // 10 seconds @ 12fps
+      fps: videoOptions?.fps || 12,
+      frameDelay: videoOptions ? Math.round(1000 / (videoOptions.fps || 12)) : 83, // ~1000/fps ms
+      terminalSize: {
+        width: videoOptions?.width || process.stdout.columns || 120,
+        height: videoOptions?.height || process.stdout.rows || 34,
+      },
+    }),
+    [videoOptions],
+  );
+
+  // Load video frames if in video mode
+  useEffect(() => {
+    if (mode === 'video' && videoPath && videoFrames.length === 0 && !isLoadingVideo) {
+      setIsLoadingVideo(true);
+      setVideoError(null);
+
+      logger.info('Loading video for ASCII conversion', { videoPath, options: videoOptions });
+
+      videoToASCII
+        .convertVideo(videoPath, videoOptions)
+        .then((frames) => {
+          setVideoFrames(frames);
+          setIsLoadingVideo(false);
+          logger.info('Video loaded successfully', { frameCount: frames.length });
+        })
+        .catch((error) => {
+          setVideoError(`Failed to load video: ${(error as Error).message}`);
+          setIsLoadingVideo(false);
+          logger.error('Video loading failed', error);
+        });
     }
-  }), []);
+  }, [mode, videoPath, videoOptions, videoFrames.length, isLoadingVideo]);
 
   // Initialize starfield
   useEffect(() => {
-    const starCount = Math.floor((animationConfig.terminalSize.width * animationConfig.terminalSize.height) / 200);
+    const starCount = Math.floor(
+      (animationConfig.terminalSize.width * animationConfig.terminalSize.height) / 200,
+    );
     const initialStars: Star[] = [];
 
     for (let i = 0; i < starCount; i++) {
@@ -68,7 +115,7 @@ export function VideoIntro({ config, onComplete }: VideoIntroProps) {
         y: Math.random() * animationConfig.terminalSize.height,
         symbol: Math.random() > 0.7 ? '*' : '·',
         speed: 0.1 + Math.random() * 0.3,
-        brightness: 0.3 + Math.random() * 0.7
+        brightness: 0.3 + Math.random() * 0.7,
       });
     }
 
@@ -78,9 +125,27 @@ export function VideoIntro({ config, onComplete }: VideoIntroProps) {
   // Initialize orbit notes
   useEffect(() => {
     const notes: OrbitNote[] = [
-      { symbol: '♪', angle: 0, radius: Math.min(animationConfig.terminalSize.width, animationConfig.terminalSize.height) / 6, color: config.colors.accent_orange },
-      { symbol: '♩', angle: Math.PI * 2 / 3, radius: Math.min(animationConfig.terminalSize.width, animationConfig.terminalSize.height) / 6, color: config.colors.role_colors['robo-aqa'] },
-      { symbol: '♬', angle: Math.PI * 4 / 3, radius: Math.min(animationConfig.terminalSize.width, animationConfig.terminalSize.height) / 6, color: config.colors.role_colors['robo-developer'] }
+      {
+        symbol: '♪',
+        angle: 0,
+        radius:
+          Math.min(animationConfig.terminalSize.width, animationConfig.terminalSize.height) / 6,
+        color: config.colors.accent_orange,
+      },
+      {
+        symbol: '♩',
+        angle: (Math.PI * 2) / 3,
+        radius:
+          Math.min(animationConfig.terminalSize.width, animationConfig.terminalSize.height) / 6,
+        color: config.colors.role_colors['robo-aqa'],
+      },
+      {
+        symbol: '♬',
+        angle: (Math.PI * 4) / 3,
+        radius:
+          Math.min(animationConfig.terminalSize.width, animationConfig.terminalSize.height) / 6,
+        color: config.colors.role_colors['robo-developer'],
+      },
     ];
     setOrbitNotes(notes);
   }, [animationConfig.terminalSize, config.colors]);
@@ -112,26 +177,37 @@ export function VideoIntro({ config, onComplete }: VideoIntroProps) {
     // Update orbit notes rotation
     if (progress >= 0.3 && progress <= 0.6) {
       const orbitProgress = (progress - 0.3) / 0.3;
-      setOrbitNotes(prev => prev.map(note => ({
-        ...note,
-        angle: note.angle + orbitProgress * Math.PI * 2
-      })));
+      setOrbitNotes((prev) =>
+        prev.map((note) => ({
+          ...note,
+          angle: note.angle + orbitProgress * Math.PI * 2,
+        })),
+      );
     }
   }, [frameIndex, animationConfig.totalFrames]);
 
   // Frame animation loop
   useEffect(() => {
-    if (frameIndex >= animationConfig.totalFrames) {
-      onComplete(true);
-      return;
+    if (mode === 'video' && videoFrames.length > 0) {
+      // Video mode: use actual video frames
+      if (frameIndex >= videoFrames.length) {
+        onComplete(true);
+        return;
+      }
+    } else {
+      // Procedural/Text mode: use generated frames
+      if (frameIndex >= animationConfig.totalFrames) {
+        onComplete(true);
+        return;
+      }
     }
 
     const timer = setTimeout(() => {
-      setFrameIndex(prev => prev + 1);
+      setFrameIndex((prev) => prev + 1);
     }, animationConfig.frameDelay);
 
     return () => clearTimeout(timer);
-  }, [frameIndex, animationConfig.totalFrames, animationConfig.frameDelay, onComplete]);
+  }, [frameIndex, animationConfig.totalFrames, animationConfig.frameDelay, onComplete, mode, videoFrames.length]);
 
   // Handle keyboard input for skipping
   useEffect(() => {
@@ -153,25 +229,82 @@ export function VideoIntro({ config, onComplete }: VideoIntroProps) {
 
   // Generate current frame
   const currentFrame = useMemo(() => {
-    return generateFrame(frameIndex, animationConfig, {
-      currentSymbol,
-      radialAlpha,
-      stars: stars.map(star => ({
-        ...star,
-        x: star.x + star.speed,
-        y: star.y + star.speed * 0.5
-      })),
-      orbitNotes,
-      config
-    });
-  }, [frameIndex, animationConfig, currentSymbol, radialAlpha, stars, orbitNotes, config]);
+    if (mode === 'video') {
+      // Video mode: use converted video frames
+      if (isLoadingVideo) {
+        return {
+          content: generateLoadingFrame(animationConfig.terminalSize),
+          delay: animationConfig.frameDelay,
+        };
+      }
 
-  return (
-    <Text color={config.colors.base_fg}>
-      {currentFrame.content}
-    </Text>
-  );
-}
+      if (videoError) {
+        return {
+          content: generateErrorFrame(animationConfig.terminalSize, videoError),
+          delay: animationConfig.frameDelay,
+        };
+      }
+
+      if (videoFrames.length > 0 && frameIndex < videoFrames.length) {
+        const videoFrame = videoFrames[frameIndex];
+        return {
+          content: videoFrame.content,
+          delay: animationConfig.frameDelay,
+        };
+      }
+
+      // Fallback to procedural if video not available
+      return generateFrame(frameIndex, animationConfig, {
+        currentSymbol,
+        radialAlpha,
+        stars: stars.map((star) => ({
+          ...star,
+          x: star.x + star.speed,
+          y: star.y + star.speed * 0.5,
+        })),
+        orbitNotes,
+        config,
+      });
+    } else if (mode === 'text' && textContent) {
+      // Text mode: display text with animations
+      return generateTextFrame(
+        frameIndex,
+        animationConfig,
+        textContent,
+        config,
+        currentSymbol
+      );
+    } else {
+      // Procedural mode: original ASCII animation
+      return generateFrame(frameIndex, animationConfig, {
+        currentSymbol,
+        radialAlpha,
+        stars: stars.map((star) => ({
+          ...star,
+          x: star.x + star.speed,
+          y: star.y + star.speed * 0.5,
+        })),
+        orbitNotes,
+        config,
+      });
+    }
+  }, [
+    frameIndex,
+    animationConfig,
+    mode,
+    isLoadingVideo,
+    videoError,
+    videoFrames,
+    textContent,
+    currentSymbol,
+    radialAlpha,
+    stars,
+    orbitNotes,
+    config,
+  ]);
+
+  return <Text color={config.colors.base_fg}>{currentFrame.content}</Text>;
+};
 
 /**
  * Generate a single animation frame
@@ -185,13 +318,15 @@ function generateFrame(
     stars: Star[];
     orbitNotes: OrbitNote[];
     config: TUIConfig;
-  }
+  },
 ): AnimationFrame {
   const { width, height } = config.terminalSize;
   const progress = frameIndex / config.totalFrames;
 
   // Initialize frame buffer
-  const buffer: string[][] = Array(height).fill(null).map(() => Array(width).fill(' '));
+  const buffer: string[][] = Array(height)
+    .fill(null)
+    .map(() => Array(width).fill(' '));
 
   const centerX = Math.floor(width / 2);
   const centerY = Math.floor(height / 2);
@@ -202,7 +337,15 @@ function generateFrame(
   // Phase 1: 0.0-1.0s - Fade-in radial vignette
   if (progress < 0.1) {
     const alpha = progress / 0.1;
-    applyRadialVignette(buffer, centerX, centerY, width, height, alpha * state.radialAlpha, asciiRamp);
+    applyRadialVignette(
+      buffer,
+      centerX,
+      centerY,
+      width,
+      height,
+      alpha * state.radialAlpha,
+      asciiRamp,
+    );
 
     // Single music symbol appears center
     if (alpha > 0.5) {
@@ -260,19 +403,19 @@ function generateFrame(
 
     // Fade out background elements
     if (titleProgress > 0.5) {
-      const fadeAlpha = 1 - ((titleProgress - 0.5) / 0.5);
+      const fadeAlpha = 1 - (titleProgress - 0.5) / 0.5;
       fadeBackground(buffer, fadeAlpha, asciiRamp);
     }
   }
 
   // Convert buffer to string
-  const content = buffer.map(row => row.join('')).join('\n');
+  const content = buffer.map((row) => row.join('')).join('\n');
 
   return {
     content,
-    delay: 83 // ~12fps
+    delay: 83, // ~12fps
   };
-}
+};
 
 /**
  * Apply radial vignette effect
@@ -284,26 +427,26 @@ function applyRadialVignette(
   width: number,
   height: number,
   alpha: number,
-  asciiRamp: string[]
+  asciiRamp: string[],
 ): void {
   const maxDistance = Math.sqrt(Math.pow(centerX, 2) + Math.pow(centerY, 2));
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
-      const vignetteAlpha = Math.max(0, 1 - (distance / maxDistance));
+      const vignetteAlpha = Math.max(0, 1 - distance / maxDistance);
       const finalAlpha = vignetteAlpha * alpha;
 
       if (finalAlpha > 0.1) {
         const rampIndex = Math.floor(finalAlpha * (asciiRamp.length - 1));
         const char = asciiRamp[Math.min(rampIndex, asciiRamp.length - 1)];
         if (char !== '  ') {
-          buffer[y][x] = char;
+          buffer[y]![x] = char;
         }
       }
     }
   }
-}
+};
 
 /**
  * Draw a single symbol at specified position
@@ -314,12 +457,12 @@ function drawSymbol(
   y: number,
   symbol: string,
   width: number,
-  height: number
+  height: number,
 ): void {
   if (x >= 0 && x < width && y >= 0 && y < height) {
-    buffer[y][x] = symbol;
+    buffer[y]![x] = symbol;
   }
-}
+};
 
 /**
  * Draw a pulsing symbol
@@ -331,7 +474,7 @@ function drawSymbolPulse(
   symbol: string,
   size: number,
   width: number,
-  height: number
+  height: number,
 ): void {
   for (let dy = -size; dy <= size; dy++) {
     for (let dx = -size; dx <= size; dx++) {
@@ -340,12 +483,12 @@ function drawSymbolPulse(
       if (x >= 0 && x < width && y >= 0 && y < height) {
         const distance = Math.sqrt(dx * dx + dy * dy);
         if (distance <= size) {
-          buffer[y][x] = symbol;
+          buffer[y]![x] = symbol;
         }
       }
     }
   }
-}
+};
 
 /**
  * Draw animated starfield
@@ -355,20 +498,20 @@ function drawStarfield(
   stars: Star[],
   width: number,
   height: number,
-  asciiRamp: string[]
+  asciiRamp: string[],
 ): void {
-  stars.forEach(star => {
+  stars.forEach((star) => {
     const x = Math.floor(star.x % width);
     const y = Math.floor(star.y % height);
 
     if (star.brightness > 0.5) {
-      buffer[y][x] = star.symbol;
+      buffer[y]![x] = star.symbol;
     } else {
       const rampIndex = Math.floor(star.brightness * asciiRamp.length);
-      buffer[y][x] = asciiRamp[Math.min(rampIndex, asciiRamp.length - 1)];
+      buffer[y]![x] = asciiRamp[Math.min(rampIndex, asciiRamp.length - 1)];
     }
   });
-}
+};
 
 /**
  * Draw orbiting notes
@@ -379,17 +522,17 @@ function drawOrbitingNotes(
   centerY: number,
   notes: OrbitNote[],
   width: number,
-  height: number
+  height: number,
 ): void {
-  notes.forEach(note => {
+  notes.forEach((note) => {
     const x = Math.floor(centerX + Math.cos(note.angle) * note.radius);
     const y = Math.floor(centerY + Math.sin(note.angle) * note.radius);
 
     if (x >= 0 && x < width && y >= 0 && y < height) {
-      buffer[y][x] = note.symbol;
+      buffer[y]![x] = note.symbol;
     }
   });
-}
+};
 
 /**
  * Draw morph trail effect
@@ -400,7 +543,7 @@ function drawMorphTrail(
   centerY: number,
   progress: number,
   width: number,
-  height: number
+  height: number,
 ): void {
   const trailLength = Math.floor(progress * 15);
   const angle = progress * Math.PI * 4;
@@ -419,10 +562,10 @@ function drawMorphTrail(
       } else {
         symbol = '♫';
       }
-      buffer[y][x] = symbol;
+      buffer[y]![x] = symbol;
     }
   }
-}
+};
 
 /**
  * Apply radial glow effect
@@ -434,23 +577,23 @@ function applyRadialGlow(
   width: number,
   height: number,
   intensity: number,
-  asciiRamp: string[]
+  asciiRamp: string[],
 ): void {
   const glowRadius = 10 + intensity * 8;
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
-      if (distance < glowRadius && buffer[y][x] === ' ') {
-        const alpha = 1 - (distance / glowRadius);
+      if (distance < glowRadius && buffer[y]?.[x] === ' ') {
+        const alpha = 1 - distance / glowRadius;
         if (alpha > 0.3 && Math.random() > 0.7) {
           const rampIndex = Math.floor(alpha * 3);
-          buffer[y][x] = asciiRamp[Math.min(rampIndex, 2)];
+          buffer[y]![x] = asciiRamp[Math.min(rampIndex, 2)];
         }
       }
     }
   }
-}
+};
 
 /**
  * Draw title with wipe-in effect
@@ -461,12 +604,12 @@ function drawTitleWipe(
   startY: number,
   progress: number,
   width: number,
-  height: number
+  height: number,
 ): void {
   const titleLines = [
     '♫ @dcversus/prp',
     'Autonomous Development Orchestration',
-    `v${getVersion()} — Signal-Driven Workflow`
+    `v${getVersion()} — Signal-Driven Workflow`,
   ];
 
   titleLines.forEach((line, lineIndex) => {
@@ -483,29 +626,137 @@ function drawTitleWipe(
         const x = startX + i;
         const char = visibleLine[i];
         if (x < width && char !== undefined) {
-          buffer[y][x] = char;
+          buffer[y]![x] = char;
         }
       }
     }
   });
-}
+};
 
 /**
  * Fade background elements
  */
-function fadeBackground(
-  buffer: string[][],
-  fadeAlpha: number,
-  asciiRamp: string[]
-): void {
+function fadeBackground(buffer: string[][], fadeAlpha: number, asciiRamp: string[]): void {
   for (let y = 0; y < buffer.length; y++) {
-    for (let x = 0; x < buffer[y].length; x++) {
-      const char = buffer[y][x];
+    for (let x = 0; x < buffer[y]!.length; x++) {
+      const char = buffer[y]![x];
       if (char === '·' || char === '*') {
         if (Math.random() > fadeAlpha) {
-          buffer[y][x] = ' ';
+          buffer[y]![x] = ' ';
         }
       }
     }
   }
+};
+
+/**
+ * Generate loading frame
+ */
+function generateLoadingFrame(terminalSize: { width: number; height: number }): string {
+  const { width, height } = terminalSize;
+  const loadingText = 'Loading video...';
+  const dots = ['.', '..', '...'];
+  const dotIndex = Math.floor((Date.now() / 500) % 3);
+
+  const centerX = Math.floor((width - loadingText.length - dots[dotIndex].length) / 2);
+  const centerY = Math.floor(height / 2);
+
+  const frame: string[] = [];
+
+  for (let y = 0; y < height; y++) {
+    let line = '';
+    if (y === centerY) {
+      line = ' '.repeat(centerX) + loadingText + dots[dotIndex];
+    } else {
+      line = ' '.repeat(width);
+    }
+    frame.push(line);
+  }
+
+  return frame.join('\n');
+}
+
+/**
+ * Generate error frame
+ */
+function generateErrorFrame(terminalSize: { width: number; height: number }, error: string): string {
+  const { width, height } = terminalSize;
+  const errorText = `Error: ${error}`;
+  const centerX = Math.floor((width - errorText.length) / 2);
+  const centerY = Math.floor(height / 2);
+
+  const frame: string[] = [];
+
+  for (let y = 0; y < height; y++) {
+    let line = '';
+    if (y === centerY) {
+      line = ' '.repeat(Math.max(0, centerX)) + errorText.slice(0, width - centerX);
+    } else {
+      line = ' '.repeat(width);
+    }
+    frame.push(line);
+  }
+
+  return frame.join('\n');
+}
+
+/**
+ * Generate text frame with animations
+ */
+function generateTextFrame(
+  frameIndex: number,
+  config: { totalFrames: number; terminalSize: { width: number; height: number } },
+  textContent: string[],
+  tuiConfig: TUIConfig,
+  currentSymbol: string
+): AnimationFrame {
+  const { width, height } = config.terminalSize;
+  const progress = frameIndex / config.totalFrames;
+
+  // Initialize frame buffer
+  const buffer: string[][] = Array(height)
+    .fill(null)
+    .map(() => Array(width).fill(' '));
+
+  // Calculate text position with fade-in effect
+  const textStartY = Math.floor(height / 2 - textContent.length / 2);
+
+  textContent.forEach((line, lineIndex) => {
+    const y = textStartY + lineIndex;
+    if (y >= 0 && y < height) {
+      // Add wave effect
+      const waveOffset = Math.sin((frameIndex * 0.1) + (lineIndex * 0.5)) * 2;
+      const textX = Math.floor((width - line.length) / 2 + waveOffset);
+
+      // Fade in effect
+      const alpha = Math.min(1, progress * 2);
+      const shouldRender = alpha > (lineIndex / textContent.length);
+
+      if (shouldRender && textX >= 0 && textX + line.length <= width) {
+        for (let i = 0; i < line.length; i++) {
+          const x = textX + i;
+          if (buffer[y]?.[x] !== undefined) {
+            buffer[y][x] = line[i];
+          }
+        }
+      }
+    }
+  });
+
+  // Add animated music symbols
+  const symbolY = height - 3;
+  const symbolX = Math.floor(width / 2 + Math.cos(frameIndex * 0.1) * 10);
+  if (symbolY >= 0 && symbolY < height && symbolX >= 0 && symbolX < width) {
+    if (buffer[symbolY]?.[symbolX] !== undefined) {
+      buffer[symbolY][symbolX] = currentSymbol;
+    }
+  }
+
+  // Convert buffer to string
+  const content = buffer.map((row) => row.join('')).join('\n');
+
+  return {
+    content,
+    delay: 83,
+  };
 }

@@ -9,12 +9,12 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 
 // Import field components
-import InitShell from './InitShell.js';
-import FieldSelectCarousel from './FieldSelectCarousel.js';
-import FileTreeChecks from './FileTreeChecks.js';
+import InitShell from './InitShell';
+import FieldSelectCarousel from './FieldSelectCarousel';
+import FileTreeChecks from './FileTreeChecks';
 
 // Import types
-import type { InitState, TemplateFile } from './types.js';
+import type { InitState, TemplateFile } from './types';
 
 interface TemplateScreenProps {
   state: InitState;
@@ -22,10 +22,10 @@ interface TemplateScreenProps {
   onNext: () => void;
   onBack: () => void;
   onCancel: () => void;
-}
+};
 
 const TEMPLATE_PRESETS = ['typescript', 'react', 'nestjs', 'fastapi', 'wikijs', 'none'] as const;
-type TemplateType = typeof TEMPLATE_PRESETS[number];
+type TemplateType = (typeof TEMPLATE_PRESETS)[number];
 
 // Default template files structure
 const DEFAULT_TEMPLATE_FILES: Record<TemplateType, TemplateFile[]> = {
@@ -36,7 +36,7 @@ const DEFAULT_TEMPLATE_FILES: Record<TemplateType, TemplateFile[]> = {
       name: 'AGENTS.md',
       description: 'Agent definitions and workflows',
       required: true,
-      checked: true
+      checked: true,
     },
     {
       id: 'prprc',
@@ -44,7 +44,7 @@ const DEFAULT_TEMPLATE_FILES: Record<TemplateType, TemplateFile[]> = {
       name: '.prprc',
       description: 'PRP configuration file',
       required: true,
-      checked: true
+      checked: true,
     },
     {
       id: 'mcp-json',
@@ -53,7 +53,7 @@ const DEFAULT_TEMPLATE_FILES: Record<TemplateType, TemplateFile[]> = {
       description: 'Model Context Protocol configuration',
       required: false,
       checked: true,
-      children: []
+      children: [],
     },
     {
       id: 'github',
@@ -78,7 +78,7 @@ const DEFAULT_TEMPLATE_FILES: Record<TemplateType, TemplateFile[]> = {
               description: 'Continuous Integration',
               required: false,
               checked: true,
-              children: []
+              children: [],
             },
             {
               id: 'github-review',
@@ -87,9 +87,9 @@ const DEFAULT_TEMPLATE_FILES: Record<TemplateType, TemplateFile[]> = {
               description: 'Claude Code Review workflow',
               required: false,
               checked: true,
-              children: []
-            }
-          ]
+              children: [],
+            },
+          ],
         },
         {
           id: 'github-issue-templates',
@@ -106,7 +106,7 @@ const DEFAULT_TEMPLATE_FILES: Record<TemplateType, TemplateFile[]> = {
               description: 'Bug report template',
               required: false,
               checked: true,
-              children: []
+              children: [],
             },
             {
               id: 'github-feature-request',
@@ -115,11 +115,11 @@ const DEFAULT_TEMPLATE_FILES: Record<TemplateType, TemplateFile[]> = {
               description: 'Feature request template',
               required: false,
               checked: true,
-              children: []
-            }
-          ]
-        }
-      ]
+              children: [],
+            },
+          ],
+        },
+      ],
     },
     {
       id: 'readme',
@@ -128,7 +128,7 @@ const DEFAULT_TEMPLATE_FILES: Record<TemplateType, TemplateFile[]> = {
       description: 'Project documentation',
       required: true,
       checked: true,
-      children: []
+      children: [],
     },
     {
       id: 'package-json',
@@ -137,7 +137,7 @@ const DEFAULT_TEMPLATE_FILES: Record<TemplateType, TemplateFile[]> = {
       description: 'Node.js package configuration',
       required: false,
       checked: true,
-      children: []
+      children: [],
     },
     {
       id: 'tsconfig-json',
@@ -146,7 +146,7 @@ const DEFAULT_TEMPLATE_FILES: Record<TemplateType, TemplateFile[]> = {
       description: 'TypeScript configuration',
       required: false,
       checked: true,
-      children: []
+      children: [],
     },
     {
       id: 'eslint-config',
@@ -155,7 +155,7 @@ const DEFAULT_TEMPLATE_FILES: Record<TemplateType, TemplateFile[]> = {
       description: 'ESLint configuration',
       required: false,
       checked: true,
-      children: []
+      children: [],
     },
     {
       id: 'gitignore',
@@ -164,8 +164,8 @@ const DEFAULT_TEMPLATE_FILES: Record<TemplateType, TemplateFile[]> = {
       description: 'Git ignore file',
       required: true,
       checked: true,
-      children: []
-    }
+      children: [],
+    },
   ],
   react: [
     // Similar structure for React template...
@@ -179,7 +179,7 @@ const DEFAULT_TEMPLATE_FILES: Record<TemplateType, TemplateFile[]> = {
   wikijs: [
     // Similar structure for Wiki.js template...
   ],
-  none: []
+  none: [],
 };
 
 const TemplateScreen: React.FC<TemplateScreenProps> = ({
@@ -187,7 +187,7 @@ const TemplateScreen: React.FC<TemplateScreenProps> = ({
   onChange,
   onNext,
   onBack,
-  onCancel
+  onCancel,
 }) => {
   const [focusedField, setFocusedField] = useState(0);
 
@@ -197,13 +197,14 @@ const TemplateScreen: React.FC<TemplateScreenProps> = ({
   // Initialize template files if not present
   useEffect(() => {
     if (!state.templateConfig?.files || state.templateConfig.files.length === 0) {
-      const templateFiles = DEFAULT_TEMPLATE_FILES[currentTemplate] || DEFAULT_TEMPLATE_FILES.typescript;
+      const templateFiles =
+        DEFAULT_TEMPLATE_FILES[currentTemplate] || DEFAULT_TEMPLATE_FILES.typescript;
       onChange({
         ...state,
         templateConfig: {
           ...state.templateConfig,
-          files: templateFiles.map(f => f.path)
-        }
+          files: templateFiles.map((f) => f.path),
+        },
       });
     }
   }, [currentTemplate, state.templateConfig?.files, onChange]);
@@ -219,8 +220,8 @@ const TemplateScreen: React.FC<TemplateScreenProps> = ({
       templateConfig: {
         ...state.templateConfig,
         files: templateFiles.map((f: TemplateFile) => f.path),
-        configureFiles: false
-      }
+        configureFiles: false,
+      },
     };
     onChange(updatedState);
   };
@@ -231,8 +232,8 @@ const TemplateScreen: React.FC<TemplateScreenProps> = ({
       ...state,
       templateConfig: {
         ...state.templateConfig,
-        configureFiles: !state.templateConfig.configureFiles
-      }
+        configureFiles: !state.templateConfig.configureFiles,
+      },
     });
   };
 
@@ -244,17 +245,18 @@ const TemplateScreen: React.FC<TemplateScreenProps> = ({
     let newFiles: string[];
     if (fileIndex >= 0) {
       // Remove file and its children
-      newFiles = currentFiles.filter(f => !f.startsWith(path) || f === path);
+      newFiles = currentFiles.filter((f) => !f.startsWith(path) || f === path);
     } else {
       // Add file and its children
-      const templateFiles = DEFAULT_TEMPLATE_FILES[currentTemplate] || DEFAULT_TEMPLATE_FILES.typescript;
-      const fileNode = templateFiles.find(f => f.path === path);
+      const templateFiles =
+        DEFAULT_TEMPLATE_FILES[currentTemplate] || DEFAULT_TEMPLATE_FILES.typescript;
+      const fileNode = templateFiles.find((f) => f.path === path);
 
       if (fileNode) {
         const addFileAndChildren = (node: TemplateFile): string[] => {
           const files = [node.path];
           if (node.children) {
-            node.children.forEach(child => {
+            node.children.forEach((child) => {
               files.push(...addFileAndChildren(child));
             });
           }
@@ -272,8 +274,8 @@ const TemplateScreen: React.FC<TemplateScreenProps> = ({
       ...state,
       templateConfig: {
         ...state.templateConfig,
-        files: newFiles
-      }
+        files: newFiles,
+      },
     });
   };
 
@@ -288,11 +290,18 @@ const TemplateScreen: React.FC<TemplateScreenProps> = ({
     const templateFiles = getCurrentTemplateFiles();
 
     const updateCheckedState = (files: TemplateFile[]): TemplateFile[] => {
-      return files.map(file => ({
-        ...file,
-        checked: selectedFiles.includes(file.path),
-        children: file.children ? updateCheckedState(file.children) : undefined
-      }));
+      return files.map((file) => {
+        const updatedFile: TemplateFile = {
+          ...file,
+          checked: selectedFiles.includes(file.path),
+        };
+
+        if (file.children) {
+          updatedFile.children = updateCheckedState(file.children);
+        }
+
+        return updatedFile;
+      });
     };
 
     return updateCheckedState(templateFiles);
@@ -304,8 +313,8 @@ const TemplateScreen: React.FC<TemplateScreenProps> = ({
     const selectedFiles = state.templateConfig?.files || [];
 
     // Check if required files are selected
-    const requiredFiles = templateFiles.filter(f => f.required);
-    const hasAllRequired = requiredFiles.every(f => selectedFiles.includes(f.path));
+    const requiredFiles = templateFiles.filter((f) => f.required);
+    const hasAllRequired = requiredFiles.every((f) => selectedFiles.includes(f.path));
 
     return hasAllRequired;
   };
@@ -354,8 +363,8 @@ const TemplateScreen: React.FC<TemplateScreenProps> = ({
                   ...state,
                   templateConfig: {
                     ...state.templateConfig,
-                    configureFiles: false
-                  }
+                    configureFiles: false,
+                  },
                 });
               }
             }}
@@ -381,14 +390,8 @@ const TemplateScreen: React.FC<TemplateScreenProps> = ({
 
               {/* Summary */}
               <Box flexDirection="row" justifyContent="space-between" marginTop={1}>
-                <Text color="gray">
-                  {state.templateConfig?.files?.length || 0} files selected
-                </Text>
-                {!canProceed() && (
-                  <Text color="red">
-                    Required files missing
-                  </Text>
-                )}
+                <Text color="gray">{state.templateConfig?.files?.length || 0} files selected</Text>
+                {!canProceed() && <Text color="red">Required files missing</Text>}
               </Box>
             </Box>
           );
@@ -432,16 +435,14 @@ const TemplateScreen: React.FC<TemplateScreenProps> = ({
           <Text color="gray" bold>
             Default files to generate:
           </Text>
-          {files.map(file => (
+          {files.map((file) => (
             <Text key={file.path} color={selectedFiles.includes(file.path) ? 'green' : 'gray'}>
               [{selectedFiles.includes(file.path) ? '✓' : ' '}] {file.name}
               {file.required && <Text color="yellow"> (required)</Text>}
             </Text>
           ))}
           <Box marginTop={1}>
-            <Text color="gray">
-              AGENTS.md and .prprc are mandatory.
-            </Text>
+            <Text color="gray">AGENTS.md and .prprc are mandatory.</Text>
           </Box>
         </Box>
       );
@@ -457,7 +458,7 @@ const TemplateScreen: React.FC<TemplateScreenProps> = ({
       icon={canProceed() ? '♫' : '♪'}
       footerKeys={getFooterKeys()}
       onBack={onBack}
-      onForward={canProceed() ? onNext : undefined}
+      {...(canProceed() && { onForward: onNext })}
       onCancel={onCancel}
     >
       <Box flexDirection="column" gap={1}>
@@ -473,9 +474,7 @@ const TemplateScreen: React.FC<TemplateScreenProps> = ({
 
         {/* Render all fields */}
         {Array.from({ length: totalFields }, (_, index) => (
-          <Box key={index}>
-            {renderField(index)}
-          </Box>
+          <Box key={index}>{renderField(index)}</Box>
         ))}
 
         {/* Default files preview */}
@@ -484,9 +483,7 @@ const TemplateScreen: React.FC<TemplateScreenProps> = ({
         {/* Validation errors */}
         {!canProceed() && (
           <Box marginTop={1}>
-            <Text color="red">
-              ⚠ Required files must be selected before continuing
-            </Text>
+            <Text color="red">⚠ Required files must be selected before continuing</Text>
           </Box>
         )}
       </Box>

@@ -4,14 +4,10 @@
  * Configuration interface types aligned with PRP-001 specification.
  * Implements proper configuration hierarchy: defaults < .prprc < .prp/.prprc
  */
-
-import type { AgentConfig } from '../../config/agent-config.js';
-
 /**
  * Internal default instructions path - always AGENTS.md
  */
 export const DEFAULT_INSTRUCTIONS_PATH = 'AGENTS.md';
-
 /**
  * Core PrpRc interface specification from PRP-001
  */
@@ -26,17 +22,14 @@ export interface PrpRc {
   mcp_port?: number; // alias to mcp_port cli option
   debug?: boolean; // alias to debug cli option
   ci?: boolean; // alias to ci cli option
-
   // Project configuration - PRP-001:553-561, agents05.md:342-350
   project: {
     name: string; // From package.json-like
     description?: string; // From prompt
     template: 'none' | 'typescript' | 'react' | 'fastapi' | 'wikijs' | 'nestjs';
   };
-
   // AI provider configurations
   providers: Provider[];
-
   // External service connections
   connections: {
     github: {
@@ -48,13 +41,10 @@ export interface PrpRc {
       registry: string;
     };
   };
-
   // Environment variables
   env: Record<string, string>;
-
   // Agent configurations (order preserved for priority)
   agents: Agent[];
-
   // Orchestrator configuration - PRP-007:801-821, PRP-007:194-205
   orchestrator: {
     limit: string; // our limit text format
@@ -71,7 +61,6 @@ export interface PrpRc {
       prp_context: number; // 70000
     };
   };
-
   // Inspector configuration
   inspector: {
     cap: {
@@ -81,7 +70,6 @@ export interface PrpRc {
       context: 'remainder';
     };
   };
-
   // Scanner configuration - PRP-007-signal-system-implemented.md:138-147, PRP-007:823-851
   scanner: {
     disabled_signals: string[]; // we stop watch them
@@ -101,7 +89,6 @@ export interface PrpRc {
     };
   };
 }
-
 /**
  * AI Provider configuration
  */
@@ -121,7 +108,6 @@ export interface Provider {
   }; // encrypted fields NOT STORED HERE!! they should go to .prp/.prprc
   config: Record<string, unknown>; // Individual provider configs, like openai top_p, top_k?, max_tokens, stop, by default we merging and overwrite configs value to sdk lib run of selected provider type defaults we have; so it's a union type for anthropic-sdk-typescript messages.create, openai responses.create and z-ai-sdk-typescript chat.create interfaces
 }
-
 /**
  * Agent configuration
  */
@@ -150,7 +136,6 @@ export interface Agent {
   };
   env: Record<string, string>; // [ENV_NAME]: 'any value we set to this agent before start'
 }
-
 /**
  * Configuration merge result
  */
@@ -169,7 +154,6 @@ export interface ConfigMergeResult {
     };
   };
 }
-
 /**
  * Configuration validation result
  */
@@ -186,7 +170,6 @@ export interface ConfigValidationResult {
     suggestion?: string;
   }>;
 }
-
 /**
  * Configuration paths for different locations
  */
@@ -195,7 +178,6 @@ export interface ConfigPaths {
   secrets: string; // .prp/.prprc
   local: string; // ./.prprc
 }
-
 /**
  * Write options for different locations
  */
@@ -203,7 +185,6 @@ export interface WriteOptions {
   location?: 'global' | 'secrets' | 'local';
   createIfMissing?: boolean;
 }
-
 /**
  * Default configuration values
  */
@@ -213,29 +194,23 @@ export const DEFAULT_PRPRC: Partial<PrpRc> = {
   log_level: 'info',
   debug: false,
   ci: false,
-
   project: {
     name: 'prp-project',
-    template: 'none'
+    template: 'none',
   },
-
   providers: [],
-
   connections: {
     github: {
       api_url: 'https://api.github.com',
-      token: ''
+      token: '',
     },
     npm: {
       token: '',
-      registry: 'https://registry.npmjs.org'
-    }
+      registry: 'https://registry.npmjs.org',
+    },
   },
-
   env: {},
-
   agents: [],
-
   orchestrator: {
     limit: '200k',
     provider: 'anthropic',
@@ -248,47 +223,39 @@ export const DEFAULT_PRPRC: Partial<PrpRc> = {
       inspector_payload: 40000,
       prp: 20000,
       shared_context: 10000,
-      prp_context: 70000
-    }
+      prp_context: 70000,
+    },
   },
-
   inspector: {
     cap: {
       total: 1000000,
       base_prompt: 20000,
       guideline_prompt: 20000,
-      context: 'remainder'
-    }
+      context: 'remainder',
+    },
   },
-
   scanner: {
     disabled_signals: [],
     git_change_detection: {
       enabled: true,
       watch_paths: [],
-      ignore_patterns: []
+      ignore_patterns: [],
     },
     prp_change_detection: {
       enabled: true,
       watch_paths: ['PRPs/*.md'],
-      cache_versions: false
+      cache_versions: false,
     },
     file_system_events: {
       enabled: false,
-      debounce_ms: 500
-    }
-  }
+      debounce_ms: 500,
+    },
+  },
 };
-
 /**
  * Minimum required fields for valid PrpRc configuration
  */
-export const MINIMUM_PRPRC_FIELDS: Array<keyof PrpRc> = [
-  'project',
-  'providers',
-  'agents'
-];
-
+export const MINIMUM_PRPRC_FIELDS: Array<keyof PrpRc> = ['project', 'providers', 'agents'];
 /**
  * All required fields for complete PrpRc configuration
  */
@@ -300,5 +267,5 @@ export const REQUIRED_PRPRC_FIELDS: Array<keyof PrpRc> = [
   'agents',
   'orchestrator',
   'inspector',
-  'scanner'
+  'scanner',
 ];

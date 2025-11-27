@@ -7,16 +7,18 @@
 
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
-import { useTheme } from '../../config/theme-provider.js';
-import { useTerminalDimensions } from '../../hooks/useTerminalDimensions.js';
-import type { InitShellProps } from './types.js';
+
+import { useTheme } from '../../config/theme-provider';
+import { useTerminalDimensions } from '../../hooks/useTerminalDimensions';
+
+import type { InitShellProps } from './types';
 
 // Music note states for animation
 const MUSIC_NOTES = {
   awaiting: '♪',
   validating: '♬',
   confirmed: '♫',
-  error: '⚠'
+  error: '⚠',
 } as const;
 
 export type MusicNoteState = keyof typeof MUSIC_NOTES;
@@ -33,28 +35,35 @@ const BottomInput: React.FC<{
 
   return (
     <Box flexDirection="column" marginTop={2}>
-      <Text color={theme.colors.neutrals.muted}>
-        {'─'.repeat(Math.min(width - 10, 100))}
+      <Text color={theme.colors.neutrals?.muted || theme.colors.gray || '#666666'}>
+        {'─'.repeat(Math.min(width - 4, 200))}
       </Text>
-      <Box flexDirection="row" justifyContent="space-between" marginTop={0} paddingX={1}>
-        <Box flexGrow={1}>
+      <Box flexDirection="row" justifyContent="space-between" marginTop={1} paddingX={1}>
+        <Box flexDirection="row" gap={1}>
           {onCancel && (
-            <Text color={(theme.colors as any).textDim ?? (theme.colors as any).muted}>
+            <Text
+              color={
+                (theme.colors.neutrals as { textDim?: string; muted?: string }).textDim ??
+                theme.colors.neutrals?.muted ??
+                theme.colors.gray
+              }
+            >
               cancel (Esc)
             </Text>
           )}
         </Box>
         <Box flexDirection="row" gap={2}>
           {keys.map((key, index) => (
-            <Text key={index} color={theme.colors.neutrals.text}>
+            <Text
+              key={index}
+              color={theme.colors.neutrals?.text || theme.colors.white || '#ffffff'}
+              bold
+            >
               {key}
             </Text>
           ))}
         </Box>
       </Box>
-      <Text color={theme.colors.neutrals.muted}>
-        {'─'.repeat(Math.min(width - 10, 100))}
-      </Text>
     </Box>
   );
 };
@@ -67,7 +76,7 @@ const WizardShell: React.FC<InitShellProps> = ({
   icon,
   children,
   footerKeys,
-  onCancel
+  onCancel,
 }) => {
   const theme = useTheme();
   const { width, height } = useTerminalDimensions();
@@ -82,10 +91,11 @@ const WizardShell: React.FC<InitShellProps> = ({
     const colorterm = process.env.COLORTERM?.toLowerCase();
     const term = process.env.TERM?.toLowerCase();
 
-    const hasTrueColor = colorterm?.includes('truecolor') ||
-                       colorterm?.includes('24bit') ||
-                       term?.includes('24bit') ||
-                       process.env.TMUX !== undefined; // tmux often supports TrueColor
+    const hasTrueColor =
+      colorterm?.includes('truecolor') ||
+      colorterm?.includes('24bit') ||
+      term?.includes('24bit') ||
+      process.env.TMUX !== undefined; // tmux often supports TrueColor
 
     setTrueColorSupported(hasTrueColor);
 
@@ -112,15 +122,15 @@ const WizardShell: React.FC<InitShellProps> = ({
   const getGradientColors = () => {
     if (isDayMode) {
       return {
-        bg1: '#111315',  // Day bg1
-        bg2: '#1a1f24',  // Day bg2
-        bg3: '#21262d'  // Day bg3
+        bg1: '#111315', // Day bg1
+        bg2: '#1a1f24', // Day bg2
+        bg3: '#21262d', // Day bg3
       };
     } else {
       return {
-        bg1: '#0b0c0d',  // Night bg1
-        bg2: '#121416',  // Night bg2
-        bg3: '#171a1d'  // Night bg3
+        bg1: '#0b0c0d', // Night bg1
+        bg2: '#121416', // Night bg2
+        bg3: '#171a1d', // Night bg3
       };
     }
   };
@@ -165,7 +175,7 @@ const WizardShell: React.FC<InitShellProps> = ({
       gradientRows.push(
         <Text key={y} backgroundColor={gradientColors.bg1} color={gradientColors.bg1}>
           {rowText}
-        </Text>
+        </Text>,
       );
     }
 
@@ -173,38 +183,33 @@ const WizardShell: React.FC<InitShellProps> = ({
   };
 
   return (
-    <Box flexDirection="column" height={height} width={width}>
-      {/* Radial gradient background */}
-      {renderRadialGradient()}
-
-      {/* Main content container */}
-      <Box
-        flexDirection="column"
-        flexGrow={1}
-      >
-        {/* Header with music icon */}
-        <Box flexDirection="row" justifyContent="space-between" marginBottom={1}>
-          <Box flexDirection="row" alignItems="center">
-            <Text
-              color={icon === '⚠' ? (theme.colors as any).warn ?? (theme.colors as any).error : (theme.colors as any).accentOrange ?? (theme.colors as any).orange}
-              bold={icon !== '⚠'}
-            >
-              {icon} {title}
-            </Text>
-          </Box>
-          <Text color={theme.colors.neutrals.muted}>
-            {stepIndex + 1}/{totalSteps}
+    <Box flexDirection="column" height={height} width={width} paddingX={3} paddingY={2}>
+      {/* Header with music icon */}
+      <Box flexDirection="row" justifyContent="space-between" marginBottom={2}>
+        <Box flexDirection="row" alignItems="center">
+          <Text
+            color={
+              icon === '⚠'
+                ? theme.colors.status?.error || theme.colors.error || '#FF5555'
+                : theme.colors.accent?.orange || theme.colors.accent_orange || '#FF9A38'
+            }
+            bold={icon !== '⚠'}
+          >
+            {icon} {title}
           </Text>
         </Box>
-
-        {/* Content area - single scroll column */}
-        <Box flexGrow={1} flexDirection="column" justifyContent="center">
-          {children}
-        </Box>
-
-        {/* Bottom input with delimiters */}
-        <BottomInput keys={footerKeys} onCancel={onCancel} />
+        <Text color={theme.colors.neutrals?.muted || theme.colors.muted || '#9AA0A6'}>
+          {stepIndex + 1}/{totalSteps}
+        </Text>
       </Box>
+
+      {/* Content area - single scroll column with better spacing */}
+      <Box flexGrow={1} flexDirection="column" justifyContent="flex-start" minHeight={10}>
+        {children}
+      </Box>
+
+      {/* Bottom input with delimiters */}
+      <BottomInput {...(footerKeys && { keys: footerKeys })} {...(onCancel && { onCancel })} />
     </Box>
   );
 };

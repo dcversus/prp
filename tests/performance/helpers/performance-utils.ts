@@ -6,10 +6,9 @@
  */
 
 import { execSync, spawn } from 'child_process';
-import { promises as fs } from 'fs';
+import { promises as fs , createWriteStream, WriteStream } from 'fs';
 import { join } from 'path';
 import { performance } from 'perf_hooks';
-import { createWriteStream, WriteStream } from 'fs';
 
 export interface PerformanceMetrics {
   /** Operation name */
@@ -79,11 +78,11 @@ export interface PerformanceStatistics {
 }
 
 export class PerformanceMonitor {
-  private metrics: PerformanceMetrics[] = [];
-  private startTime: number = 0;
+  private readonly metrics: PerformanceMetrics[] = [];
+  private startTime = 0;
   private baselineMemory?: NodeJS.MemoryUsage;
 
-  constructor(private operationName: string) {}
+  constructor(private readonly operationName: string) {}
 
   /**
    * Start monitoring performance
@@ -140,11 +139,12 @@ export class PerformanceMonitor {
       throw new Error('No metrics recorded');
     }
 
-    const durations = this.metrics.map(m => m.duration);
+    const durations = this.metrics.map((m) => m.duration);
     const sortedDurations = [...durations].sort((a, b) => a - b);
 
     const mean = durations.reduce((sum, d) => sum + d, 0) / durations.length;
-    const variance = durations.reduce((sum, d) => sum + Math.pow(d - mean, 2), 0) / durations.length;
+    const variance =
+      durations.reduce((sum, d) => sum + Math.pow(d - mean, 2), 0) / durations.length;
     const standardDeviation = Math.sqrt(variance);
 
     return {
@@ -258,7 +258,7 @@ export async function measureTemplateGeneration(
     return monitor.stop({
       templateName,
       outputPath,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 }
@@ -284,7 +284,7 @@ export async function measureMemoryUsage<T>(
     clearInterval(monitoringInterval);
 
     // Calculate peak memory usage
-    const peakMemory = Math.max(...memorySnapshots.map(m => m.heapUsed));
+    const peakMemory = Math.max(...memorySnapshots.map((m) => m.heapUsed));
     const finalMemory = process.memoryUsage();
 
     const memoryUsage: MemoryUsage = {
@@ -312,7 +312,7 @@ export async function runBenchmark(
   name: string,
   operation: () => Promise<void>,
   requirements: PerformanceRequirements,
-  iterations: number = 10
+  iterations = 10
 ): Promise<PerformanceBenchmark> {
   const monitor = new PerformanceMonitor(name);
   const errors: string[] = [];
@@ -326,11 +326,15 @@ export async function runBenchmark(
 
       // Check if requirements are met
       if (metrics.duration > requirements.maxDuration) {
-        errors.push(`Iteration ${i + 1}: Duration ${metrics.duration}ms exceeds requirement ${requirements.maxDuration}ms`);
+        errors.push(
+          `Iteration ${i + 1}: Duration ${metrics.duration}ms exceeds requirement ${requirements.maxDuration}ms`
+        );
       }
 
       if (metrics.memoryUsage.rss > requirements.maxMemoryMB) {
-        errors.push(`Iteration ${i + 1}: Memory ${metrics.memoryUsage.rss}MB exceeds requirement ${requirements.maxMemoryMB}MB`);
+        errors.push(
+          `Iteration ${i + 1}: Memory ${metrics.memoryUsage.rss}MB exceeds requirement ${requirements.maxMemoryMB}MB`
+        );
       }
     } catch (error) {
       errors.push(`Iteration ${i + 1}: ${error instanceof Error ? error.message : String(error)}`);
@@ -361,7 +365,7 @@ export async function runBenchmark(
 /**
  * Measure operation with monitoring
  */
-PerformanceMonitor.prototype.measureWithOperation = async function<T>(
+PerformanceMonitor.prototype.measureWithOperation = async function <T>(
   operation: () => Promise<T>
 ): Promise<PerformanceMetrics> {
   this.start();
@@ -410,23 +414,17 @@ function printBenchmarkResults(benchmark: PerformanceBenchmark, errors: string[]
 
   if (errors.length > 0) {
     console.log(`\n⚠️  Errors (${errors.length}):`);
-    errors.slice(0, 5).forEach(error => console.log(`   • ${error}`));
+    errors.slice(0, 5).forEach((error) => console.log(`   • ${error}`));
     if (errors.length > 5) {
       console.log(`   • ... and ${errors.length - 5} more errors`);
     }
   }
 
-  console.log(`\n${durationPass && successRatePass ? '✅ BENCHMARK PASSED' : '❌ BENCHMARK FAILED'}`);
+  console.log(
+    `\n${durationPass && successRatePass ? '✅ BENCHMARK PASSED' : '❌ BENCHMARK FAILED'}`
+  );
 }
 
-/**
- * Create temporary directory for testing
- */
-export async function createTempDirectory(): Promise<string> {
-  const tmpDir = join(process.cwd(), 'tmp', `perf-test-${Date.now()}`);
-  await fs.mkdir(tmpDir, { recursive: true });
-  return tmpDir;
-}
 
 /**
  * Clean up temporary directory

@@ -5,9 +5,13 @@
  * Implements day/night theme switching and responsive breakpoints.
  */
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, JSX } from 'react';
 import { Box } from 'ink';
-import { tokens, DesignTokens } from './design-tokens.js';
+
+import { tokens } from './design-tokens';
+
+import type { DesignTokens } from './design-tokens';
+import type { ReactNode } from 'react';
 
 export interface ThemeContextValue {
   tokens: DesignTokens;
@@ -32,7 +36,7 @@ export interface ThemeProviderProps {
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   children,
   mode: initialMode = 'day',
-  autoDetect = true
+  autoDetect = true,
 }) => {
   const [mode, setMode] = useState<'day' | 'night'>(initialMode);
   const [breakpoint, setBreakpoint] = useState<ThemeContextValue['breakpoint']>('standard');
@@ -45,7 +49,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     }
 
     // Detect TrueColor support
-    const _trueColorSupported = process.env.COLORTERM === 'truecolor' ||
+    const _trueColorSupported =
+      process.env.COLORTERM === 'truecolor' ||
       process.env.TERM_PROGRAM === 'vscode' ||
       process.env.TERM_PROGRAM === 'Hyper' ||
       process.env.TERM === 'xterm-256color';
@@ -89,15 +94,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   // Apply theme colors based on mode
   const themeColors = {
     ...tokens.colors,
-    background: mode === 'day'
-      ? tokens.colors.gradients.day
-      : tokens.colors.gradients.night,
-    primary: mode === 'day'
-      ? tokens.colors.neutrals.text
-      : tokens.colors.neutrals.text_dim,
-    secondary: mode === 'day'
-      ? tokens.colors.neutrals.muted
-      : tokens.colors.neutrals.muted_hover
+    background: mode === 'day' ? tokens.colors.gradients.day : tokens.colors.gradients.night,
+    primary: mode === 'day' ? tokens.colors.neutrals.text : tokens.colors.neutrals.text_dim,
+    secondary: mode === 'day' ? tokens.colors.neutrals.muted : tokens.colors.neutrals.muted_hover,
   };
 
   const themeValue: ThemeContextValue = {
@@ -109,14 +108,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     colors: themeColors,
     spacing: tokens.spacing,
     fonts: tokens.fonts,
-    animations: tokens.animations
+    animations: tokens.animations,
   };
 
-  return (
-    <ThemeContext.Provider value={themeValue}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={themeValue}>{children}</ThemeContext.Provider>;
 };
 
 export const useTheme = (): ThemeContextValue => {

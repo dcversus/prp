@@ -23,6 +23,7 @@ prp orchestrator
 ## 📖 What is PRP?
 
 PRP (Product Requirement Prompts) is a revolutionary methodology that combines:
+
 - **Living Requirements** - PRPs evolve with implementation in real-time
 - **Signal-Driven Communication** - 44-signal taxonomy eliminates meeting overhead
 - **Autonomous Coordination** - AI agents manage dependencies and workflow
@@ -31,6 +32,7 @@ PRP (Product Requirement Prompts) is a revolutionary methodology that combines:
 ## 📚 Documentation Guide
 
 ### **Beginner's Path**
+
 1. **[What is PRP?](./what-is-prp.md)** - Understanding the methodology
    - Learn about living requirements and signal-driven workflow
    - Understand the core innovation behind PRP
@@ -44,6 +46,7 @@ PRP (Product Requirement Prompts) is a revolutionary methodology that combines:
    - Best practices for human-AI collaboration
 
 ### **Setup & Configuration**
+
 4. **[GitHub Registration](./github-registration.md)** - Prepare your environment
    - GitHub account setup
    - API tokens and authentication
@@ -57,6 +60,7 @@ PRP (Product Requirement Prompts) is a revolutionary methodology that combines:
    - Project structure generation
 
 ### **Advanced Usage**
+
 7. **[PRP Orchestrator](./prp-orchestrator.md)** - Managing autonomous development
    - TUI interface guide
    - Agent coordination
@@ -78,7 +82,7 @@ We use musical terminology because development, like music, is **temporal**:
 - **♫ Orchestrator (Conductor)** - Coordinates the performance
 - **♬ Agents (Players)** - Execute their parts to perfection
 
-> *"Tools disappear. Flow remains."*
+> _"Tools disappear. Flow remains."_
 
 ---
 

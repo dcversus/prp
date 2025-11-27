@@ -4,8 +4,7 @@
  * Central decision-making layer with LLM-based orchestration,
  * chain-of-thought reasoning, and agent coordination.
  */
-
-export { Orchestrator } from './orchestrator';
+export { OrchestratorCore } from './orchestrator-core';
 export type {
   OrchestratorConfig,
   ContextPreservationConfig,
@@ -48,7 +47,18 @@ export type {
   OrchestratorCheckpointReachedEvent,
   OrchestratorErrorEvent,
   OrchestratorChainOfThoughtUpdateEvent,
-  OrchestratorContextUpdateEvent
+  OrchestratorContextUpdateEvent,
 } from './types';
-
 export { ToolImplementation } from './tool-implementation';
+
+// Codemap integration exports
+export { CodemapOrchestratorAdapter } from './codemap-adapter';
+export type {
+  AgentCapability,
+  AgentWorkload,
+  OrchestrationTask,
+  WorkflowStep,
+  OrchestrationPlan,
+  AgentRelevantInfo,
+  RealTimeUpdate,
+} from './codemap-adapter';

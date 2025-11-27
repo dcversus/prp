@@ -4,7 +4,6 @@
  * This file defines all types for the nudge communication system
  * between PRP agents and human users via dcmaidbot endpoint.
  */
-
 export interface NudgeContext {
   prp_id?: string;
   signal?: string;
@@ -16,7 +15,6 @@ export interface NudgeContext {
   timestamp?: string;
   [key: string]: unknown;
 }
-
 export interface NudgeMetadata {
   timestamp: string;
   prp_link?: string;
@@ -28,27 +26,22 @@ export interface NudgeMetadata {
   signal_type?: string;
   auto_generated?: boolean;
 }
-
 export interface BaseNudgeRequest {
   message: string;
   context?: NudgeContext;
   metadata?: NudgeMetadata;
 }
-
 export interface DirectNudgeRequest extends BaseNudgeRequest {
   type: 'direct';
   urgency: 'high' | 'medium' | 'low';
 }
-
 export interface LLMModeNudgeRequest extends BaseNudgeRequest {
   type: 'llm-mode';
   agent_analysis?: string;
   recommendations?: string[];
   expected_response_type?: 'decision' | 'approval' | 'information';
 }
-
 export type NudgeRequest = DirectNudgeRequest | LLMModeNudgeRequest;
-
 export interface NudgeResponse {
   success: boolean;
   message_id?: string;
@@ -57,14 +50,12 @@ export interface NudgeResponse {
   delivery_type?: 'direct' | 'llm-enhanced' | 'direct-fallback';
   error?: string;
 }
-
 export interface NudgeErrorDetails {
   code: string;
   message: string;
   details?: unknown;
   timestamp: string;
 }
-
 export interface NudgeConfig {
   endpoint: string;
   secret?: string;
@@ -73,13 +64,11 @@ export interface NudgeConfig {
   retry_attempts?: number;
   retry_delay?: number;
 }
-
 export interface NudgeClientOptions {
   config?: Partial<NudgeConfig>;
   userAgent?: string;
   debug?: boolean;
 }
-
 // Agent integration types
 export interface AgentNudgeMessage {
   agentType: string;
@@ -90,7 +79,6 @@ export interface AgentNudgeMessage {
   urgency: 'high' | 'medium' | 'low';
   expectedResponseType?: 'decision' | 'approval' | 'information';
 }
-
 // GitHub dispatch types for response handling
 export interface NudgeResponsePayload {
   prp: string;
@@ -100,12 +88,10 @@ export interface NudgeResponsePayload {
   timestamp: string;
   telegram_message_id?: string;
 }
-
 export interface GitHubDispatchEvent {
   event_type: 'nudge_response';
   client_payload: NudgeResponsePayload;
 }
-
 // Message templates
 export interface NudgeMessageTemplate {
   signal: string;
@@ -113,13 +99,11 @@ export interface NudgeMessageTemplate {
   defaultUrgency: 'high' | 'medium' | 'low';
   expectedResponseType?: 'decision' | 'approval' | 'information';
 }
-
 // Error types
 export class NudgeError extends Error {
   public readonly code: string;
   public readonly timestamp: string;
   public readonly details?: unknown;
-
   constructor(code: string, message: string, details?: unknown) {
     super(message);
     this.name = 'NudgeError';
@@ -128,18 +112,15 @@ export class NudgeError extends Error {
     this.details = details;
   }
 }
-
 // Validation helpers
 export const isValidNudgeType = (type: string): type is 'direct' | 'llm-mode' => {
   return type === 'direct' || type === 'llm-mode';
 };
-
 export const isValidUrgency = (urgency: string): urgency is 'high' | 'medium' | 'low' => {
   return urgency === 'high' || urgency === 'medium' || urgency === 'low';
 };
-
 export const isValidResponseType = (
-  type: string
+  type: string,
 ): type is 'decision' | 'approval' | 'information' => {
   return type === 'decision' || type === 'approval' || type === 'information';
 };

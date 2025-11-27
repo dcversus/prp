@@ -5,17 +5,18 @@
  * workflow monitoring, and repository interactions.
  */
 
-import { Tool, ToolResult } from '../types';
 import { createLayerLogger } from '../../shared';
 
-const logger = createLayerLogger('github-tools');
+import type { Tool, ToolResult } from '../types';
+
+const logger = createLayerLogger('orchestrator');
 
 /**
  * GitHub API Tools
  */
 export class GitHubTools {
-  private token: string;
-  private apiBase: string;
+  private readonly token: string;
+  private readonly apiBase: string;
 
   constructor(token?: string) {
     this.token = token || process.env.GITHUB_TOKEN || '';
@@ -44,9 +45,10 @@ export class GitHubTools {
           required: true
         }
       },
-      execute: async (params: { owner: string; repo: string }): Promise<ToolResult> => {
+      execute: async (params: unknown): Promise<ToolResult> => {
+        const typedParams = params as { owner: string; repo: string };
         try {
-          const response = await this.githubRequest(`/repos/${params.owner}/${params.repo}`);
+          const response = await this.githubRequest(`/repos/${typedParams.owner}/${typedParams.repo}`);
 
           return {
             success: true,
@@ -90,7 +92,6 @@ export class GitHubTools {
           type: 'string',
           description: 'PR state: open, closed, all',
           enum: ['open', 'closed', 'all'],
-          default: 'open'
         },
         head: {
           type: 'string',
@@ -103,24 +104,31 @@ export class GitHubTools {
         limit: {
           type: 'number',
           description: 'Maximum number of PRs to return',
-          default: 20
         }
       },
-      execute: async (params: any): Promise<ToolResult> => {
+      execute: async (params: unknown): Promise<ToolResult> => {
+        const typedParams = params as {
+          owner: string;
+          repo: string;
+          state?: string;
+          head?: string;
+          base?: string;
+          limit?: number;
+        };
         try {
           const queryParams = new URLSearchParams();
-          if (params.state) {
-            queryParams.append('state', params.state);
+          if (typedParams.state) {
+            queryParams.append('state', typedParams.state);
           }
-          if (params.head) {
-            queryParams.append('head', params.head);
+          if (typedParams.head) {
+            queryParams.append('head', typedParams.head);
           }
-          if (params.base) {
-            queryParams.append('base', params.base);
+          if (typedParams.base) {
+            queryParams.append('base', typedParams.base);
           }
-          queryParams.append('per_page', String(params.limit || 20));
+          queryParams.append('per_page', String(typedParams.limit || 20));
 
-          const response = await this.githubRequest(`/repos/${params.owner}/${params.repo}/pulls?${queryParams}`);
+          const response = await this.githubRequest(`/repos/${typedParams.owner}/${typedParams.repo}/pulls?${queryParams}`);
 
           return {
             success: true,
@@ -168,17 +176,22 @@ export class GitHubTools {
         include_files: {
           type: 'boolean',
           description: 'Include list of changed files',
-          default: false
         }
       },
-      execute: async (params: any): Promise<ToolResult> => {
+      execute: async (params: unknown): Promise<ToolResult> => {
         try {
-          const prResponse = await this.githubRequest(`/repos/${params.owner}/${params.repo}/pulls/${params.pull_number}`);
+          const typedParams = params as {
+            owner: string;
+            repo: string;
+            pull_number: number;
+            include_files?: boolean;
+          };
+          const prResponse = await this.githubRequest(`/repos/${typedParams.owner}/${typedParams.repo}/pulls/${typedParams.pull_number}`);
 
           const result: any = prResponse;
 
-          if (params.include_files) {
-            const filesResponse = await this.githubRequest(`/repos/${params.owner}/${params.repo}/pulls/${params.pull_number}/files`);
+          if (typedParams.include_files) {
+            const filesResponse = await this.githubRequest(`/repos/${typedParams.owner}/${typedParams.repo}/pulls/${typedParams.pull_number}/files`);
             result.files = filesResponse;
           }
 
@@ -242,20 +255,29 @@ export class GitHubTools {
         draft: {
           type: 'boolean',
           description: 'Create as draft PR',
-          default: false
         }
       },
-      execute: async (params: any): Promise<ToolResult> => {
+      execute: async (params: unknown): Promise<ToolResult> => {
         try {
-          const requestBody = {
-            title: params.title,
-            body: params.body || '',
-            head: params.head,
-            base: params.base,
-            draft: params.draft || false
+          const typedParams = params as {
+            owner: string;
+            repo: string;
+            title: string;
+            body?: string;
+            head: string;
+            base: string;
+            draft?: boolean;
           };
 
-          const response = await this.githubRequest(`/repos/${params.owner}/${params.repo}/pulls`, {
+          const requestBody = {
+            title: typedParams.title,
+            body: typedParams.body || '',
+            head: typedParams.head,
+            base: typedParams.base,
+            draft: typedParams.draft || false
+          };
+
+          const response = await this.githubRequest(`/repos/${typedParams.owner}/${typedParams.repo}/pulls`, {
             method: 'POST',
             body: JSON.stringify(requestBody)
           });
@@ -288,53 +310,43 @@ export class GitHubTools {
       category: 'github',
       enabled: true,
       parameters: {
-        type: 'object',
-        properties: {
-          owner: {
-            type: 'string',
-            description: 'Repository owner username',
-            required: true
-          },
-          repo: {
-            type: 'string',
-            description: 'Repository name',
-            required: true
-          },
-          state: {
-            type: 'string',
-            description: 'Issue state: open, closed, all',
-            enum: ['open', 'closed', 'all'],
-            default: 'open'
-          },
-          labels: {
-            type: 'array',
-            description: 'Filter by labels',
-            items: { type: 'string' }
-          },
-          assignee: {
-            type: 'string',
-            description: 'Filter by assignee'
-          },
-          creator: {
-            type: 'string',
-            description: 'Filter by creator'
-          },
-          limit: {
-            type: 'number',
-            description: 'Maximum number of issues to return',
-            default: 20
-          }
+        owner: {
+          type: 'string',
+          description: 'Repository owner username',
         },
-        required: ['owner', 'repo']
+        repo: {
+          type: 'string',
+          description: 'Repository name',
+        },
+        state: {
+          type: 'string',
+          description: 'Issue state: open, closed, all',
+        },
+        labels: {
+          type: 'string',
+          description: 'Filter by labels (comma-separated)',
+        },
+        assignee: {
+          type: 'string',
+          description: 'Filter by assignee',
+        },
+        creator: {
+          type: 'string',
+          description: 'Filter by creator',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of issues to return',
+        },
       },
-      execute: async (params: any): Promise<ToolResult> => {
+      execute: async (params: unknown): Promise<ToolResult> => {
         try {
           const queryParams = new URLSearchParams();
           if (params.state) {
             queryParams.append('state', params.state);
           }
           if (params.labels) {
-            queryParams.append('labels', params.labels.join(','));
+            queryParams.append('labels', params.labels);
           }
           if (params.assignee) {
             queryParams.append('assignee', params.assignee);
@@ -402,12 +414,11 @@ export class GitHubTools {
           limit: {
             type: 'number',
             description: 'Maximum number of runs to return',
-            default: 20
           }
         },
         required: ['owner', 'repo']
       },
-      execute: async (params: any): Promise<ToolResult> => {
+      execute: async (params: unknown): Promise<ToolResult> => {
         try {
           const queryParams = new URLSearchParams();
           if (params.workflow_id) {
@@ -471,12 +482,11 @@ export class GitHubTools {
           include_jobs: {
             type: 'boolean',
             description: 'Include job details',
-            default: false
           }
         },
         required: ['owner', 'repo', 'run_id']
       },
-      execute: async (params: any): Promise<ToolResult> => {
+      execute: async (params: unknown): Promise<ToolResult> => {
         try {
           const runResponse = await this.githubRequest(`/repos/${params.owner}/${params.repo}/actions/runs/${params.run_id}`);
 
@@ -554,7 +564,7 @@ export class GitHubTools {
         },
         required: ['owner', 'repo', 'path', 'content', 'message', 'branch']
       },
-      execute: async (params: any): Promise<ToolResult> => {
+      execute: async (params: unknown): Promise<ToolResult> => {
         try {
           const requestBody = {
             message: params.message,
@@ -610,23 +620,20 @@ export class GitHubTools {
             type: 'string',
             description: 'Sort field',
             enum: ['stars', 'forks', 'updated'],
-            default: 'updated'
           },
           order: {
             type: 'string',
             description: 'Sort order',
             enum: ['asc', 'desc'],
-            default: 'desc'
           },
           limit: {
             type: 'number',
             description: 'Maximum number of results',
-            default: 20
           }
         },
         required: ['query']
       },
-      execute: async (params: any): Promise<ToolResult> => {
+      execute: async (params: unknown): Promise<ToolResult> => {
         try {
           const queryParams = new URLSearchParams();
           queryParams.append('q', params.query);

@@ -4,9 +4,18 @@
  * Interactive filtering system for signal streams with advanced search capabilities.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { JSX, useState, useEffect, useCallback } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { SignalEvent, SignalSource, SignalSourceEnum, SignalPriority, SignalPriorityEnum } from '../../types';
+
+import {
+  SignalSourceEnum,
+  SignalPriorityEnum,
+} from '../../types';
+
+import type {
+  SignalEvent,
+  SignalSource,
+  SignalPriority} from '../../types';
 
 export interface SignalFilterProps {
   signals: SignalEvent[];
@@ -15,7 +24,7 @@ export interface SignalFilterProps {
   availablePriorities?: SignalPriority[];
   placeholder?: string;
   showStats?: boolean;
-}
+};
 
 export const SignalFilter: React.FC<SignalFilterProps> = ({
   signals,
@@ -23,11 +32,12 @@ export const SignalFilter: React.FC<SignalFilterProps> = ({
   availableSources = Object.values(SignalSourceEnum),
   availablePriorities = Object.values(SignalPriorityEnum),
   placeholder = 'Filter signals...',
-  showStats = true
+  showStats = true,
 }) => {
   const [searchText, setSearchText] = useState('');
   const [selectedSources, setSelectedSources] = useState<SignalSource[]>(availableSources);
-  const [selectedPriorities, setSelectedPriorities] = useState<SignalPriority[]>(availablePriorities);
+  const [selectedPriorities, setSelectedPriorities] =
+    useState<SignalPriority[]>(availablePriorities);
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -38,26 +48,35 @@ export const SignalFilter: React.FC<SignalFilterProps> = ({
     // Text search filter
     if (searchText.trim()) {
       const searchLower = searchText.toLowerCase();
-      filtered = filtered.filter(signal =>
-        signal.title.toLowerCase().includes(searchLower) ||
-        signal.description.toLowerCase().includes(searchLower) ||
-        signal.signal.toLowerCase().includes(searchLower) ||
-        signal.source.toLowerCase().includes(searchLower)
+      filtered = filtered.filter(
+        (signal) =>
+          signal.title.toLowerCase().includes(searchLower) ||
+          signal.description.toLowerCase().includes(searchLower) ||
+          signal.signal.toLowerCase().includes(searchLower) ||
+          signal.source.toLowerCase().includes(searchLower),
       );
     }
 
     // Source filter
     if (selectedSources.length < availableSources.length) {
-      filtered = filtered.filter(signal => selectedSources.includes(signal.source));
+      filtered = filtered.filter((signal) => selectedSources.includes(signal.source));
     }
 
     // Priority filter
     if (selectedPriorities.length < availablePriorities.length) {
-      filtered = filtered.filter(signal => selectedPriorities.includes(signal.priority));
+      filtered = filtered.filter((signal) => selectedPriorities.includes(signal.priority));
     }
 
     onFilter(filtered);
-  }, [signals, searchText, selectedSources, selectedPriorities, availableSources, availablePriorities, onFilter]);
+  }, [
+    signals,
+    searchText,
+    selectedSources,
+    selectedPriorities,
+    availableSources,
+    availablePriorities,
+    onFilter,
+  ]);
 
   // Apply filters whenever dependencies change
   useEffect(() => {
@@ -66,19 +85,15 @@ export const SignalFilter: React.FC<SignalFilterProps> = ({
 
   // Toggle source selection
   const toggleSource = useCallback((source: SignalSource) => {
-    setSelectedSources(prev =>
-      prev.includes(source)
-        ? prev.filter(s => s !== source)
-        : [...prev, source]
+    setSelectedSources((prev) =>
+      prev.includes(source) ? prev.filter((s) => s !== source) : [...prev, source],
     );
   }, []);
 
   // Toggle priority selection
   const togglePriority = useCallback((priority: SignalPriority) => {
-    setSelectedPriorities(prev =>
-      prev.includes(priority)
-        ? prev.filter(p => p !== priority)
-        : [...prev, priority]
+    setSelectedPriorities((prev) =>
+      prev.includes(priority) ? prev.filter((p) => p !== priority) : [...prev, priority],
     );
   }, []);
 
@@ -92,8 +107,9 @@ export const SignalFilter: React.FC<SignalFilterProps> = ({
   // Get filter statistics
   const getFilterStats = useCallback(() => {
     const total = signals.length;
-    const filtered = signals.filter(signal => {
-      const matchesText = !searchText.trim() ||
+    const filtered = signals.filter((signal) => {
+      const matchesText =
+        !searchText.trim() ||
         signal.title.toLowerCase().includes(searchText.toLowerCase()) ||
         signal.description.toLowerCase().includes(searchText.toLowerCase());
 
@@ -119,18 +135,17 @@ export const SignalFilter: React.FC<SignalFilterProps> = ({
     if (isFocused) {
       // Handle search input
       if (key.backspace || key.delete) {
-        setSearchText(prev => prev.slice(0, -1));
+        setSearchText((prev) => prev.slice(0, -1));
       } else if (key.ctrl || key.meta) {
         // Ignore control keys
-        
       } else if (input.length === 1) {
-        setSearchText(prev => prev + input);
+        setSearchText((prev) => prev + input);
       }
     } else {
       // Handle hotkeys
       switch (input) {
         case 'a':
-          setIsAdvancedMode(prev => !prev);
+          setIsAdvancedMode((prev) => !prev);
           break;
         case 'c':
           clearFilters();
@@ -151,23 +166,27 @@ export const SignalFilter: React.FC<SignalFilterProps> = ({
       {/* Search Input */}
       <Box marginBottom={1}>
         <Text color="gray">Search: </Text>
-        <Text color={isFocused ? 'green' : 'white'} backgroundColor={isFocused ? 'white' : undefined}>
+        <Text
+          color={isFocused ? 'green' : 'white'}
+          backgroundColor={isFocused ? 'white' : undefined}
+        >
           {searchText || (isFocused ? '' : placeholder)}
-          {isFocused && <Text backgroundColor="white" color="black">_</Text>}
+          {isFocused && (
+            <Text backgroundColor="white" color="black">
+              _
+            </Text>
+          )}
         </Text>
       </Box>
 
       {/* Filter Controls */}
       <Box marginBottom={1}>
         <Text color="gray">
-          Mode: {' '}
-          <Text
-            color={isAdvancedMode ? 'green' : 'yellow'}
-            bold
-          >
+          Mode:{' '}
+          <Text color={isAdvancedMode ? 'green' : 'yellow'} bold>
             {isAdvancedMode ? 'Advanced' : 'Simple'}
-          </Text>
-          {' '} | Press 'a' to toggle
+          </Text>{' '}
+          | Press 'a' to toggle
         </Text>
       </Box>
 
@@ -176,9 +195,11 @@ export const SignalFilter: React.FC<SignalFilterProps> = ({
         <Box flexDirection="column" marginBottom={1}>
           {/* Source Filters */}
           <Box marginBottom={1}>
-            <Text color="gray" bold>Sources:</Text>
+            <Text color="gray" bold>
+              Sources:
+            </Text>
             <Box flexDirection="row" flexWrap="wrap">
-              {availableSources.map(source => (
+              {availableSources.map((source) => (
                 <Box key={source} marginRight={1}>
                   <Text
                     color={selectedSources.includes(source) ? 'green' : 'gray'}
@@ -193,9 +214,11 @@ export const SignalFilter: React.FC<SignalFilterProps> = ({
 
           {/* Priority Filters */}
           <Box>
-            <Text color="gray" bold>Priorities:</Text>
+            <Text color="gray" bold>
+              Priorities:
+            </Text>
             <Box flexDirection="row" flexWrap="wrap">
-              {availablePriorities.map(priority => {
+              {availablePriorities.map((priority) => {
                 const isSelected = selectedPriorities.includes(priority);
                 const priorityColor = isSelected ? 'green' : 'gray';
 
@@ -219,7 +242,8 @@ export const SignalFilter: React.FC<SignalFilterProps> = ({
             Results: {stats.filtered} / {stats.total} signals
             {stats.filtered < stats.total && (
               <Text color="yellow">
-                {' '}({Math.round((stats.filtered / stats.total) * 100)}% shown)
+                {' '}
+                ({Math.round((stats.filtered / stats.total) * 100)}% shown)
               </Text>
             )}
           </Text>

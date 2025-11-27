@@ -3,15 +3,11 @@
  *
  * Exports all shared tools and utilities for use across the PRP system.
  */
-
 // Types
-export * from './types.js';
-
+export type * from './types';
 // Tool Registry
-export { ToolRegistry, createToolRegistry } from './tool-registry.js';
-
+export { ToolRegistry, createToolRegistry } from './tool-registry';
 // HTTP Tools
-export * from './http-tools.js';
-
+export * from './http-tools';
 // System Tools
-export * from './system-tools.js';
+export * from './system-tools';

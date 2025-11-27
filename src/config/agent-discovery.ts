@@ -4,20 +4,22 @@
  * Dynamic agent discovery, registration, and monitoring system
  * for detecting and managing available agents in the ecosystem
  */
-
 import { EventEmitter } from 'events';
+
 import { createLayerLogger, FileUtils } from '../shared';
+
 import {
+  agentConfigManager,
+} from './agent-config';
+import { SchemaValidator } from './schema-validator';
+
+import type {
   AgentConfig,
   AgentType,
   AgentRole,
-  ProviderType,
-  agentConfigManager
-} from './agent-config';
-import { ConfigValidator } from './config-validator';
+  ProviderType} from './agent-config';
 
 const logger = createLayerLogger('config');
-
 export interface DiscoveredAgent {
   config: AgentConfig;
   status: AgentStatus;
@@ -28,7 +30,6 @@ export interface DiscoveredAgent {
   registrationTime: Date;
   source: AgentSource;
 }
-
 export interface AgentStatus {
   state: 'online' | 'offline' | 'busy' | 'error' | 'maintenance';
   currentTasks: number;
@@ -36,14 +37,12 @@ export interface AgentStatus {
   uptime: number; // milliseconds
   lastActivity: Date;
 }
-
 export interface AgentHealth {
   overall: 'healthy' | 'degraded' | 'unhealthy';
   checks: HealthCheck[];
   score: number; // 0-100
   issues: HealthIssue[];
 }
-
 export interface HealthCheck {
   name: string;
   status: 'pass' | 'warn' | 'fail';
@@ -51,7 +50,6 @@ export interface HealthCheck {
   message: string;
   timestamp: Date;
 }
-
 export interface HealthIssue {
   severity: 'low' | 'medium' | 'high' | 'critical';
   category: 'performance' | 'security' | 'connectivity' | 'resource' | 'authentication';
@@ -59,7 +57,6 @@ export interface HealthIssue {
   detectedAt: Date;
   resolvedAt?: Date;
 }
-
 export interface RuntimeCapabilities {
   actualCapabilities: RuntimeCapability[];
   performanceMetrics: PerformanceMetrics;
@@ -67,7 +64,6 @@ export interface RuntimeCapabilities {
   supportedFeatures: string[];
   experimentalFeatures: string[];
 }
-
 export interface RuntimeCapability {
   name: string;
   supported: boolean;
@@ -75,7 +71,6 @@ export interface RuntimeCapability {
   lastTested: Date;
   testResults: CapabilityTest[];
 }
-
 export interface CapabilityTest {
   testName: string;
   passed: boolean;
@@ -83,7 +78,6 @@ export interface CapabilityTest {
   details: Record<string, unknown>;
   timestamp: Date;
 }
-
 export interface PerformanceMetrics {
   averageResponseTime: number; // milliseconds
   successRate: number; // percentage
@@ -91,7 +85,6 @@ export interface PerformanceMetrics {
   errorRate: number; // percentage
   lastUpdated: Date;
 }
-
 export interface ResourceUtilization {
   cpu: number; // percentage
   memory: number; // percentage
@@ -102,13 +95,11 @@ export interface ResourceUtilization {
   costUsed: number; // USD
   costLimit: number; // USD
 }
-
 export interface AgentSource {
   type: 'config' | 'registry' | 'network' | 'plugin' | 'discovered';
   location: string;
   metadata: Record<string, unknown>;
 }
-
 export interface DiscoveryFilter {
   type?: AgentType[];
   role?: AgentRole[];
@@ -120,7 +111,6 @@ export interface DiscoveryFilter {
   minScore?: number;
   onlineOnly?: boolean;
 }
-
 export interface DiscoveryOptions {
   includeOffline?: boolean;
   includeUnhealthy?: boolean;
@@ -129,7 +119,6 @@ export interface DiscoveryOptions {
   updateCache?: boolean;
   timeout?: number; // milliseconds
 }
-
 export interface AgentRegistry {
   agents: Map<string, DiscoveredAgent>;
   indexes: {
@@ -142,17 +131,14 @@ export interface AgentRegistry {
   };
   lastUpdated: Date;
 }
-
 /**
  * Agent Discovery System
  */
 export class AgentDiscovery extends EventEmitter {
-  private registry: AgentRegistry;
-  private validator: ConfigValidator;
-  private discoveryInterval?: NodeJS.Timeout;
-  private healthCheckInterval?: NodeJS.Timeout;
-  private configWatcher?: NodeJS.Timeout;
-
+  private readonly registry: AgentRegistry;
+  private discoveryInterval: NodeJS.Timeout | undefined;
+  private healthCheckInterval: NodeJS.Timeout | undefined;
+  private configWatcher: NodeJS.Timeout | undefined;
   constructor() {
     super();
     this.registry = {
@@ -163,14 +149,12 @@ export class AgentDiscovery extends EventEmitter {
         byProvider: new Map(),
         byStatus: new Map(),
         byHealth: new Map(),
-        byCapability: new Map()
+        byCapability: new Map(),
       },
-      lastUpdated: new Date()
+      lastUpdated: new Date(),
     };
-    this.validator = new ConfigValidator();
     this.initializeIndexes();
   }
-
   /**
    * Start the discovery system
    */
@@ -179,113 +163,92 @@ export class AgentDiscovery extends EventEmitter {
       discoveryInterval?: number; // milliseconds
       healthCheckInterval?: number; // milliseconds
       configWatchInterval?: number; // milliseconds
-    } = {}
+    } = {},
   ): Promise<void> {
     logger.info('AgentDiscovery', 'Starting agent discovery system');
-
     const {
       discoveryInterval = 60000, // 1 minute
       healthCheckInterval = 30000, // 30 seconds
-      configWatchInterval = 10000 // 10 seconds
+      configWatchInterval = 10000, // 10 seconds
     } = options;
-
     // Initial discovery
     await this.discoverAgents();
-
     // Start periodic discovery
     this.discoveryInterval = setInterval(() => {
       this.discoverAgents().catch((error) => {
         logger.error('AgentDiscovery', 'Periodic discovery failed', error);
       });
     }, discoveryInterval);
-
     // Start health checks
     this.healthCheckInterval = setInterval(() => {
       this.performHealthChecks().catch((error) => {
         logger.error('AgentDiscovery', 'Health check failed', error);
       });
     }, healthCheckInterval);
-
     // Start config watching
     this.configWatcher = setInterval(() => {
       this.checkConfigChanges().catch((error) => {
         logger.error('AgentDiscovery', 'Config watch failed', error);
       });
     }, configWatchInterval);
-
     this.emit('discovery-started', {
-      intervals: { discoveryInterval, healthCheckInterval, configWatchInterval }
+      intervals: { discoveryInterval, healthCheckInterval, configWatchInterval },
     });
   }
-
   /**
    * Stop the discovery system
    */
   async stop(): Promise<void> {
     logger.info('AgentDiscovery', 'Stopping agent discovery system');
-
     if (this.discoveryInterval) {
       clearInterval(this.discoveryInterval);
       this.discoveryInterval = undefined;
     }
-
     if (this.healthCheckInterval) {
       clearInterval(this.healthCheckInterval);
       this.healthCheckInterval = undefined;
     }
-
     if (this.configWatcher) {
       clearInterval(this.configWatcher);
       this.configWatcher = undefined;
     }
-
     this.emit('discovery-stopped');
   }
-
   /**
    * Discover all available agents
    */
   async discoverAgents(options: DiscoveryOptions = {}): Promise<DiscoveredAgent[]> {
     logger.info('AgentDiscovery', 'Starting agent discovery', options as Record<string, unknown>);
-
     const startTime = Date.now();
     const discoveredAgents: DiscoveredAgent[] = [];
-
     try {
       // Discover from configuration files
       const configAgents = await this.discoverFromConfig();
       discoveredAgents.push(...configAgents);
-
       // Discover from network/registry sources
       const networkAgents = await this.discoverFromNetwork();
       discoveredAgents.push(...networkAgents);
-
       // Discover from plugins
       const pluginAgents = await this.discoverFromPlugins();
       discoveredAgents.push(...pluginAgents);
-
       // Process discovered agents
       for (const agent of discoveredAgents) {
         await this.processDiscoveredAgent(agent, options);
       }
-
       // Update registry
       this.updateRegistry(discoveredAgents);
-
       const duration = Date.now() - startTime;
       logger.info('AgentDiscovery', 'Discovery completed', {
         duration,
         totalAgents: discoveredAgents.length,
-        registeredAgents: this.registry.agents.size
+        registeredAgents: this.registry.agents.size,
       });
-
       this.emit('discovery-completed', {
         agents: discoveredAgents,
         duration,
         totalDiscovered: discoveredAgents.length,
-        totalRegistered: this.registry.agents.size
+        totalRegistered: this.registry.agents.size,
       });
-
       return Array.from(this.registry.agents.values());
     } catch (error) {
       const duration = Date.now() - startTime;
@@ -294,77 +257,63 @@ export class AgentDiscovery extends EventEmitter {
         'Discovery failed',
         error instanceof Error ? error : new Error(String(error)),
         {
-          duration
-        }
+          duration,
+        },
       );
       this.emit('discovery-failed', { error, duration });
       throw error;
     }
   }
-
   /**
    * Get discovered agents with filtering
    */
   getAgents(filter?: DiscoveryFilter): DiscoveredAgent[] {
     let agents = Array.from(this.registry.agents.values());
-
     if (!filter) {
       return agents;
     }
-
     // Apply filters
     if (filter.type && filter.type.length > 0) {
       agents = agents.filter((agent) => filter.type!.includes(agent.config.type));
     }
-
     if (filter.role && filter.role.length > 0) {
       agents = agents.filter((agent) => filter.role!.includes(agent.config.role));
     }
-
     if (filter.provider && filter.provider.length > 0) {
       agents = agents.filter((agent) => filter.provider!.includes(agent.config.provider));
     }
-
     if (filter.status && filter.status.length > 0) {
       agents = agents.filter((agent) => filter.status!.includes(agent.status.state));
     }
-
     if (filter.health && filter.health.length > 0) {
       agents = agents.filter((agent) => filter.health!.includes(agent.health.overall));
     }
-
     if (filter.tags && filter.tags.length > 0) {
       agents = agents.filter((agent) =>
-        filter.tags!.some((tag) => agent.config.metadata.tags.includes(tag))
+        filter.tags!.some((tag) => agent.config.metadata.tags.includes(tag)),
       );
     }
-
     if (filter.capabilities && filter.capabilities.length > 0) {
       agents = agents.filter((agent) =>
         filter.capabilities!.some((cap) =>
-          agent.runtimeCapabilities.supportedFeatures.includes(cap)
-        )
+          agent.runtimeCapabilities.supportedFeatures.includes(cap),
+        ),
       );
     }
-
     if (filter.minScore !== undefined) {
       agents = agents.filter((agent) => agent.health.score >= filter.minScore!);
     }
-
     if (filter.onlineOnly) {
       agents = agents.filter((agent) => agent.status.state === 'online');
     }
-
     return agents;
   }
-
   /**
    * Get agent by ID
    */
   getAgent(agentId: string): DiscoveredAgent | undefined {
     return this.registry.agents.get(agentId);
   }
-
   /**
    * Get agents by type
    */
@@ -377,7 +326,6 @@ export class AgentDiscovery extends EventEmitter {
       .map((id) => this.registry.agents.get(id))
       .filter((agent): agent is DiscoveredAgent => agent !== undefined);
   }
-
   /**
    * Get agents by role
    */
@@ -390,7 +338,6 @@ export class AgentDiscovery extends EventEmitter {
       .map((id) => this.registry.agents.get(id))
       .filter((agent): agent is DiscoveredAgent => agent !== undefined);
   }
-
   /**
    * Get agents by capability
    */
@@ -403,7 +350,6 @@ export class AgentDiscovery extends EventEmitter {
       .map((id) => this.registry.agents.get(id))
       .filter((agent): agent is DiscoveredAgent => agent !== undefined);
   }
-
   /**
    * Find best agent for task
    */
@@ -419,59 +365,50 @@ export class AgentDiscovery extends EventEmitter {
       preferredRole,
       maxCost,
       minHealth = 80,
-      excludeBusy = true
+      excludeBusy = true,
     } = requirements;
-
     // Filter agents by capabilities
     let candidates = this.getAgents().filter((agent) =>
-      requiredCapabilities.every((cap) => agent.runtimeCapabilities.supportedFeatures.includes(cap))
+      requiredCapabilities.every((cap) =>
+        agent.runtimeCapabilities.supportedFeatures.includes(cap),
+      ),
     );
-
     // Filter by role if specified
     if (preferredRole) {
       candidates = candidates.filter((agent) => agent.config.role === preferredRole);
     }
-
     // Filter by health
     candidates = candidates.filter((agent) => agent.health.score >= minHealth);
-
     // Filter by cost if specified
     if (maxCost !== undefined) {
       candidates = candidates.filter((agent) => agent.config.limits.maxCostPerDay <= maxCost);
     }
-
     // Exclude busy agents if specified
     if (excludeBusy) {
       candidates = candidates.filter(
         (agent) =>
-          agent.status.state !== 'busy' && agent.status.currentTasks < agent.status.maxTasks
+          agent.status.state !== 'busy' && agent.status.currentTasks < agent.status.maxTasks,
       );
     }
-
     if (candidates.length === 0) {
       return null;
     }
-
     // Score candidates
     const scoredCandidates = candidates.map((agent) => ({
       agent,
-      score: this.calculateAgentScore(agent, requirements)
+      score: this.calculateAgentScore(agent, requirements),
     }));
-
     // Sort by score (descending)
     scoredCandidates.sort((a, b) => b.score - a.score);
-
     return scoredCandidates.length > 0 && scoredCandidates[0]?.agent
       ? scoredCandidates[0].agent
       : null;
   }
-
   /**
    * Register an external agent
    */
   async registerAgent(agent: AgentConfig, source: AgentSource): Promise<DiscoveredAgent> {
     logger.info('AgentDiscovery', `Registering external agent: ${agent.id}`);
-
     const discoveredAgent: DiscoveredAgent = {
       config: agent,
       status: {
@@ -479,13 +416,13 @@ export class AgentDiscovery extends EventEmitter {
         currentTasks: 0,
         maxTasks: agent.limits.maxConcurrentTasks,
         uptime: 0,
-        lastActivity: new Date()
+        lastActivity: new Date(),
       },
       health: {
         overall: 'unhealthy',
         checks: [],
         score: 0,
-        issues: []
+        issues: [],
       },
       capabilities: {
         actualCapabilities: [],
@@ -494,7 +431,7 @@ export class AgentDiscovery extends EventEmitter {
           successRate: 0,
           throughput: 0,
           errorRate: 100,
-          lastUpdated: new Date()
+          lastUpdated: new Date(),
         },
         resourceUtilization: {
           cpu: 0,
@@ -504,10 +441,10 @@ export class AgentDiscovery extends EventEmitter {
           tokensUsed: 0,
           tokensLimit: agent.limits.maxTokensPerRequest * agent.limits.maxRequestsPerDay,
           costUsed: 0,
-          costLimit: agent.limits.maxCostPerDay
+          costLimit: agent.limits.maxCostPerDay,
         },
         supportedFeatures: [],
-        experimentalFeatures: []
+        experimentalFeatures: [],
       },
       runtimeCapabilities: {
         actualCapabilities: [],
@@ -516,7 +453,7 @@ export class AgentDiscovery extends EventEmitter {
           successRate: 0,
           errorRate: 0,
           throughput: 0,
-          lastUpdated: new Date()
+          lastUpdated: new Date(),
         },
         resourceUtilization: {
           cpu: 0,
@@ -526,28 +463,23 @@ export class AgentDiscovery extends EventEmitter {
           tokensUsed: 0,
           tokensLimit: agent.limits.maxTokensPerRequest * agent.limits.maxRequestsPerDay,
           costUsed: 0,
-          costLimit: agent.limits.maxCostPerDay
+          costLimit: agent.limits.maxCostPerDay,
         },
         supportedFeatures: [],
-        experimentalFeatures: []
+        experimentalFeatures: [],
       },
       lastSeen: new Date(),
       registrationTime: new Date(),
-      source
+      source,
     };
-
     // Add to registry
     this.registry.agents.set(agent.id, discoveredAgent);
     this.updateIndexes(discoveredAgent);
-
     // Test capabilities if requested
     await this.testAgentCapabilities(discoveredAgent);
-
     this.emit('agent-registered', { agent: discoveredAgent });
-
     return discoveredAgent;
   }
-
   /**
    * Unregister an agent
    */
@@ -556,15 +488,11 @@ export class AgentDiscovery extends EventEmitter {
     if (!agent) {
       return false;
     }
-
     this.registry.agents.delete(agentId);
     this.removeFromIndexes(agent);
-
     this.emit('agent-unregistered', { agentId, agent });
-
     return true;
   }
-
   /**
    * Update agent status
    */
@@ -573,37 +501,28 @@ export class AgentDiscovery extends EventEmitter {
     if (!agent) {
       return false;
     }
-
     agent.status = { ...agent.status, ...status };
     agent.lastSeen = new Date();
-
     this.emit('agent-status-updated', { agentId, status: agent.status });
-
     return true;
   }
-
   /**
    * Perform health checks on all agents
    */
   async performHealthChecks(): Promise<Map<string, HealthCheck[]>> {
     const results = new Map<string, HealthCheck[]>();
-
-    for (const [agentId, agent] of this.registry.agents) {
+    for (const [agentId, agent] of Array.from(this.registry.agents.entries())) {
       const checks = await this.performAgentHealthCheck(agent);
       results.set(agentId, checks);
-
       // Update agent health
       agent.health.checks = checks;
       agent.health.score = this.calculateHealthScore(checks);
       agent.health.overall = this.getOverallHealthStatus(agent.health.score);
       agent.health.issues = this.extractHealthIssues(checks);
     }
-
     this.emit('health-checks-completed', { results });
-
     return results;
   }
-
   /**
    * Get discovery statistics
    */
@@ -616,9 +535,8 @@ export class AgentDiscovery extends EventEmitter {
     byProvider: Record<ProviderType, number>;
     averageHealthScore: number;
     lastUpdated: Date;
-    } {
+  } {
     const agents = Array.from(this.registry.agents.values());
-
     const stats = {
       totalAgents: agents.length,
       onlineAgents: agents.filter((a) => a.status.state === 'online').length,
@@ -628,29 +546,23 @@ export class AgentDiscovery extends EventEmitter {
       byProvider: {} as Record<ProviderType, number>,
       averageHealthScore:
         agents.length > 0 ? agents.reduce((sum, a) => sum + a.health.score, 0) / agents.length : 0,
-      lastUpdated: this.registry.lastUpdated
+      lastUpdated: this.registry.lastUpdated,
     };
-
     // Count by type
     for (const agent of agents) {
       stats.byType[agent.config.type] = (stats.byType[agent.config.type] || 0) + 1;
       stats.byRole[agent.config.role] = (stats.byRole[agent.config.role] || 0) + 1;
       stats.byProvider[agent.config.provider] = (stats.byProvider[agent.config.provider] || 0) + 1;
     }
-
     return stats;
   }
-
   /**
    * Private methods
    */
-
   private async discoverFromConfig(): Promise<DiscoveredAgent[]> {
     const agents: DiscoveredAgent[] = [];
-
     try {
       const configAgents = await agentConfigManager.loadConfig();
-
       for (const config of configAgents) {
         const discoveredAgent: DiscoveredAgent = {
           config,
@@ -659,13 +571,13 @@ export class AgentDiscovery extends EventEmitter {
             currentTasks: 0,
             maxTasks: config.limits.maxConcurrentTasks,
             uptime: 0,
-            lastActivity: new Date()
+            lastActivity: new Date(),
           },
           health: {
             overall: 'unhealthy',
             checks: [],
             score: 0,
-            issues: []
+            issues: [],
           },
           capabilities: {
             actualCapabilities: [],
@@ -674,7 +586,7 @@ export class AgentDiscovery extends EventEmitter {
               successRate: 0,
               throughput: 0,
               errorRate: 100,
-              lastUpdated: new Date()
+              lastUpdated: new Date(),
             },
             resourceUtilization: {
               cpu: 0,
@@ -684,10 +596,10 @@ export class AgentDiscovery extends EventEmitter {
               tokensUsed: 0,
               tokensLimit: config.limits.maxTokensPerRequest * config.limits.maxRequestsPerDay,
               costUsed: 0,
-              costLimit: config.limits.maxCostPerDay
+              costLimit: config.limits.maxCostPerDay,
             },
             supportedFeatures: this.extractSupportedFeatures(config),
-            experimentalFeatures: []
+            experimentalFeatures: [],
           },
           runtimeCapabilities: {
             actualCapabilities: [],
@@ -696,7 +608,7 @@ export class AgentDiscovery extends EventEmitter {
               successRate: 0,
               errorRate: 100,
               throughput: 0,
-              lastUpdated: new Date()
+              lastUpdated: new Date(),
             },
             resourceUtilization: {
               cpu: 0,
@@ -706,35 +618,31 @@ export class AgentDiscovery extends EventEmitter {
               tokensUsed: 0,
               tokensLimit: config.limits.maxTokensPerRequest * config.limits.maxRequestsPerDay,
               costUsed: 0,
-              costLimit: config.limits.maxCostPerDay
+              costLimit: config.limits.maxCostPerDay,
             },
             supportedFeatures: [],
-            experimentalFeatures: []
+            experimentalFeatures: [],
           },
           lastSeen: new Date(),
           registrationTime: new Date(),
           source: {
             type: 'config',
             location: '.prprc',
-            metadata: { version: '1.0.0' }
-          }
+            metadata: { version: '1.0.0' },
+          },
         };
-
         agents.push(discoveredAgent);
       }
-
       logger.debug('AgentDiscovery', `Discovered ${agents.length} agents from config`);
     } catch (error) {
       logger.error(
         'AgentDiscovery',
         'Failed to discover from config',
-        error instanceof Error ? error : new Error(String(error))
+        error instanceof Error ? error : new Error(String(error)),
       );
     }
-
     return agents;
   }
-
   private async discoverFromNetwork(): Promise<DiscoveredAgent[]> {
     // Placeholder for network discovery
     // In a real implementation, this would:
@@ -742,16 +650,13 @@ export class AgentDiscovery extends EventEmitter {
     // - Query agent registries
     // - Check for mDNS/Bonjour services
     // - Connect to cloud-based agent directories
-
     const agents: DiscoveredAgent[] = [];
-
     try {
       // Example: Discover from environment variables
       if (process.env.AGENT_REGISTRY_URL) {
         // Query external registry
         logger.debug('AgentDiscovery', 'Discovering agents from external registry');
       }
-
       // Example: Discover from Docker/Kubernetes
       if (process.env.KUBERNETES_SERVICE_HOST) {
         // Query Kubernetes API for agent pods
@@ -761,25 +666,20 @@ export class AgentDiscovery extends EventEmitter {
       logger.error(
         'AgentDiscovery',
         'Failed to discover from network',
-        error instanceof Error ? error : new Error(String(error))
+        error instanceof Error ? error : new Error(String(error)),
       );
     }
-
     return agents;
   }
-
   private async discoverFromPlugins(): Promise<DiscoveredAgent[]> {
     // Placeholder for plugin discovery
     // In a real implementation, this would:
     // - Scan for agent plugins in directories
     // - Load plugin manifests
     // - Initialize plugin agents
-
     const agents: DiscoveredAgent[] = [];
-
     try {
       const pluginDirs = ['./plugins', './node_modules/@dcversus/agents', './agents'];
-
       for (const dir of pluginDirs) {
         if (await FileUtils.pathExists(dir)) {
           logger.debug('AgentDiscovery', `Scanning for plugins in ${dir}`);
@@ -790,42 +690,36 @@ export class AgentDiscovery extends EventEmitter {
       logger.error(
         'AgentDiscovery',
         'Failed to discover from plugins',
-        error instanceof Error ? error : new Error(String(error))
+        error instanceof Error ? error : new Error(String(error)),
       );
     }
-
     return agents;
   }
-
   private async processDiscoveredAgent(
     agent: DiscoveredAgent,
-    options: DiscoveryOptions
+    options: DiscoveryOptions,
   ): Promise<void> {
     // Validate configuration if requested
     if (options.validateConfigs) {
-      const validation = await this.validator.validateAgent(agent.config);
-      if (!validation.valid) {
+      const validation = SchemaValidator.validate(agent.config);
+      if (!validation.isValid) {
         logger.warn('AgentDiscovery', `Agent ${agent.config.id} failed validation`, {
-          errors: validation.errors.map((e) => e.message)
+          errors: validation.errors.map((e: { message: string }) => e.message),
         });
       }
     }
-
     // Test capabilities if requested
     if (options.testCapabilities) {
       await this.testAgentCapabilities(agent);
     }
-
     // Perform initial health check
     const healthChecks = await this.performAgentHealthCheck(agent);
     agent.health.checks = healthChecks;
     agent.health.score = this.calculateHealthScore(healthChecks);
     agent.health.overall = this.getOverallHealthStatus(agent.health.score);
   }
-
   private async testAgentCapabilities(agent: DiscoveredAgent): Promise<void> {
     const capabilities: RuntimeCapability[] = [];
-
     // Test file system access
     if (agent.config.capabilities.canAccessFileSystem) {
       const fsCapability: RuntimeCapability = {
@@ -833,14 +727,12 @@ export class AgentDiscovery extends EventEmitter {
         supported: false,
         confidence: 0,
         lastTested: new Date(),
-        testResults: []
+        testResults: [],
       };
-
       try {
         const startTime = Date.now();
         await FileUtils.pathExists(process.cwd());
         const duration = Date.now() - startTime;
-
         fsCapability.supported = true;
         fsCapability.confidence = 0.9;
         fsCapability.testResults.push({
@@ -848,7 +740,7 @@ export class AgentDiscovery extends EventEmitter {
           passed: true,
           duration,
           details: { path: process.cwd() },
-          timestamp: new Date()
+          timestamp: new Date(),
         });
       } catch (error) {
         fsCapability.testResults.push({
@@ -856,13 +748,11 @@ export class AgentDiscovery extends EventEmitter {
           passed: false,
           duration: 0,
           details: { error: error instanceof Error ? error.message : String(error) },
-          timestamp: new Date()
+          timestamp: new Date(),
         });
       }
-
       capabilities.push(fsCapability);
     }
-
     // Test tool support
     if (agent.config.capabilities.supportsTools && agent.config.tools.length > 0) {
       const toolCapability: RuntimeCapability = {
@@ -870,46 +760,39 @@ export class AgentDiscovery extends EventEmitter {
         supported: false,
         confidence: 0,
         lastTested: new Date(),
-        testResults: []
+        testResults: [],
       };
-
       // Test tool availability
       const availableTools = agent.config.tools.filter((tool) => tool.enabled);
       toolCapability.supported = availableTools.length > 0;
       toolCapability.confidence = availableTools.length / agent.config.tools.length;
-
       toolCapability.testResults.push({
         testName: 'tool-availability-test',
         passed: availableTools.length > 0,
         duration: 1,
         details: {
           totalTools: agent.config.tools.length,
-          availableTools: availableTools.length
+          availableTools: availableTools.length,
         },
-        timestamp: new Date()
+        timestamp: new Date(),
       });
-
       capabilities.push(toolCapability);
     }
-
     agent.runtimeCapabilities.actualCapabilities = capabilities;
   }
-
   private async performAgentHealthCheck(agent: DiscoveredAgent): Promise<HealthCheck[]> {
     const checks: HealthCheck[] = [];
-
     // Configuration check
     const configCheck: HealthCheck = {
       name: 'configuration',
       status: 'pass',
       duration: 0,
       message: 'Configuration is valid',
-      timestamp: new Date()
+      timestamp: new Date(),
     };
-
     try {
-      const validation = await this.validator.validateAgent(agent.config);
-      if (!validation.valid) {
+      const validation = SchemaValidator.validate(agent.config);
+      if (!validation.isValid) {
         configCheck.status = 'fail';
         configCheck.message = `Configuration has ${validation.errors.length} error(s)`;
       }
@@ -917,9 +800,7 @@ export class AgentDiscovery extends EventEmitter {
       configCheck.status = 'fail';
       configCheck.message = `Configuration validation failed: ${error instanceof Error ? error.message : String(error)}`;
     }
-
     checks.push(configCheck);
-
     // Authentication check
     if (agent.config.authentication.credentials?.apiKey) {
       const authCheck: HealthCheck = {
@@ -927,45 +808,37 @@ export class AgentDiscovery extends EventEmitter {
         status: 'pass',
         duration: 0,
         message: 'Authentication credentials are present',
-        timestamp: new Date()
+        timestamp: new Date(),
       };
-
       // In a real implementation, this would test the API key
       // For now, just check that it exists and looks valid
-      const apiKey = agent.config.authentication.credentials.apiKey;
+      const {apiKey} = agent.config.authentication.credentials;
       if (apiKey.length < 10) {
         authCheck.status = 'fail';
         authCheck.message = 'API key appears to be invalid';
       }
-
       checks.push(authCheck);
     }
-
     // Resource check
     const resourceCheck: HealthCheck = {
       name: 'resources',
       status: 'pass',
       duration: 0,
       message: 'Resource limits are reasonable',
-      timestamp: new Date()
+      timestamp: new Date(),
     };
-
     const utilization = agent.runtimeCapabilities.resourceUtilization;
     if (utilization.memory > 90 || utilization.cpu > 90) {
       resourceCheck.status = 'warn';
       resourceCheck.message = 'Resource utilization is high';
     }
-
     checks.push(resourceCheck);
-
     return checks;
   }
-
   private calculateHealthScore(checks: HealthCheck[]): number {
     if (checks.length === 0) {
       return 0;
     }
-
     let score = 100;
     for (const check of checks) {
       if (check.status === 'fail') {
@@ -974,10 +847,8 @@ export class AgentDiscovery extends EventEmitter {
         score -= 10;
       }
     }
-
     return Math.max(0, score);
   }
-
   private getOverallHealthStatus(score: number): AgentHealth['overall'] {
     if (score >= 90) {
       return 'healthy';
@@ -987,7 +858,6 @@ export class AgentDiscovery extends EventEmitter {
     }
     return 'unhealthy';
   }
-
   private extractHealthIssues(checks: HealthCheck[]): HealthIssue[] {
     return checks
       .filter((check) => check.status !== 'pass')
@@ -995,13 +865,11 @@ export class AgentDiscovery extends EventEmitter {
         severity: check.status === 'fail' ? 'high' : 'medium',
         category: 'connectivity' as const,
         message: check.message,
-        detectedAt: check.timestamp
+        detectedAt: check.timestamp,
       }));
   }
-
   private extractSupportedFeatures(config: AgentConfig): string[] {
     const features: string[] = [];
-
     if (config.capabilities.supportsTools) {
       features.push('tools');
     }
@@ -1023,10 +891,8 @@ export class AgentDiscovery extends EventEmitter {
     if (config.capabilities.canAccessFileSystem) {
       features.push('file-system');
     }
-
     return features;
   }
-
   private calculateAgentScore(
     agent: DiscoveredAgent,
     requirements: {
@@ -1034,31 +900,25 @@ export class AgentDiscovery extends EventEmitter {
       preferredRole?: AgentRole;
       maxCost?: number;
       minHealth?: number;
-    }
+    },
   ): number {
     let score = 0;
-
     // Health score (40% weight)
     score += (agent.health.score / 100) * 40;
-
     // Capability matching (30% weight)
     const matchingCapabilities = requirements.requiredCapabilities.filter((cap) =>
-      agent.runtimeCapabilities.supportedFeatures.includes(cap)
+      agent.runtimeCapabilities.supportedFeatures.includes(cap),
     );
     const capabilityScore = matchingCapabilities.length / requirements.requiredCapabilities.length;
     score += capabilityScore * 30;
-
     // Performance (20% weight)
     const performanceScore = (100 - agent.runtimeCapabilities.performanceMetrics.errorRate) / 100;
     score += performanceScore * 20;
-
     // Availability (10% weight)
     const availabilityScore = agent.status.state === 'online' ? 1 : 0;
     score += availabilityScore * 10;
-
     return score;
   }
-
   private updateRegistry(agents: DiscoveredAgent[]): void {
     // Update existing agents and add new ones
     for (const agent of agents) {
@@ -1072,19 +932,16 @@ export class AgentDiscovery extends EventEmitter {
         this.updateIndexes(agent);
       }
     }
-
     // Remove agents that are no longer discovered
     const discoveredIds = new Set(agents.map((a) => a.config.id));
-    for (const [agentId, agent] of this.registry.agents) {
+    for (const [agentId, agent] of Array.from(this.registry.agents.entries())) {
       if (!discoveredIds.has(agentId)) {
         this.registry.agents.delete(agentId);
         this.removeFromIndexes(agent);
       }
     }
-
     this.registry.lastUpdated = new Date();
   }
-
   private initializeIndexes(): void {
     const types: AgentType[] = [
       'claude-code-anthropic',
@@ -1094,7 +951,7 @@ export class AgentDiscovery extends EventEmitter {
       'amp',
       'aider',
       'github-copilot',
-      'custom'
+      'custom',
     ];
     const roles: AgentRole[] = [
       'robo-developer',
@@ -1108,7 +965,7 @@ export class AgentDiscovery extends EventEmitter {
       'orchestrator-agent',
       'task-agent',
       'specialist-agent',
-      'conductor'
+      'conductor',
     ];
     const providers: ProviderType[] = [
       'anthropic',
@@ -1117,11 +974,10 @@ export class AgentDiscovery extends EventEmitter {
       'groq',
       'ollama',
       'github',
-      'custom'
+      'custom',
     ];
     const statuses: AgentStatus['state'][] = ['online', 'offline', 'busy', 'error', 'maintenance'];
     const healthStates: AgentHealth['overall'][] = ['healthy', 'degraded', 'unhealthy'];
-
     for (const type of types) {
       this.registry.indexes.byType.set(type, new Set());
     }
@@ -1138,14 +994,12 @@ export class AgentDiscovery extends EventEmitter {
       this.registry.indexes.byHealth.set(health, new Set());
     }
   }
-
   private updateIndexes(agent: DiscoveredAgent): void {
     this.registry.indexes.byType.get(agent.config.type)?.add(agent.config.id);
     this.registry.indexes.byRole.get(agent.config.role)?.add(agent.config.id);
     this.registry.indexes.byProvider.get(agent.config.provider)?.add(agent.config.id);
     this.registry.indexes.byStatus.get(agent.status.state)?.add(agent.config.id);
     this.registry.indexes.byHealth.get(agent.health.overall)?.add(agent.config.id);
-
     for (const capability of agent.runtimeCapabilities.supportedFeatures) {
       if (!this.registry.indexes.byCapability.has(capability)) {
         this.registry.indexes.byCapability.set(capability, new Set());
@@ -1153,19 +1007,16 @@ export class AgentDiscovery extends EventEmitter {
       this.registry.indexes.byCapability.get(capability)?.add(agent.config.id);
     }
   }
-
   private removeFromIndexes(agent: DiscoveredAgent): void {
     this.registry.indexes.byType.get(agent.config.type)?.delete(agent.config.id);
     this.registry.indexes.byRole.get(agent.config.role)?.delete(agent.config.id);
     this.registry.indexes.byProvider.get(agent.config.provider)?.delete(agent.config.id);
     this.registry.indexes.byStatus.get(agent.status.state)?.delete(agent.config.id);
     this.registry.indexes.byHealth.get(agent.health.overall)?.delete(agent.config.id);
-
     for (const capability of agent.runtimeCapabilities.supportedFeatures) {
       this.registry.indexes.byCapability.get(capability)?.delete(agent.config.id);
     }
   }
-
   private async checkConfigChanges(): Promise<void> {
     // Check if configuration file has been modified
     try {
@@ -1173,7 +1024,6 @@ export class AgentDiscovery extends EventEmitter {
       if (await FileUtils.pathExists(configPath)) {
         const stats = await FileUtils.readFileStats(configPath);
         const lastModified = new Date(stats.modified);
-
         if (lastModified > this.registry.lastUpdated) {
           logger.info('AgentDiscovery', 'Configuration file changed, triggering discovery');
           await this.discoverAgents();
@@ -1183,13 +1033,11 @@ export class AgentDiscovery extends EventEmitter {
       logger.error(
         'AgentDiscovery',
         'Failed to check config changes',
-        error instanceof Error ? error : new Error(String(error))
+        error instanceof Error ? error : new Error(String(error)),
       );
     }
   }
 }
-
 // Global instance
 export const agentDiscovery = new AgentDiscovery();
-
 export default AgentDiscovery;

@@ -7,14 +7,17 @@
 
 import React, { useMemo, useCallback } from 'react';
 import { Text, Box } from 'ink';
+
+import { getSignalColor } from '../config/TUIConfig';
+import { useSignalDisplay } from '../hooks/useSignalSubscription';
+
+import type { JSX } from 'react';
 import type {
   SignalEvent,
   SignalDisplay as SignalDisplayType,
   SignalPriority,
-  TUIConfig
-} from '../../types.js';
-import { getSignalColor } from '../config/TUIConfig.js';
-import { useSignalDisplay } from '../hooks/useSignalSubscription.js';
+  TUIConfig,
+} from '../../types';
 
 export interface SignalDisplayProps {
   signal: SignalEvent | SignalDisplayType | string;
@@ -28,40 +31,46 @@ export interface SignalDisplayProps {
   customColor?: string;
   backgroundColor?: string;
   maxWidth?: number;
-}
+};
 
 interface PriorityIndicatorProps {
   priority: SignalPriority;
   compact?: boolean;
-}
+};
 
 function PriorityIndicator({ priority, compact = false }: PriorityIndicatorProps) {
   const getPrioritySymbol = (): string => {
     switch (priority) {
-      case 'critical': return '!';
-      case 'high': return '▲';
-      case 'medium': return '■';
-      case 'low': return '○';
-      default: return '?';
+      case 'critical':
+        return '!';
+      case 'high':
+        return '▲';
+      case 'medium':
+        return '■';
+      case 'low':
+        return '○';
+      default:
+        return '?';
     }
   };
 
   const getPriorityColor = (): string => {
     switch (priority) {
-      case 'critical': return '#EF4444';
-      case 'high': return '#F59E0B';
-      case 'medium': return '#6B7280';
-      case 'low': return '#9CA3AF';
-      default: return '#6B7280';
+      case 'critical':
+        return '#EF4444';
+      case 'high':
+        return '#F59E0B';
+      case 'medium':
+        return '#6B7280';
+      case 'low':
+        return '#9CA3AF';
+      default:
+        return '#6B7280';
     }
   };
 
   if (compact) {
-    return (
-      <Text color={getPriorityColor()}>
-        {getPrioritySymbol()}
-      </Text>
-    );
+    return <Text color={getPriorityColor()}>{getPrioritySymbol()}</Text>;
   }
 
   return (
@@ -69,52 +78,58 @@ function PriorityIndicator({ priority, compact = false }: PriorityIndicatorProps
       [{getPrioritySymbol()}]
     </Text>
   );
-}
+};
 
 interface StateIndicatorProps {
   state: SignalEvent['state'];
   animated?: boolean;
-}
+};
 
 function StateIndicator({ state, animated = false }: StateIndicatorProps) {
   const getStateSymbol = (): string => {
     switch (state) {
-      case 'active': return animated ? '⟳' : '●';
-      case 'resolved': return '✓';
-      case 'pending': return '⏳';
-      case 'failed': return '✗';
-      default: return '?';
+      case 'active':
+        return animated ? '⟳' : '●';
+      case 'resolved':
+        return '✓';
+      case 'pending':
+        return '⏳';
+      case 'failed':
+        return '✗';
+      default:
+        return '?';
     }
   };
 
   const getStateColor = (): string => {
     switch (state) {
-      case 'active': return '#10B981';
-      case 'resolved': return '#10B981';
-      case 'pending': return '#F59E0B';
-      case 'failed': return '#EF4444';
-      default: return '#6B7280';
+      case 'active':
+        return '#10B981';
+      case 'resolved':
+        return '#10B981';
+      case 'pending':
+        return '#F59E0B';
+      case 'failed':
+        return '#EF4444';
+      default:
+        return '#6B7280';
     }
   };
 
-  return (
-    <Text color={getStateColor()}>
-      {getStateSymbol()}
-    </Text>
-  );
-}
+  return <Text color={getStateColor()}>{getStateSymbol()}</Text>;
+};
 
 interface TimestampDisplayProps {
   timestamp: Date;
   compact?: boolean;
-}
+};
 
 function TimestampDisplay({ timestamp, compact = false }: TimestampDisplayProps) {
   const formatTime = useCallback((date: Date): string => {
     if (compact) {
       return date.toLocaleTimeString('en-US', {
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
       });
     }
 
@@ -122,7 +137,7 @@ function TimestampDisplay({ timestamp, compact = false }: TimestampDisplayProps)
       month: 'short',
       day: '2-digit',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   }, []);
 
@@ -131,12 +146,12 @@ function TimestampDisplay({ timestamp, compact = false }: TimestampDisplayProps)
       {formatTime(timestamp)}
     </Text>
   );
-}
+};
 
 /**
  * Main Signal Display Component
  */
-export function SignalDisplay({
+export const SignalDisplay = ({
   signal,
   compact = false,
   animated = true,
@@ -147,8 +162,8 @@ export function SignalDisplay({
   animationFrame = 0,
   customColor,
   backgroundColor,
-  maxWidth = 80
-}: SignalDisplayProps): React.ReactElement {
+  maxWidth = 80,
+}: SignalDisplayProps): JSX.Element => {
   const { getSignalDisplay } = useSignalDisplay();
 
   // Convert signal to consistent format
@@ -168,7 +183,7 @@ export function SignalDisplay({
         title: display?.description ?? signal,
         description: display?.description ?? '',
         priority: display?.priority ?? 'medium',
-        state: 'active' as const
+        state: 'active' as const,
       };
     }
 
@@ -181,7 +196,7 @@ export function SignalDisplay({
         source: signal.source,
         priority: signal.priority,
         state: signal.state,
-        timestamp: signal.timestamp
+        timestamp: signal.timestamp,
       };
     }
 
@@ -191,7 +206,7 @@ export function SignalDisplay({
       title: signal.description,
       description: signal.description,
       priority: signal.priority,
-      state: 'active' as const
+      state: 'active' as const,
     };
   }, [signal, getSignalDisplay]);
 
@@ -228,7 +243,9 @@ export function SignalDisplay({
       case 'flash':
         return animationFrame % 2 === 0 ? normalizedSignal.code : '   ';
       case 'pulse':
-        return animationFrame % 3 === 0 ? normalizedSignal.code.toUpperCase() : normalizedSignal.code;
+        return animationFrame % 3 === 0
+          ? normalizedSignal.code.toUpperCase()
+          : normalizedSignal.code;
       case 'bounce': {
         const bounce = Math.sin(animationFrame * 0.3) > 0;
         return bounce ? normalizedSignal.code : normalizedSignal.code.toLowerCase();
@@ -275,13 +292,13 @@ export function SignalDisplay({
             {signalContent}
           </Text>
           <Text color={colors.color}>]</Text>
-        </Text>
+        </Text>,
       );
     } else {
       elements.push(
         <Text key="signal" color={colors.color} bold={normalizedSignal.state === 'active'}>
           [{signalContent}]
-        </Text>
+        </Text>,
       );
     }
 
@@ -290,7 +307,7 @@ export function SignalDisplay({
       elements.push(
         <Text key="description" color="#E5E7EB">
           {normalizedSignal.description}
-        </Text>
+        </Text>,
       );
     }
 
@@ -299,21 +316,25 @@ export function SignalDisplay({
       elements.push(
         <Text key="source" color="#9CA3AF" dimColor>
           ({normalizedSignal.source})
-        </Text>
+        </Text>,
       );
     }
 
     if (!compact && showTimestamp && normalizedSignal.timestamp) {
       elements.push(<Text key="time-space"> </Text>);
       elements.push(
-        <TimestampDisplay key="timestamp" timestamp={normalizedSignal.timestamp} compact={compact} />
+        <TimestampDisplay
+          key="timestamp"
+          timestamp={normalizedSignal.timestamp}
+          compact={compact}
+        />,
       );
     }
 
     if (!compact) {
       elements.push(<Text key="state-space"> </Text>);
       elements.push(
-        <StateIndicator key="state" state={normalizedSignal.state} animated={animated} />
+        <StateIndicator key="state" state={normalizedSignal.state} animated={animated} />,
       );
     }
 
@@ -331,23 +352,26 @@ export function SignalDisplay({
     normalizedSignal.source,
     showTimestamp,
     normalizedSignal.timestamp,
-    animated
+    animated,
   ]);
 
   // Handle text overflow
   const content = useMemo(() => {
-    const fullText = displayElements.map(el =>
-      typeof el === 'string' ? el :
-        React.isValidElement(el) ?
-          (el.props.children as string | undefined ?? '') :
-          ''
-    ).join('');
+    const fullText = displayElements
+      .map((el) =>
+        typeof el === 'string'
+          ? el
+          : React.isValidElement(el)
+            ? ((el.props.children as string | undefined) ?? '')
+            : '',
+      )
+      .join('');
 
     if (fullText.length <= maxWidth) {
       return displayElements;
     }
 
-    const truncated = fullText.substring(0, maxWidth - 3) + '...';
+    const truncated = `${fullText.substring(0, maxWidth - 3)  }...`;
     return <Text color={colors.color}>{truncated}</Text>;
   }, [displayElements, maxWidth, colors.color]);
 
@@ -360,7 +384,7 @@ export function SignalDisplay({
       {content}
     </Box>
   );
-}
+};
 
 /**
  * Signal Badge Component for compact display
@@ -370,9 +394,14 @@ interface SignalBadgeProps {
   count?: number;
   color?: string;
   compact?: boolean;
-}
+};
 
-export function SignalBadge({ signal, count, color, compact = false }: SignalBadgeProps): React.ReactElement {
+export const SignalBadge = ({
+  signal,
+  count,
+  color,
+  compact = false,
+}: SignalBadgeProps): JSX.Element => {
   const { getSignalDisplay } = useSignalDisplay();
 
   const displayConfig = useMemo(() => getSignalDisplay(signal), [signal, getSignalDisplay]);
@@ -391,18 +420,21 @@ export function SignalBadge({ signal, count, color, compact = false }: SignalBad
   return (
     <Box flexDirection="row" alignItems="center">
       <Text color={badgeColor} backgroundColor="#1F2937">
-        {' '}{signal}{' '}
+        {' '}
+        {signal}{' '}
       </Text>
       {count !== undefined && count > 1 && (
         <>
           <Text color={badgeColor}>×</Text>
-          <Text color={badgeColor} bold>{count}</Text>
+          <Text color={badgeColor} bold>
+            {count}
+          </Text>
         </>
       )}
       <Text color="#9CA3AF"> {signalText}</Text>
     </Box>
   );
-}
+};
 
 /**
  * Signal List Component for displaying multiple signals
@@ -422,9 +454,9 @@ interface SignalListProps {
   showDescription?: boolean;
   showSource?: boolean;
   config?: TUIConfig;
-}
+};
 
-export function SignalList({
+export const SignalList = ({
   signals,
   maxItems = 10,
   sortBy = 'timestamp',
@@ -434,13 +466,13 @@ export function SignalList({
   showTimestamp = false,
   showDescription = false,
   showSource = false,
-  config
-}: SignalListProps): React.ReactElement {
+  config,
+}: SignalListProps): JSX.Element => {
   const { getSignalDisplay } = useSignalDisplay();
 
   // Sort and filter signals
   const processedSignals = useMemo(() => {
-    const filtered = signals.filter(signal => {
+    const filtered = signals.filter((signal) => {
       if (!filter) {
         return true;
       }
@@ -456,18 +488,18 @@ export function SignalList({
         const display = getSignalDisplay(signal);
         signalData = {
           priority: display?.priority ?? 'medium',
-          state: 'active' as const
+          state: 'active' as const,
         };
       } else if ('signal' in signal) {
         signalData = {
           priority: signal.priority,
           state: signal.state,
-          source: signal.source
+          source: signal.source,
         };
       } else {
         signalData = {
           priority: signal.priority,
-          state: 'active' as const
+          state: 'active' as const,
         };
       }
 
@@ -506,11 +538,16 @@ export function SignalList({
         case 'priority': {
           const getPriorityValue = (priority: SignalPriority): number => {
             switch (priority) {
-              case 'critical': return 4;
-              case 'high': return 3;
-              case 'medium': return 2;
-              case 'low': return 1;
-              default: return 0;
+              case 'critical':
+                return 4;
+              case 'high':
+                return 3;
+              case 'medium':
+                return 2;
+              case 'low':
+                return 1;
+              default:
+                return 0;
             }
           };
           const getPriority = (signal: typeof a): SignalPriority => {
@@ -569,7 +606,7 @@ export function SignalList({
       ))}
     </Box>
   );
-}
+};
 
 // Export memoized version for performance
 export const OptimizedSignalDisplay = React.memo(SignalDisplay);

@@ -4,12 +4,12 @@
  * Flexible agent configuration with roles, limits, capabilities,
  * and multi-provider authentication
  */
-
 import { EventEmitter } from 'events';
-import { createLayerLogger, FileUtils, ConfigUtils, HashUtils } from '../shared';
+
+import { FileUtils, ConfigUtils, HashUtils } from '../shared';
+import { createLayerLogger } from '../shared/logger';
 
 const logger = createLayerLogger('config');
-
 export interface AgentConfig {
   id: string;
   name: string;
@@ -25,7 +25,6 @@ export interface AgentConfig {
   environment: AgentEnvironment;
   preferences: AgentPreferences;
   metadata: AgentMetadata;
-
   // Backwards compatibility properties for older interfaces
   description?: string;
   category?: string;
@@ -34,7 +33,6 @@ export interface AgentConfig {
   defaultModel?: string;
   defaultMaxTokens?: number;
   configuration?: Record<string, unknown>;
-
   // Additional properties accessed by agent-manager
   roles?: AgentRole[];
   bestRole?: AgentRole;
@@ -43,8 +41,8 @@ export interface AgentConfig {
   model?: string;
   maxTokens?: number;
 }
-
 export type AgentType =
+  | 'claude'
   | 'claude-code-anthropic'
   | 'claude-code-glm'
   | 'codex'
@@ -53,7 +51,6 @@ export type AgentType =
   | 'aider'
   | 'github-copilot'
   | 'custom';
-
 export type AgentRole =
   | 'robo-developer'
   | 'robo-system-analyst'
@@ -67,7 +64,6 @@ export type AgentRole =
   | 'task-agent'
   | 'specialist-agent'
   | 'conductor';
-
 export type ProviderType =
   | 'anthropic'
   | 'openai'
@@ -76,7 +72,6 @@ export type ProviderType =
   | 'ollama'
   | 'github'
   | 'custom';
-
 export interface AgentCapabilities {
   supportsTools: boolean;
   supportsImages: boolean;
@@ -92,7 +87,7 @@ export interface AgentCapabilities {
   availableTools?: string[];
   specializations?: string[];
 }
-
+// eslint-disable-next-line import/no-unused-modules
 export interface AgentLimits {
   maxTokensPerRequest: number;
   maxRequestsPerHour: number;
@@ -103,7 +98,7 @@ export interface AgentLimits {
   maxConcurrentTasks: number;
   cooldownPeriod: number; // milliseconds between requests
 }
-
+// eslint-disable-next-line import/no-unused-modules
 export interface AgentAuthentication {
   type: 'api-key' | 'oauth' | 'basic' | 'token' | 'certificate';
   credentials?: {
@@ -126,7 +121,7 @@ export interface AgentAuthentication {
   lastValidated?: Date;
   expiresAt?: Date;
 }
-
+// eslint-disable-next-line import/no-unused-modules
 export interface AgentPersonality {
   tone: 'professional' | 'friendly' | 'casual' | 'technical' | 'creative';
   language: string;
@@ -143,7 +138,7 @@ export interface AgentPersonality {
     includeExplanations: boolean;
   };
 }
-
+// eslint-disable-next-line import/no-unused-modules
 export interface AgentTool {
   id: string;
   name: string;
@@ -156,7 +151,7 @@ export interface AgentTool {
     cooldownMs: number;
   };
 }
-
+// eslint-disable-next-line import/no-unused-modules
 export interface AgentEnvironment {
   workingDirectory?: string;
   shell?: string;
@@ -178,7 +173,7 @@ export interface AgentEnvironment {
     allowDelete: boolean;
   };
 }
-
+// eslint-disable-next-line import/no-unused-modules
 export interface AgentPreferences {
   autoSave: boolean;
   autoCommit: boolean;
@@ -197,7 +192,7 @@ export interface AgentPreferences {
     branchNaming: string;
   };
 }
-
+// eslint-disable-next-line import/no-unused-modules
 export interface AgentMetadata {
   version: string;
   author: string;
@@ -215,7 +210,7 @@ export interface AgentMetadata {
     pythonVersions?: string[];
   };
 }
-
+// eslint-disable-next-line import/no-unused-modules
 export interface AgentConfigTemplate {
   id: string;
   name: string;
@@ -225,7 +220,7 @@ export interface AgentConfigTemplate {
   variables: TemplateVariable[];
   requiredFeatures: string[];
 }
-
+// eslint-disable-next-line import/no-unused-modules
 export interface TemplateVariable {
   name: string;
   type: 'string' | 'number' | 'boolean' | 'array' | 'object' | 'secret';
@@ -241,73 +236,66 @@ export interface TemplateVariable {
   placeholder?: string;
   helpText?: string;
 }
-
 export interface AgentConfigValidation {
   valid: boolean;
   errors: ValidationError[];
   warnings: ValidationWarning[];
   suggestions: string[];
 }
-
 export interface ValidationError {
   field: string;
   message: string;
   code: string;
   severity: 'error' | 'warning' | 'info';
 }
-
 export interface ValidationWarning {
   field: string;
   message: string;
   recommendation: string;
 }
-
 /**
  * ♫ Agent Configuration Manager
  */
 export class AgentConfigManager extends EventEmitter {
-  private configs: Map<string, AgentConfig> = new Map();
-  private templates: Map<string, AgentConfigTemplate> = new Map();
-  private configPath: string = '.prprc';
-
+  private readonly configs = new Map<string, AgentConfig>();
+  private readonly templates = new Map<string, AgentConfigTemplate>();
+  private readonly configPath = '.prprc';
   constructor() {
     super();
     this.initializeDefaultTemplates();
   }
-
   /**
    * Load agent configuration from file
    */
   async loadConfig(configPath?: string): Promise<AgentConfig[]> {
     const path = configPath ?? this.configPath;
-
     try {
       const exists = await FileUtils.pathExists(path);
       if (!exists) {
         logger.info('AgentConfigManager', `No config file found at ${path}, using defaults`, {
-          path
+          path,
         });
-        return this.createDefaultConfig();
+        return await this.createDefaultConfig();
       }
-
       const configData = await ConfigUtils.loadConfigFile<Record<string, unknown>>(path);
       if (!configData?.['agents']) {
         logger.warn('AgentConfigManager', 'Invalid config format, using defaults', { path });
-        return this.createDefaultConfig();
+        return await this.createDefaultConfig();
       }
-
       const agents: AgentConfig[] = [];
-      for (const agentData of configData['agents'] as unknown[]) {
-        const agent = this.validateAndNormalizeAgent(agentData);
-        if (agent) {
-          this.configs.set(agent.id, agent);
-          agents.push(agent);
+      const agentsArray = configData['agents'];
+      if (Array.isArray(agentsArray)) {
+        for (const agentData of agentsArray) {
+          const agent = this.validateAndNormalizeAgent(agentData);
+          if (agent) {
+            this.configs.set(agent.id, agent);
+            agents.push(agent);
+          }
         }
       }
-
       logger.info('AgentConfigManager', `Loaded ${agents.length} agent configurations`, {
         count: agents.length,
-        path
+        path,
       });
       this.emit('config-loaded', agents);
       return agents;
@@ -316,30 +304,27 @@ export class AgentConfigManager extends EventEmitter {
         'AgentConfigManager',
         'Failed to load configuration',
         error instanceof Error ? error : new Error(String(error)),
-        { path }
+        { path },
       );
       return this.createDefaultConfig();
     }
   }
-
   /**
    * Save agent configuration to file
    */
   async saveConfig(agents: AgentConfig[], configPath?: string): Promise<void> {
     const path = configPath ?? this.configPath;
-
     try {
       const configData = {
         version: '1.0.0',
         agents: agents,
         templates: Array.from(this.templates.values()),
-        lastModified: new Date().toISOString()
+        lastModified: new Date().toISOString(),
       };
-
       await FileUtils.writeTextFile(path, JSON.stringify(configData, null, 2));
       logger.info('AgentConfigManager', `Saved ${agents.length} agent configurations to ${path}`, {
         count: agents.length,
-        path
+        path,
       });
       this.emit('config-saved', agents);
     } catch (error) {
@@ -347,47 +332,41 @@ export class AgentConfigManager extends EventEmitter {
         'AgentConfigManager',
         'Failed to save configuration',
         error instanceof Error ? error : new Error(String(error)),
-        { path }
+        { path },
       );
       throw error;
     }
   }
-
   /**
    * Get agent configuration by ID
    */
   getAgentConfig(agentId: string): AgentConfig | undefined {
     return this.configs.get(agentId);
   }
-
   /**
    * Get all agent configurations
    */
   getAllAgentConfigs(): AgentConfig[] {
     return Array.from(this.configs.values());
   }
-
   /**
    * Get agents by type
    */
   getAgentsByType(type: AgentType): AgentConfig[] {
     return this.getAllAgentConfigs().filter((agent) => agent.type === type);
   }
-
   /**
    * Get agents by role
    */
   getAgentsByRole(role: AgentRole): AgentConfig[] {
     return this.getAllAgentConfigs().filter((agent) => agent.role === role);
   }
-
   /**
    * Get enabled agents
    */
   getEnabledAgents(): AgentConfig[] {
     return this.getAllAgentConfigs().filter((agent) => agent.enabled);
   }
-
   /**
    * Add or update agent configuration
    */
@@ -395,27 +374,22 @@ export class AgentConfigManager extends EventEmitter {
     const validation = this.validateAgentConfig(agent);
     if (!validation.valid) {
       throw new Error(
-        `Invalid agent configuration: ${validation.errors.map((e) => e.message).join(', ')}`
+        `Invalid agent configuration: ${validation.errors.map((e) => e.message).join(', ')}`,
       );
     }
-
     // Normalize and sanitize
     const normalizedAgent = this.validateAndNormalizeAgent(agent);
     if (!normalizedAgent) {
       throw new Error('Failed to normalize agent configuration');
     }
-
     this.configs.set(normalizedAgent.id, normalizedAgent);
-
     // Save to storage
     await this.saveConfig(this.getAllAgentConfigs());
-
     this.emit('agent-updated', normalizedAgent);
     logger.info('AgentConfigManager', `Agent configuration saved: ${normalizedAgent.id}`, {
-      agentId: normalizedAgent.id
+      agentId: normalizedAgent.id,
     });
   }
-
   /**
    * Remove agent configuration
    */
@@ -424,15 +398,12 @@ export class AgentConfigManager extends EventEmitter {
     if (!agent) {
       return false;
     }
-
     this.configs.delete(agentId);
     await this.saveConfig(this.getAllAgentConfigs());
-
     this.emit('agent-removed', agentId);
     logger.info('AgentConfigManager', `Agent configuration removed: ${agentId}`, { agentId });
     return true;
   }
-
   /**
    * Enable/disable agent
    */
@@ -441,20 +412,16 @@ export class AgentConfigManager extends EventEmitter {
     if (!agent) {
       return false;
     }
-
     agent.enabled = enabled;
     agent.metadata.lastModified = new Date();
-
     await this.saveConfig(this.getAllAgentConfigs());
-
     this.emit('agent-toggled', { agentId, enabled });
     logger.info('AgentConfigManager', `Agent ${agentId} ${enabled ? 'enabled' : 'disabled'}`, {
       agentId,
-      enabled
+      enabled,
     });
     return true;
   }
-
   /**
    * Validate agent configuration
    */
@@ -462,172 +429,170 @@ export class AgentConfigManager extends EventEmitter {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
     const suggestions: string[] = [];
-
     // Type guard for agent object
     if (!agent || typeof agent !== 'object') {
       errors.push({
         field: 'agent',
         message: 'Agent configuration must be a valid object',
         code: 'INVALID_OBJECT',
-        severity: 'error'
+        severity: 'error',
       });
       return { valid: false, errors, warnings, suggestions };
     }
-
     const agentObj = agent as Record<string, unknown>;
-
     // Required fields
-    if (!agentObj['id'] || typeof agentObj['id'] !== 'string') {
+    const agentId = agentObj['id'];
+    if (!agentId || typeof agentId !== 'string') {
       errors.push({
         field: 'id',
         message: 'Agent ID is required and must be a string',
         code: 'REQUIRED_FIELD',
-        severity: 'error'
+        severity: 'error',
       });
     }
-
-    if (!agentObj['name'] || typeof agentObj['name'] !== 'string') {
+    const agentName = agentObj['name'];
+    if (!agentName || typeof agentName !== 'string') {
       errors.push({
         field: 'name',
         message: 'Agent name is required and must be a string',
         code: 'REQUIRED_FIELD',
-        severity: 'error'
+        severity: 'error',
       });
     }
-
     // Validate type
-    if (!agentObj['type'] || !this.isValidAgentType(String(agentObj['type']))) {
+    const agentType = agentObj['type'];
+    if (!agentType || !this.isValidAgentType(String(agentType))) {
       errors.push({
         field: 'type',
-        message: `Invalid agent type: ${String(agentObj['type'] ?? 'undefined')}`,
+        message: `Invalid agent type: ${String(agentType ?? 'undefined')}`,
         code: 'INVALID_TYPE',
-        severity: 'error'
+        severity: 'error',
       });
     }
-
     // Validate role
-    if (!agentObj['role'] || !this.isValidAgentRole(String(agentObj['role']))) {
+    const agentRole = agentObj['role'];
+    if (!agentRole || !this.isValidAgentRole(String(agentRole))) {
       errors.push({
         field: 'role',
-        message: `Invalid agent role: ${String(agentObj['role'] ?? 'undefined')}`,
+        message: `Invalid agent role: ${String(agentRole ?? 'undefined')}`,
         code: 'INVALID_ROLE',
-        severity: 'error'
+        severity: 'error',
       });
     }
-
     // Validate provider
-    if (!agentObj['provider'] || !this.isValidProviderType(String(agentObj['provider']))) {
+    const agentProvider = agentObj['provider'];
+    if (!agentProvider || !this.isValidProviderType(String(agentProvider))) {
       errors.push({
         field: 'provider',
-        message: `Invalid provider type: ${String(agentObj['provider'] ?? 'undefined')}`,
+        message: `Invalid provider type: ${String(agentProvider ?? 'undefined')}`,
         code: 'INVALID_PROVIDER',
-        severity: 'error'
+        severity: 'error',
       });
     }
-
     // Validate capabilities
-    if (agentObj['capabilities'] && typeof agentObj['capabilities'] === 'object') {
-      const capabilities = agentObj['capabilities'] as Record<string, unknown>;
+    const agentCapabilities = agentObj['capabilities'];
+    if (agentCapabilities && typeof agentCapabilities === 'object' && agentCapabilities !== null) {
+      const capabilities = agentCapabilities as Record<string, unknown>;
+      const maxContextLength = capabilities['maxContextLength'];
       if (
-        typeof capabilities['maxContextLength'] !== 'number' ||
-        capabilities['maxContextLength'] <= 0
+        typeof maxContextLength !== 'number' ||
+        maxContextLength <= 0
       ) {
         errors.push({
           field: 'capabilities.maxContextLength',
           message: 'Max context length must be a positive number',
           code: 'INVALID_VALUE',
-          severity: 'error'
+          severity: 'error',
         });
       }
-
+      const supportsTools = capabilities['supportsTools'];
       if (
-        capabilities['supportsTools'] === true &&
-        (!agentObj['tools'] ||
-          !Array.isArray(agentObj['tools']) ||
-          (agentObj['tools'] as unknown[]).length === 0)
+        supportsTools === true
       ) {
-        warnings.push({
-          field: 'tools',
-          message: 'Agent supports tools but no tools are configured',
-          recommendation: 'Add tools to the agent configuration'
-        });
+        const agentTools = agentObj['tools'];
+        if (!agentTools || !Array.isArray(agentTools) || agentTools.length === 0) {
+          warnings.push({
+            field: 'tools',
+            message: 'Agent supports tools but no tools are configured',
+            recommendation: 'Add tools to the agent configuration',
+          });
+        }
       }
     }
-
     // Validate limits
-    if (agentObj['limits'] && typeof agentObj['limits'] === 'object') {
-      const limits = agentObj['limits'] as Record<string, unknown>;
-      if (typeof limits['maxTokensPerRequest'] !== 'number' || limits['maxTokensPerRequest'] <= 0) {
+    const agentLimits = agentObj['limits'];
+    if (agentLimits && typeof agentLimits === 'object' && agentLimits !== null) {
+      const limits = agentLimits as Record<string, unknown>;
+      const maxTokensPerRequest = limits['maxTokensPerRequest'];
+      if (typeof maxTokensPerRequest !== 'number' || maxTokensPerRequest <= 0) {
         errors.push({
           field: 'limits.maxTokensPerRequest',
           message: 'Max tokens per request must be greater than 0',
           code: 'INVALID_VALUE',
-          severity: 'error'
+          severity: 'error',
         });
       }
-
-      if (typeof limits['maxCostPerDay'] !== 'number' || limits['maxCostPerDay'] < 0) {
+      const maxCostPerDay = limits['maxCostPerDay'];
+      if (typeof maxCostPerDay !== 'number' || maxCostPerDay < 0) {
         errors.push({
           field: 'limits.maxCostPerDay',
           message: 'Max cost per day cannot be negative',
           code: 'INVALID_VALUE',
-          severity: 'error'
+          severity: 'error',
         });
       }
     }
-
     // Validate authentication
-    if (agentObj['authentication'] && typeof agentObj['authentication'] === 'object') {
-      const auth = agentObj['authentication'] as Record<string, unknown>;
+    const agentAuthentication = agentObj['authentication'];
+    if (agentAuthentication && typeof agentAuthentication === 'object' && agentAuthentication !== null) {
+      const auth = agentAuthentication as Record<string, unknown>;
       if (auth['type'] === 'api-key') {
         const credentials = auth['credentials'] as Record<string, unknown>;
-        if (!credentials['apiKey']) {
+        if (credentials && typeof credentials === 'object' && !credentials['apiKey']) {
           errors.push({
             field: 'authentication.credentials.apiKey',
             message: 'API key is required for api-key authentication',
             code: 'MISSING_CREDENTIALS',
-            severity: 'error'
+            severity: 'error',
           });
         }
       }
-
-      if (auth['encrypted'] === true && !process['env']['ENCRYPTION_KEY']) {
+      if (auth['encrypted'] === true && !process.env?.ENCRYPTION_KEY) {
         warnings.push({
           field: 'authentication.encrypted',
           message: 'Authentication is marked as encrypted but no encryption key is available',
-          recommendation: 'Set ENCRYPTION_KEY environment variable'
+          recommendation: 'Set ENCRYPTION_KEY environment variable',
         });
       }
     }
-
     // Suggestions
+    const agentPersonality = agentObj['personality'];
     if (
-      !agentObj['personality'] ||
-      typeof agentObj['personality'] !== 'object' ||
-      !(agentObj['personality'] as Record<string, unknown>)['customInstructions']
+      !agentPersonality ||
+      typeof agentPersonality !== 'object' ||
+      agentPersonality === null ||
+      !(agentPersonality as Record<string, unknown>)['customInstructions']
     ) {
       suggestions.push('Consider adding custom instructions to personalize agent behavior');
     }
-
+    const agentPreferences = agentObj['preferences'];
     if (
-      (!agentObj['preferences'] ||
-        typeof agentObj['preferences'] !== 'object' ||
-        !(agentObj['preferences'] as Record<string, unknown>)['autoSave']) &&
-      agentObj['role'] === 'robo-developer'
+      (!agentPreferences ||
+        typeof agentPreferences !== 'object' ||
+        agentPreferences === null ||
+        !(agentPreferences as Record<string, unknown>)['autoSave']) &&
+      (agentObj['role'] as string) === 'robo-developer'
     ) {
       suggestions.push('Consider enabling auto-save for developer agents');
     }
-
     const valid = errors.length === 0;
-
     return {
       valid,
       errors,
       warnings,
-      suggestions
+      suggestions,
     };
   }
-
   /**
    * Validate and normalize agent configuration
    */
@@ -635,34 +600,31 @@ export class AgentConfigManager extends EventEmitter {
     try {
       const validation = this.validateAgentConfig(agentData);
       if (!validation.valid) {
+        const agentId = agentData && typeof agentData === 'object' && agentData !== null
+          ? String((agentData as Record<string, unknown>)['id'] ?? 'unknown')
+          : 'unknown';
         logger.error(
           'AgentConfigManager',
           'Invalid agent configuration',
           new Error('Validation failed'),
           {
             errors: validation.errors.map((e) => e.message).join(', '),
-            agentId:
-              agentData && typeof agentData === 'object'
-                ? String((agentData as Record<string, unknown>)['id'] ?? 'unknown')
-                : 'unknown'
-          }
+            agentId,
+          },
         );
         return null;
       }
-
       if (!agentData || typeof agentData !== 'object' || agentData === null) {
         return null;
       }
-
       const data = agentData as Record<string, unknown>;
-
       // Apply defaults and normalize
       const agent: AgentConfig = {
         id: String(data['id'] ?? ''),
         name: String(data['name'] ?? ''),
-        type: (data['type'] as AgentType) || 'claude-code-anthropic',
-        role: (data['role'] as AgentRole) || 'orchestrator-agent',
-        provider: (data['provider'] as ProviderType) || 'anthropic',
+        type: this.isValidAgentType(String(data['type'] ?? '')) ? (data['type'] as AgentType) : 'claude-code-anthropic',
+        role: this.isValidAgentRole(String(data['role'] ?? '')) ? (data['role'] as AgentRole) : 'orchestrator-agent',
+        provider: this.isValidProviderType(String(data['provider'] ?? '')) ? (data['provider'] as ProviderType) : 'anthropic',
         enabled: Boolean(data['enabled'] ?? true),
         capabilities: {
           supportsTools:
@@ -672,33 +634,33 @@ export class AgentConfigManager extends EventEmitter {
           supportsImages:
             data['capabilities'] && typeof data['capabilities'] === 'object'
               ? Boolean(
-                (data['capabilities'] as Record<string, unknown>)['supportsImages'] ?? false
-              )
+                  (data['capabilities'] as Record<string, unknown>)['supportsImages'] ?? false,
+                )
               : false,
           supportsSubAgents:
             data['capabilities'] && typeof data['capabilities'] === 'object'
               ? Boolean(
-                (data['capabilities'] as Record<string, unknown>)['supportsSubAgents'] ?? false
-              )
+                  (data['capabilities'] as Record<string, unknown>)['supportsSubAgents'] ?? false,
+                )
               : false,
           supportsParallel:
             data['capabilities'] && typeof data['capabilities'] === 'object'
               ? Boolean(
-                (data['capabilities'] as Record<string, unknown>)['supportsParallel'] ?? false
-              )
+                  (data['capabilities'] as Record<string, unknown>)['supportsParallel'] ?? false,
+                )
               : false,
           supportsCodeExecution:
             data['capabilities'] && typeof data['capabilities'] === 'object'
               ? Boolean(
-                (data['capabilities'] as Record<string, unknown>)['supportsCodeExecution'] ??
-                    false
-              )
+                  (data['capabilities'] as Record<string, unknown>)['supportsCodeExecution'] ??
+                    false,
+                )
               : false,
           maxContextLength:
             data['capabilities'] && typeof data['capabilities'] === 'object'
               ? Number(
-                (data['capabilities'] as Record<string, unknown>)['maxContextLength'] || 4000
-              )
+                  (data['capabilities'] as Record<string, unknown>)['maxContextLength'] || 4000,
+                )
               : 4000,
           supportedModels:
             data['capabilities'] && typeof data['capabilities'] === 'object'
@@ -715,22 +677,22 @@ export class AgentConfigManager extends EventEmitter {
           canAccessInternet:
             data['capabilities'] && typeof data['capabilities'] === 'object'
               ? Boolean(
-                (data['capabilities'] as Record<string, unknown>)['canAccessInternet'] || true
-              )
+                  (data['capabilities'] as Record<string, unknown>)['canAccessInternet'] || true,
+                )
               : true,
           canAccessFileSystem:
             data['capabilities'] && typeof data['capabilities'] === 'object'
               ? Boolean(
-                (data['capabilities'] as Record<string, unknown>)['canAccessFileSystem'] || true
-              )
+                  (data['capabilities'] as Record<string, unknown>)['canAccessFileSystem'] || true,
+                )
               : true,
           canExecuteCommands:
             data['capabilities'] && typeof data['capabilities'] === 'object'
               ? Boolean(
-                (data['capabilities'] as Record<string, unknown>)['canExecuteCommands'] || false
-              )
+                  (data['capabilities'] as Record<string, unknown>)['canExecuteCommands'] || false,
+                )
               : false,
-          ...((data['capabilities'] as Record<string, unknown>) || {})
+          ...((data['capabilities'] as Record<string, unknown>) || {}),
         },
         limits: {
           maxTokensPerRequest:
@@ -765,7 +727,7 @@ export class AgentConfigManager extends EventEmitter {
             data['limits'] && typeof data['limits'] === 'object'
               ? Number((data['limits'] as Record<string, unknown>)['cooldownPeriod'] || 1000)
               : 1000,
-          ...((data['limits'] as Record<string, unknown>) || {})
+          ...((data['limits'] as Record<string, unknown>) || {}),
         },
         authentication: {
           type:
@@ -799,7 +761,7 @@ export class AgentConfigManager extends EventEmitter {
             data['authentication'] && typeof data['authentication'] === 'object'
               ? Boolean((data['authentication'] as Record<string, unknown>)['encrypted'] || false)
               : false,
-          ...((data['authentication'] as Record<string, unknown>) || {})
+          ...((data['authentication'] as Record<string, unknown>) || {}),
         },
         personality: {
           tone:
@@ -845,8 +807,8 @@ export class AgentConfigManager extends EventEmitter {
           customInstructions:
             data['personality'] && typeof data['personality'] === 'object'
               ? (((data['personality'] as Record<string, unknown>)[
-                'customInstructions'
-              ] as string) ?? '')
+                  'customInstructions'
+                ] as string) ?? '')
               : '',
           communicationStyle: {
             useEmojis:
@@ -856,12 +818,12 @@ export class AgentConfigManager extends EventEmitter {
               typeof (data['personality'] as Record<string, unknown>)['communicationStyle'] ===
                 'object'
                 ? Boolean(
-                  (
+                    (
                       (data['personality'] as Record<string, unknown>)[
                         'communicationStyle'
                       ] as Record<string, unknown>
-                  )['useEmojis'] ?? false
-                )
+                    )['useEmojis'] ?? false,
+                  )
                 : false,
             useFormatting:
               data['personality'] &&
@@ -870,12 +832,12 @@ export class AgentConfigManager extends EventEmitter {
               typeof (data['personality'] as Record<string, unknown>)['communicationStyle'] ===
                 'object'
                 ? Boolean(
-                  (
+                    (
                       (data['personality'] as Record<string, unknown>)[
                         'communicationStyle'
                       ] as Record<string, unknown>
-                  )['useFormatting'] ?? true
-                )
+                    )['useFormatting'] ?? true,
+                  )
                 : true,
             includeCodeBlocks:
               data['personality'] &&
@@ -884,12 +846,12 @@ export class AgentConfigManager extends EventEmitter {
               typeof (data['personality'] as Record<string, unknown>)['communicationStyle'] ===
                 'object'
                 ? Boolean(
-                  (
+                    (
                       (data['personality'] as Record<string, unknown>)[
                         'communicationStyle'
                       ] as Record<string, unknown>
-                  )['includeCodeBlocks'] ?? true
-                )
+                    )['includeCodeBlocks'] ?? true,
+                  )
                 : true,
             includeExplanations:
               data['personality'] &&
@@ -898,21 +860,21 @@ export class AgentConfigManager extends EventEmitter {
               typeof (data['personality'] as Record<string, unknown>)['communicationStyle'] ===
                 'object'
                 ? Boolean(
-                  (
+                    (
                       (data['personality'] as Record<string, unknown>)[
                         'communicationStyle'
                       ] as Record<string, unknown>
-                  )['includeExplanations'] ?? true
-                )
+                    )['includeExplanations'] ?? true,
+                  )
                 : true,
             ...(data['personality'] && typeof data['personality'] === 'object'
               ? ((data['personality'] as Record<string, unknown>)['communicationStyle'] as Record<
                   string,
                   unknown
                 >) || {}
-              : {})
+              : {}),
           },
-          ...((data['personality'] as Record<string, unknown>) ?? {})
+          ...((data['personality'] as Record<string, unknown>) ?? {}),
         },
         tools: Array.isArray(data['tools']) ? (data['tools'] as AgentTool[]) : [],
         environment: {
@@ -985,20 +947,20 @@ export class AgentConfigManager extends EventEmitter {
               (data['environment'] as Record<string, unknown>)['networkAccess'] &&
               typeof (data['environment'] as Record<string, unknown>)['networkAccess'] === 'object'
                 ? Boolean(
-                  (
+                    (
                       (data['environment'] as Record<string, unknown>)['networkAccess'] as Record<
                         string,
                         unknown
                       >
-                  )['allowExternalRequests'] ?? true
-                )
+                    )['allowExternalRequests'] ?? true,
+                  )
                 : true,
             ...(data['environment'] && typeof data['environment'] === 'object'
               ? ((data['environment'] as Record<string, unknown>)['networkAccess'] as Record<
                   string,
                   unknown
                 >) || {}
-              : {})
+              : {}),
           },
           fileSystem: {
             allowedPaths:
@@ -1031,13 +993,13 @@ export class AgentConfigManager extends EventEmitter {
               (data['environment'] as Record<string, unknown>)['fileSystem'] &&
               typeof (data['environment'] as Record<string, unknown>)['fileSystem'] === 'object'
                 ? Number(
-                  (
+                    (
                       (data['environment'] as Record<string, unknown>)['fileSystem'] as Record<
                         string,
                         unknown
                       >
-                  )['maxFileSize'] ?? 10485760
-                )
+                    )['maxFileSize'] ?? 10485760,
+                  )
                 : 10485760,
             allowWrite:
               data['environment'] &&
@@ -1045,13 +1007,13 @@ export class AgentConfigManager extends EventEmitter {
               (data['environment'] as Record<string, unknown>)['fileSystem'] &&
               typeof (data['environment'] as Record<string, unknown>)['fileSystem'] === 'object'
                 ? Boolean(
-                  (
+                    (
                       (data['environment'] as Record<string, unknown>)['fileSystem'] as Record<
                         string,
                         unknown
                       >
-                  )['allowWrite'] ?? true
-                )
+                    )['allowWrite'] ?? true,
+                  )
                 : true,
             allowDelete:
               data['environment'] &&
@@ -1059,22 +1021,22 @@ export class AgentConfigManager extends EventEmitter {
               (data['environment'] as Record<string, unknown>)['fileSystem'] &&
               typeof (data['environment'] as Record<string, unknown>)['fileSystem'] === 'object'
                 ? Boolean(
-                  (
+                    (
                       (data['environment'] as Record<string, unknown>)['fileSystem'] as Record<
                         string,
                         unknown
                       >
-                  )['allowDelete'] ?? false
-                )
+                    )['allowDelete'] ?? false,
+                  )
                 : false,
             ...(data['environment'] && typeof data['environment'] === 'object'
               ? ((data['environment'] as Record<string, unknown>)['fileSystem'] as Record<
                   string,
                   unknown
                 >) || {}
-              : {})
+              : {}),
           },
-          ...((data['environment'] as Record<string, unknown>) ?? {})
+          ...((data['environment'] as Record<string, unknown>) ?? {}),
         },
         preferences: {
           autoSave:
@@ -1112,13 +1074,13 @@ export class AgentConfigManager extends EventEmitter {
               (data['preferences'] as Record<string, unknown>)['notifications'] &&
               typeof (data['preferences'] as Record<string, unknown>)['notifications'] === 'object'
                 ? Boolean(
-                  (
+                    (
                       (data['preferences'] as Record<string, unknown>)['notifications'] as Record<
                         string,
                         unknown
                       >
-                  )['enabled'] ?? true
-                )
+                    )['enabled'] ?? true,
+                  )
                 : true,
             types:
               data['preferences'] &&
@@ -1131,9 +1093,9 @@ export class AgentConfigManager extends EventEmitter {
                       unknown
                     >
                   )['types'] as ('error' | 'info' | 'success' | 'warning')[] | undefined) ?? [
-                  'error',
-                  'warning'
-                ])
+                    'error',
+                    'warning',
+                  ])
                 : ['error', 'warning'],
             channels:
               data['preferences'] &&
@@ -1146,15 +1108,15 @@ export class AgentConfigManager extends EventEmitter {
                       unknown
                     >
                   )['channels'] as ('file' | 'console' | 'email' | 'slack')[] | undefined) ?? [
-                  'console'
-                ])
+                    'console',
+                  ])
                 : ['console'],
             ...(data['preferences'] && typeof data['preferences'] === 'object'
               ? ((data['preferences'] as Record<string, unknown>)['notifications'] as Record<
                   string,
                   unknown
                 >) || {}
-              : {})
+              : {}),
           },
           git: {
             autoStage:
@@ -1163,13 +1125,13 @@ export class AgentConfigManager extends EventEmitter {
               (data['preferences'] as Record<string, unknown>)['git'] &&
               typeof (data['preferences'] as Record<string, unknown>)['git'] === 'object'
                 ? Boolean(
-                  (
+                    (
                       (data['preferences'] as Record<string, unknown>)['git'] as Record<
                         string,
                         unknown
                       >
-                  )['autoStage'] ?? true
-                )
+                    )['autoStage'] ?? true,
+                  )
                 : true,
             commitMessageFormat:
               data['preferences'] &&
@@ -1200,9 +1162,9 @@ export class AgentConfigManager extends EventEmitter {
                   string,
                   unknown
                 >) || {}
-              : {})
+              : {}),
           },
-          ...((data['preferences'] as Record<string, unknown>) ?? {})
+          ...((data['preferences'] as Record<string, unknown>) ?? {}),
         },
         metadata: {
           version:
@@ -1291,12 +1253,11 @@ export class AgentConfigManager extends EventEmitter {
                   string,
                   unknown
                 >) || {}
-              : {})
+              : {}),
           },
-          ...((data['metadata'] as Record<string, unknown>) || {})
-        }
+          ...((data['metadata'] as Record<string, unknown>) || {}),
+        },
       };
-
       return agent;
     } catch (error) {
       const agentId =
@@ -1307,12 +1268,11 @@ export class AgentConfigManager extends EventEmitter {
         'AgentConfigManager',
         'Failed to validate agent',
         error instanceof Error ? error : new Error(String(error)),
-        { agentId: String(agentId) }
+        { agentId: String(agentId) },
       );
       return null;
     }
   }
-
   /**
    * Check if agent type is valid
    */
@@ -1325,11 +1285,10 @@ export class AgentConfigManager extends EventEmitter {
       'amp',
       'aider',
       'github-copilot',
-      'custom'
+      'custom',
     ];
     return validTypes.includes(type as AgentType);
   }
-
   /**
    * Check if agent role is valid
    */
@@ -1346,11 +1305,10 @@ export class AgentConfigManager extends EventEmitter {
       'orchestrator-agent',
       'task-agent',
       'specialist-agent',
-      'conductor'
+      'conductor',
     ];
     return validRoles.includes(role as AgentRole);
   }
-
   /**
    * Check if provider type is valid
    */
@@ -1362,19 +1320,17 @@ export class AgentConfigManager extends EventEmitter {
       'groq',
       'ollama',
       'github',
-      'custom'
+      'custom',
     ];
     return validProviders.includes(provider as ProviderType);
   }
-
   /**
    * Create default configuration
    */
   private async createDefaultConfig(): Promise<AgentConfig[]> {
     logger.info('AgentConfigManager', 'Creating default agent configuration', {
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-
     const defaultAgents: AgentConfig[] = [
       {
         id: 'claude-code-anthropic-main',
@@ -1394,7 +1350,7 @@ export class AgentConfigManager extends EventEmitter {
           supportedFileTypes: ['*'],
           canAccessInternet: true,
           canAccessFileSystem: true,
-          canExecuteCommands: false
+          canExecuteCommands: false,
         },
         limits: {
           maxTokensPerRequest: 100000,
@@ -1404,14 +1360,14 @@ export class AgentConfigManager extends EventEmitter {
           maxExecutionTime: 600000, // 10 minutes
           maxMemoryUsage: 2048, // 2GB
           maxConcurrentTasks: 3,
-          cooldownPeriod: 2000 // 2 seconds
+          cooldownPeriod: 2000, // 2 seconds
         },
         authentication: {
           type: 'api-key',
           credentials: {
-            apiKey: process['env']['ANTHROPIC_API_KEY'] ?? ''
+            apiKey: process['env']['ANTHROPIC_API_KEY'] ?? '',
           },
-          encrypted: true
+          encrypted: true,
         },
         personality: {
           tone: 'professional',
@@ -1427,8 +1383,8 @@ export class AgentConfigManager extends EventEmitter {
             useEmojis: false,
             useFormatting: true,
             includeCodeBlocks: true,
-            includeExplanations: true
-          }
+            includeExplanations: true,
+          },
         },
         tools: [
           {
@@ -1437,7 +1393,7 @@ export class AgentConfigManager extends EventEmitter {
             type: 'builtin',
             enabled: true,
             configuration: {},
-            permissions: ['read']
+            permissions: ['read'],
           },
           {
             id: 'file-writer',
@@ -1445,8 +1401,8 @@ export class AgentConfigManager extends EventEmitter {
             type: 'builtin',
             enabled: true,
             configuration: {},
-            permissions: ['write']
-          }
+            permissions: ['write'],
+          },
         ],
         environment: {
           workingDirectory: process.cwd(),
@@ -1459,15 +1415,15 @@ export class AgentConfigManager extends EventEmitter {
           networkAccess: {
             allowedDomains: [],
             blockedDomains: [],
-            allowExternalRequests: true
+            allowExternalRequests: true,
           },
           fileSystem: {
             allowedPaths: [],
             blockedPaths: ['/etc', '/usr/bin', '/bin', '/sbin'],
             maxFileSize: 10485760, // 10MB
             allowWrite: true,
-            allowDelete: false
-          }
+            allowDelete: false,
+          },
         },
         preferences: {
           autoSave: true,
@@ -1479,13 +1435,13 @@ export class AgentConfigManager extends EventEmitter {
           notifications: {
             enabled: true,
             types: ['error', 'warning'],
-            channels: ['console']
+            channels: ['console'],
           },
           git: {
             autoStage: true,
             commitMessageFormat: 'feat: {description}',
-            branchNaming: 'feature/{name}'
-          }
+            branchNaming: 'feature/{name}',
+          },
         },
         metadata: {
           version: '1.0.0',
@@ -1501,18 +1457,15 @@ export class AgentConfigManager extends EventEmitter {
           compatibility: {
             platforms: ['linux', 'macos', 'windows'],
             nodeVersions: ['16', '18', '20'],
-            pythonVersions: ['3.8', '3.9', '3.10', '3.11']
-          }
-        }
-      }
+            pythonVersions: ['3.8', '3.9', '3.10', '3.11'],
+          },
+        },
+      },
     ];
-
     // Save default configuration
     await this.saveConfig(defaultAgents);
-
     return defaultAgents;
   }
-
   /**
    * Initialize default templates
    */
@@ -1538,15 +1491,15 @@ export class AgentConfigManager extends EventEmitter {
           supportedFileTypes: ['*'],
           canAccessInternet: true,
           canAccessFileSystem: true,
-          canExecuteCommands: false
+          canExecuteCommands: false,
         },
         authentication: {
           type: 'api-key',
           credentials: {
-            apiKey: '{{apiKey}}'
+            apiKey: '{{apiKey}}',
           },
-          encrypted: true
-        }
+          encrypted: true,
+        },
       },
       variables: [
         {
@@ -1554,7 +1507,7 @@ export class AgentConfigManager extends EventEmitter {
           type: 'secret',
           description: 'Anthropic API key',
           required: true,
-          placeholder: 'sk-ant-...'
+          placeholder: 'sk-ant-...',
         },
         {
           name: 'role',
@@ -1563,38 +1516,34 @@ export class AgentConfigManager extends EventEmitter {
           required: true,
           defaultValue: 'orchestrator-agent',
           validation: {
-            options: ['orchestrator-agent', 'task-agent', 'specialist-agent', 'robo-developer']
-          }
-        }
+            options: ['orchestrator-agent', 'task-agent', 'specialist-agent', 'robo-developer'],
+          },
+        },
       ],
-      requiredFeatures: ['anthropic-api-access']
+      requiredFeatures: ['anthropic-api-access'],
     });
-
     logger.debug('AgentConfigManager', 'Default templates initialized', {
-      templateCount: this.templates.size
+      templateCount: this.templates.size,
     });
   }
-
   /**
    * Get configuration template
    */
   getTemplate(templateId: string): AgentConfigTemplate | undefined {
     return this.templates.get(templateId);
   }
-
   /**
    * Get all templates
    */
   getAllTemplates(): AgentConfigTemplate[] {
     return Array.from(this.templates.values());
   }
-
   /**
    * Create agent from template
    */
   createAgentFromTemplate(
     templateId: string,
-    variables: Record<string, unknown>
+    variables: Record<string, unknown>,
   ): AgentConfig | null {
     const template = this.templates.get(templateId);
     if (!template) {
@@ -1602,11 +1551,10 @@ export class AgentConfigManager extends EventEmitter {
         'AgentConfigManager',
         `Template not found: ${templateId}`,
         new Error(`Template not found: ${templateId}`),
-        { templateId }
+        { templateId },
       );
       return null;
     }
-
     // Validate variables
     for (const variable of template.variables) {
       if (variable.required && !variables[variable.name]) {
@@ -1616,13 +1564,12 @@ export class AgentConfigManager extends EventEmitter {
           new Error('Template validation failed'),
           {
             templateId,
-            variableName: variable.name
-          }
+            variableName: variable.name,
+          },
         );
         return null;
       }
     }
-
     // Apply template with variables
     const agentId = HashUtils.generateId();
     const agentData = {
@@ -1632,22 +1579,18 @@ export class AgentConfigManager extends EventEmitter {
       metadata: {
         ...template.template.metadata,
         createdAt: new Date(),
-        lastModified: new Date()
-      }
+        lastModified: new Date(),
+      },
     };
-
     // Replace template variables
     const agentJson = JSON.stringify(agentData);
     const replacedJson = agentJson.replace(/\{\{(\w+)\}\}/g, (match, key) => {
       return variables[key] !== undefined ? String(variables[key]) : match;
     });
-
     const agent = JSON.parse(replacedJson);
     return this.validateAndNormalizeAgent(agent);
   }
 }
-
 // Global instance
 export const agentConfigManager = new AgentConfigManager();
-
 export default AgentConfigManager;

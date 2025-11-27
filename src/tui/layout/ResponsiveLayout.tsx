@@ -11,6 +11,20 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Box, Text, BoxProps } from 'ink';
 
+import type { TUIConfig, ScreenType, LayoutMode } from '../../shared/types/TUIConfig';
+
+interface TerminalLayout {
+  columns: number;
+  rows: number;
+  layoutMode: LayoutMode;
+  availableWidth: number;
+  availableHeight: number;
+  padding: {
+    horizontal: number;
+    vertical: number;
+  };
+}
+
 export interface ResponsiveLayoutProps {
   config: TUIConfig;
   currentScreen: ScreenType;
@@ -52,7 +66,7 @@ export interface ScreenLayout {
 export function calculateLayout(
   terminalWidth: number,
   terminalHeight: number,
-  config: TUIConfig
+  config: TUIConfig,
 ): ScreenLayout {
   // Use exact PRP breakpoints: ~80, 120, 160, 240 columns
   let mode: LayoutMode;
@@ -67,7 +81,7 @@ export function calculateLayout(
   }
 
   // Calculate base dimensions using PRP panel specifications
-  const leftMargin = 2;  // From design tokens
+  const leftMargin = 2; // From design tokens
   const rightMargin = 2;
   const headerHeight = 4; // From design tokens
   const footerHeight = 4; // From design tokens
@@ -76,7 +90,7 @@ export function calculateLayout(
   // Calculate panel widths based on exact PRP responsive strategies
   let mainWidth: number;
   let rightPanelWidth: number;
-  let leftPanelWidth: number = 0;
+  let leftPanelWidth = 0;
   let showRightPanel: boolean;
   let showLeftPanel: boolean;
   let multiScreen: boolean;
@@ -164,7 +178,7 @@ export function calculateLayout(
       rightMargin,
       headerHeight,
       footerHeight,
-      contentHeight
+      contentHeight,
     },
     showRightPanel,
     showLeftPanel,
@@ -175,8 +189,8 @@ export function calculateLayout(
       historyLines,
       infoColumns,
       allScreensVisible,
-      leftPanelWidth
-    }
+      leftPanelWidth,
+    },
   };
 }
 
@@ -190,26 +204,26 @@ export function useResponsiveLayout(config: TUIConfig) {
       columns,
       rows,
       layoutMode: 'compact',
-      availableWidth: columns - (config.layout.padding.horizontal * 2),
-      availableHeight: rows - (config.layout.padding.vertical * 2) - 7, // header + footer + margins
-      padding: config.layout.padding
+      availableWidth: columns - config.layout.padding.horizontal * 2,
+      availableHeight: rows - config.layout.padding.vertical * 2 - 7, // header + footer + margins
+      padding: config.layout.padding,
     };
   });
 
   const [screenLayout, setScreenLayout] = useState<ScreenLayout>(() =>
-    calculateLayout(process.stdout.columns, process.stdout.rows, config)
+    calculateLayout(process.stdout.columns, process.stdout.rows, config),
   );
 
   const handleResize = useCallback(() => {
     const { columns: newWidth, rows: newHeight } = process.stdout;
 
-    setTerminalLayout(prev => ({
+    setTerminalLayout((prev) => ({
       ...prev,
       columns: newWidth,
       rows: newHeight,
       layoutMode: screenLayout.mode,
-      availableWidth: newWidth - (config.layout.padding.horizontal * 2),
-      availableHeight: newHeight - (config.layout.padding.vertical * 2) - 7
+      availableWidth: newWidth - config.layout.padding.horizontal * 2,
+      availableHeight: newHeight - config.layout.padding.vertical * 2 - 7,
     }));
 
     setScreenLayout(calculateLayout(newWidth, newHeight, config));
@@ -228,7 +242,7 @@ export function useResponsiveLayout(config: TUIConfig) {
   return {
     terminalLayout,
     screenLayout,
-    handleResize
+    handleResize,
   };
 }
 
@@ -240,7 +254,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
   currentScreen,
   children,
   onResize,
-  onScreenChange
+  onScreenChange,
 }) => {
   const { terminalLayout, screenLayout, handleResize } = useResponsiveLayout(config);
 
@@ -262,7 +276,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
     rightMargin,
     headerHeight,
     footerHeight,
-    contentHeight
+    contentHeight,
   } = dimensions;
 
   // For ultrawide mode with all screens visible, create three-column layout
@@ -281,12 +295,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
         </Box>
 
         {/* Three-Column Content Area for Ultrawide */}
-        <Box
-          flexGrow={1}
-          flexDirection="row"
-          paddingLeft={leftMargin}
-          paddingRight={rightMargin}
-        >
+        <Box flexGrow={1} flexDirection="row" paddingLeft={leftMargin} paddingRight={rightMargin}>
           {/* Left Panel - Orchestrator Screen */}
           <Box
             width={responsive.leftPanelWidth}
@@ -381,39 +390,22 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
       </Box>
 
       {/* Main Content Area */}
-      <Box
-        flexGrow={1}
-        flexDirection="row"
-        paddingLeft={leftMargin}
-        paddingRight={rightMargin}
-      >
+      <Box flexGrow={1} flexDirection="row" paddingLeft={leftMargin} paddingRight={rightMargin}>
         {/* Left Panel (ultrawide mode, non-all-screens) */}
         {showLeftPanel && (
-          <Box
-            width={responsive.leftPanelWidth}
-            paddingRight={1}
-            flexDirection="column"
-          >
+          <Box width={responsive.leftPanelWidth} paddingRight={1} flexDirection="column">
             {/* Left panel content */}
           </Box>
         )}
 
         {/* Main Content */}
-        <Box
-          flexGrow={1}
-          flexDirection="column"
-          height={contentHeight}
-        >
+        <Box flexGrow={1} flexDirection="column" height={contentHeight}>
           {children}
         </Box>
 
         {/* Right Panel */}
         {showRightPanel && (
-          <Box
-            width={rightPanelWidth}
-            paddingLeft={1}
-            flexDirection="column"
-          >
+          <Box width={rightPanelWidth} paddingLeft={1} flexDirection="column">
             {/* Right panel content (PRP list) */}
           </Box>
         )}
@@ -465,27 +457,15 @@ export const OrchestratorLayout: React.FC<{
       </Box>
 
       {/* Main Content Area */}
-      <Box
-        flexGrow={1}
-        flexDirection="row"
-        paddingLeft={leftMargin}
-        paddingRight={rightMargin}
-      >
+      <Box flexGrow={1} flexDirection="row" paddingLeft={leftMargin} paddingRight={rightMargin}>
         {/* Main Content */}
-        <Box
-          flexGrow={1}
-          flexDirection="column"
-        >
+        <Box flexGrow={1} flexDirection="column">
           {children}
         </Box>
 
         {/* Right Panel - PRP List */}
         {showRightPanel && rightPanelContent && (
-          <Box
-            width={dimensions.rightPanelWidth}
-            paddingLeft={1}
-            flexDirection="column"
-          >
+          <Box width={dimensions.rightPanelWidth} paddingLeft={1} flexDirection="column">
             {rightPanelContent}
           </Box>
         )}
@@ -537,12 +517,7 @@ export const SplitLayout: React.FC<{
       </Box>
 
       {/* Split Content */}
-      <Box
-        flexGrow={1}
-        flexDirection="row"
-        paddingLeft={leftMargin}
-        paddingRight={rightMargin}
-      >
+      <Box flexGrow={1} flexDirection="row" paddingLeft={leftMargin} paddingRight={rightMargin}>
         {/* Left/Primary Content */}
         <Box
           width={hasRightContent ? mainWidth : '100%'}
@@ -596,33 +571,29 @@ export const LayoutUtils = {
   /**
    * Calculate optimal text truncation based on available width
    */
-  getTruncateLength: (availableWidth: number, reserveWidth: number = 10) => {
+  getTruncateLength: (availableWidth: number, reserveWidth = 10) => {
     return Math.max(20, availableWidth - reserveWidth);
   },
 
   /**
    * Determine if multi-screen layout is appropriate
    */
-  shouldUseMultiScreen: (terminalWidth: number, minMainWidth: number = 80) => {
-    return terminalWidth >= (minMainWidth * 2) + 20; // Main + Main + Gutters
+  shouldUseMultiScreen: (terminalWidth: number, minMainWidth = 80) => {
+    return terminalWidth >= minMainWidth * 2 + 20; // Main + Main + Gutters
   },
 
   /**
    * Get optimal panel sizing for given terminal dimensions
    */
-  getOptimalPanelSize: (
-    terminalWidth: number,
-    minMainWidth: number = 80,
-    maxPanelWidth: number = 60
-  ) => {
+  getOptimalPanelSize: (terminalWidth: number, minMainWidth = 80, maxPanelWidth = 60) => {
     const availableWidth = terminalWidth - minMainWidth;
     const panelWidth = Math.min(maxPanelWidth, Math.floor(availableWidth / 2));
 
     return {
       mainWidth: terminalWidth - panelWidth,
-      panelWidth: Math.max(20, panelWidth)
+      panelWidth: Math.max(20, panelWidth),
     };
-  }
+  },
 };
 
 export default ResponsiveLayout;

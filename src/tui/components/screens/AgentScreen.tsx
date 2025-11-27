@@ -5,22 +5,26 @@
  * showing detailed agent output and tool calls with pagination
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, JSX } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { MusicIcon } from '../MusicIcon.js';
-import { getRoleColors } from '../../config/TUIConfig.js';
+
+import { MusicIcon } from '../MusicIcon';
+import { getRoleColors } from '../../config/TUIConfig';
+
+import type { TUIConfig, AgentCard } from '../../../shared/types/TUIConfig';
+import type { TUIState, TerminalLayout } from '../../../shared/types/TUIState';
 
 interface AgentScreenProps {
   state: TUIState;
   config: TUIConfig;
   terminalLayout: TerminalLayout;
-}
+};
 
 interface AgentPage {
   pageNumber: number;
   totalPages: number;
   content: React.ReactNode;
-}
+};
 
 const generateMockOutput = (agent: AgentCard, page: number): string[] => {
   const baseOutput = [
@@ -40,7 +44,7 @@ const generateMockOutput = (agent: AgentCard, page: number): string[] => {
     '▏next:',
     '▏  1) continue with current task',
     '▏  2) await further instructions',
-    '▏  3) report completion status'
+    '▏  3) report completion status',
   ];
 
   // Add page-specific content
@@ -82,27 +86,21 @@ const AgentDetailView: React.FC<{
       {/* Agent status line */}
       <Box marginBottom={1}>
         <MusicIcon status={agent.status} animate={agent.status === 'RUNNING'} />
-        <Text color={config.colors.base_fg}>
-          {' '}last ▸ {agent.task.toLowerCase()}
-        </Text>
+        <Text color={config.colors.base_fg}> last ▸ {agent.task.toLowerCase()}</Text>
       </Box>
 
       {/* Service line */}
       <Box marginBottom={1}>
-        <Text color={config.colors.base_fg}>
-          last ▸ commit prepared…
-        </Text>
+        <Text color={config.colors.base_fg}>last ▸ commit prepared…</Text>
       </Box>
 
       <Box marginBottom={1}>
         <Text color={config.colors.muted}>
-          svc  ▸ tokens={agent.tokens} · active={agent.active} · retries=0 · net=ok
+          svc ▸ tokens={agent.tokens} · active={agent.active} · retries=0 · net=ok
         </Text>
       </Box>
 
-      <Text color={config.colors.muted}>
-        ⋯ scroll ⋯
-      </Text>
+      <Text color={config.colors.muted}>⋯ scroll ⋯</Text>
 
       {/* Page content */}
       <Box flexDirection="column" marginTop={1} marginBottom={1}>
@@ -117,7 +115,9 @@ const AgentDetailView: React.FC<{
       {totalPages > 1 && (
         <Box justifyContent="center" marginTop={1}>
           <Text color={config.colors.muted}>
-            {currentPage > 1 && '← prev'}{currentPage > 1 && currentPage < totalPages && ' | '}Page {currentPage}{currentPage < totalPages && ' | next →'}
+            {currentPage > 1 && '← prev'}
+            {currentPage > 1 && currentPage < totalPages && ' | '}Page {currentPage}
+            {currentPage < totalPages && ' | next →'}
           </Text>
         </Box>
       )}
@@ -125,7 +125,7 @@ const AgentDetailView: React.FC<{
   );
 };
 
-export function AgentScreen({ state, config, terminalLayout }: AgentScreenProps) {
+export const AgentScreen = ({ state, config, terminalLayout }: AgentScreenProps) => {
   const [selectedAgentIndex, setSelectedAgentIndex] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -149,7 +149,8 @@ export function AgentScreen({ state, config, terminalLayout }: AgentScreenProps)
         }
         break;
       case 'right':
-        if (currentPage < 3) { // Assuming 3 pages max
+        if (currentPage < 3) {
+          // Assuming 3 pages max
           setCurrentPage(currentPage + 1);
         }
         break;
@@ -185,9 +186,7 @@ export function AgentScreen({ state, config, terminalLayout }: AgentScreenProps)
           <Text color={config.colors.accent_orange} bold>
             ♫ @dcversus/prp - Agent View
           </Text>
-          <Text color={config.colors.muted}>
-            ⧗ {new Date().toLocaleString()}
-          </Text>
+          <Text color={config.colors.muted}>⧗ {new Date().toLocaleString()}</Text>
         </Box>
 
         <Text color={config.colors.muted}>
@@ -196,18 +195,18 @@ export function AgentScreen({ state, config, terminalLayout }: AgentScreenProps)
 
         <Box flexDirection="column" justifyContent="center" alignItems="center" marginTop={5}>
           <MusicIcon status="IDLE" />
-          <Text color={config.colors.muted} marginTop={1}>
+          <Text color={config.colors.muted as string} marginTop={1}>
             ♪ No agents currently running
           </Text>
-          <Text color={config.colors.muted}>
+          <Text color={config.colors.muted as string}>
             Switch to Orchestrator screen to start agents
           </Text>
         </Box>
 
-        <Text color={config.colors.muted} marginTop={5}>
+        <Text color={config.colors.muted as string} marginTop={5}>
           ─────────────────────────────────────────────────────────────────
         </Text>
-        <Text color={config.colors.muted}>
+        <Text color={config.colors.muted as string}>
           idle · agents 0 · prp {state.prps.size} · ▲0
         </Text>
       </Box>
@@ -221,9 +220,7 @@ export function AgentScreen({ state, config, terminalLayout }: AgentScreenProps)
         <Text color={config.colors.accent_orange} bold>
           ♫ @dcversus/prp - Agent View
         </Text>
-        <Text color={config.colors.muted}>
-          ⧗ {new Date().toLocaleString()}
-        </Text>
+        <Text color={config.colors.muted}>⧗ {new Date().toLocaleString()}</Text>
       </Box>
 
       <Text color={config.colors.muted}>
@@ -242,7 +239,7 @@ export function AgentScreen({ state, config, terminalLayout }: AgentScreenProps)
                 key={agent.id}
                 marginX={1}
                 paddingX={1}
-                backgroundColor={isSelected ? roleColors.bg : undefined}
+                {...(isSelected && roleColors.bg && { backgroundColor: roleColors.bg as string })}
               >
                 <Text
                   color={isSelected ? config.colors.base_fg : roleColors.active}
@@ -273,21 +270,20 @@ export function AgentScreen({ state, config, terminalLayout }: AgentScreenProps)
       {/* Footer */}
       <Box justifyContent="space-between">
         <Box>
-          <Text color={config.colors.muted}>
-            Tab S X D
-          </Text>
-          <Text color={config.colors.muted}>
-            {'    '}
-          </Text>
+          <Text color={config.colors.muted}>Tab S X D</Text>
+          <Text color={config.colors.muted}>{'    '}</Text>
         </Box>
 
         <Text color={config.colors.muted}>
           {selectedAgent ? (
             <>
-              {selectedAgent.status.toLowerCase()} · agents {agentArray.length} · prp {state.prps.size} · ▲0
+              {selectedAgent.status.toLowerCase()} · agents {agentArray.length} · prp{' '}
+              {state.prps.size} · ▲0
             </>
           ) : (
-            <>idle · agents {agentArray.length} · prp {state.prps.size} · ▲0</>
+            <>
+              idle · agents {agentArray.length} · prp {state.prps.size} · ▲0
+            </>
           )}
         </Text>
       </Box>
@@ -295,9 +291,10 @@ export function AgentScreen({ state, config, terminalLayout }: AgentScreenProps)
       {/* Navigation hints */}
       <Box justifyContent="center" marginTop={1}>
         <Text color={config.colors.muted}>
-          Navigation: [Tab] switch screens | [↑↓] switch agents | [←→] or [1-3] pages | [S] start | [X] stop | [D] debug
+          Navigation: [Tab] switch screens | [↑↓] switch agents | [←→] or [1-3] pages | [S] start |
+          [X] stop | [D] debug
         </Text>
       </Box>
     </Box>
   );
-}
+};

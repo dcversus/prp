@@ -6,51 +6,51 @@
  */
 
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+
 import { GuidelinesRegistry } from '../registry';
+
 import type { GuidelineDefinition, GuidelineMetrics } from '../types';
 
 // Mock the shared modules to avoid import issues
 jest.mock('../../shared', () => ({
   Signal: {},
   eventBus: {
-    subscribeToChannel: jest.fn()
+    subscribeToChannel: jest.fn(),
   },
   logger: {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-    debug: jest.fn()
+    debug: jest.fn(),
   },
   FileUtils: {
     pathExists: jest.fn(),
-    writeTextFile: jest.fn()
+    writeTextFile: jest.fn(),
   },
   ConfigUtils: {
-    loadConfigFile: jest.fn()
+    loadConfigFile: jest.fn(),
   },
   TimeUtils: {
-    now: jest.fn(() => new Date('2025-01-09T12:00:00Z'))
+    now: jest.fn(() => new Date('2025-01-09T12:00:00Z')),
   },
   HashUtils: {
-    generateId: jest.fn(() => 'test-id-123')
+    generateId: jest.fn(() => 'test-id-123'),
   },
   Validator: {
-    isValidAgentId: jest.fn(() => true)
+    isValidAgentId: jest.fn(() => true),
   },
   AgentRole: {
     DEVELOPER: 'developer',
-    SYSTEM_ANALYST: 'system-analyst'
-  }
+    SYSTEM_ANALYST: 'system-analyst',
+  },
 }));
 
 jest.mock('../../shared/config', () => ({
   configManager: {
     get: jest.fn(() => ({
-      agents: [
-        { type: 'github', credentials: { token: 'test-token' } }
-      ]
-    }))
-  }
+      agents: [{ type: 'github', credentials: { token: 'test-token' } }],
+    })),
+  },
 }));
 
 describe('GuidelinesRegistry', () => {
@@ -76,7 +76,7 @@ describe('GuidelinesRegistry', () => {
       const englishGuidelines = registry.getGuidelinesByLanguage('EN');
       expect(englishGuidelines.length).toBeGreaterThan(0);
 
-      englishGuidelines.forEach(guideline => {
+      englishGuidelines.forEach((guideline) => {
         expect(guideline.language).toBe('EN');
       });
     });
@@ -117,27 +117,29 @@ describe('GuidelinesRegistry', () => {
         protocol: {
           id: 'test-protocol',
           description: 'Test protocol',
-          steps: [{
-            id: 'test-step',
-            name: 'Test Step',
-            description: 'A test step',
-            type: 'inspector_analysis',
-            required: true,
-            outputs: ['test-output'],
-            nextSteps: []
-          }],
+          steps: [
+            {
+              id: 'test-step',
+              name: 'Test Step',
+              description: 'A test step',
+              type: 'inspector_analysis',
+              required: true,
+              outputs: ['test-output'],
+              nextSteps: [],
+            },
+          ],
           decisionPoints: [],
           successCriteria: ['Test completed'],
-          fallbackActions: ['Retry test']
+          fallbackActions: ['Retry test'],
         },
         requirements: [],
         prompts: {
           inspector: 'Test inspector prompt',
-          orchestrator: 'Test orchestrator prompt'
+          orchestrator: 'Test orchestrator prompt',
         },
         tokenLimits: {
           inspector: 1000,
-          orchestrator: 2000
+          orchestrator: 2000,
         },
         tools: ['test-tool'],
         metadata: {
@@ -147,8 +149,8 @@ describe('GuidelinesRegistry', () => {
           lastModified: new Date(),
           tags: ['test'],
           dependencies: [],
-          language: 'EN'
-        }
+          language: 'EN',
+        },
       };
 
       expect(() => registry.registerGuideline(testGuideline)).not.toThrow();
@@ -169,27 +171,29 @@ describe('GuidelinesRegistry', () => {
         protocol: {
           id: 'test-protocol',
           description: 'Test protocol',
-          steps: [{
-            id: 'test-step',
-            name: 'Test Step',
-            description: 'A test step',
-            type: 'inspector_analysis',
-            required: true,
-            outputs: ['test-output'],
-            nextSteps: []
-          }],
+          steps: [
+            {
+              id: 'test-step',
+              name: 'Test Step',
+              description: 'A test step',
+              type: 'inspector_analysis',
+              required: true,
+              outputs: ['test-output'],
+              nextSteps: [],
+            },
+          ],
           decisionPoints: [],
           successCriteria: ['Test completed'],
-          fallbackActions: ['Retry test']
+          fallbackActions: ['Retry test'],
         },
         requirements: [],
         prompts: {
           inspector: 'Test inspector prompt',
-          orchestrator: 'Test orchestrator prompt'
+          orchestrator: 'Test orchestrator prompt',
         },
         tokenLimits: {
           inspector: 1000,
-          orchestrator: 2000
+          orchestrator: 2000,
         },
         tools: ['test-tool'],
         metadata: {
@@ -199,8 +203,8 @@ describe('GuidelinesRegistry', () => {
           lastModified: new Date(),
           tags: ['test'],
           dependencies: [],
-          language: 'EN'
-        }
+          language: 'EN',
+        },
       };
 
       registry.registerGuideline(testGuideline);
@@ -215,7 +219,7 @@ describe('GuidelinesRegistry', () => {
       expect(allGuidelines.length).toBeGreaterThan(0);
 
       // Should include default guidelines
-      const pullRequestAnalysis = allGuidelines.find(g => g.id === 'pull-request-analysis');
+      const pullRequestAnalysis = allGuidelines.find((g) => g.id === 'pull-request-analysis');
       expect(pullRequestAnalysis).toBeDefined();
       expect(pullRequestAnalysis?.language).toBe('EN');
     });
@@ -224,7 +228,7 @@ describe('GuidelinesRegistry', () => {
       const developmentGuidelines = registry.getGuidelinesByCategory('development');
       expect(developmentGuidelines.length).toBeGreaterThan(0);
 
-      developmentGuidelines.forEach(guideline => {
+      developmentGuidelines.forEach((guideline) => {
         expect(guideline.category).toBe('development');
       });
     });
@@ -233,7 +237,7 @@ describe('GuidelinesRegistry', () => {
       const enabledGuidelines = registry.getEnabledGuidelines();
       expect(enabledGuidelines.length).toBeGreaterThan(0);
 
-      enabledGuidelines.forEach(guideline => {
+      enabledGuidelines.forEach((guideline) => {
         expect(guideline.enabled).toBe(true);
       });
     });
@@ -272,7 +276,9 @@ describe('GuidelinesRegistry', () => {
     });
 
     it('should track individual guideline metrics', () => {
-      const pullRequestMetrics = registry.getMetrics('pull-request-analysis') as GuidelineMetrics | undefined;
+      const pullRequestMetrics = registry.getMetrics('pull-request-analysis') as
+        | GuidelineMetrics
+        | undefined;
       expect(pullRequestMetrics).toBeDefined();
       expect(pullRequestMetrics?.guidelineId).toBe('pull-request-analysis');
     });
@@ -309,27 +315,29 @@ describe('GuidelinesRegistry', () => {
         protocol: {
           id: 'test-protocol',
           description: 'Test protocol',
-          steps: [{
-            id: 'test-step',
-            name: 'Test Step',
-            description: 'A test step',
-            type: 'inspector_analysis',
-            required: true,
-            outputs: ['test-output'],
-            nextSteps: []
-          }],
+          steps: [
+            {
+              id: 'test-step',
+              name: 'Test Step',
+              description: 'A test step',
+              type: 'inspector_analysis',
+              required: true,
+              outputs: ['test-output'],
+              nextSteps: [],
+            },
+          ],
           decisionPoints: [],
           successCriteria: ['Test completed'],
-          fallbackActions: ['Retry test']
+          fallbackActions: ['Retry test'],
         },
         requirements: [],
         prompts: {
           inspector: 'Test inspector prompt',
-          orchestrator: 'Test orchestrator prompt'
+          orchestrator: 'Test orchestrator prompt',
         },
         tokenLimits: {
           inspector: 1000,
-          orchestrator: 2000
+          orchestrator: 2000,
         },
         tools: ['test-tool'],
         metadata: {
@@ -339,8 +347,8 @@ describe('GuidelinesRegistry', () => {
           lastModified: new Date(),
           tags: ['test'],
           dependencies: [],
-          language: 'EN'
-        }
+          language: 'EN',
+        },
       };
 
       registry.registerGuideline(testGuideline);

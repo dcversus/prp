@@ -1,7 +1,6 @@
 /**
  * Token metrics data structures for real-time monitoring
  */
-
 export interface TokenMetrics {
   prpId: string;
   agentType: string;
@@ -12,7 +11,6 @@ export interface TokenMetrics {
   signalsProcessed: number;
   cost: number;
 }
-
 export interface TokenDataPoint {
   timestamp: Date;
   agentId: string;
@@ -21,7 +19,6 @@ export interface TokenDataPoint {
   remaining: number;
   cost?: number;
 }
-
 export interface TokenUsageEvent {
   agentId: string;
   agentType: string;
@@ -35,16 +32,15 @@ export interface TokenUsageEvent {
   signal?: string;
   cost?: number;
 }
-
 // Enhanced interfaces for real-time token monitoring
 export interface TokenLimitEnforcement {
   agentId: string;
   agentType: string;
   thresholds: {
-    softWarning: number;    // 70%
+    softWarning: number; // 70%
     moderateWarning: number; // 80%
     criticalWarning: number; // 90%
-    hardStop: number;       // 95%
+    hardStop: number; // 95%
   };
   enforcement: {
     at70percent: 'log_warning';
@@ -54,24 +50,23 @@ export interface TokenLimitEnforcement {
     at100percent: 'emergency_stop';
   };
 }
-
 export interface TokenCostCalculation {
   model: string;
   provider: 'openai' | 'anthropic' | 'cohere' | 'custom';
-  inputTokenPrice: number;  // Price per 1K input tokens
+  inputTokenPrice: number; // Price per 1K input tokens
   outputTokenPrice: number; // Price per 1K output tokens
   currency: string;
   lastUpdated: Date;
 }
-
 export interface TokenMonitoringConfig {
-  agents: {
-    [agentType: string]: {
+  agents: Record<
+    string,
+    {
       tokenLimits: TokenLimits;
       costThresholds: CostThresholds;
       monitoringSettings: MonitoringSettings;
-    };
-  };
+    }
+  >;
   system: {
     updateFrequency: number;
     retentionPeriod: number;
@@ -79,22 +74,19 @@ export interface TokenMonitoringConfig {
     performanceMode: 'high' | 'balanced' | 'low';
   };
 }
-
 export interface TokenLimits {
   daily?: number;
   weekly?: number;
   monthly?: number;
   total?: number;
 }
-
 export interface CostThresholds {
-  warningThreshold: number;  // 80% default
+  warningThreshold: number; // 80% default
   criticalThreshold: number; // 95% default
   dailyBudget?: number;
   weeklyBudget?: number;
   monthlyBudget?: number;
 }
-
 export interface MonitoringSettings {
   realTimeUpdates: boolean;
   eventBuffering: boolean;
@@ -102,7 +94,6 @@ export interface MonitoringSettings {
   analyticsEnabled: boolean;
   alertingEnabled: boolean;
 }
-
 export interface TokenStatistics {
   totalTokens: number;
   totalCost: number;
@@ -112,7 +103,6 @@ export interface TokenStatistics {
   efficiency: number; // tokens/cost ratio
   trend: 'increasing' | 'decreasing' | 'stable';
 }
-
 export interface TokenProjection {
   timeframe: 'hour' | 'day' | 'week' | 'month';
   projectedUsage: number;
@@ -120,19 +110,14 @@ export interface TokenProjection {
   confidence: number; // 0-1 confidence level
   recommendations: string[];
 }
-
 // Event system interfaces
-export interface TokenEventCallback {
-  (event: TokenUsageEvent): void;
-}
-
+export type TokenEventCallback = () => void;
 export interface TokenEventSubscription {
   id: string;
   agentId: string;
   callback: TokenEventCallback;
   createdAt: Date;
 }
-
 // Performance monitoring interfaces
 export interface TokenPerformanceMetrics {
   eventProcessingLatency: number; // milliseconds
@@ -142,7 +127,6 @@ export interface TokenPerformanceMetrics {
   subscriberCount: number;
   bufferUtilization: number; // percentage
 }
-
 // TUI dashboard interfaces
 export interface TUIDashboardData {
   summary: {
@@ -156,7 +140,6 @@ export interface TUIDashboardData {
   trends: TokenTrendData[];
   projections: TokenProjection[];
 }
-
 export interface AgentTokenStatus {
   agentId: string;
   agentType: string;
@@ -168,7 +151,6 @@ export interface AgentTokenStatus {
   lastActivity: Date;
   efficiency: number;
 }
-
 export interface TokenAlert {
   id: string;
   agentId: string;
@@ -177,7 +159,6 @@ export interface TokenAlert {
   timestamp: Date;
   acknowledged: boolean;
 }
-
 export interface TokenTrendData {
   timestamp: Date;
   usage: number;

@@ -24,7 +24,7 @@ const CONFIG = {
   packageJsonPath: join(__dirname, '../package.json'),
   changelogPath: join(__dirname, '../CHANGELOG.md'),
   distDir: join(__dirname, '../dist'),
-  buildInfoPath: join(__dirname, '../dist/build-info.json')
+  buildInfoPath: join(__dirname, '../dist/build-info.json'),
 };
 
 // Colors for terminal output
@@ -35,13 +35,13 @@ const COLORS = {
   yellow: '\x1b[33m',
   blue: '\x1b[34m',
   magenta: '\x1b[35m',
-  cyan: '\x1b[36m'
+  cyan: '\x1b[36m',
 };
 
-// Color helpers
-function colorLog(color, message) {
-  console.log(`${COLORS[color]}${message}${COLORS.reset}`);
-}
+// Color helpers (removed unused colorLog function)
+// function colorLog(color, message) {
+//   console.log(`${COLORS[color]}${message}${COLORS.reset}`);
+// }
 
 function colorError(message) {
   console.error(`${COLORS.red}❌ ${message}${COLORS.reset}`);
@@ -69,7 +69,7 @@ function parseArgs() {
     minify: false,
     skipVersionCheck: false,
     skipChangelogCheck: false,
-    help: false
+    help: false,
   };
 
   for (const arg of args) {
@@ -158,7 +158,7 @@ async function checkVersionUpdated() {
       try {
         const buildInfo = JSON.parse(readFileSync(CONFIG.buildInfoPath, 'utf8'));
         previousVersion = buildInfo.version;
-      } catch (error) {
+      } catch {
         colorWarning('Could not read previous build info, assuming new version');
       }
     }
@@ -196,10 +196,15 @@ function validateChangelog() {
     const currentVersion = getCurrentVersion();
 
     // Check if current version is mentioned in changelog
-    const versionPattern = new RegExp(`##\\s*\\[${currentVersion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]`, 'i');
+    const versionPattern = new RegExp(
+      `##\\s*\\[${currentVersion.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]`,
+      'i'
+    );
 
     if (!versionPattern.test(changelogContent)) {
-      throw new Error(`Version ${currentVersion} not found in CHANGELOG.md. Please add changelog entry for this version.`);
+      throw new Error(
+        `Version ${currentVersion} not found in CHANGELOG.md. Please add changelog entry for this version.`
+      );
     }
 
     colorSuccess(`CHANGELOG.md contains entry for version ${currentVersion}`);
@@ -239,9 +244,7 @@ function buildCLI(options = {}) {
   colorInfo('Building CLI with tsup...');
 
   try {
-    const tsupCommand = options.minify
-      ? 'npx tsup --minify'
-      : 'npx tsup';
+    const tsupCommand = options.minify ? 'npx tsup --minify' : 'npx tsup';
 
     execSync(tsupCommand, { stdio: 'inherit' });
 
@@ -282,12 +285,14 @@ function generateBuildInfo(options = {}) {
       files: {
         cli: './dist/cli.js',
         index: './dist/index.js',
-        types: './dist/index.d.ts'
-      }
+        types: './dist/index.d.ts',
+      },
     };
 
     writeFileSync(CONFIG.buildInfoPath, JSON.stringify(buildInfo, null, 2));
-    colorSuccess(`Build metadata written to ${CONFIG.buildInfoPath.replace(CONFIG.distDir + '/', '')}`);
+    colorSuccess(
+      `Build metadata written to ${CONFIG.buildInfoPath.replace(CONFIG.distDir + '/', '')}`
+    );
 
     return buildInfo;
   } catch (error) {
@@ -361,7 +366,6 @@ async function build() {
 
     // Display summary
     displayBuildSummary(buildInfo, options);
-
   } catch (error) {
     colorError(`Build failed: ${error.message}`);
     process.exit(1);

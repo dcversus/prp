@@ -4,12 +4,7 @@
  * Tests for nudge type definitions and validation helpers.
  */
 
-import {
-  NudgeError,
-  isValidNudgeType,
-  isValidUrgency,
-  isValidResponseType
-} from '../types.js';
+import { NudgeError, isValidNudgeType, isValidUrgency, isValidResponseType } from '../types.js';
 
 describe('Nudge Types', () => {
   describe('NudgeError', () => {

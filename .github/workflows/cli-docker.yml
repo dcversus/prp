@@ -658,7 +658,8 @@ jobs:
   docker-status:
     name: Docker Pipeline Status
     runs-on: ubuntu-latest
-    needs: [docker-preflight, docker-build, docker-security, docker-performance-test, docker-publish]
+    needs:
+      [docker-preflight, docker-build, docker-security, docker-performance-test, docker-publish]
     if: always()
 
     steps:

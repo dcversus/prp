@@ -4,10 +4,9 @@
  * Provides paste detection, token counting, and metadata generation
  * for terminal UI paste events with 5% reserve enforcement
  */
-
 import crypto from 'crypto';
-import { logger } from '../../shared/logger.js';
 
+import { logger } from '../../shared/logger';
 // Interface for paste metadata
 export interface PasteMetadata {
   tokens: number;
@@ -16,14 +15,12 @@ export interface PasteMetadata {
   originalLength: number;
   processedContent: string;
 }
-
 // Interface for paste handler options
 export interface PasteHandlerOptions {
   maxTokens?: number;
   reservePercentage?: number;
   enableHashing?: boolean;
 }
-
 /**
  * Paste Handler Class
  *
@@ -33,14 +30,12 @@ export interface PasteHandlerOptions {
 export class PasteHandler {
   private maxTokens: number;
   private reservePercentage: number;
-  private enableHashing: boolean;
-
+  private readonly enableHashing: boolean;
   constructor(options: PasteHandlerOptions = {}) {
-    this.maxTokens = options.maxTokens || 200000; // Default from orchestrator caps
-    this.reservePercentage = options.reservePercentage || 5; // 5% reserve requirement
+    this.maxTokens = options.maxTokens ?? 200000; // Default from orchestrator caps
+    this.reservePercentage = options.reservePercentage ?? 5; // 5% reserve requirement
     this.enableHashing = options.enableHashing ?? true;
   }
-
   /**
    * Process pasted content and generate metadata
    *
@@ -48,18 +43,15 @@ export class PasteHandler {
    * @param currentInput Current input value (for available token calculation)
    * @returns PasteMetadata with processed content and metadata
    */
-  processPaste(content: string, currentInput: string = ''): PasteMetadata {
+  processPaste(content: string, currentInput = ''): PasteMetadata {
     // Calculate tokens for pasted content
     const pastedTokens = this.countTokens(content);
     const currentTokens = this.countTokens(currentInput);
-
     // Calculate available tokens with reserve
     const usableTokens = this.calculateUsableTokens();
     const remainingBudget = usableTokens - currentTokens;
-
     let processedContent = content;
     let cut: number | undefined;
-
     if (pastedTokens > remainingBudget && remainingBudget > 0) {
       // Cut content to fit within budget
       const allowedTokens = Math.max(0, remainingBudget - 10); // Small buffer
@@ -71,19 +63,16 @@ export class PasteHandler {
       processedContent = '';
       cut = pastedTokens;
     }
-
     // Generate hash for the paste
     const hash = this.enableHashing ? this.generateHash(processedContent) : '';
-
     return {
       tokens: this.countTokens(processedContent),
       hash,
       cut,
       originalLength: content.length,
-      processedContent
+      processedContent,
     };
   }
-
   /**
    * Count tokens in text using simple estimation
    *
@@ -95,7 +84,6 @@ export class PasteHandler {
     // This matches the estimateTokens function used elsewhere in the codebase
     return Math.ceil(text.length / 4);
   }
-
   /**
    * Calculate available tokens based on current caps
    *
@@ -109,11 +97,14 @@ export class PasteHandler {
       return this.maxTokens;
     } catch (error) {
       // Fallback to default if token caps retrieval fails
-      logger.debug('Failed to get token caps, using default:', { error }, 'PasteHandler.getMaxTokens');
+      logger.debug(
+        'Failed to get token caps, using default:',
+        { error },
+        'PasteHandler.getMaxTokens',
+      );
       return this.maxTokens;
     }
   }
-
   /**
    * Calculate available tokens for paste validation
    *
@@ -124,7 +115,6 @@ export class PasteHandler {
     const reserveTokens = Math.floor(totalTokens * (this.reservePercentage / 100));
     return totalTokens - reserveTokens;
   }
-
   /**
    * Truncate content to fit within specified token count
    *
@@ -136,25 +126,20 @@ export class PasteHandler {
     if (maxTokens <= 0) {
       return '';
     }
-
     // Calculate approximate character limit
     const maxChars = maxTokens * 4;
-
     if (content.length <= maxChars) {
       return content;
     }
-
     // Try to truncate at word boundary
     let truncated = content.substring(0, maxChars);
     const lastSpaceIndex = truncated.lastIndexOf(' ');
-
-    if (lastSpaceIndex > maxChars * 0.8) { // Only cut at word if it's not too far back
+    if (lastSpaceIndex > maxChars * 0.8) {
+      // Only cut at word if it's not too far back
       truncated = truncated.substring(0, lastSpaceIndex);
     }
-
     return truncated;
   }
-
   /**
    * Generate hash for content
    *
@@ -162,12 +147,8 @@ export class PasteHandler {
    * @returns 8-character hash
    */
   private generateHash(content: string): string {
-    return crypto.createHash('md5')
-      .update(content)
-      .digest('hex')
-      .substring(0, 8);
+    return crypto.createHash('md5').update(content).digest('hex').substring(0, 8);
   }
-
   /**
    * Format paste metadata for display
    *
@@ -181,7 +162,6 @@ export class PasteHandler {
       return `-- pasted ${metadata.tokens} tokens | ${metadata.hash} --`;
     }
   }
-
   /**
    * Validate if paste can be accepted
    *
@@ -189,32 +169,31 @@ export class PasteHandler {
    * @param currentInput Current input value
    * @returns Validation result
    */
-  validatePaste(content: string, currentInput: string = ''): {
+  validatePaste(
+    content: string,
+    currentInput = '',
+  ): {
     canAccept: boolean;
     reason?: string;
     estimatedTokens: number;
   } {
     const estimatedTokens = this.countTokens(content);
     const currentTokens = this.countTokens(currentInput);
-
     // Get available tokens (synchronous version for validation)
     const usableTokens = this.calculateUsableTokens();
     const remainingBudget = usableTokens - currentTokens;
-
     if (estimatedTokens > remainingBudget) {
       return {
         canAccept: false,
         reason: `Paste exceeds token limit. Available: ${remainingBudget}, Required: ${estimatedTokens}`,
-        estimatedTokens
+        estimatedTokens,
       };
     }
-
     return {
       canAccept: true,
-      estimatedTokens
+      estimatedTokens,
     };
   }
-
   /**
    * Update max tokens limit
    *
@@ -223,7 +202,6 @@ export class PasteHandler {
   setMaxTokens(newMaxTokens: number): void {
     this.maxTokens = newMaxTokens;
   }
-
   /**
    * Update reserve percentage
    *
@@ -236,12 +214,10 @@ export class PasteHandler {
     this.reservePercentage = newReservePercentage;
   }
 }
-
 /**
  * Default paste handler instance
  */
 export const defaultPasteHandler = new PasteHandler();
-
 /**
  * Convenience function to process paste
  *
@@ -249,10 +225,9 @@ export const defaultPasteHandler = new PasteHandler();
  * @param currentInput Current input value
  * @returns Paste metadata
  */
-export function processPaste(content: string, currentInput: string = ''): PasteMetadata {
+export function processPaste(content: string, currentInput = ''): PasteMetadata {
   return defaultPasteHandler.processPaste(content, currentInput);
 }
-
 /**
  * Convenience function to validate paste
  *
@@ -260,10 +235,9 @@ export function processPaste(content: string, currentInput: string = ''): PasteM
  * @param currentInput Current input value
  * @returns Validation result
  */
-export function validatePaste(content: string, currentInput: string = '') {
+export function validatePaste(content: string, currentInput = '') {
   return defaultPasteHandler.validatePaste(content, currentInput);
 }
-
 /**
  * Convenience function to format metadata
  *

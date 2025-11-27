@@ -8,13 +8,13 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 
 // Import types
-import type { GenerationProgressProps, GenerationEvent } from './types.js';
+import type { GenerationProgressProps, GenerationEvent } from './types';
 
 export const GenerationProgress: React.FC<GenerationProgressProps> = ({
   isActive,
   events,
   onCancel,
-  config
+  config,
 }) => {
   const [animationFrame, setAnimationFrame] = useState(0);
 
@@ -25,7 +25,7 @@ export const GenerationProgress: React.FC<GenerationProgressProps> = ({
     }
 
     const interval = setInterval(() => {
-      setAnimationFrame(prev => (prev + 1) % 4);
+      setAnimationFrame((prev) => (prev + 1) % 4);
     }, 200);
 
     return () => clearInterval(interval);
@@ -43,44 +43,69 @@ export const GenerationProgress: React.FC<GenerationProgressProps> = ({
     <Box flexDirection="column">
       {/* Header */}
       <Box flexDirection="row" justifyContent="space-between" marginBottom={1}>
-        <Text color={config?.colors?.accent_orange} bold>
+        <Text {...(config?.colors?.accent_orange && { color: config.colors.accent_orange })} bold>
           {isComplete ? '✓' : hasError ? '✗' : spinner} Generation Progress
         </Text>
         {onCancel && !isComplete && !hasError && (
-          <Text color={config?.colors?.muted}>
+          <Text {...(config?.colors?.muted && { color: config.colors.muted })}>
             [Ctrl+C] Cancel
           </Text>
         )}
       </Box>
 
       {/* Progress visualization */}
-      <Box flexDirection="column" borderStyle="single" borderColor={config?.colors?.gray} padding={1}>
+      <Box
+        flexDirection="column"
+        borderStyle="single"
+        borderColor={config?.colors?.gray}
+        padding={1}
+      >
         {/* Current status */}
         <Box flexDirection="row" marginBottom={1}>
-          <Text color={isComplete ? config?.colors?.ok : hasError ? config?.colors?.error : config?.colors?.accent_orange}>
-            {isComplete ? '✓ Generation Complete' :
-              hasError ? '✗ Generation Failed' :
-                `${spinner} Generating files...`}
+          <Text
+            {...({
+              color: isComplete
+                ? config?.colors?.ok
+                : hasError
+                  ? config?.colors?.error
+                  : config?.colors?.accent_orange,
+            } as { color?: string })}
+          >
+            {isComplete
+              ? '✓ Generation Complete'
+              : hasError
+                ? '✗ Generation Failed'
+                : `${spinner} Generating files...`}
           </Text>
         </Box>
 
         {/* Recent events */}
         <Box flexDirection="column">
-          <Text color={config?.colors?.muted} dimColor>
+          <Text {...(config?.colors?.muted && { color: config.colors.muted })} dimColor>
             Recent Activity:
           </Text>
           {events.slice(-5).map((event: GenerationEvent, index: number) => (
             <Box key={index} flexDirection="row" marginTop={1}>
-              <Text color={
-                event.type === 'complete' ? config?.colors?.ok :
-                  event.type === 'error' ? config?.colors?.error :
-                    event.type === 'copy' ? config?.colors?.accent_orange :
-                      config?.colors?.muted
-              }>
-                {event.type === 'complete' ? '✓' :
-                  event.type === 'error' ? '✗' :
-                    event.type === 'copy' ? '⚙' :
-                      '○'} {event.path || event.content?.substring(0, 30) || 'Processing...'}
+              <Text
+                {...({
+                  color:
+                    event.type === 'complete'
+                      ? config?.colors?.ok
+                      : event.type === 'error'
+                        ? config?.colors?.error
+                        : event.type === 'copy'
+                          ? config?.colors?.accent_orange
+                          : config?.colors?.muted,
+                } as { color?: string })}
+              >
+                {event.type === 'complete'
+                  ? '✓'
+                  : event.type === 'error'
+                    ? '✗'
+                    : event.type === 'copy'
+                      ? '⚙'
+                      : '○'}{' '}
+                {event.path || event.content?.substring(0, 30) || 'Processing...'}
               </Text>
             </Box>
           ))}
@@ -90,7 +115,7 @@ export const GenerationProgress: React.FC<GenerationProgressProps> = ({
       {/* Footer */}
       {isComplete && (
         <Box flexDirection="row" justifyContent="center" marginTop={1}>
-          <Text color={config?.colors?.ok}>
+          <Text {...(config?.colors?.ok && { color: config.colors.ok })}>
             ✓ Project generation completed successfully
           </Text>
         </Box>
@@ -98,7 +123,7 @@ export const GenerationProgress: React.FC<GenerationProgressProps> = ({
 
       {hasError && (
         <Box flexDirection="row" justifyContent="center" marginTop={1}>
-          <Text color={config?.colors?.error}>
+          <Text {...(config?.colors?.error && { color: config.colors.error })}>
             ✗ Generation failed. Check the error details above.
           </Text>
         </Box>

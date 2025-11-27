@@ -4,8 +4,14 @@
  * Types for the persistent storage system managing .prp/ directory.
  */
 
-// Types imported as needed in implementation files
+// Re-export types from inspector/types to avoid duplication
+export type {
+  InspectorPayload,
+  Recommendation,
+  EnhancedSignalClassification
+} from '../inspector/types';
 
+// Types imported as needed in implementation files
 export interface StorageConfig {
   dataDir: string;
   cacheDir: string;
@@ -17,7 +23,6 @@ export interface StorageConfig {
   maxCacheSize: number;
   retentionPeriod: number;
 }
-
 export interface PersistentState {
   version: string;
   createdAt: Date;
@@ -32,7 +37,6 @@ export interface PersistentState {
   metrics: SystemMetrics;
   userPreferences: UserPreferences;
 }
-
 export interface WorktreeState {
   id: string;
   name: string;
@@ -51,7 +55,6 @@ export interface WorktreeState {
     errorCount: number;
   };
 }
-
 export interface FileChangeState {
   path: string;
   type: 'added' | 'modified' | 'deleted' | 'renamed';
@@ -60,7 +63,6 @@ export interface FileChangeState {
   hash?: string;
   processed: boolean;
 }
-
 export interface AgentState {
   id: string;
   name: string;
@@ -90,7 +92,6 @@ export interface AgentState {
     errorRate: number;
   };
 }
-
 export interface AgentLogEntry {
   id: string;
   timestamp: Date;
@@ -99,7 +100,6 @@ export interface AgentLogEntry {
   metadata?: Record<string, unknown>;
   tokenCost?: number;
 }
-
 export interface PRPState {
   id: string;
   name: string;
@@ -122,7 +122,6 @@ export interface PRPState {
   };
   checkpoints: CheckpointState[];
 }
-
 export interface ProgressEntryState {
   id: string;
   timestamp: Date;
@@ -132,7 +131,6 @@ export interface ProgressEntryState {
   actor: string;
   checkpoint?: string;
 }
-
 export interface CheckpointState {
   id: string;
   name: string;
@@ -142,7 +140,6 @@ export interface CheckpointState {
   requiredSignals: string[];
   outcomes: string[];
 }
-
 export interface SignalState {
   id: string;
   type: string;
@@ -163,14 +160,12 @@ export interface SignalState {
   childSignals: string[];
   parentSignal?: string;
 }
-
 export interface TokenState {
   accounting: TokenAccountingState;
   limits: TokenLimitsState;
   alerts: TokenAlertState[];
   reports: TokenReportState[];
 }
-
 export interface TokenAccountingState {
   totalUsed: number;
   totalCost: number;
@@ -181,7 +176,6 @@ export interface TokenAccountingState {
   byTime: TimeSeriesData[];
   lastUpdated: Date;
 }
-
 export interface AgentTokenUsage {
   agentId: string;
   tokens: number;
@@ -192,7 +186,6 @@ export interface AgentTokenUsage {
   weeklyUsage: number;
   monthlyUsage: number;
 }
-
 export interface LayerTokenUsage {
   layer: string;
   tokens: number;
@@ -200,7 +193,6 @@ export interface LayerTokenUsage {
   operations: number;
   lastUsed: Date;
 }
-
 export interface ModelTokenUsage {
   model: string;
   tokens: number;
@@ -208,14 +200,12 @@ export interface ModelTokenUsage {
   operations: number;
   lastUsed: Date;
 }
-
 export interface TimeSeriesData {
   timestamp: Date;
   tokens: number;
   cost: number;
   operations: number;
 }
-
 // File change and PRP file types for scanner compatibility
 export interface FileChange {
   path: string;
@@ -227,7 +217,6 @@ export interface FileChange {
   oldPath?: string;
   processed?: boolean;
 }
-
 export interface PRPFile {
   id: string;
   path: string;
@@ -242,7 +231,6 @@ export interface PRPFile {
     checksum?: string;
   };
 }
-
 export interface TokenLimitsState {
   enabled: boolean;
   agentLimits: Record<string, TokenLimitConfig>;
@@ -252,7 +240,6 @@ export interface TokenLimitsState {
     critical: number; // percentage
   };
 }
-
 export interface TokenLimitConfig {
   daily?: number;
   weekly?: number;
@@ -261,7 +248,6 @@ export interface TokenLimitConfig {
   perTime?: number;
   timeWindow?: number;
 }
-
 export interface TokenAlertState {
   id: string;
   type: 'approaching_limit' | 'limit_exceeded' | 'spike_detected' | 'unusual_activity';
@@ -284,7 +270,6 @@ export interface TokenAlertState {
   resolvedAt?: Date;
   resolution?: string;
 }
-
 export interface TokenReportState {
   id: string;
   period: {
@@ -303,7 +288,6 @@ export interface TokenReportState {
   format: 'json' | 'csv' | 'html';
   filePath?: string;
 }
-
 export interface GuidelineState {
   enabled: string[]; // Guideline IDs
   disabled: string[];
@@ -311,7 +295,6 @@ export interface GuidelineState {
   executionHistory: GuidelineExecution[];
   activeExecutions: Record<string, GuidelineExecution>;
 }
-
 export interface GuidelineConfiguration {
   id: string;
   name: string;
@@ -335,7 +318,6 @@ export interface GuidelineConfiguration {
     metadata?: Record<string, unknown>;
   };
 }
-
 export interface GuidelineExecution {
   id: string;
   guidelineId: string;
@@ -348,7 +330,6 @@ export interface GuidelineExecution {
   result?: unknown;
   error?: string;
 }
-
 export interface GuidelineStepExecution {
   stepId: string;
   name: string;
@@ -363,7 +344,6 @@ export interface GuidelineStepExecution {
     cost: number;
   };
 }
-
 export interface NoteState {
   id: string;
   name: string;
@@ -390,7 +370,6 @@ export interface NoteState {
     permissions: Record<string, string[]>;
   };
 }
-
 export interface SystemMetrics {
   uptime: number;
   scans: {
@@ -428,7 +407,6 @@ export interface SystemMetrics {
     recent: ErrorEntry[];
   };
 }
-
 export interface ErrorEntry {
   id: string;
   timestamp: Date;
@@ -439,7 +417,6 @@ export interface ErrorEntry {
   resolved: boolean;
   resolvedAt?: Date;
 }
-
 export interface UserPreferences {
   theme: 'light' | 'dark' | 'auto';
   language: string;
@@ -470,7 +447,6 @@ export interface UserPreferences {
     dataRetention: number; // days
   };
 }
-
 export interface StorageStats {
   totalSize: number;
   fileCount: number;
@@ -478,12 +454,14 @@ export interface StorageStats {
   lastModified: Date;
   oldestFile?: Date;
   newestFile?: Date;
-  byType: Record<string, {
-    count: number;
-    size: number;
-  }>;
+  byType: Record<
+    string,
+    {
+      count: number;
+      size: number;
+    }
+  >;
 }
-
 export interface BackupMetadata {
   id: string;
   createdAt: Date;
@@ -495,7 +473,6 @@ export interface BackupMetadata {
   encrypted: boolean;
   checksum: string;
 }
-
 export interface KeychainData {
   version: string;
   encrypted: boolean;
@@ -506,7 +483,6 @@ export interface KeychainData {
     accessCount: number;
   };
 }
-
 export interface KeychainEntry {
   id: string;
   name: string;
@@ -523,7 +499,6 @@ export interface KeychainEntry {
   lastAccessed: Date;
   accessCount: number;
 }
-
 // Signal system types
 export interface Signal {
   id: string;
@@ -538,7 +513,6 @@ export interface Signal {
   relatedSignals: string[];
   metadata?: Record<string, unknown>;
 }
-
 // Event system types
 export interface ChannelEvent<T = Record<string, unknown>> {
   id: string;
@@ -548,7 +522,6 @@ export interface ChannelEvent<T = Record<string, unknown>> {
   data: T;
   metadata?: Record<string, unknown>;
 }
-
 export interface ScannerEvent extends ChannelEvent {
   type: 'scan_started' | 'scan_completed' | 'file_changed' | 'error';
   data: {
@@ -558,7 +531,6 @@ export interface ScannerEvent extends ChannelEvent {
     error?: string;
   };
 }
-
 export interface InspectorEvent extends ChannelEvent {
   type: 'inspection_started' | 'inspection_completed' | 'signal_detected' | 'error';
   data: {
@@ -569,7 +541,6 @@ export interface InspectorEvent extends ChannelEvent {
     error?: string;
   };
 }
-
 export interface OrchestratorEvent extends ChannelEvent {
   type: 'decision_made' | 'action_started' | 'action_completed' | 'agent_spawned' | 'error';
   data: {
@@ -580,7 +551,6 @@ export interface OrchestratorEvent extends ChannelEvent {
     error?: string;
   };
 }
-
 // Guidelines system types
 export interface GuidelineProtocol {
   id: string;
@@ -603,12 +573,16 @@ export interface GuidelineProtocol {
   successCriteria?: string[];
   fallbackActions?: string[];
 }
-
 export interface GuidelineStep {
   id: string;
   name: string;
   description: string;
-  type: 'inspector_analysis' | 'orchestrator_decision' | 'agent_action' | 'verification' | 'action_execution';
+  type:
+    | 'inspector_analysis'
+    | 'orchestrator_decision'
+    | 'agent_action'
+    | 'verification'
+    | 'action_execution';
   required?: boolean;
   dependencies?: string[];
   timeout?: number;
@@ -620,15 +594,11 @@ export interface GuidelineStep {
   outputs?: string[];
   nextSteps?: string[];
 }
-
 // Additional type exports for orchestrator compatibility
-
 // Agent configuration types (re-exported from config/agent-config)
 export type AgentConfig = import('../config/agent-config.js').AgentConfig;
-
 // Agent role type (re-exported from config/agent-config)
 export type AgentRole = import('../config/agent-config.js').AgentRole;
-
 // Inspector payload types (re-exported from inspector/types)
 export interface SignalClassification {
   category: string;
@@ -642,7 +612,6 @@ export interface SignalClassification {
   signal?: string;
   agentRole?: string;
 }
-
 export interface PreparedContext {
   id: string;
   summary: string;
@@ -665,34 +634,9 @@ export interface PreparedContext {
   sharedNotes?: string[];
   signal?: string;
 }
-
-export interface InspectorPayload {
-  id: string;
-  signalId: string;
-  classification: SignalClassification;
-  context: PreparedContext;
-  recommendations: Recommendation[];
-  timestamp: Date;
-  size: number;
-  compressed: boolean;
-  sourceSignals?: Signal[];
-  estimatedTokens?: number;
-  priority?: number;
-}
-
-// Recommendation type (re-exported from inspector/types)
-export interface Recommendation {
-  type: string;
-  priority: string;
-  description: string | undefined;
-  reasoning?: string;
-  estimatedTime: number;
-  prerequisites: string[];
-}
-
+// Recommendation type is re-exported from inspector/types to avoid duplication
 // Type alias for GuidelineConfiguration to maintain compatibility
 export type GuidelineConfig = GuidelineConfiguration;
-
 // Missing type exports for compatibility
 export interface TUIState {
   mode: 'cli' | 'tui';
@@ -701,9 +645,7 @@ export interface TUIState {
   autoRefresh: boolean;
   refreshInterval: number;
 }
-
 export type SignalType = string;
-
 export interface GuidelineRequirement {
   id?: string;
   name: string;
@@ -716,11 +658,14 @@ export interface GuidelineRequirement {
   source?: string;
   validation?: string;
 }
-
 export type LogLevel = 'debug' | 'verbose' | 'info' | 'warn' | 'error';
-
-export const LOG_LEVELS: readonly LogLevel[] = ['debug', 'verbose', 'info', 'warn', 'error'] as const;
-
+export const LOG_LEVELS: readonly LogLevel[] = [
+  'debug',
+  'verbose',
+  'info',
+  'warn',
+  'error',
+] as const;
 export interface CommandResult {
   success: boolean;
   output?: string;
@@ -732,7 +677,6 @@ export interface CommandResult {
   duration?: number;
   data?: unknown;
 }
-
 // Additional missing types for compatibility
 export interface FileToGenerate {
   path: string;
@@ -741,7 +685,6 @@ export interface FileToGenerate {
   overwrite?: boolean;
   executable?: boolean;
 }
-
 // Signal event type for signal processing
 export interface SignalEvent {
   id: string;
@@ -752,38 +695,31 @@ export interface SignalEvent {
   data: unknown;
   metadata?: Record<string, unknown>;
 }
-
 // Signal priority enum for signal processing
 export const SignalPriorityEnum = {
   LOW: 'low',
   MEDIUM: 'medium',
   HIGH: 'high',
-  CRITICAL: 'critical'
+  CRITICAL: 'critical',
 } as const;
-
-export type SignalPriority = typeof SignalPriorityEnum[keyof typeof SignalPriorityEnum];
-
+export type SignalPriority = (typeof SignalPriorityEnum)[keyof typeof SignalPriorityEnum];
 // Re-export OrchestratorConfig for compatibility
 export type OrchestratorConfig = import('../orchestrator/types.js').OrchestratorConfig;
-
 // Re-export AgentSession for compatibility
 export type AgentSession = import('../orchestrator/types.js').AgentSession;
-
 // ===== AGENT CAPABILITY TYPES =====
-
 /**
  * Comprehensive agent capability definitions
  */
 export interface AgentCapabilities {
-  primary: string[];      // Main capabilities
-  secondary: string[];    // Supporting capabilities
-  tools: string[];        // Available tools
-  maxConcurrent: number;  // Maximum concurrent tasks
+  primary: string[]; // Main capabilities
+  secondary: string[]; // Supporting capabilities
+  tools: string[]; // Available tools
+  maxConcurrent: number; // Maximum concurrent tasks
   specializations?: string[]; // Specialized areas
-  version?: string;       // Capability version
-  certified?: boolean;    // Capability certification status
+  version?: string; // Capability version
+  certified?: boolean; // Capability certification status
 }
-
 /**
  * Agent performance metrics
  */
@@ -796,7 +732,6 @@ export interface AgentPerformanceMetrics {
   errorFrequency: Record<string, number>;
   lastUpdated: Date;
 }
-
 /**
  * Agent health metrics
  */
@@ -810,7 +745,6 @@ export interface AgentHealthMetrics {
   consecutiveFailures: number;
   status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
 }
-
 /**
  * Agent spawning decision matrix
  */
@@ -823,7 +757,6 @@ export interface SpawnDecision {
   estimatedCost?: number;
   estimatedDuration?: number;
 }
-
 /**
  * Signal-based spawn request
  */
@@ -841,7 +774,6 @@ export interface SignalBasedSpawnRequest {
   waitForHealth?: boolean;
   tokenTracking?: boolean;
 }
-
 /**
  * Enhanced agent task definition
  */
@@ -855,7 +787,6 @@ export interface AgentTask {
   requiresCapabilities?: string[];
   dependencies?: string[];
 }
-
 /**
  * Agent configuration for spawning
  */
@@ -872,7 +803,6 @@ export interface AgentSpawningConfig {
   environment?: Record<string, string>;
   constraints?: AgentConstraints;
 }
-
 /**
  * Resource requirements for agents
  */
@@ -885,7 +815,6 @@ export interface ResourceRequirements {
   parallelizable: boolean;
   maxConcurrentTasks?: number;
 }
-
 /**
  * Health check configuration
  */
@@ -902,7 +831,6 @@ export interface HealthCheckConfig {
     errorRate?: number;
   };
 }
-
 /**
  * Token limits and cost controls
  */
@@ -917,7 +845,6 @@ export interface TokenLimits {
   costPerToken?: number;
   model?: string;
 }
-
 /**
  * Agent operational constraints
  */
@@ -926,12 +853,11 @@ export interface AgentConstraints {
   maxWorkTime?: number; // milliseconds
   allowedWorktimes?: {
     start?: string; // HH:MM
-    end?: string;   // HH:MM
+    end?: string; // HH:MM
   };
   restrictedOperations?: string[];
   requiredPermissions?: string[];
 }
-
 /**
  * Agent spawning analytics
  */
@@ -947,7 +873,6 @@ export interface SpawningAnalytics {
     agentUtilization: Record<string, number>;
   };
 }
-
 /**
  * Signal to agent mapping
  */
@@ -962,7 +887,6 @@ export interface SignalAgentMapping {
   };
   alternatives?: string[];
 }
-
 /**
  * Agent lifecycle event types
  */
@@ -977,7 +901,6 @@ export interface AgentLifecycleEvent {
     correlationId?: string;
   };
 }
-
 /**
  * Agent communication message
  */
@@ -993,7 +916,6 @@ export interface AgentMessage {
   requiresResponse?: boolean;
   expiresAt?: Date;
 }
-
 /**
  * Agent work item
  */
@@ -1015,7 +937,6 @@ export interface AgentWorkItem {
     cost?: number;
   };
 }
-
 /**
  * Agent registry information
  */
@@ -1032,7 +953,6 @@ export interface AgentRegistry {
     lastUpdated: Date;
   };
 }
-
 /**
  * Agent type information
  */

@@ -7,14 +7,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
-import { useTheme } from '../../config/theme-provider.js';
+
+import { useTheme } from '../../config/theme-provider';
 
 interface IntroScreenProps {
   onNext: () => void;
   onCancel: () => void;
-}
+};
 
-const IntroScreen: React.FC<IntroScreenProps> = ({ /* onNext, onCancel */ }) => {
+const IntroScreen: React.FC<IntroScreenProps> = (
+  {
+    /* onNext, onCancel */
+  },
+) => {
   const theme = useTheme();
   const [currentNote, setCurrentNote] = useState(0);
   const [showQuote, setShowQuote] = useState(false);
@@ -72,15 +77,15 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ /* onNext, onCancel */ }) => 
         <Text color={theme.colors.neutrals.text} bold>
           This wizard will provision your workspace and first PRP.
         </Text>
-        <Text color={theme.colors.neutrals.text}>
-          One input at a time. Minimal. Reversible.
-        </Text>
+        <Text color={theme.colors.neutrals.text}>One input at a time. Minimal. Reversible.</Text>
       </Box>
 
       {/* Decorative elements */}
       <Box flexDirection="row" alignItems="center" marginTop={2}>
         <Text color={theme.colors.neutrals.muted}>
-          {Array.from({ length: 3 }).map((_, i) => musicNotes[(currentNote + i) % musicNotes.length]).join(' ')}
+          {Array.from({ length: 3 })
+            .map((_, i) => musicNotes[(currentNote + i) % musicNotes.length])
+            .join(' ')}
         </Text>
       </Box>
 
@@ -89,7 +94,9 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ /* onNext, onCancel */ }) => 
         <Text color={(theme.colors as any).textDim ?? (theme.colors as any).muted} italic>
           Ready to begin your journey?
         </Text>
-        <Text color={(theme.colors as any).accentOrange ?? (theme.colors as any).orange ?? '#FF9A38'}>
+        <Text
+          color={(theme.colors as any).accentOrange ?? (theme.colors as any).orange ?? '#FF9A38'}
+        >
           Press Enter to continue
         </Text>
       </Box>

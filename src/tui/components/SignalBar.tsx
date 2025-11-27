@@ -5,9 +5,14 @@
  * supports progress animations, wave effects, and latest signal highlighting
  */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { getSignalColor } from '../config/TUIConfig.js';
-import { useAnimationEngine, AnimationType } from '../animation/AnimationEngine.js';
+import React, { useState, useEffect, useRef, useMemo, JSX } from 'react';
+import { Text } from 'ink';
+
+import { getSignalColor } from '../../shared/types/TUIConfig';
+import { useAnimationEngine } from '../animation/AnimationEngine';
+
+import type { AnimationType } from '../animation/AnimationEngine';
+import type { TUIConfig, SignalTag, SignalState } from '../../shared/types/TUIConfig';
 
 interface AnimatedSignalProps {
   signal: SignalTag;
@@ -15,7 +20,13 @@ interface AnimatedSignalProps {
   config: TUIConfig;
   animate: boolean;
   isActive: boolean;
-}
+};
+
+interface SignalBarProps {
+  signals: SignalTag[];
+  animate?: boolean;
+  config?: TUIConfig;
+};
 
 /**
  * Individual animated signal component
@@ -27,9 +38,9 @@ function AnimatedSignal({ signal, index, config, animate, isActive }: AnimatedSi
   const isMountedRef = useRef<boolean>(true);
 
   // Generate unique animation ID for this signal
-  const animationId = useMemo(() =>
-    `signal-${signal.code}-${index}-${Math.random().toString(36).substring(2, 11)}`,
-  [signal.code, index]
+  const animationId = useMemo(
+    () => `signal-${signal.code}-${index}-${Math.random().toString(36).substring(2, 11)}`,
+    [signal.code, index],
   );
 
   // Determine animation type based on signal code and state
@@ -103,14 +114,15 @@ function AnimatedSignal({ signal, index, config, animate, isActive }: AnimatedSi
   }, [engine]);
 
   // Get colors for different parts of the signal
-  const letterColor = useMemo(() =>
-    getSignalColor(signal.code, signal.state, config.colors),
-  [signal.code, signal.state, config.colors]
+  const letterColor = useMemo(
+    () => getSignalColor(signal.code, signal.state, config.colors),
+    [signal.code, signal.state, config.colors],
   );
 
-  const braceColor = useMemo(() =>
-    signal.state === 'active' ? config.colors.signal_braces : config.colors.signal_placeholder,
-  [signal.state, config.colors]
+  const braceColor = useMemo(
+    () =>
+      signal.state === 'active' ? config.colors.signal_braces : config.colors.signal_placeholder,
+    [signal.state, config.colors],
   );
 
   // Extract content (remove brackets)
@@ -125,7 +137,7 @@ function AnimatedSignal({ signal, index, config, animate, isActive }: AnimatedSi
   const hasBackground = signal.state === 'active' && config.colors.signal_braces;
 
   return (
-    <Text bold={isBold} dimColor={isDim}>
+    <Text {...(isBold && { bold: true })} dimColor={isDim}>
       {hasBackground && signal.state === 'active' && (
         <Text backgroundColor={config.colors.orchestrator_bg}>
           <Text color={braceColor}>[</Text>
@@ -142,28 +154,19 @@ function AnimatedSignal({ signal, index, config, animate, isActive }: AnimatedSi
       )}
     </Text>
   );
-}
+};
 
 /**
  * SignalBar component that displays multiple signals with animations
  */
-export function SignalBar({
-  signals,
-  animate = true,
-  config
-}: SignalBarProps & {
-  config?: TUIConfig;
-}) {
+export const SignalBar = ({ signals, animate = true, config }: SignalBarProps) => {
   // Default configuration fallback
   const defaultConfig = useMemo(() => getDefaultConfig(), []);
 
   const activeConfig = config ?? defaultConfig;
 
   // Determine the active/latest signal for highlighting
-  const latestSignalIndex = useMemo(() =>
-    signals.findIndex(signal => signal.latest),
-  [signals]
-  );
+  const latestSignalIndex = useMemo(() => signals.findIndex((signal) => signal.latest), [signals]);
 
   const activeSignalIndex = useMemo(() => {
     if (latestSignalIndex >= 0) {
@@ -171,7 +174,7 @@ export function SignalBar({
     }
 
     // Find first active signal
-    const activeIndex = signals.findIndex(signal => signal.state === 'active');
+    const activeIndex = signals.findIndex((signal) => signal.state === 'active');
     return activeIndex >= 0 ? activeIndex : signals.length - 1;
   }, [latestSignalIndex, signals]);
 
@@ -181,10 +184,10 @@ export function SignalBar({
       placeholder: [] as SignalTag[],
       active: [] as SignalTag[],
       progress: [] as SignalTag[],
-      resolved: [] as SignalTag[]
+      resolved: [] as SignalTag[],
     };
 
-    signals.forEach(signal => {
+    signals.forEach((signal) => {
       groups[signal.state].push(signal);
     });
 
@@ -194,7 +197,9 @@ export function SignalBar({
   if (signals.length === 0) {
     return (
       <Text color={activeConfig.colors.signal_placeholder}>
-        {' ['}{'No signals'}{'] '}
+        {' ['}
+        {'No signals'}
+        {'] '}
       </Text>
     );
   }
@@ -213,7 +218,6 @@ export function SignalBar({
           isActive={true}
         />
       ))}
-
       {/* Render active signals */}
       {groupedSignals.active.map((signal, index) => (
         <AnimatedSignal
@@ -225,7 +229,6 @@ export function SignalBar({
           isActive={true}
         />
       ))}
-
       {/* Render resolved signals */}
       {groupedSignals.resolved.map((signal, index) => (
         <AnimatedSignal
@@ -237,7 +240,6 @@ export function SignalBar({
           isActive={false}
         />
       ))}
-
       {/* Render placeholder signals last */}
       {groupedSignals.placeholder.map((signal, index) => (
         <AnimatedSignal
@@ -248,12 +250,10 @@ export function SignalBar({
           animate={false} // Don't animate placeholders
           isActive={false}
         />
-      ))}
-
-      {' '}
+      ))}{' '}
     </Text>
   );
-}
+};
 
 /**
  * Optimized SignalBar for performance in lists
@@ -278,41 +278,34 @@ export const OptimizedSignalBar = React.memo(SignalBar, (prevProps, nextProps) =
 /**
  * Hook for signal bar with real-time updates
  */
-export function useSignalBar(
-  initialSignals: SignalTag[],
-  config: TUIConfig
-) {
+export const useSignalBar = (initialSignals: SignalTag[], config: TUIConfig) => {
   const [signals, setSignals] = useState<SignalTag[]>(initialSignals);
   const { engine } = useAnimationEngine();
 
   // Add a new signal
   const addSignal = (signal: SignalTag) => {
-    setSignals(prev => [...prev, { ...signal, latest: true }]);
+    setSignals((prev) => [...prev, { ...signal, latest: true }]);
   };
 
   // Update an existing signal
   const updateSignal = (code: string, updates: Partial<SignalTag>) => {
-    setSignals(prev =>
-      prev.map(signal =>
-        signal.code === code
-          ? { ...signal, ...updates }
-          : signal
-      )
+    setSignals((prev) =>
+      prev.map((signal) => (signal.code === code ? { ...signal, ...updates } : signal)),
     );
   };
 
   // Remove a signal
   const removeSignal = (code: string) => {
-    setSignals(prev => prev.filter(signal => signal.code !== code));
+    setSignals((prev) => prev.filter((signal) => signal.code !== code));
   };
 
   // Mark signal as latest
   const setLatestSignal = (code: string) => {
-    setSignals(prev =>
-      prev.map(signal => ({
+    setSignals((prev) =>
+      prev.map((signal) => ({
         ...signal,
-        latest: signal.code === code
-      }))
+        latest: signal.code === code,
+      })),
     );
   };
 
@@ -333,9 +326,9 @@ export function useSignalBar(
     updateSignal,
     removeSignal,
     setLatestSignal,
-    startProgressAnimation
+    startProgressAnimation,
   };
-}
+};
 
 // Default configuration fallback
 function getDefaultConfig(): TUIConfig {
@@ -380,7 +373,7 @@ function getDefaultConfig(): TUIConfig {
     gray: '#6C7078',
 
     signal_braces: '#FFB56B',
-    signal_placeholder: '#6C7078'
+    signal_placeholder: '#6C7078',
   };
 
   return {
@@ -391,17 +384,17 @@ function getDefaultConfig(): TUIConfig {
       enabled: true,
       intro: { enabled: true, duration: 10000, fps: 12 },
       status: { enabled: true, fps: 4 },
-      signals: { enabled: true, waveSpeed: 50, blinkSpeed: 1000 }
+      signals: { enabled: true, waveSpeed: 50, blinkSpeed: 1000 },
     },
     layout: {
       responsive: true,
       breakpoints: { compact: 100, normal: 160, wide: 240, ultrawide: 240 },
-      padding: { horizontal: 2, vertical: 1 }
+      padding: { horizontal: 2, vertical: 1 },
     },
     input: { maxTokens: 100000, tokenReserve: 0.05, pasteTimeout: 1000 },
-    debug: { enabled: false, maxLogLines: 100, showFullJSON: false }
+    debug: { enabled: false, maxLogLines: 100, showFullJSON: false },
   };
-}
+};
 
 // Export types and utilities
-export type { SignalTag, SignalState, AnimatedSignalProps };
+export type { SignalTag, SignalState, AnimatedSignalProps, SignalBarProps };

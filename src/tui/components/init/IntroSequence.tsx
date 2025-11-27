@@ -7,10 +7,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
-import { useTerminalDimensions } from '../../hooks/useTerminalDimensions.js';
+
+import { useTerminalDimensions } from '../../hooks/useTerminalDimensions';
 
 // Import types
-import type { TUIConfig } from '../../../shared/types/TUIConfig.js';
+import type { TUIConfig } from '../../../shared/types/TUIConfig';
 
 export interface IntroSequenceProps {
   duration?: number; // ms
@@ -18,7 +19,7 @@ export interface IntroSequenceProps {
   config?: TUIConfig;
   showLogo?: boolean;
   showQuote?: boolean;
-}
+};
 
 // ASCII art frames for logo evolution
 const LOGO_FRAMES = [
@@ -32,7 +33,7 @@ const LOGO_FRAMES = [
 │           PRP PROJECT                    │
 │                                         │
 └─────────────────────────────────────────┘`,
-    progress: 0
+    progress: 0,
   },
   {
     note: '♩',
@@ -44,7 +45,7 @@ const LOGO_FRAMES = [
 │         PRP PROJECT SYSTEM               │
 │                                         │
 └─────────────────────────────────────────┘`,
-    progress: 25
+    progress: 25,
   },
   {
     note: '♬',
@@ -56,7 +57,7 @@ const LOGO_FRAMES = [
 │      PRODUCT REQUIREMENT PROMPTS        │
 │                                         │
 └─────────────────────────────────────────┘`,
-    progress: 50
+    progress: 50,
   },
   {
     note: '♫',
@@ -68,8 +69,8 @@ const LOGO_FRAMES = [
 │     @dcversus/prp - AUTOMATION          │
 │                                         │
 └─────────────────────────────────────────┘`,
-    progress: 75
-  }
+    progress: 75,
+  },
 ];
 
 const FINAL_FRAME = {
@@ -86,7 +87,7 @@ const FINAL_FRAME = {
 │     ╚═════════════════════════════════╝   │
 │                                         │
 └─────────────────────────────────────────┘`,
-  progress: 100
+  progress: 100,
 };
 
 export const IntroSequence: React.FC<IntroSequenceProps> = ({
@@ -94,7 +95,7 @@ export const IntroSequence: React.FC<IntroSequenceProps> = ({
   onComplete,
   config,
   showLogo = true,
-  showQuote = true
+  showQuote = true,
 }) => {
   const { width, height } = useTerminalDimensions();
   const [currentFrame, setCurrentFrame] = useState(0);
@@ -162,7 +163,12 @@ export const IntroSequence: React.FC<IntroSequenceProps> = ({
     if (alphaValue >= 1.0) {
       return color;
     }
-    return color + Math.floor(alphaValue * 255).toString(16).padStart(2, '0');
+    return (
+      color +
+      Math.floor(alphaValue * 255)
+        .toString(16)
+        .padStart(2, '0')
+    );
   };
 
   const currentFrameData = totalFrames[currentFrame];
@@ -171,15 +177,19 @@ export const IntroSequence: React.FC<IntroSequenceProps> = ({
   const borderColor = applyAlpha(config?.colors?.muted || '#9AA0A6', alpha);
 
   return (
-    <Box flexDirection="column" height={height} width={width} justifyContent="center" alignItems="center">
+    <Box
+      flexDirection="column"
+      height={height}
+      width={width}
+      justifyContent="center"
+      alignItems="center"
+    >
       {/* ASCII Art Frame */}
       {showLogo && (
         <Box flexDirection="column" alignItems="center">
           <Text color={accentColor} bold>
             {(currentFrameData?.ascii ?? '').split('\n').map((line, index) => (
-              <Text key={index}>
-                {line}
-              </Text>
+              <Text key={index}>{line}</Text>
             ))}
           </Text>
         </Box>
@@ -213,13 +223,8 @@ export const IntroSequence: React.FC<IntroSequenceProps> = ({
 
       {/* Fade out overlay */}
       {fadeOut && (
-        <Box
-          flexDirection="column"
-          justifyContent="center"
-          alignItems="center"
-          height={height}
-        >
-          <Text color={config?.colors?.accent_orange} bold>
+        <Box flexDirection="column" justifyContent="center" alignItems="center" height={height}>
+          <Text {...(config?.colors?.accent_orange && { color: config.colors.accent_orange })} bold>
             ♫ Initializing...
           </Text>
         </Box>
@@ -238,7 +243,7 @@ export const MiniIntro: React.FC<{
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setFrame(prev => {
+      setFrame((prev) => {
         const next = (prev + 1) % notes.length;
         if (next === 0) {
           clearInterval(interval);
@@ -253,10 +258,10 @@ export const MiniIntro: React.FC<{
 
   return (
     <Box flexDirection="column" justifyContent="center" alignItems="center" minHeight={10}>
-      <Text color={config?.colors?.accent_orange} bold>
+      <Text {...(config?.colors?.accent_orange && { color: config.colors.accent_orange })} bold>
         {notes[frame]} @dcversus/prp
       </Text>
-      <Text color={config?.colors?.muted} dimColor>
+      <Text {...(config?.colors?.muted && { color: config.colors.muted })} dimColor>
         Initializing workspace...
       </Text>
     </Box>

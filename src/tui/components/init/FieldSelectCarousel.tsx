@@ -7,15 +7,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { useTheme } from '../../config/theme-provider.js';
-import type { FieldSelectCarouselProps } from './types.js';
+
+import { useTheme } from '../../config/theme-provider';
+
+import type { FieldSelectCarouselProps } from './types';
 
 const FieldSelectCarousel: React.FC<FieldSelectCarouselProps> = ({
   label,
   items,
   selectedIndex,
   onChange,
-  focused = false
+  focused = false,
 }) => {
   const theme = useTheme();
   const [isFocused, setIsFocused] = useState(focused);
@@ -33,43 +35,45 @@ const FieldSelectCarousel: React.FC<FieldSelectCarouselProps> = ({
   }, [focused]);
 
   // Handle keyboard input
-  useInput((_input, key) => {
-    if (!isFocused) {
-      return;
-    }
+  useInput(
+    (_input, key) => {
+      if (!isFocused) {
+        return;
+      }
 
-    if (key.escape) {
-      setIsFocused(false);
-      return;
-    }
+      if (key.escape) {
+        setIsFocused(false);
+        return;
+      }
 
-    if (key.leftArrow) {
-      const newIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
-      setCurrentIndex(newIndex);
-      onChange(newIndex);
-      // setAnimating(true); // TODO: Implement animation
-      setTimeout(() => {
-        // setAnimating(false);
-      }, 200); // Animation duration
-      return;
-    }
+      if (key.leftArrow) {
+        const newIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+        setCurrentIndex(newIndex);
+        onChange(newIndex);
+        // setAnimating(true); // TODO: Implement animation
+        setTimeout(() => {
+          // setAnimating(false);
+        }, 200); // Animation duration
+        return;
+      }
 
-    if (key.rightArrow) {
-      const newIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
-      setCurrentIndex(newIndex);
-      onChange(newIndex);
-      // setAnimating(true); // TODO: Implement animation
-      setTimeout(() => {
-        // setAnimating(false);
-      }, 200); // Animation duration
-      return;
-    }
+      if (key.rightArrow) {
+        const newIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+        setCurrentIndex(newIndex);
+        onChange(newIndex);
+        // setAnimating(true); // TODO: Implement animation
+        setTimeout(() => {
+          // setAnimating(false);
+        }, 200); // Animation duration
+        return;
+      }
 
-    if (key.return) {
-      setIsFocused(false);
-      
-    }
-  }, { isActive: isFocused });
+      if (key.return) {
+        setIsFocused(false);
+      }
+    },
+    { isActive: isFocused },
+  );
 
   // const handleFocus = useCallback(() => {
   //   setIsFocused(true);
@@ -107,11 +111,7 @@ const FieldSelectCarousel: React.FC<FieldSelectCarouselProps> = ({
       {/* Carousel */}
       <Box flexDirection="row" alignItems="center">
         {/* Left indicator */}
-        {start > 0 && (
-          <Text color={theme.colors.neutrals.muted}>
-            ◀
-          </Text>
-        )}
+        {start > 0 && <Text color={theme.colors.neutrals.muted}>◀</Text>}
 
         {/* Items */}
         {visibleItems.map((item, index) => {
@@ -121,15 +121,11 @@ const FieldSelectCarousel: React.FC<FieldSelectCarouselProps> = ({
           return (
             <Box key={`${start}-${index}`} flexDirection="row">
               {/* Item */}
-              <Box
-                paddingX={1}
-                paddingY={0}
-                marginRight={index < visibleItems.length - 1 ? 1 : 0}
-              >
+              <Box paddingX={1} paddingY={0} marginRight={index < visibleItems.length - 1 ? 1 : 0}>
                 <Text
                   color={
                     isSelected
-                      ? (theme.colors.accent as any)?.orange ?? theme.colors.accent.orange
+                      ? ((theme.colors.accent as any)?.orange ?? theme.colors.accent.orange)
                       : isFocused
                         ? theme.colors.neutrals.text
                         : theme.colors.neutrals.muted
@@ -143,20 +139,14 @@ const FieldSelectCarousel: React.FC<FieldSelectCarouselProps> = ({
 
               {/* Separator between items */}
               {index < visibleItems.length - 1 && (
-                <Text color={theme.colors.neutrals.muted}>
-                  {isFocused ? '→' : '·'}
-                </Text>
+                <Text color={theme.colors.neutrals.muted}>{isFocused ? '→' : '·'}</Text>
               )}
             </Box>
           );
         })}
 
         {/* Right indicator */}
-        {end < items.length && (
-          <Text color={theme.colors.neutrals.muted}>
-            ▶
-          </Text>
-        )}
+        {end < items.length && <Text color={theme.colors.neutrals.muted}>▶</Text>}
       </Box>
 
       {/* Navigation hints */}

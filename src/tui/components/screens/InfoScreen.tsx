@@ -5,21 +5,30 @@
  * Enhanced with PRP-007 signal system integration for real-time PRP signals and filtering
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, JSX } from 'react';
 import { Box, Text, useInput } from 'ink';
-import { RoboRolePill } from '../RoboRolePill.js';
-import { SignalBar } from '../SignalBar.js';
-import { MusicIcon } from '../MusicIcon.js';
-import { getRoleColors } from '../../config/TUIConfig.js';
-import { SignalDisplay } from '../SignalDisplay.js';
-import { useSignalSubscription } from '../../hooks/useSignalSubscription.js';
+
+import { RoboRolePill } from '../RoboRolePill';
+import { SignalBar } from '../SignalBar';
+import { MusicIcon } from '../MusicIcon';
+import { getRoleColors } from '../../../shared/types/TUIConfig';
+import { SignalDisplay } from '../SignalDisplay';
+import { useSignalSubscription } from '../../hooks/useSignalSubscription';
+
+import type {
+  TUIState,
+  TUIConfig,
+  TerminalLayout,
+  PRPItem,
+  AgentCard,
+  HistoryItem,
+} from '../../../shared/types/TUIConfig';
 
 interface InfoScreenProps {
   state: TUIState;
   config: TUIConfig;
   terminalLayout: TerminalLayout;
-}
-
+};
 
 interface PRPContextSectionProps {
   prps: Map<string, PRPItem>;
@@ -27,79 +36,125 @@ interface PRPContextSectionProps {
   onSelectPRP: (prpName: string) => void;
   config: TUIConfig;
   isSelected: boolean;
-}
+};
 
 const PRPContextSection: React.FC<PRPContextSectionProps> = ({
   prps,
   selectedPRP,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   _onSelectPRP,
   config,
-  isSelected
+  isSelected,
 }) => {
   const prpArray = Array.from(prps.values()).slice(0, 5);
 
+  // Example PRPs when no real ones exist
+  const examplePRPs = [
+    {
+      name: 'prp-agents-v05',
+      status: 'RUNNING' as const,
+      role: 'robo-system-analyst' as const,
+      priority: 9,
+      signals: [
+        { code: '[aA]', state: 'active' as const, role: 'robo-aqa', latest: true },
+        { code: '[pr]', state: 'resolved' as const, role: 'robo-system-analyst' },
+        { code: '[PR]', state: 'resolved' as const, role: 'robo-system-analyst' },
+      ],
+      lastUpdate: new Date(),
+    },
+    {
+      name: 'prp-landing-page',
+      status: 'SPAWNING' as const,
+      role: 'robo-ux-ui' as const,
+      priority: 7,
+      signals: [
+        { code: '[  ]', state: 'placeholder' as const },
+        { code: '[  ]', state: 'placeholder' as const },
+        { code: '[du]', state: 'active' as const, role: 'robo-ux-ui', latest: true },
+      ],
+      lastUpdate: new Date(),
+    },
+    {
+      name: 'prp-nudge-integration',
+      status: 'IDLE' as const,
+      role: 'robo-devops-sre' as const,
+      priority: 5,
+      signals: [
+        { code: '[  ]', state: 'placeholder' as const },
+        { code: '[  ]', state: 'placeholder' as const },
+        { code: '[pr]', state: 'resolved' as const, role: 'robo-system-analyst' },
+      ],
+      lastUpdate: new Date(),
+    },
+  ];
+
+  const displayPRPs = prpArray.length > 0 ? prpArray : examplePRPs;
+
   return (
     <Box flexDirection="column">
-      {prpArray.length === 0 ? (
-        <Text color={config.colors.muted}>
-          ♪ No PRPs available
+      <Box flexDirection="column" marginBottom={1}>
+        <Text color={isSelected ? config.colors.accent_orange : config.colors.base_fg} bold>
+          PRP Context
         </Text>
-      ) : (
-        prpArray.map((prp) => {
-          const roleColors = prp.role ? getRoleColors(prp.role, config.colors) : null;
-          const isFocused = prp.name === selectedPRP;
+      </Box>
+      {displayPRPs.map((prp) => {
+        const roleColors = prp.role ? getRoleColors(prp.role, config.colors) : null;
+        const isFocused = prp.name === selectedPRP;
 
-          return (
-            <Box
-              key={prp.name}
-              flexDirection="column"
-              marginBottom={1}
-              paddingX={isFocused ? 1 : 0}
-              backgroundColor={isFocused ? config.colors.accent_orange_bg : undefined}
-            >
-              {/* PRP header line */}
-              <Box justifyContent="space-between" marginBottom={1}>
-                <Text
-                  color={isSelected && isFocused ? config.colors.base_fg :
-                    prp.status === 'IDLE' ? config.colors.muted :
-                      prp.status === 'RUNNING' ? config.colors.base_fg :
-                        prp.priority && prp.priority >= 9 ? config.colors.accent_orange :
-                          config.colors.base_fg}
-                  bold={prp.status === 'RUNNING' || (isSelected && isFocused)}
-                >
-                  {prp.name}
-                </Text>
-                <Text color={config.colors.muted}>
-                  · {prp.status}
-                </Text>
-                {roleColors && (
-                  <RoboRolePill role={prp.role} state="active" size="small" />
-                )}
-              </Box>
-
-              {/* PRP scope preview */}
-              <Box flexDirection="column" marginBottom={1}>
-                <Text color={config.colors.muted} wrap="truncate">
-                  {prp.name.includes('bootstrap') && 'Bootstrap workspace and initial configuration'}
-                  {prp.name.includes('agents') && 'Agent taxonomy and L4 rules consolidation'}
-                  {prp.name.includes('tui') && 'Terminal User Interface implementation'}
-                  {prp.name.includes('landing') && 'Landing page and documentation'}
-                  {!prp.name.includes('bootstrap') &&
-                   !prp.name.includes('agents') &&
-                   !prp.name.includes('tui') &&
-                   !prp.name.includes('landing') && 'Product requirements and implementation'}
-                </Text>
-              </Box>
-
-              {/* Signals line */}
-              <Box justifyContent="flex-start">
-                <SignalBar signals={prp.signals} config={config} />
-              </Box>
+        return (
+          <Box
+            key={prp.name}
+            flexDirection="column"
+            marginBottom={1}
+            paddingX={isFocused ? 1 : 0}
+            backgroundColor={isFocused ? config.colors.accent_orange_bg : undefined}
+          >
+            {/* PRP header line */}
+            <Box justifyContent="space-between" marginBottom={1}>
+              <Text
+                color={
+                  isSelected && isFocused
+                    ? config.colors.base_fg
+                    : prp.status === 'IDLE'
+                      ? config.colors.muted
+                      : prp.status === 'RUNNING'
+                        ? config.colors.base_fg
+                        : prp.priority && prp.priority >= 9
+                          ? config.colors.accent_orange
+                          : config.colors.base_fg
+                }
+                bold={prp.status === 'RUNNING' || (isSelected && isFocused)}
+              >
+                {prp.name}
+              </Text>
+              <Text color={config.colors.muted}>· {prp.status}</Text>
+              {roleColors && <RoboRolePill role={prp.role} state="active" size="small" />}
             </Box>
-          );
-        })
-      )}
+
+            {/* PRP scope preview */}
+            <Box flexDirection="column" marginBottom={1}>
+              <Text color={config.colors.muted} wrap="truncate">
+                {prp.name.includes('bootstrap') && 'Bootstrap workspace and initial configuration'}
+                {prp.name.includes('agents') && 'Agent taxonomy and L4 rules consolidation'}
+                {prp.name.includes('tui') && 'Terminal User Interface implementation'}
+                {prp.name.includes('landing') && 'Landing page and documentation'}
+                {prp.name.includes('nudge') && 'Nudge endpoint and infrastructure integration'}
+                {!prp.name.includes('bootstrap') &&
+                  !prp.name.includes('agents') &&
+                  !prp.name.includes('tui') &&
+                  !prp.name.includes('landing') &&
+                  !prp.name.includes('nudge') &&
+                  'Product requirements and implementation'}
+              </Text>
+            </Box>
+
+            {/* Signals line */}
+            <Box justifyContent="flex-start">
+              <SignalBar signals={prp.signals} config={config} />
+            </Box>
+          </Box>
+        );
+      })}
     </Box>
   );
 };
@@ -110,25 +165,23 @@ interface AgentDetailsSectionProps {
   onSelectAgent: (agentId: string) => void;
   config: TUIConfig;
   isSelected: boolean;
-}
+};
 
 const AgentDetailsSection: React.FC<AgentDetailsSectionProps> = ({
   agents,
   selectedAgent,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   _onSelectAgent,
   config,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _isSelected
+   
+  _isSelected,
 }) => {
   const agentArray = Array.from(agents.values()).slice(0, 3);
 
   return (
     <Box flexDirection="column">
       {agentArray.length === 0 ? (
-        <Text color={config.colors.muted}>
-          ♪ No agents currently running
-        </Text>
+        <Text color={config.colors.muted}>♪ No agents currently running</Text>
       ) : (
         agentArray.map((agent) => {
           const roleColors = getRoleColors(agent.role, config.colors);
@@ -140,14 +193,22 @@ const AgentDetailsSection: React.FC<AgentDetailsSectionProps> = ({
               flexDirection="column"
               marginBottom={1}
               paddingX={1}
-              backgroundColor={isFocused ? (roleColors?.bg || '#000') : undefined}
+              backgroundColor={isFocused ? roleColors?.bg || '#000' : undefined}
             >
               {/* Agent header */}
               <Box justifyContent="space-between" marginBottom={1}>
                 <Box>
                   <MusicIcon status={agent.status} animate={agent.status === 'RUNNING'} />
-                  <Text color={isFocused ? config.colors.base_fg : (roleColors?.active || config.colors.base_fg)} bold>
-                    {' '}{agent.prp}#{agent.role}
+                  <Text
+                    color={
+                      isFocused
+                        ? config.colors.base_fg
+                        : roleColors?.active || config.colors.base_fg
+                    }
+                    bold
+                  >
+                    {' '}
+                    {agent.prp}#{agent.role}
                   </Text>
                 </Box>
                 <Text color={config.colors.muted}>
@@ -157,7 +218,10 @@ const AgentDetailsSection: React.FC<AgentDetailsSectionProps> = ({
 
               {/* Agent task */}
               <Box marginBottom={1}>
-                <Text color={isFocused ? config.colors.base_fg : config.colors.muted} wrap="truncate">
+                <Text
+                  color={isFocused ? config.colors.base_fg : config.colors.muted}
+                  wrap="truncate"
+                >
                   {agent.task}
                 </Text>
               </Box>
@@ -196,13 +260,13 @@ interface SystemInfoSectionProps {
     loading: boolean;
     error: Error | null;
   };
-}
+};
 
 const SystemInfoSection: React.FC<SystemInfoSectionProps> = ({
   history,
   config,
   isSelected,
-  allSignals
+  allSignals,
 }) => {
   const recentHistory = history.slice(-2);
 
@@ -217,12 +281,7 @@ const SystemInfoSection: React.FC<SystemInfoSectionProps> = ({
           <Box flexDirection="row" flexWrap="wrap" marginLeft={2}>
             {allSignals.signals.slice(-3).map((signal) => (
               <Box key={signal.id} marginRight={1} marginBottom={1}>
-                <SignalDisplay
-                  signal={signal}
-                  compact={true}
-                  animated={true}
-                  config={config}
-                />
+                <SignalDisplay signal={signal} compact={true} animated={true} config={config} />
               </Box>
             ))}
           </Box>
@@ -231,19 +290,16 @@ const SystemInfoSection: React.FC<SystemInfoSectionProps> = ({
 
       {/* Legacy system history */}
       {recentHistory.length === 0 && !allSignals.loading && allSignals.signals.length === 0 ? (
-        <Text color={config.colors.muted}>
-          ♪ Waiting for system events...
-        </Text>
+        <Text color={config.colors.muted}>♪ Waiting for system events...</Text>
       ) : (
         recentHistory.map((item, index) => (
           <Box key={index} flexDirection="column" marginBottom={1}>
             {/* Source line */}
             <Box>
+              <Text color={config.colors.muted}>{item.source}</Text>
               <Text color={config.colors.muted}>
-                {item.source}
-              </Text>
-              <Text color={config.colors.muted}>
-                {' · '}{item.timestamp}
+                {' · '}
+                {item.timestamp}
               </Text>
             </Box>
 
@@ -253,9 +309,7 @@ const SystemInfoSection: React.FC<SystemInfoSectionProps> = ({
                 {JSON.stringify(item.data, null, 0)}
               </Text>
             ) : (
-              <Text color={config.colors.muted}>
-                {String(item.data)}
-              </Text>
+              <Text color={config.colors.muted}>{String(item.data)}</Text>
             )}
           </Box>
         ))
@@ -269,15 +323,13 @@ const SystemInfoSection: React.FC<SystemInfoSectionProps> = ({
       )}
 
       {allSignals.error && (
-        <Text color={config.colors.error}>
-          Signal error: {allSignals.error.message}
-        </Text>
+        <Text color={config.colors.error}>Signal error: {allSignals.error.message}</Text>
       )}
     </Box>
   );
 };
 
-export function InfoScreen({ state, config, terminalLayout }: InfoScreenProps) {
+export const InfoScreen = ({ state, config, terminalLayout }: InfoScreenProps) => {
   const [focusedSection, setFocusedSection] = useState(0);
   const [selectedPRP, setSelectedPRP] = useState<string>();
   const [selectedAgent, setSelectedAgent] = useState<string>();
@@ -286,14 +338,17 @@ export function InfoScreen({ state, config, terminalLayout }: InfoScreenProps) {
   const sectionWidth = Math.floor((terminalLayout.columns - 8) / 3); // Account for padding and borders
 
   // Subscribe to all signals for the InfoScreen
-  const allSignals = useSignalSubscription(undefined, {
-    types: ['agent', 'system', 'scanner', 'inspector', 'orchestrator']
-  }, {
-    historySize: 30,
-    debounceDelay: 150
-  });
+  const allSignals = useSignalSubscription(
+    undefined,
+    {
+      types: ['agent', 'system', 'scanner', 'inspector', 'orchestrator'],
+    },
+    {
+      historySize: 30,
+      debounceDelay: 150,
+    },
+  );
 
-  
   // Handle keyboard input for section navigation
   useInput((input, key) => {
     if (key.tab) {
@@ -305,12 +360,12 @@ export function InfoScreen({ state, config, terminalLayout }: InfoScreenProps) {
       case 'h':
       case 'H':
       case 'left':
-        setFocusedSection(prev => Math.max(0, prev - 1));
+        setFocusedSection((prev) => Math.max(0, prev - 1));
         break;
       case 'l':
       case 'L':
       case 'right':
-        setFocusedSection(prev => Math.min(2, prev + 1));
+        setFocusedSection((prev) => Math.min(2, prev + 1));
         break;
       case '1':
         setFocusedSection(0);
@@ -368,15 +423,26 @@ export function InfoScreen({ state, config, terminalLayout }: InfoScreenProps) {
     }
   });
 
-  // Auto-select first items if not selected
+  // Auto-select first items if not selected - track with refs to prevent excessive updates
+  const prevPrpsSizeRef = useRef(state.prps.size);
+  const prevAgentsSizeRef = useRef(state.agents.size);
+
   React.useEffect(() => {
-    if (!selectedPRP && state.prps.size > 0) {
-      setSelectedPRP(Array.from(state.prps.keys())[0]);
+    // Only update if sizes actually changed
+    if (state.prps.size !== prevPrpsSizeRef.current) {
+      if (!selectedPRP && state.prps.size > 0) {
+        setSelectedPRP(Array.from(state.prps.keys())[0]);
+      }
+      prevPrpsSizeRef.current = state.prps.size;
     }
-    if (!selectedAgent && state.agents.size > 0) {
-      setSelectedAgent(Array.from(state.agents.keys())[0]);
+
+    if (state.agents.size !== prevAgentsSizeRef.current) {
+      if (!selectedAgent && state.agents.size > 0) {
+        setSelectedAgent(Array.from(state.agents.keys())[0]);
+      }
+      prevAgentsSizeRef.current = state.agents.size;
     }
-  }, [state.prps, state.agents, selectedPRP, selectedAgent]);
+  }, [state.prps.size, state.agents.size, selectedPRP, selectedAgent]);
 
   return (
     <Box flexDirection="column" paddingX={1}>
@@ -385,9 +451,7 @@ export function InfoScreen({ state, config, terminalLayout }: InfoScreenProps) {
         <Text color={config.colors.accent_orange} bold>
           ♫ @dcversus/prp - System Overview
         </Text>
-        <Text color={config.colors.muted}>
-          ⧗ {new Date().toLocaleString()}
-        </Text>
+        <Text color={config.colors.muted}>⧗ {new Date().toLocaleString()}</Text>
       </Box>
 
       <Text color={config.colors.muted}>
@@ -426,7 +490,7 @@ export function InfoScreen({ state, config, terminalLayout }: InfoScreenProps) {
             allSignals={{
               signals: allSignals.signals,
               loading: allSignals.loading,
-              error: allSignals.error
+              error: allSignals.error,
             }}
           />
         </Box>
@@ -437,16 +501,15 @@ export function InfoScreen({ state, config, terminalLayout }: InfoScreenProps) {
         ─────────────────────────────────────────────────────────────────
       </Text>
       <Text color={config.colors.muted}>
-        Navigation: [←→] or [1-3] sections | [↑↓] navigate items | [Enter] select | [Tab] switch screens
+        Navigation: [←→] or [1-3] sections | [↑↓] navigate items | [Enter] select | [Tab] switch
+        screens
       </Text>
       <Box justifyContent="space-between">
-        <Text color={config.colors.muted}>
-          Focused: {sections[focusedSection]}
-        </Text>
+        <Text color={config.colors.muted}>Focused: {sections[focusedSection]}</Text>
         <Text color={config.colors.muted}>
           agents {state.agents.size} · prp {state.prps.size} · history {state.history.length}
         </Text>
       </Box>
     </Box>
   );
-}
+};

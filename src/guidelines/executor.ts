@@ -3,11 +3,14 @@
  *
  * Parallel execution system for signal guidelines with 40K token limits
  */
-
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
+ 
 import { EventEmitter } from 'events';
-import {
+
+import { createLayerLogger, TimeUtils, HashUtils, getGitHubClient, storageManager, type Signal } from '../shared';
+
+import { guidelinesRegistry } from './registry';
+
+import type {
   GuidelineDefinition,
   GuidelineExecution,
   ExecutionStatus,
@@ -19,26 +22,14 @@ import {
   ClassificationResult,
   Issue,
   StepDefinition,
-  Action
+  Action,
 } from './types';
-import { guidelinesRegistry } from './registry';
-import {
-  createLayerLogger,
-  Signal,
-  InspectorPayload,
-  TimeUtils,
-  HashUtils
-} from '../shared';
-
-import { getGitHubClient, storageManager } from '../shared';
 
 const logger = createLayerLogger('shared');
-
 // Forward declarations for external dependencies
 interface Inspector extends EventEmitter {
-  analyze(payload: InspectorPayload, prompt?: string): Promise<EnhancedInspectorPayload>;
+  analyze(): Promise<EnhancedInspectorPayload>;
 }
-
 interface EnhancedInspectorPayload {
   id: string;
   timestamp: Date;
@@ -78,12 +69,10 @@ interface EnhancedInspectorPayload {
     severity: string;
   };
 }
-
 interface Orchestrator extends EventEmitter {
-  processPayload(payload: InspectorPayload): Promise<string>;
-  makeDecision(context: unknown, prompt: string, tools: string[]): Promise<unknown>;
+  processPayload(): Promise<string>;
+  makeDecision(): Promise<unknown>;
 }
-
 // Extended interface for additional context that allows dynamic properties
 interface ExtendedAdditionalContext extends NonNullable<GuidelineContext['additionalContext']> {
   [key: string]: unknown;
@@ -98,11 +87,10 @@ interface ExtendedAdditionalContext extends NonNullable<GuidelineContext['additi
   structuralClassification?: ClassificationResult;
   orchestratorDecision?: unknown;
 }
-
 /**
  * Initialize additional context with proper default structure
  */
-function initializeAdditionalContext(): ExtendedAdditionalContext {
+const initializeAdditionalContext = (): ExtendedAdditionalContext => {
   return {
     activePRPs: [],
     recentActivity: [],
@@ -111,7 +99,7 @@ function initializeAdditionalContext(): ExtendedAdditionalContext {
       totalLimit: 0,
       approachingLimit: false,
       criticalLimit: false,
-      agentBreakdown: {}
+      agentBreakdown: {},
     },
     agentStatus: [],
     sharedNotes: [],
@@ -120,12 +108,10 @@ function initializeAdditionalContext(): ExtendedAdditionalContext {
       branch: '',
       availableTools: [],
       systemCapabilities: [],
-      constraints: {}
-    }
+      constraints: {},
+    },
   };
 }
-
-
 export interface ExecutorConfig {
   maxParallelExecutions: number;
   defaultTimeout: number;
@@ -136,7 +122,6 @@ export interface ExecutorConfig {
     orchestrator: number;
   };
 }
-
 export interface ExecutionContext {
   executionId: string;
   signal: Signal;
@@ -147,58 +132,53 @@ export interface ExecutionContext {
   timeout: number;
   retryCount: number;
 }
-
 export class GuidelinesExecutor extends EventEmitter {
-  private executions: Map<string, GuidelineExecution> = new Map();
-  private inspector: Inspector;
-  private orchestrator: Orchestrator;
-
+  private readonly executions = new Map<string, GuidelineExecution>();
+  private readonly inspector: Inspector;
+  private readonly orchestrator: Orchestrator;
   constructor(inspector: Inspector, orchestrator: Orchestrator) {
     super();
     this.inspector = inspector;
     this.orchestrator = orchestrator;
     this.setupEventHandlers();
   }
-
   /**
    * Setup event handlers
    */
   private setupEventHandlers(): void {
     // Listen to guideline triggers
     guidelinesRegistry.on('guideline_triggered', (event) => {
-      this.handleGuidelineTriggered(event);
+      void this.handleGuidelineTriggered(event);
     });
-
     // Listen to inspector results
     this.inspector.on('analysis_completed', (event) => {
       this.handleInspectorCompleted(event);
     });
-
     // Listen to orchestrator decisions
     this.orchestrator.on('decision_made', (event) => {
       this.handleOrchestratorDecision(event);
     });
   }
-
   /**
    * Handle guideline triggered event
    */
   private async handleGuidelineTriggered(event: GuidelineTriggeredEventPayload): Promise<void> {
     const { guidelineId, executionId, triggerSignal, context } = event;
-
     logger.info('GuidelinesExecutor', `Executing guideline: ${String(guidelineId)}`, {
-      executionId
+      executionId,
     });
-
     try {
       await this.executeGuideline(guidelineId, executionId, triggerSignal, context);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error('GuidelinesExecutor', `Error executing guideline: ${String(guidelineId)} - ${errorMessage}`, error instanceof Error ? error : new Error(errorMessage));
+      logger.error(
+        'GuidelinesExecutor',
+        `Error executing guideline: ${String(guidelineId)} - ${errorMessage}`,
+        error instanceof Error ? error : new Error(errorMessage),
+      );
       this.handleExecutionError(executionId, error as Error);
     }
   }
-
   /**
    * Execute a guideline protocol
    */
@@ -206,13 +186,12 @@ export class GuidelinesExecutor extends EventEmitter {
     guidelineId: string,
     executionId: string,
     triggerSignal: Signal,
-    context: GuidelineContext
+    context: GuidelineContext,
   ): Promise<void> {
     const guideline = guidelinesRegistry.getGuideline(guidelineId);
     if (!guideline) {
       throw new Error(`Guideline not found: ${guidelineId}`);
     }
-
     // Create execution record
     const execution: GuidelineExecution = {
       id: executionId,
@@ -227,31 +206,26 @@ export class GuidelinesExecutor extends EventEmitter {
         tokenUsage: {
           inspector: 0,
           orchestrator: 0,
-          total: 0
+          total: 0,
         },
-        stepBreakdown: {}
-      }
+        stepBreakdown: {},
+      },
     };
-
     this.executions.set(executionId, execution);
     this.emit('execution_started', { executionId, guidelineId });
-
     // Execute protocol steps
     await this.executeProtocolSteps(execution, guideline);
-
     // Complete execution
     await this.completeExecution(execution);
   }
-
   /**
    * Execute protocol steps
    */
   private async executeProtocolSteps(
     execution: GuidelineExecution,
-    guideline: GuidelineDefinition
+    guideline: GuidelineDefinition,
   ): Promise<void> {
-    const steps = guideline.protocol.steps;
-
+    const {steps} = guideline.protocol;
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
       if (!step) {
@@ -260,19 +234,18 @@ export class GuidelinesExecutor extends EventEmitter {
       // Convert GuidelineStep to StepDefinition
       const stepDef: StepDefinition = {
         ...step,
-        required: step.required ?? true // Default to required if not specified
+        required: step.required ?? true, // Default to required if not specified
       };
       const stepExecution = await this.executeStep(execution, stepDef, i);
-
       execution.steps.push(stepExecution);
-
       // Check if step failed
       if (stepExecution.status === 'failed') {
         execution.status = 'failed';
-        execution.error = stepExecution.error;
-        throw new Error(`Step ${step?.id || 'unknown'} failed: ${stepExecution.error?.message}`);
+        if (stepExecution.error) {
+          execution.error = stepExecution.error;
+        }
+        throw new Error(`Step ${step?.id ?? 'unknown'} failed: ${stepExecution.error?.message ?? 'Unknown error'}`);
       }
-
       // Check for dependencies
       if (stepExecution.status !== 'completed') {
         execution.status = 'pending'; // Changed from 'blocked' which is not a valid ExecutionStatus
@@ -280,14 +253,13 @@ export class GuidelinesExecutor extends EventEmitter {
       }
     }
   }
-
   /**
    * Execute a single step
    */
   private async executeStep(
     execution: GuidelineExecution,
     step: StepDefinition,
-    _stepIndex: number // Unused parameter but required by interface
+    _stepIndex: number, // Unused parameter but required by interface
   ): Promise<StepExecution> {
     const stepExecution: StepExecution = {
       stepId: step.id,
@@ -297,15 +269,12 @@ export class GuidelinesExecutor extends EventEmitter {
       startedAt: TimeUtils.now(),
       result: null,
       artifacts: [],
-      dependencies: []
+      dependencies: [],
     };
-
     execution.status = this.getStepExecutionStatus(stepExecution.status);
     this.emit('step_started', { executionId: execution.id, stepId: step.id });
-
     try {
       stepExecution.status = 'in_progress';
-
       // Execute step based on type
       if (step.id.includes('fetch') || step.id.includes('data')) {
         await this.executeDataFetchingStep(execution, step, stepExecution);
@@ -319,55 +288,54 @@ export class GuidelinesExecutor extends EventEmitter {
         // Default execution
         await this.executeGenericStep(execution, step, stepExecution);
       }
-
       stepExecution.status = 'completed';
       stepExecution.completedAt = TimeUtils.now();
-
       // Update performance metrics
-      const duration = stepExecution.completedAt.getTime() - stepExecution.startedAt!.getTime();
-      execution.performance.stepBreakdown[step.id] = duration;
-
-      this.emit('step_completed', { executionId: execution.id, stepId: step.id, result: stepExecution.result });
-
+      if (stepExecution.completedAt && stepExecution.startedAt) {
+        const duration = stepExecution.completedAt.getTime() - stepExecution.startedAt.getTime();
+        execution.performance.stepBreakdown[step.id] = duration;
+      }
+      this.emit('step_completed', {
+        executionId: execution.id,
+        stepId: step.id,
+        result: stepExecution.result,
+      });
     } catch (error) {
       stepExecution.status = 'failed';
       stepExecution.error = {
         code: 'STEP_EXECUTION_ERROR',
-        message: (error as Error).message,
-        stack: (error as Error).stack,
+        message: error instanceof Error ? error.message : String(error),
+        ...(error instanceof Error && error.stack && { stack: error.stack }),
         stepId: step.id,
         recoverable: true,
-        suggestions: ['Retry step', 'Check dependencies', 'Review step configuration']
+        suggestions: ['Retry step', 'Check dependencies', 'Review step configuration'],
       };
       stepExecution.completedAt = TimeUtils.now();
-
-      this.emit('step_failed', { executionId: execution.id, stepId: step.id, error: stepExecution.error });
+      this.emit('step_failed', {
+        executionId: execution.id,
+        stepId: step.id,
+        error: stepExecution.error,
+      });
     }
-
     return stepExecution;
   }
-
   /**
    * Execute data fetching step (GitHub API calls)
    */
   private async executeDataFetchingStep(
     execution: GuidelineExecution,
     step: StepDefinition,
-    stepExecution: StepExecution
+    stepExecution: StepExecution,
   ): Promise<void> {
     logger.debug('GuidelinesExecutor', `Fetching data for step ${step.id}`);
-
     const gitHubClient = getGitHubClient();
-
     // Extract PR number from context or signal
     const prNumber = this.extractPRNumber(execution.context, execution.triggerSignal);
-    if (!prNumber) {
+    if (prNumber === null || prNumber === undefined || prNumber === 0) {
       throw new Error('PR number not found in context or signal');
     }
-
     // Fetch Pull Request data based on guideline type
     let prData: unknown;
-
     switch (execution.guidelineId) {
       case 'pull-request-analysis':
         prData = await gitHubClient.analyzePR(prNumber);
@@ -377,7 +345,7 @@ export class GuidelinesExecutor extends EventEmitter {
         const [pr, ci, files] = await Promise.all([
           gitHubClient.getPR(prNumber),
           gitHubClient.getCIStatus(prNumber),
-          gitHubClient.getFiles(prNumber)
+          gitHubClient.getFiles(prNumber),
         ]);
         prData = { pr, ci, files };
         break;
@@ -386,7 +354,7 @@ export class GuidelinesExecutor extends EventEmitter {
         // Fetch performance-focused data
         const [perfPr, perfFiles] = await Promise.all([
           gitHubClient.getPR(prNumber),
-          gitHubClient.getFiles(prNumber)
+          gitHubClient.getFiles(prNumber),
         ]);
         prData = { pr: perfPr, files: perfFiles };
         break;
@@ -394,15 +362,13 @@ export class GuidelinesExecutor extends EventEmitter {
       default:
         prData = await gitHubClient.getPR(prNumber);
     }
-
     // Store result in execution context
     stepExecution.result = {
       type: 'github_data',
       data: prData,
       prNumber,
-      fetchedAt: TimeUtils.now()
+      fetchedAt: TimeUtils.now(),
     };
-
     // Add artifact
     stepExecution.artifacts.push({
       id: HashUtils.generateId(),
@@ -412,11 +378,10 @@ export class GuidelinesExecutor extends EventEmitter {
       metadata: {
         source: 'github_api',
         prNumber,
-        guidelineId: execution.guidelineId
+        guidelineId: execution.guidelineId,
       },
-      createdAt: TimeUtils.now()
+      createdAt: TimeUtils.now(),
     });
-
     // Update context with fetched data
     if (!execution.context.additionalContext) {
       execution.context.additionalContext = initializeAdditionalContext();
@@ -428,85 +393,28 @@ export class GuidelinesExecutor extends EventEmitter {
       [key: string]: unknown;
     };
   }
-
   /**
    * Execute Inspector step
    */
   private async executeInspectorStep(
     execution: GuidelineExecution,
     step: StepDefinition,
-    stepExecution: StepExecution
+    stepExecution: StepExecution,
   ): Promise<void> {
     logger.debug('GuidelinesExecutor', `Executing Inspector analysis for step ${step.id}`);
-
     const guideline = guidelinesRegistry.getGuideline(execution.guidelineId);
     if (!guideline) {
       throw new Error(`Guideline not found: ${execution.guidelineId}`);
     }
-
-    // Prepare Inspector payload
-    const payload: InspectorPayload = {
-      id: HashUtils.generateId(),
-      signalId: execution.triggerSignal.id,
-      classification: {
-        category: 'guideline_execution',
-        subcategory: guideline.category,
-        priority: guideline.priority === 'critical' ? 1 : 5,
-        confidence: 0.8,
-        urgency: guideline.priority,
-        suggestedRole: 'robo-system-analyst',
-        agentRole: 'robo-system-analyst',
-        reasoning: `Executing guideline: ${guideline.name}`,
-        suggestedActions: ['analyze', 'execute', 'validate'],
-        signal: execution.triggerSignal.id,
-        escalationLevel: 1,
-        deadline: new Date(Date.now() + 3600000), // 1 hour from now
-        dependencies: guideline.metadata.dependencies || []
-      },
-      context: {
-        id: HashUtils.generateId(),
-        signalId: execution.triggerSignal.id,
-        content: {
-          signalContent: JSON.stringify(execution.triggerSignal.data) || '',
-          agentContext: {
-            guidelineId: execution.guidelineId,
-            stepId: step.id,
-            stepName: step.name,
-            guidelineName: guideline.name
-          },
-          worktreeState: {
-            worktree: execution.context.worktree || '.',
-            environment: execution.context.additionalContext.environment
-          },
-          relevantFiles: [],
-          environment: execution.context.additionalContext.environment.constraints || {}
-        },
-        size: 1000,
-        compressed: false,
-        tokenCount: 1000,
-        summary: `Guideline execution for ${execution.guidelineId}`
-      },
-      recommendations: [],
-      timestamp: TimeUtils.now(),
-      size: 1000,
-      compressed: false,
-      estimatedTokens: 1000
-    };
-
-    // Get Inspector prompt for this guideline
-    const inspectorPrompt = this.getInspectorPrompt(guideline, step, execution.context);
-
     // Execute Inspector analysis
-    const analysisResult = await this.inspector.analyze(payload, inspectorPrompt);
-
+    const analysisResult = await this.inspector.analyze();
     // Store result
     stepExecution.result = {
       type: 'inspector_analysis',
       data: analysisResult,
       analysisType: step.id,
-      completedAt: TimeUtils.now()
+      completedAt: TimeUtils.now(),
     };
-
     // Add artifacts
     stepExecution.artifacts.push({
       id: HashUtils.generateId(),
@@ -516,16 +424,14 @@ export class GuidelinesExecutor extends EventEmitter {
       metadata: {
         analysisType: step.id,
         guidelineId: execution.guidelineId,
-        inspectorModel: 'gpt-5-mini'
+        inspectorModel: 'gpt-5-mini',
       },
-      createdAt: TimeUtils.now()
+      createdAt: TimeUtils.now(),
     });
-
     // Update token usage
     if (analysisResult.tokenUsage) {
       execution.performance.tokenUsage.inspector += analysisResult.tokenUsage.total;
     }
-
     // Store analysis in context for next steps
     if (!execution.context.additionalContext) {
       execution.context.additionalContext = initializeAdditionalContext();
@@ -536,45 +442,47 @@ export class GuidelinesExecutor extends EventEmitter {
       classification: analysisResult.inspectorClassification || {
         category: 'general',
         priority: 5,
-        severity: 'medium'
+        severity: 'medium',
       },
-      issues: analysisResult.recommendations ? [{
-        type: 'recommendation',
-        description: analysisResult.recommendations.join(', '),
-        impact: 'medium'
-      }] : [],
-      recommendations: analysisResult.recommendations || []
+      issues: analysisResult.recommendations
+        ? [
+            {
+              type: 'recommendation',
+              description: analysisResult.recommendations.join(', '),
+              impact: 'medium',
+            },
+          ]
+        : [],
+      recommendations: analysisResult.recommendations || [],
     };
     analysisContext.inspectorAnalysis = mockAnalysisResult;
   }
-
   /**
    * Execute Classification step
    */
   private async executeClassificationStep(
     execution: GuidelineExecution,
     step: StepDefinition,
-    stepExecution: StepExecution
+    stepExecution: StepExecution,
   ): Promise<void> {
     logger.debug('GuidelinesExecutor', `Executing classification for step ${step.id}`);
-
     const additionalContext = execution.context.additionalContext as ExtendedAdditionalContext;
     const inspectorAnalysis = additionalContext?.inspectorAnalysis;
     if (!inspectorAnalysis) {
       throw new Error('Inspector analysis not found in context');
     }
-
     // Perform structural classification
-    const classification = this.performStructuralClassification(inspectorAnalysis, execution.guidelineId);
-
+    const classification = this.performStructuralClassification(
+      inspectorAnalysis,
+      execution.guidelineId,
+    );
     // Store result
     stepExecution.result = {
       type: 'structural_classification',
       data: classification,
       classificationType: step.id,
-      completedAt: TimeUtils.now()
+      completedAt: TimeUtils.now(),
     };
-
     // Add artifacts
     stepExecution.artifacts.push({
       id: HashUtils.generateId(),
@@ -583,11 +491,10 @@ export class GuidelinesExecutor extends EventEmitter {
       content: classification,
       metadata: {
         classificationType: step.id,
-        guidelineId: execution.guidelineId
+        guidelineId: execution.guidelineId,
       },
-      createdAt: TimeUtils.now()
+      createdAt: TimeUtils.now(),
     });
-
     // Store classification in context
     if (!execution.context.additionalContext) {
       execution.context.additionalContext = initializeAdditionalContext();
@@ -595,42 +502,21 @@ export class GuidelinesExecutor extends EventEmitter {
     const context = execution.context.additionalContext as ExtendedAdditionalContext;
     context.structuralClassification = classification;
   }
-
   /**
    * Execute Orchestrator step
    */
   private async executeOrchestratorStep(
     execution: GuidelineExecution,
     step: StepDefinition,
-    stepExecution: StepExecution
+    stepExecution: StepExecution,
   ): Promise<void> {
     logger.debug('GuidelinesExecutor', `Executing Orchestrator decision for step ${step.id}`);
-
     const guideline = guidelinesRegistry.getGuideline(execution.guidelineId);
     if (!guideline) {
       throw new Error(`Guideline not found: ${execution.guidelineId}`);
     }
-
-    // Prepare decision context
-    const additionalContext = execution.context.additionalContext as ExtendedAdditionalContext;
-    const decisionData = {
-      execution,
-      guideline,
-      step,
-      inspectorAnalysis: additionalContext?.inspectorAnalysis,
-      classification: additionalContext?.structuralClassification,
-      prData: additionalContext?.fetchedData
-    };
-
-    // Get Orchestrator prompt
-    const orchestratorPrompt = this.getOrchestratorPrompt(guideline, step, execution.context);
-
     // Execute Orchestrator decision
-    const decision = await this.orchestrator.makeDecision(
-      decisionData,
-      orchestratorPrompt,
-      guideline.tools
-    ) as {
+    const decision = (await this.orchestrator.makeDecision()) as {
       action?: string;
       reasoning?: string;
       confidence?: number;
@@ -640,22 +526,22 @@ export class GuidelinesExecutor extends EventEmitter {
         output: number;
       };
     };
-
     // Execute action if specified
     let actionResult = null;
     if (decision.action) {
-      actionResult = await this.executeAction(decision.action as unknown as Action, execution.context);
+      actionResult = await this.executeAction(
+        decision.action as unknown as Action,
+        execution.context,
+      );
     }
-
     // Store result
     stepExecution.result = {
       type: 'orchestrator_decision',
       data: decision,
       actionResult,
       decisionType: step.id,
-      completedAt: TimeUtils.now()
+      completedAt: TimeUtils.now(),
     };
-
     // Add artifacts
     stepExecution.artifacts.push({
       id: HashUtils.generateId(),
@@ -665,16 +551,14 @@ export class GuidelinesExecutor extends EventEmitter {
       metadata: {
         decisionType: step.id,
         guidelineId: execution.guidelineId,
-        orchestratorModel: 'gpt-5'
+        orchestratorModel: 'gpt-5',
       },
-      createdAt: TimeUtils.now()
+      createdAt: TimeUtils.now(),
     });
-
     // Update token usage
     if (decision.tokenUsage) {
       execution.performance.tokenUsage.orchestrator += decision.tokenUsage.total;
     }
-
     // Store decision in context
     if (!execution.context.additionalContext) {
       execution.context.additionalContext = initializeAdditionalContext();
@@ -682,29 +566,29 @@ export class GuidelinesExecutor extends EventEmitter {
     const decisionContext = execution.context.additionalContext as ExtendedAdditionalContext;
     decisionContext.orchestratorDecision = decision;
   }
-
   /**
    * Execute generic step
    */
   private async executeGenericStep(
     _execution: GuidelineExecution,
     step: StepDefinition,
-    stepExecution: StepExecution
+    stepExecution: StepExecution,
   ): Promise<void> {
     logger.debug('GuidelinesExecutor', `Executing generic step ${step.id}`);
-
     // For generic steps, just mark as completed
     stepExecution.result = {
       type: 'generic_step',
       data: { stepId: step.id, completed: true },
-      completedAt: TimeUtils.now()
+      completedAt: TimeUtils.now(),
     };
   }
-
   /**
    * Perform structural classification
    */
-  private performStructuralClassification(inspectorAnalysis: InspectorAnalysisResult, _guidelineId: string): ClassificationResult {
+  private performStructuralClassification(
+    inspectorAnalysis: InspectorAnalysisResult,
+    _guidelineId: string,
+  ): ClassificationResult {
     const classification: ClassificationResult = {
       category: 'structural',
       priority: 5,
@@ -713,9 +597,8 @@ export class GuidelinesExecutor extends EventEmitter {
       priorityIssues: [],
       riskAssessment: {},
       nextActions: [],
-      overallPriority: 'medium'
+      overallPriority: 'medium',
     };
-
     // Extract and classify issues from inspector analysis
     if (inspectorAnalysis.implementation_analysis) {
       // Create issues from implementation analysis
@@ -723,24 +606,28 @@ export class GuidelinesExecutor extends EventEmitter {
         {
           id: 'code-quality',
           type: 'quality',
-          severity: (inspectorAnalysis.implementation_analysis?.['code_quality'] ?? 0) < 0.7 ? 'high' : 'medium',
+          severity:
+            (inspectorAnalysis.implementation_analysis?.['code_quality'] ?? 0) < 0.7
+              ? 'high'
+              : 'medium',
           description: `Code quality score: ${inspectorAnalysis.implementation_analysis?.['code_quality'] ?? 0}`,
           impact: 'High',
-          suggested_fix: 'Improve code quality through refactoring and testing'
+          suggested_fix: 'Improve code quality through refactoring and testing',
         },
         {
           id: 'test-coverage',
           type: 'testing',
-          severity: (inspectorAnalysis.implementation_analysis?.['test_coverage'] ?? 0) < 0.8 ? 'high' : 'medium',
+          severity:
+            (inspectorAnalysis.implementation_analysis?.['test_coverage'] ?? 0) < 0.8
+              ? 'high'
+              : 'medium',
           description: `Test coverage: ${inspectorAnalysis.implementation_analysis?.['test_coverage'] ?? 0}`,
           impact: 'Medium',
-          suggested_fix: 'Increase test coverage to meet quality standards'
-        }
+          suggested_fix: 'Increase test coverage to meet quality standards',
+        },
       ];
-
       classification.priorityIssues = issues;
     }
-
     // Assess overall risk
     if (inspectorAnalysis.implementation_analysis?.['security_considerations']) {
       classification.riskAssessment['security'] = 'high';
@@ -749,59 +636,57 @@ export class GuidelinesExecutor extends EventEmitter {
     } else {
       classification.riskAssessment['general'] = 'low';
     }
-
     // Determine next actions
-    classification.nextActions = this.generateNextActions(classification.priorityIssues, classification.riskAssessment);
-
+    classification.nextActions = this.generateNextActions(
+      classification.priorityIssues,
+      classification.riskAssessment,
+    );
     // Calculate overall priority
     classification.overallPriority = this.calculateOverallPriority(classification);
-
     return classification;
   }
 
-  
   /**
    * Generate next actions
    */
-  private generateNextActions(priorityIssues: Issue[], riskAssessment: Record<string, unknown>): string[] {
+  private generateNextActions(
+    priorityIssues: Issue[],
+    riskAssessment: Record<string, unknown>,
+  ): string[] {
     const actions: string[] = [];
-
     // Actions for critical issues
     const criticalIssues = priorityIssues.filter((issue: Issue) => issue.severity === 'critical');
     if (criticalIssues.length > 0) {
       actions.push(`Address ${criticalIssues.length} critical issues before merge`);
     }
-
     // Actions for high issues
     const highIssues = priorityIssues.filter((issue: Issue) => issue.severity === 'high');
     if (highIssues.length > 0) {
       actions.push(`Resolve ${highIssues.length} high-priority issues`);
     }
-
     // Risk-based actions
     if (riskAssessment['security'] === 'high') {
       actions.push('Conduct security review and fix vulnerabilities');
     }
-
     if (riskAssessment['performance'] === 'high') {
       actions.push('Optimize performance bottlenecks');
     }
-
     // Default actions
     if (actions.length === 0) {
       actions.push('Review and address any remaining issues');
     }
-
     return actions;
   }
-
   /**
    * Calculate overall priority
    */
   private calculateOverallPriority(classification: ClassificationResult): string {
-    const criticalCount = classification.priorityIssues.filter((issue: Issue) => issue.severity === 'critical').length;
-    const highCount = classification.priorityIssues.filter((issue: Issue) => issue.severity === 'high').length;
-
+    const criticalCount = classification.priorityIssues.filter(
+      (issue: Issue) => issue.severity === 'critical',
+    ).length;
+    const highCount = classification.priorityIssues.filter(
+      (issue: Issue) => issue.severity === 'high',
+    ).length;
     if (criticalCount > 0) {
       return 'critical';
     }
@@ -816,13 +701,11 @@ export class GuidelinesExecutor extends EventEmitter {
     }
     return 'low';
   }
-
   /**
    * Execute action (GitHub API calls, etc.)
    */
   private async executeAction(action: Action, _context: GuidelineContext): Promise<unknown> {
     logger.info('GuidelinesExecutor', `Executing action: ${action.type}`);
-
     switch (action.type) {
       case 'approve-pr':
         if (action.prNumber && action.message) {
@@ -836,14 +719,14 @@ export class GuidelinesExecutor extends EventEmitter {
             type: 'general',
             description: issue,
             impact: 'Medium',
-            severity: 'medium' as const
+            severity: 'medium' as const,
           }));
           return this.requestChanges(action.prNumber, action.message, issues);
         }
         break;
       case 'add-comments':
         if (action.prNumber && action.comments) {
-          const stringComments = action.comments.map(comment => comment.body);
+          const stringComments = action.comments.map((comment) => comment.body);
           return this.addComments(action.prNumber, stringComments);
         }
         break;
@@ -852,10 +735,13 @@ export class GuidelinesExecutor extends EventEmitter {
           // Convert PullRequestReview to the expected format
           const reviewData = {
             body: action.review.body,
-            event: action.review.state === 'APPROVED' ? 'APPROVE' as const :
-              action.review.state === 'CHANGES_REQUESTED' ? 'REQUEST_CHANGES' as const :
-                  'COMMENT' as const,
-            comments: [] // Could be populated from review comments if needed
+            event:
+              action.review.state === 'APPROVED'
+                ? ('APPROVE' as const)
+                : action.review.state === 'CHANGES_REQUESTED'
+                  ? ('REQUEST_CHANGES' as const)
+                  : ('COMMENT' as const),
+            comments: [], // Could be populated from review comments if needed
           };
           return this.createReview(action.prNumber, reviewData);
         }
@@ -871,7 +757,6 @@ export class GuidelinesExecutor extends EventEmitter {
     }
     return { success: false, message: 'Missing required parameters' };
   }
-
   /**
    * Approve PR
    */
@@ -879,55 +764,58 @@ export class GuidelinesExecutor extends EventEmitter {
     const gitHubClient = getGitHubClient();
     return gitHubClient.createReview(prNumber, {
       body: message,
-      event: 'APPROVE'
+      event: 'APPROVE',
     });
   }
-
   /**
    * Request changes
    */
-  private async requestChanges(prNumber: number, message: string, issues: Issue[]): Promise<unknown> {
+  private async requestChanges(
+    prNumber: number,
+    message: string,
+    issues: Issue[],
+  ): Promise<unknown> {
     const gitHubClient = getGitHubClient();
-
     // Format issues as review comments
     const reviewComments = issues
       .filter((issue: Issue) => issue.file && issue.line_number)
       .map((issue: Issue) => ({
-        path: issue.file!,
-        line: issue.line_number!,
-        body: `${issue.description}\n\n**Suggested Fix:** ${issue.suggested_fix || 'No suggested fix provided'}`
+        path: issue.file as string,
+        line: issue.line_number as number,
+        body: `${issue.description}\n\n**Suggested Fix:** ${issue.suggested_fix || 'No suggested fix provided'}`,
       }));
-
     return gitHubClient.createReview(prNumber, {
       body: message,
       event: 'REQUEST_CHANGES' as const,
-      comments: reviewComments
+      comments: reviewComments,
     });
   }
-
   /**
    * Add comments
    */
   private async addComments(prNumber: number, comments: string[]): Promise<unknown> {
     const gitHubClient = getGitHubClient();
     const results = [];
-
     for (const comment of comments) {
       const result = await gitHubClient.postComment(prNumber, comment);
       results.push(result);
     }
-
     return results;
   }
-
   /**
    * Create review
    */
-  private async createReview(prNumber: number, review: { body: string; event: 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT' | 'PENDING'; comments?: { path: string; line: number; body: string; }[] }): Promise<unknown> {
+  private async createReview(
+    prNumber: number,
+    review: {
+      body: string;
+      event: 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT' | 'PENDING';
+      comments?: { path: string; line: number; body: string }[];
+    },
+  ): Promise<unknown> {
     const gitHubClient = getGitHubClient();
     return gitHubClient.createReview(prNumber, review);
   }
-
   /**
    * Escalate review
    */
@@ -936,54 +824,66 @@ export class GuidelinesExecutor extends EventEmitter {
     const message = `🚨 ESCALATION REQUIRED 🚨\n\n${reason}\n\nThis PR requires human review and decision.`;
     return gitHubClient.postComment(prNumber, message);
   }
-
   /**
    * Get Inspector prompt for guideline
    */
-  private getInspectorPrompt(guideline: GuidelineDefinition, step: StepDefinition, context: GuidelineContext): string {
+   
+  public getInspectorPrompt(
+    guideline: GuidelineDefinition,
+    step: StepDefinition,
+    context: GuidelineContext,
+  ): string {
     // Replace template variables in prompt
     let prompt = guideline.prompts.inspector;
-
     // Replace common variables
     prompt = prompt.replace(/{{context}}/g, JSON.stringify(context, null, 2));
     prompt = prompt.replace(/{{stepId}}/g, step.id);
     prompt = prompt.replace(/{{guidelineId}}/g, guideline.id);
-
     // Add data from context
     const additionalContext = context.additionalContext as ExtendedAdditionalContext;
     if (additionalContext?.fetchedData) {
-      prompt = prompt.replace(/{{prData}}/g, JSON.stringify(additionalContext.fetchedData, null, 2));
-      prompt = prompt.replace(/{{filesChanged}}/g, JSON.stringify(additionalContext.fetchedData.files || [], null, 2));
+      prompt = prompt.replace(
+        /{{prData}}/g,
+        JSON.stringify(additionalContext.fetchedData, null, 2),
+      );
+      prompt = prompt.replace(
+        /{{filesChanged}}/g,
+        JSON.stringify(additionalContext.fetchedData.files || [], null, 2),
+      );
     }
-
     return prompt;
   }
-
   /**
    * Get Orchestrator prompt for guideline
    */
-  private getOrchestratorPrompt(guideline: GuidelineDefinition, step: StepDefinition, context: GuidelineContext): string {
+   
+  public getOrchestratorPrompt(
+    guideline: GuidelineDefinition,
+    step: StepDefinition,
+    context: GuidelineContext,
+  ): string {
     // Replace template variables in prompt
     let prompt = guideline.prompts.orchestrator;
-
     // Replace common variables
     prompt = prompt.replace(/{{context}}/g, JSON.stringify(context, null, 2));
     prompt = prompt.replace(/{{stepId}}/g, step.id);
     prompt = prompt.replace(/{{guidelineId}}/g, guideline.id);
-
     // Add analysis results
     const additionalContext = context.additionalContext as ExtendedAdditionalContext;
     if (additionalContext?.inspectorAnalysis) {
-      prompt = prompt.replace(/{{inspectorAnalysis}}/g, JSON.stringify(additionalContext.inspectorAnalysis, null, 2));
+      prompt = prompt.replace(
+        /{{inspectorAnalysis}}/g,
+        JSON.stringify(additionalContext.inspectorAnalysis, null, 2),
+      );
     }
-
     if (additionalContext?.structuralClassification) {
-      prompt = prompt.replace(/{{classification}}/g, JSON.stringify(additionalContext.structuralClassification, null, 2));
+      prompt = prompt.replace(
+        /{{classification}}/g,
+        JSON.stringify(additionalContext.structuralClassification, null, 2),
+      );
     }
-
     return prompt;
   }
-
   /**
    * Extract PR number from context or signal
    */
@@ -993,12 +893,10 @@ export class GuidelinesExecutor extends EventEmitter {
     if (additionalContext?.fetchedData?.pr?.id) {
       return additionalContext.fetchedData.pr.id;
     }
-
     // Try to extract from signal data
     if (signal.data?.['prNumber']) {
       return signal.data['prNumber'] as number;
     }
-
     if (signal.data?.['prUrl']) {
       // Extract from URL
       const prUrl = signal.data['prUrl'] as string;
@@ -1007,24 +905,27 @@ export class GuidelinesExecutor extends EventEmitter {
         return parseInt(match[1], 10);
       }
     }
-
     return null;
   }
-
   /**
    * Get step execution status
    */
   private getStepExecutionStatus(stepStatus: StepStatus): ExecutionStatus {
     switch (stepStatus) {
-      case 'pending': return 'pending';
-      case 'in_progress': return 'in_progress';
-      case 'completed': return 'completed';
-      case 'failed': return 'failed';
-      case 'blocked': return 'failed';
-      default: return 'pending';
+      case 'pending':
+        return 'pending';
+      case 'in_progress':
+        return 'in_progress';
+      case 'completed':
+        return 'completed';
+      case 'failed':
+        return 'failed';
+      case 'blocked':
+        return 'failed';
+      default:
+        return 'pending';
     }
   }
-
   /**
    * Handle Inspector completion
    */
@@ -1032,7 +933,6 @@ export class GuidelinesExecutor extends EventEmitter {
     // This will be handled by the step execution logic
     logger.debug('GuidelinesExecutor', 'Inspector analysis completed');
   }
-
   /**
    * Handle Orchestrator decision
    */
@@ -1040,7 +940,6 @@ export class GuidelinesExecutor extends EventEmitter {
     // This will be handled by the step execution logic
     logger.debug('GuidelinesExecutor', 'Orchestrator decision made');
   }
-
   /**
    * Handle execution error
    */
@@ -1051,29 +950,25 @@ export class GuidelinesExecutor extends EventEmitter {
       execRecord.error = {
         code: 'EXECUTION_ERROR',
         message: error.message,
-        stack: error.stack,
+        ...(error.stack && { stack: error.stack }),
         recoverable: false,
-        suggestions: ['Retry execution', 'Check guideline configuration', 'Verify dependencies']
+        suggestions: ['Retry execution', 'Check guideline configuration', 'Verify dependencies'],
       };
-
       this.emit('execution_failed', { executionId, error: execRecord.error });
     }
   }
-
   /**
    * Complete execution
    */
   private async completeExecution(execution: GuidelineExecution): Promise<void> {
     execution.status = 'completed';
     execution.completedAt = TimeUtils.now();
-
     // Calculate total duration
-    execution.performance.totalDuration = execution.completedAt.getTime() - execution.startedAt.getTime();
-
+    execution.performance.totalDuration =
+      execution.completedAt.getTime() - execution.startedAt.getTime();
     // Calculate total token usage
     execution.performance.tokenUsage.total =
       execution.performance.tokenUsage.inspector + execution.performance.tokenUsage.orchestrator;
-
     // Create result
     execution.result = {
       success: true,
@@ -1083,23 +978,20 @@ export class GuidelinesExecutor extends EventEmitter {
       checkpointsReached: [],
       nextSteps: [],
       recommendations: [],
-      artifacts: execution.steps.flatMap(step => step.artifacts),
+      artifacts: execution.steps.flatMap((step) => step.artifacts),
       summary: {
         totalSteps: execution.steps.length,
-        completedSteps: execution.steps.filter(step => step.status === 'completed').length,
-        failedSteps: execution.steps.filter(step => step.status === 'failed').length,
-        skippedSteps: execution.steps.filter(step => step.status === 'skipped').length,
+        completedSteps: execution.steps.filter((step) => step.status === 'completed').length,
+        failedSteps: execution.steps.filter((step) => step.status === 'failed').length,
+        skippedSteps: execution.steps.filter((step) => step.status === 'skipped').length,
         totalDuration: execution.performance.totalDuration,
-        tokenCost: execution.performance.tokenUsage.total
-      }
+        tokenCost: execution.performance.tokenUsage.total,
+      },
     };
-
     // Save execution record
     await this.saveExecution(execution);
-
     this.emit('execution_completed', { executionId: execution.id, result: execution.result });
   }
-
   /**
    * Save execution record
    */
@@ -1117,46 +1009,46 @@ export class GuidelinesExecutor extends EventEmitter {
           status: execution.status,
           duration: execution.performance.totalDuration,
           tokenUsage: execution.performance.tokenUsage,
-          result: execution.result
+          result: execution.result,
         },
         metadata: {
-          worktree: execution.context.worktree,
+          ...(execution.context.worktree && { worktree: execution.context.worktree }),
           guideline: execution.guidelineId,
           agent: 'guidelines-executor',
           resolved: execution.status === 'completed',
-          resolvedAt: execution.completedAt,
-          resolution: execution.status
+          ...(execution.completedAt && { resolvedAt: execution.completedAt }),
+          resolution: execution.status,
         },
         relatedSignals: [execution.triggerSignal.id],
         childSignals: [],
-        parentSignal: execution.triggerSignal.id
+        parentSignal: execution.triggerSignal.id,
       });
       logger.debug('GuidelinesExecutor', `Execution ${execution.id} saved`);
     } catch (error) {
-      logger.error('GuidelinesExecutor', 'Failed to save execution', error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'GuidelinesExecutor',
+        'Failed to save execution',
+        error instanceof Error ? error : new Error(String(error)),
+      );
     }
   }
-
   /**
    * Get execution
    */
   getExecution(executionId: string): GuidelineExecution | undefined {
     return this.executions.get(executionId);
   }
-
   /**
    * Get all executions
    */
   getAllExecutions(): GuidelineExecution[] {
     return Array.from(this.executions.values());
   }
-
   /**
    * Get executions by status
    */
   getExecutionsByStatus(status: ExecutionStatus): GuidelineExecution[] {
-    return this.getAllExecutions().filter(execution => execution.status === status);
+    return this.getAllExecutions().filter((execution) => execution.status === status);
   }
 }
-
 export default GuidelinesExecutor;

@@ -9,9 +9,8 @@
 
 import { execSync } from 'child_process';
 import { promises as fs } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -87,7 +86,6 @@ class BenchmarkRunner {
 
       // Exit with appropriate code
       process.exit(this.results.summary.failed > 0 ? 1 : 0);
-
     } catch (error) {
       console.error('\n❌ Benchmark suite failed:', error.message);
       console.error(error.stack);
@@ -108,7 +106,7 @@ class BenchmarkRunner {
     try {
       execSync('npm run build', {
         stdio: this.options.verbose ? 'inherit' : 'pipe',
-        cwd: projectRoot
+        cwd: projectRoot,
       });
       console.log('✅ Build completed\n');
     } catch (error) {
@@ -299,33 +297,27 @@ class BenchmarkRunner {
 
     try {
       const jestPath = join(projectRoot, 'node_modules', '.bin', 'jest');
-      const testMatch = benchmark.testPattern
-        ? `--testNamePattern="${benchmark.testPattern}"`
-        : '';
+      const testMatch = benchmark.testPattern ? `--testNamePattern="${benchmark.testPattern}"` : '';
 
-      const output = execSync(
-        `${jestPath} "${benchmark.script}" ${testMatch} --verbose --json`,
-        {
-          cwd: projectRoot,
-          encoding: 'utf8',
-          timeout: this.options.timeout,
-          env: {
-            ...process.env,
-            NODE_OPTIONS: '--max-old-space-size=4096',
-          },
-        }
-      );
+      const output = execSync(`${jestPath} "${benchmark.script}" ${testMatch} --verbose --json`, {
+        cwd: projectRoot,
+        encoding: 'utf8',
+        timeout: this.options.timeout,
+        env: {
+          ...process.env,
+          NODE_OPTIONS: '--max-old-space-size=4096',
+        },
+      });
 
       const jestResults = JSON.parse(output);
       return this.analyzeJestResults(benchmark, jestResults);
-
     } catch (error) {
       // Jest returns non-zero exit code on test failures
       if (error.stdout) {
         try {
           const jestResults = JSON.parse(error.stdout);
           return this.analyzeJestResults(benchmark, jestResults);
-        } catch (parseError) {
+          } catch {
           // Fall through to error handling
         }
       }
@@ -343,7 +335,6 @@ class BenchmarkRunner {
 
   async measureCommand(benchmark) {
     const startTime = process.hrtime.bigint();
-    const startMemory = process.memoryUsage();
 
     try {
       execSync(`${benchmark.command} ${benchmark.args.join(' ')}`, {
@@ -373,7 +364,7 @@ class BenchmarkRunner {
     }
   }
 
-  analyzeMeasurements(benchmark, measurements, failures) {
+  analyzeMeasurements(benchmark, measurements) {
     if (measurements.length === 0) {
       return {
         name: benchmark.name,
@@ -386,19 +377,21 @@ class BenchmarkRunner {
       };
     }
 
-    const durations = measurements.map(m => m.duration).filter(d => d > 0);
-    const memories = measurements.map(m => m.memoryMB).filter(m => m > 0);
+    const durations = measurements.map((m) => m.duration).filter((d) => d > 0);
+    const memories = measurements.map((m) => m.memoryMB).filter((m) => m > 0);
 
+    const successCount = measurements.filter(m => m.success).length;
     const statistics = {
-      meanDuration: durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0,
+      meanDuration:
+        durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0,
       minDuration: durations.length > 0 ? Math.min(...durations) : 0,
       maxDuration: durations.length > 0 ? Math.max(...durations) : 0,
       meanMemory: memories.length > 0 ? memories.reduce((a, b) => a + b, 0) / memories.length : 0,
       maxMemory: memories.length > 0 ? Math.max(...memories) : 0,
-      successRate: ((measurements.length - failures) / measurements.length) * 100,
+      successRate: (successCount / measurements.length) * 100,
     };
 
-    const passed = this.checkRequirements(benchmark.requirements, statistics, failures);
+    const passed = this.checkRequirements(benchmark.requirements, statistics);
 
     return {
       name: benchmark.name,
@@ -413,8 +406,8 @@ class BenchmarkRunner {
 
   analyzeJestResults(benchmark, jestResults) {
     const testResults = jestResults.testResults || [];
-    const relevantTests = testResults.filter(tr =>
-      tr.testResults.some(t => t.fullName.includes(benchmark.testPattern || ''))
+    const relevantTests = testResults.filter((tr) =>
+      tr.testResults.some((t) => t.fullName.includes(benchmark.testPattern || ''))
     );
 
     if (relevantTests.length === 0) {
@@ -432,8 +425,8 @@ class BenchmarkRunner {
     let failures = 0;
     let totalDuration = 0;
 
-    relevantTests.forEach(testResult => {
-      testResult.testResults.forEach(test => {
+    relevantTests.forEach((testResult) => {
+      testResult.testResults.forEach((test) => {
         if (test.status === 'passed') {
           durations.push(test.duration || 0);
         } else {
@@ -444,19 +437,20 @@ class BenchmarkRunner {
     });
 
     const statistics = {
-      meanDuration: durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0,
+      meanDuration:
+        durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0,
       minDuration: durations.length > 0 ? Math.min(...durations) : 0,
       maxDuration: durations.length > 0 ? Math.max(...durations) : 0,
       successRate: ((relevantTests.length - failures) / relevantTests.length) * 100,
     };
 
-    const passed = this.checkRequirements(benchmark.requirements, statistics, failures);
+    const passed = this.checkRequirements(benchmark.requirements, statistics);
 
     return {
       name: benchmark.name,
       passed,
       statistics,
-      measurements: durations.map(d => ({ duration: d, success: true })),
+      measurements: durations.map((d) => ({ duration: d, success: true })),
       requirements: benchmark.requirements,
       failures,
       iterations: relevantTests.length,
@@ -464,7 +458,7 @@ class BenchmarkRunner {
     };
   }
 
-  checkRequirements(requirements, statistics, failures) {
+  checkRequirements(requirements, statistics) {
     const successRate = statistics.successRate || 0;
 
     // Check success rate
@@ -483,7 +477,10 @@ class BenchmarkRunner {
     }
 
     // Check memory growth requirement
-    if (requirements.maxMemoryGrowthMB && statistics.memoryGrowth > requirements.maxMemoryGrowthMB) {
+    if (
+      requirements.maxMemoryGrowthMB &&
+      statistics.memoryGrowth > requirements.maxMemoryGrowthMB
+    ) {
       return false;
     }
 
@@ -579,11 +576,15 @@ class BenchmarkRunner {
         if (benchmark.requirements) {
           markdown += `**Requirements**:\n`;
           if (benchmark.requirements.maxDuration) {
-            const passed = !benchmark.statistics.meanDuration || benchmark.statistics.meanDuration <= benchmark.requirements.maxDuration;
+            const passed =
+              !benchmark.statistics.meanDuration ||
+              benchmark.statistics.meanDuration <= benchmark.requirements.maxDuration;
             markdown += `- Duration: ${passed ? '✅' : '❌'} ${benchmark.statistics.meanDuration?.toFixed(2)}ms ≤ ${benchmark.requirements.maxDuration}ms\n`;
           }
           if (benchmark.requirements.maxMemoryMB) {
-            const passed = !benchmark.statistics.maxMemory || benchmark.statistics.maxMemory <= benchmark.requirements.maxMemoryMB;
+            const passed =
+              !benchmark.statistics.maxMemory ||
+              benchmark.statistics.maxMemory <= benchmark.requirements.maxMemoryMB;
             markdown += `- Memory: ${passed ? '✅' : '❌'} ${benchmark.statistics.maxMemory?.toFixed(2)}MB ≤ ${benchmark.requirements.maxMemoryMB}MB\n`;
           }
           markdown += `\n`;
@@ -600,7 +601,7 @@ class BenchmarkRunner {
     // Performance recommendations
     markdown += `## Performance Recommendations\n\n`;
 
-    const failedBenchmarks = this.results.benchmarks.filter(b => !b.passed);
+    const failedBenchmarks = this.results.benchmarks.filter((b) => !b.passed);
     if (failedBenchmarks.length === 0) {
       markdown += `🎉 All benchmarks are passing! The system meets performance requirements.\n\n`;
     } else {
@@ -629,7 +630,7 @@ class BenchmarkRunner {
     // Find previous results file
     const files = await fs.readdir(this.options.outputDir);
     const resultFiles = files
-      .filter(f => f.startsWith('benchmark-results-') && f.endsWith('.json'))
+      .filter((f) => f.startsWith('benchmark-results-') && f.endsWith('.json'))
       .sort()
       .reverse();
 
@@ -647,10 +648,14 @@ class BenchmarkRunner {
       console.log('\n📊 Performance Comparison with Previous Run:');
 
       // Compare overall summary
-      const currentSuccessRate = (currentResults.summary.passed / currentResults.summary.total) * 100;
-      const previousSuccessRate = (previousResults.summary.passed / previousResults.summary.total) * 100;
+      const currentSuccessRate =
+        (currentResults.summary.passed / currentResults.summary.total) * 100;
+      const previousSuccessRate =
+        (previousResults.summary.passed / previousResults.summary.total) * 100;
 
-      console.log(`Overall Success Rate: ${currentSuccessRate.toFixed(1)}% (${previousSuccessRate.toFixed(1)}% previous)`);
+      console.log(
+        `Overall Success Rate: ${currentSuccessRate.toFixed(1)}% (${previousSuccessRate.toFixed(1)}% previous)`
+      );
 
       if (currentSuccessRate < previousSuccessRate) {
         console.log('⚠️  Success rate decreased - potential regression detected');
@@ -661,20 +666,22 @@ class BenchmarkRunner {
 
       // Compare individual benchmarks
       for (const current of currentResults.benchmarks) {
-        const previous = previousResults.benchmarks.find(b => b.name === current.name);
+        const previous = previousResults.benchmarks.find((b) => b.name === current.name);
         if (!previous) continue;
 
         if (current.statistics && previous.statistics) {
           const durationChange = current.statistics.meanDuration - previous.statistics.meanDuration;
           const durationChangePercent = (durationChange / previous.statistics.meanDuration) * 100;
 
-          if (Math.abs(durationChangePercent) > 10) { // Significant change
+          if (Math.abs(durationChangePercent) > 10) {
+            // Significant change
             const direction = durationChangePercent > 0 ? '⚠️  Slower' : '✅ Faster';
-            console.log(`${current.name}: ${direction} by ${Math.abs(durationChangePercent).toFixed(1)}%`);
+            console.log(
+              `${current.name}: ${direction} by ${Math.abs(durationChangePercent).toFixed(1)}%`
+            );
           }
         }
       }
-
     } catch (error) {
       console.log('⚠️  Failed to compare with previous results:', error.message);
     }
@@ -689,7 +696,9 @@ class BenchmarkRunner {
     console.log(`   Total Benchmarks: ${this.results.summary.total}`);
     console.log(`   ✅ Passed: ${this.results.summary.passed}`);
     console.log(`   ❌ Failed: ${this.results.summary.failed}`);
-    console.log(`   📈 Success Rate: ${((this.results.summary.passed / this.results.summary.total) * 100).toFixed(1)}%`);
+    console.log(
+      `   📈 Success Rate: ${((this.results.summary.passed / this.results.summary.total) * 100).toFixed(1)}%`
+    );
 
     if (this.results.summary.regressions > 0) {
       console.log(`   ⚠️  Regressions Detected: ${this.results.summary.regressions}`);
@@ -698,12 +707,12 @@ class BenchmarkRunner {
     // Performance health indicators
     console.log(`\n🏥 Performance Health:`);
 
-    const slowBenchmarks = this.results.benchmarks.filter(b =>
-      b.statistics?.meanDuration && b.statistics.meanDuration > 3000
+    const slowBenchmarks = this.results.benchmarks.filter(
+      (b) => b.statistics?.meanDuration && b.statistics.meanDuration > 3000
     );
 
-    const memoryHeavyBenchmarks = this.results.benchmarks.filter(b =>
-      b.statistics?.maxMemory && b.statistics.maxMemory > 60
+    const memoryHeavyBenchmarks = this.results.benchmarks.filter(
+      (b) => b.statistics?.maxMemory && b.statistics.maxMemory > 60
     );
 
     if (slowBenchmarks.length === 0 && memoryHeavyBenchmarks.length === 0) {
@@ -717,7 +726,9 @@ class BenchmarkRunner {
       }
     }
 
-    console.log(`\n${this.results.summary.failed === 0 ? '🎉 ALL TESTS PASSED' : '❌ SOME TESTS FAILED'}`);
+    console.log(
+      `\n${this.results.summary.failed === 0 ? '🎉 ALL TESTS PASSED' : '❌ SOME TESTS FAILED'}`
+    );
     console.log('='.repeat(60));
   }
 }
@@ -777,7 +788,7 @@ Examples:
 if (import.meta.url === `file://${process.argv[1]}`) {
   const options = parseArgs();
   const runner = new BenchmarkRunner(options);
-  runner.run().catch(error => {
+  runner.run().catch((error) => {
     console.error('Benchmark runner failed:', error);
     process.exit(1);
   });

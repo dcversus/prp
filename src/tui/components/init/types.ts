@@ -4,17 +4,16 @@
  * Comprehensive type definitions for the 6-step initialization wizard
  * following PRP-003 specifications.
  */
-import type { TUIConfig } from '../../../shared/types/TUIConfig.js';
+import type { TUIConfig } from '../../../shared/types/TUIConfig';
+
 export interface InitState {
   // Current step (0-6)
   step: number;
   isComplete: boolean;
-
   // Step 1: Project
   projectName: string;
   projectPrompt: string;
   projectPath: string;
-
   // Step 2: Connections
   provider: 'openai' | 'anthropic' | 'glm' | 'custom';
   authType: 'oauth' | 'api-key';
@@ -26,11 +25,9 @@ export interface InitState {
     apiToken: string;
     customArgs: string;
   };
-
   // Step 3: Agents
   agents: AgentConfig[];
   currentAgentIndex: number;
-
   // Step 4: Integrations
   integrations: {
     github?: {
@@ -44,7 +41,6 @@ export interface InitState {
       token?: string;
     };
   };
-
   // Step 5: Template
   template: 'typescript' | 'react' | 'nestjs' | 'fastapi' | 'wikijs' | 'none';
   templateConfig: {
@@ -54,37 +50,43 @@ export interface InitState {
   configureFiles: boolean;
   selectedFiles: Set<string>;
   generatePromptQuote: boolean;
-
   // Step 6: MCP Configuration
   mcpConfig: {
     enabled: boolean;
     servers: string[]; // context7, chrome-mcp, etc.
     configPath: string;
   };
-
   // Agent file linking
   agentFileLink: {
     enabled: boolean;
     sourceFile: string; // agents.md or custom
     targetFile: string; // claude.md or custom
   };
-
   // Validation state
-  validation: {
-    [key: string]: {
+  validation: Record<
+    string,
+    {
       isValid: boolean;
       message?: string;
-    };
-  };
-
+    }
+  >;
   // Navigation state
   canGoBack: boolean;
   canGoForward: boolean;
 }
-
 export interface AgentConfig {
   id: string;
-  type: 'system-analyst' | 'developer' | 'quality-control' | 'ux-ui-designer' | 'devops-sre' | 'claude' | 'codex' | 'gemini' | 'amp' | 'other';
+  type:
+    | 'system-analyst'
+    | 'developer'
+    | 'quality-control'
+    | 'ux-ui-designer'
+    | 'devops-sre'
+    | 'claude'
+    | 'codex'
+    | 'gemini'
+    | 'amp'
+    | 'other';
   limit: string; // Format: "100usd10k#agent-name"
   cv: string;
   warning_limit?: string; // Format: "2k#role-name"
@@ -100,7 +102,6 @@ export interface AgentConfig {
     cap?: number;
   };
 }
-
 export interface InitShellProps {
   stepIndex: number;
   totalSteps: number;
@@ -112,13 +113,11 @@ export interface InitShellProps {
   onForward?: () => void;
   onCancel?: () => void;
 }
-
 export interface StepHeaderProps {
   icon: '♪' | '♬' | '♫' | '⚠';
   title: string;
   subtitle?: string;
 }
-
 // Field component props
 export interface FieldProps {
   label: string;
@@ -134,13 +133,11 @@ export interface FieldProps {
   rows?: number;
   focused?: boolean;
 }
-
 export interface FieldTextProps extends FieldProps {
   type?: 'text';
   config?: TUIConfig;
   autoFocus?: boolean;
 }
-
 export interface FieldTextBlockProps extends FieldProps {
   rows?: number;
   maxLength?: number;
@@ -148,12 +145,10 @@ export interface FieldTextBlockProps extends FieldProps {
   maxHeight?: number;
   config?: TUIConfig;
 }
-
 export interface FieldSecretProps extends FieldProps {
   reveal?: boolean;
   onRevealChange?: (reveal: boolean) => void;
 }
-
 export interface FieldSelectCarouselProps {
   label: string;
   items: string[];
@@ -164,7 +159,6 @@ export interface FieldSelectCarouselProps {
   disabled?: boolean;
   notice?: string;
 }
-
 export interface FieldToggleProps {
   label: string;
   value: boolean;
@@ -175,7 +169,6 @@ export interface FieldToggleProps {
   onValue?: string;
   offValue?: string;
 }
-
 export interface FieldJSONProps {
   label: string;
   text: string;
@@ -186,7 +179,6 @@ export interface FieldJSONProps {
   disabled?: boolean;
   error?: string;
 }
-
 // Template configuration
 export interface TemplateFile {
   id: string;
@@ -197,13 +189,11 @@ export interface TemplateFile {
   checked: boolean;
   children?: TemplateFile[];
 }
-
 export interface FileTreeChecksProps {
   nodes: TemplateFile[];
   onToggle: (path: string) => void;
   focused?: boolean;
 }
-
 // Agent editor
 export interface AgentEditorProps {
   agent: AgentConfig;
@@ -214,7 +204,6 @@ export interface AgentEditorProps {
   disabled?: boolean;
   showAdvanced?: boolean;
 }
-
 // Generation progress
 export interface GenerationEvent {
   type: 'copy' | 'generate' | 'diff' | 'complete' | 'info' | 'error';
@@ -232,14 +221,12 @@ export interface GenerationEvent {
   message?: string;
   id?: string;
 }
-
 export interface GenerationProgressProps {
   isActive: boolean;
   events: GenerationEvent[];
   onCancel?: () => void;
   config?: TUIConfig;
 }
-
 export interface GenerationStep {
   name: string;
   status: 'pending' | 'running' | 'completed' | 'error';
@@ -247,19 +234,16 @@ export interface GenerationStep {
   message?: string;
   duration?: number;
 }
-
 // Animation types
 export interface AnimationFrame {
   content: string;
   duration: number;
 }
-
 export interface AnimationState {
   isAnimating: boolean;
   currentFrame: number;
   frames: AnimationFrame[];
 }
-
 // Input handling
 export interface InputHandler {
   input: string;
@@ -278,7 +262,6 @@ export interface InputHandler {
     rightArrow?: boolean;
   };
 }
-
 // Keyboard shortcuts
 export const KEYS = {
   ENTER: 'return',
@@ -291,31 +274,29 @@ export const KEYS = {
   BACKSPACE: 'backspace',
   DELETE: 'delete',
   CTRL_C: 'ctrl+c',
-  CTRL_V: 'ctrl+v'
+  CTRL_V: 'ctrl+v',
 } as const;
-
 // Validation rules
 export interface ValidationRule {
   validate: (value: string) => boolean;
   message: string;
 }
-
 export const validationRules = {
   projectName: [
     {
       validate: (value: string) => /^[a-z0-9-]+$/.test(value),
-      message: 'Must contain only lowercase letters, numbers, and hyphens'
+      message: 'Must contain only lowercase letters, numbers, and hyphens',
     },
     {
       validate: (value: string) => value.length >= 3,
-      message: 'Must be at least 3 characters long'
-    }
+      message: 'Must be at least 3 characters long',
+    },
   ],
   url: [
     {
       validate: (value: string) => value === '' || /^https?:\/\//.test(value),
-      message: 'Must be a valid URL or empty'
-    }
+      message: 'Must be a valid URL or empty',
+    },
   ],
   json: [
     {
@@ -330,11 +311,10 @@ export const validationRules = {
           return false;
         }
       },
-      message: 'Must be valid JSON'
-    }
-  ]
+      message: 'Must be valid JSON',
+    },
+  ],
 };
-
 // Default values
 export const DEFAULT_STATE: InitState = {
   step: 0,
@@ -350,7 +330,7 @@ export const DEFAULT_STATE: InitState = {
   template: 'typescript',
   templateConfig: {
     files: [],
-    configureFiles: false
+    configureFiles: false,
   },
   configureFiles: false,
   selectedFiles: new Set(),
@@ -358,14 +338,17 @@ export const DEFAULT_STATE: InitState = {
   mcpConfig: {
     enabled: false,
     servers: ['context7', 'chrome-mcp'],
-    configPath: '.mcp.json'
+    configPath: '.mcp.json',
   },
   agentFileLink: {
     enabled: true,
     sourceFile: 'agents.md',
-    targetFile: 'claude.md'
+    targetFile: 'claude.md',
   },
   validation: {},
   canGoBack: false,
-  canGoForward: false
+  canGoForward: false,
 };
+
+// WizardState type alias for backward compatibility
+export type WizardState = InitState;

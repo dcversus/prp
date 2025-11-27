@@ -9,13 +9,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Text } from 'ink';
 
 // Import field components
-import InitShell from './InitShell.js';
-import FieldSelectCarousel from './FieldSelectCarousel.js';
-import FieldText from './FieldText.js';
-import FieldSecret from './FieldSecret.js';
+import InitShell from './InitShell';
+import FieldSelectCarousel from './FieldSelectCarousel';
+import FieldText from './FieldText';
+import FieldSecret from './FieldSecret';
 
 // Import types
-import type { InitState } from './types.js';
+import type { InitState } from './types';
 
 interface IntegrationsScreenProps {
   state: InitState;
@@ -23,7 +23,7 @@ interface IntegrationsScreenProps {
   onNext: () => void;
   onBack: () => void;
   onCancel: () => void;
-}
+};
 
 const INTEGRATION_OPTIONS = ['GitHub', 'npm', 'skip'] as const;
 const AUTH_OPTIONS = ['oauth', 'token'] as const;
@@ -33,7 +33,7 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
   onChange,
   onNext,
   onBack,
-  onCancel
+  onCancel,
 }) => {
   const [focusedField] = useState(0);
   const [githubTokenRevealed, setGithubTokenRevealed] = useState(false);
@@ -44,13 +44,15 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
     if (!state.integrations) {
       onChange({
         ...state,
-        integrations: {}
+        integrations: {},
       });
     }
   }, [state.integrations, onChange]);
 
   // Current selected integration
-  const [selectedIntegration, setSelectedIntegration] = useState<'github' | 'npm' | 'skip'>('github');
+  const [selectedIntegration, setSelectedIntegration] = useState<'github' | 'npm' | 'skip'>(
+    'github',
+  );
 
   // Validate current state
   const validateState = useCallback(() => {
@@ -58,17 +60,17 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
 
     // GitHub validation
     if (state.integrations?.github) {
-      const github = state.integrations.github;
+      const {github} = state.integrations;
 
       if (github.auth === 'token' && !github.token?.trim()) {
         validation.githubToken = {
           isValid: false,
-          message: 'GitHub token is required when using token authentication'
+          message: 'GitHub token is required when using token authentication',
         };
       } else if (github.token && github.token.length < 10) {
         validation.githubToken = {
           isValid: false,
-          message: 'GitHub token appears to be too short'
+          message: 'GitHub token appears to be too short',
         };
       } else {
         validation.githubToken = { isValid: true };
@@ -77,7 +79,7 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
       if (github.apiUrl && !/^https?:\/\//.test(github.apiUrl)) {
         validation.githubApiUrl = {
           isValid: false,
-          message: 'GitHub API URL must start with http:// or https://'
+          message: 'GitHub API URL must start with http:// or https://',
         };
       } else {
         validation.githubApiUrl = { isValid: true };
@@ -86,17 +88,17 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
 
     // npm validation
     if (state.integrations?.npm) {
-      const npm = state.integrations.npm;
+      const {npm} = state.integrations;
 
       if (npm.auth === 'token' && !npm.token?.trim()) {
         validation.npmToken = {
           isValid: false,
-          message: 'npm token is required when using token authentication'
+          message: 'npm token is required when using token authentication',
         };
       } else if (npm.token && npm.token.length < 10) {
         validation.npmToken = {
           isValid: false,
-          message: 'npm token appears to be too short'
+          message: 'npm token appears to be too short',
         };
       } else {
         validation.npmToken = { isValid: true };
@@ -105,12 +107,12 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
       if (!npm.registry?.trim()) {
         validation.npmRegistry = {
           isValid: false,
-          message: 'npm registry URL is required'
+          message: 'npm registry URL is required',
         };
       } else if (!/^https?:\/\//.test(npm.registry)) {
         validation.npmRegistry = {
           isValid: false,
-          message: 'npm registry must be a valid URL starting with http:// or https://'
+          message: 'npm registry must be a valid URL starting with http:// or https://',
         };
       } else {
         validation.npmRegistry = { isValid: true };
@@ -130,13 +132,13 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
     state.integrations?.npm?.auth,
     state.integrations?.npm?.token,
     state.integrations?.npm?.registry,
-    validateState
+    validateState,
   ]);
 
   // Handle integration selection
   const handleIntegrationChange = (index: number) => {
     const integration = INTEGRATION_OPTIONS[index];
-    setSelectedIntegration(integration === 'skip' ? 'skip' : integration as 'github' | 'npm');
+    setSelectedIntegration(integration === 'skip' ? 'skip' : (integration as 'github' | 'npm'));
 
     // Initialize integration config if needed
     if (integration !== 'skip') {
@@ -146,13 +148,13 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
           ...state.integrations,
           [integrationKey]: {
             auth: 'oauth' as const,
-            ...(integration === 'npm' ? { registry: 'https://registry.npmjs.org' } : {})
-          }
+            ...(integration === 'npm' ? { registry: 'https://registry.npmjs.org' } : {}),
+          },
         };
 
         onChange({
           ...state,
-          integrations: newIntegrations
+          integrations: newIntegrations,
         });
       }
     }
@@ -165,12 +167,12 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
       integrations: {
         ...state.integrations,
         github: {
-          auth: (state.integrations?.github?.auth) || 'oauth',
-          apiUrl: state.integrations?.github?.apiUrl,
-          token: state.integrations?.github?.token,
-          [field]: value
-        }
-      }
+          auth: state.integrations?.github?.auth || 'oauth',
+          ...(state.integrations?.github?.apiUrl && { apiUrl: state.integrations.github.apiUrl }),
+          ...(state.integrations?.github?.token && { token: state.integrations.github.token }),
+          [field]: value,
+        },
+      },
     });
   };
 
@@ -181,17 +183,17 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
       integrations: {
         ...state.integrations,
         npm: {
-          auth: (state.integrations?.npm?.auth) || 'oauth',
-          registry: (state.integrations?.npm?.registry) || 'https://registry.npmjs.org',
-          token: state.integrations?.npm?.token,
-          [field]: value
-        }
-      }
+          auth: state.integrations?.npm?.auth || 'oauth',
+          registry: state.integrations?.npm?.registry || 'https://registry.npmjs.org',
+          ...(state.integrations?.npm?.token && { token: state.integrations.npm.token }),
+          [field]: value,
+        },
+      },
     });
   };
 
   // Check if can proceed
-  const canProceed = Object.values(state.validation).every(v => v?.isValid ?? true);
+  const canProceed = Object.values(state.validation).every((v) => v?.isValid ?? true);
 
   // Calculate total fields for current integration
   const getTotalFields = () => {
@@ -226,8 +228,11 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
             label="Choose"
             items={[...INTEGRATION_OPTIONS]}
             selectedIndex={[...INTEGRATION_OPTIONS].indexOf(
-              selectedIntegration === 'skip' ? 'skip' :
-                selectedIntegration === 'github' ? 'GitHub' : 'npm'
+              selectedIntegration === 'skip'
+                ? 'skip'
+                : selectedIntegration === 'github'
+                  ? 'GitHub'
+                  : 'npm',
             )}
             onChange={handleIntegrationChange}
             focused={isFocused}
@@ -268,10 +273,15 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
               onChange={(value) => updateNpmConfig('registry', value)}
               placeholder="https://registry.npmjs.org"
               focused={isFocused}
-              error={state.validation.npmRegistry?.isValid === false ? state.validation.npmRegistry.message : undefined}
+              {...(state.validation.npmRegistry?.isValid === false && {
+                error: state.validation.npmRegistry.message,
+              })}
             />
           );
-        } else if (selectedIntegration === 'github' && state.integrations?.github?.auth === 'token') {
+        } else if (
+          selectedIntegration === 'github' &&
+          state.integrations?.github?.auth === 'token'
+        ) {
           return (
             <FieldSecret
               label="GitHub token"
@@ -281,7 +291,9 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
               reveal={githubTokenRevealed}
               onRevealChange={setGithubTokenRevealed}
               focused={isFocused}
-              error={state.validation.githubToken?.isValid === false ? state.validation.githubToken.message : undefined}
+              {...(state.validation.githubToken?.isValid === false && {
+                error: state.validation.githubToken.message,
+              })}
             />
           );
         }
@@ -296,7 +308,9 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
               onChange={(value) => updateGitHubConfig('apiUrl', value)}
               placeholder="https://api.github.com (optional)"
               focused={isFocused}
-              error={state.validation.githubApiUrl?.isValid === false ? state.validation.githubApiUrl.message : undefined}
+              {...(state.validation.githubApiUrl?.isValid === false && {
+                error: state.validation.githubApiUrl.message,
+              })}
               tip="Leave empty for public GitHub"
             />
           );
@@ -310,7 +324,9 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
               reveal={npmTokenRevealed}
               onRevealChange={setNpmTokenRevealed}
               focused={isFocused}
-              error={state.validation.npmToken?.isValid === false ? state.validation.npmToken.message : undefined}
+              {...(state.validation.npmToken?.isValid === false && {
+                error: state.validation.npmToken.message,
+              })}
             />
           );
         }
@@ -335,8 +351,14 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
       keys.push('←/→', 'switch auth');
     }
 
-    if ((focusedField === 2 && selectedIntegration === 'github' && state.integrations?.github?.auth === 'token') ||
-        (focusedField === 3 && selectedIntegration === 'npm' && state.integrations?.npm?.auth === 'token')) {
+    if (
+      (focusedField === 2 &&
+        selectedIntegration === 'github' &&
+        state.integrations?.github?.auth === 'token') ||
+      (focusedField === 3 &&
+        selectedIntegration === 'npm' &&
+        state.integrations?.npm?.auth === 'token')
+    ) {
       keys.push('⌥V', 'paste token');
     }
 
@@ -351,7 +373,7 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
       icon={canProceed ? '♫' : '♪'}
       footerKeys={getFooterKeys()}
       onBack={onBack}
-      onForward={canProceed ? onNext : undefined}
+      {...(canProceed && onNext && { onForward: onNext })}
       onCancel={onCancel}
     >
       <Box flexDirection="column" gap={1}>
@@ -364,9 +386,7 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
 
         {/* Render all fields for current integration */}
         {Array.from({ length: totalFields }, (_, index) => (
-          <Box key={index}>
-            {renderField(index)}
-          </Box>
+          <Box key={index}>{renderField(index)}</Box>
         ))}
 
         {/* Integration-specific configuration summaries */}
@@ -378,12 +398,14 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
             {selectedIntegration === 'github' && (
               <Text color="gray">
                 Auth: {state.integrations?.github?.auth ?? 'oauth'}
-                {state.integrations?.github?.apiUrl && ` | API: ${state.integrations.github.apiUrl}`}
+                {state.integrations?.github?.apiUrl &&
+                  ` | API: ${state.integrations.github.apiUrl}`}
               </Text>
             )}
             {selectedIntegration === 'npm' && (
               <Text color="gray">
-                Auth: {state.integrations?.npm?.auth ?? 'oauth'} | Registry: {state.integrations?.npm?.registry ?? 'https://registry.npmjs.org'}
+                Auth: {state.integrations?.npm?.auth ?? 'oauth'} | Registry:{' '}
+                {state.integrations?.npm?.registry ?? 'https://registry.npmjs.org'}
               </Text>
             )}
           </Box>
@@ -392,9 +414,7 @@ const IntegrationsScreen: React.FC<IntegrationsScreenProps> = ({
         {/* Validation errors */}
         {!canProceed && (
           <Box marginTop={1}>
-            <Text color="red">
-              ⚠ Please fix validation errors before continuing
-            </Text>
+            <Text color="red">⚠ Please fix validation errors before continuing</Text>
           </Box>
         )}
       </Box>

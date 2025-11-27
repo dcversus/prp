@@ -3,21 +3,25 @@
  *
  * Shared utilities for token estimation, cost calculation, and token limit management.
  */
-
 export interface TokenUsage {
   input: number;
   output: number;
   total: number;
   cost: number;
 }
-
 export interface TokenLimitConfig {
-  totalLimit: number;        // Total token limit (e.g., 40K)
-  basePrompt: number;        // Tokens for base prompt
-  guidelinePrompt: number;   // Tokens for guidelines
-  contextWindow: number;     // Remaining tokens for context
-  safetyMargin: number;      // Safety margin percentage (e.g., 0.05 for 5%)
+  totalLimit: number; // Total token limit (e.g., 40K)
+  basePrompt: number; // Tokens for base prompt
+  guidelinePrompt: number; // Tokens for guidelines
+  contextWindow: number; // Remaining tokens for context
+  safetyMargin: number; // Safety margin percentage (e.g., 0.05 for 5%)
   compressionThreshold: number; // When to start compressing
+}
+export interface LLMProviderOptions {
+  temperature?: number;
+  maxTokens?: number;
+  stop?: string[];
+  [key: string]: unknown;
 }
 
 export interface LLMProvider {
@@ -25,9 +29,8 @@ export interface LLMProvider {
   model: string;
   maxTokens: number;
   costPerToken: number;
-  execute(prompt: string, options?: any): Promise<any>;
+  execute(prompt: string, options?: LLMProviderOptions): Promise<unknown>;
 }
-
 /**
  * Token Management Utility Class
  */
@@ -42,29 +45,26 @@ export class TokenManager {
     }
     return Math.ceil(text.length / 4);
   }
-
   /**
    * Calculate cost based on token usage and provider rate
    */
   static calculateCost(tokens: number, costPerToken: number): number {
     return tokens * costPerToken;
   }
-
   /**
    * Calculate total cost from token usage
    */
   static calculateTokenCost(tokenUsage: TokenUsage, provider: LLMProvider): number {
     return this.calculateCost(tokenUsage.total, provider.costPerToken);
   }
-
   /**
    * Distribute available tokens among components
    */
   static distributeTokens(
     totalLimit: number,
     safetyMargin: number,
-    basePromptRatio: number = 0.5,
-    guidelineRatio: number = 0.5
+    basePromptRatio = 0.5,
+    guidelineRatio = 0.5,
   ): {
     available: number;
     basePrompt: number;
@@ -75,28 +75,23 @@ export class TokenManager {
     const basePrompt = Math.floor(available * basePromptRatio);
     const guideline = Math.floor(available * guidelineRatio);
     const context = available - basePrompt - guideline;
-
     return {
       available,
       basePrompt,
       guideline,
-      context
+      context,
     };
   }
-
   /**
    * Check if content is within token limits
    */
   static isWithinTokenLimit(content: string, limit: number): boolean {
     return this.estimateTokens(content) <= limit;
   }
-
   /**
    * Calculate token usage statistics
    */
-  static calculateTokenStats(
-    usages: TokenUsage[]
-  ): {
+  static calculateTokenStats(usages: TokenUsage[]): {
     totalInput: number;
     totalOutput: number;
     totalTokens: number;
@@ -115,17 +110,18 @@ export class TokenManager {
         averageInput: 0,
         averageOutput: 0,
         averageTotal: 0,
-        averageCost: 0
+        averageCost: 0,
       };
     }
-
-    const totals = usages.reduce((acc, usage) => ({
-      input: acc.input + usage.input,
-      output: acc.output + usage.output,
-      total: acc.total + usage.total,
-      cost: acc.cost + usage.cost
-    }), { input: 0, output: 0, total: 0, cost: 0 });
-
+    const totals = usages.reduce(
+      (acc, usage) => ({
+        input: acc.input + usage.input,
+        output: acc.output + usage.output,
+        total: acc.total + usage.total,
+        cost: acc.cost + usage.cost,
+      }),
+      { input: 0, output: 0, total: 0, cost: 0 },
+    );
     return {
       totalInput: totals.input,
       totalOutput: totals.output,
@@ -134,10 +130,9 @@ export class TokenManager {
       averageInput: Math.round(totals.input / usages.length),
       averageOutput: Math.round(totals.output / usages.length),
       averageTotal: Math.round(totals.total / usages.length),
-      averageCost: Math.round((totals.cost / usages.length) * 10000) / 10000 // 4 decimal places
+      averageCost: Math.round((totals.cost / usages.length) * 10000) / 10000, // 4 decimal places
     };
   }
-
   /**
    * Create token limit configuration
    */
@@ -154,42 +149,36 @@ export class TokenManager {
       guidelinePrompt: config.guidelinePrompt ?? 20000,
       contextWindow: 0, // Calculated dynamically
       safetyMargin: config.safetyMargin ?? 0.05,
-      compressionThreshold: config.compressionThreshold ?? 0.8
+      compressionThreshold: config.compressionThreshold ?? 0.8,
     };
   }
-
   /**
    * Validate token usage against limits
    */
   static validateTokenUsage(
     usage: TokenUsage,
-    limits: TokenLimitConfig
+    limits: TokenLimitConfig,
   ): {
     isValid: boolean;
     exceededLimits: string[];
     utilizationRate: number;
   } {
     const exceededLimits: string[] = [];
-
     if (usage.total > limits.totalLimit) {
       exceededLimits.push(`Total: ${usage.total} > ${limits.totalLimit}`);
     }
-
     if (usage.input > limits.basePrompt) {
       exceededLimits.push(`Input: ${usage.input} > ${limits.basePrompt}`);
     }
-
     const utilizationRate = usage.total / limits.totalLimit;
     const isValid = exceededLimits.length === 0 && utilizationRate <= 1.0;
-
     return {
       isValid,
       exceededLimits,
-      utilizationRate
+      utilizationRate,
     };
   }
 }
-
 /**
  * Token estimation strategies for different content types
  */
@@ -201,17 +190,14 @@ export class TokenEstimator {
     const jsonString = JSON.stringify(obj, null, 0);
     return TokenManager.estimateTokens(jsonString);
   }
-
   /**
    * Estimate tokens for structured content
    */
   static estimateStructuredTokens(content: Record<string, unknown>): number {
     let totalTokens = 0;
-
     for (const [key, value] of Object.entries(content)) {
       // Key tokens
       totalTokens += TokenManager.estimateTokens(key);
-
       // Value tokens
       if (typeof value === 'string') {
         totalTokens += TokenManager.estimateTokens(value);
@@ -223,10 +209,8 @@ export class TokenEstimator {
         totalTokens += TokenManager.estimateTokens(String(value));
       }
     }
-
     return totalTokens;
   }
-
   /**
    * Estimate tokens for array content
    */
@@ -245,7 +229,6 @@ export class TokenEstimator {
     }
     return total;
   }
-
   /**
    * Estimate tokens for code content
    */
@@ -254,7 +237,6 @@ export class TokenEstimator {
     // Use a slightly higher ratio
     return Math.ceil(code.length / 3.5);
   }
-
   /**
    * Estimate tokens for markdown content
    */

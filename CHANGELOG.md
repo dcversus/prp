@@ -10,12 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.9] - 2025-11-03
 
 ### Fixed
+
 - **Version synchronization**: Updated package.json and src/cli.ts version from 0.4.1 to 0.4.9
 - **Build preparation**: Ensured version consistency across all references for publishing
 
 ## [0.4.1] - 2025-10-28
 
 ### Changed
+
 - **Wiki.js Template Articles** - All 13 stub articles completed with comprehensive content
   - Article 10 (PRP Overview): Expanded from 17 lines to 267 lines with complete LOOP MODE workflow
   - Article 11 (Signal System): Expanded to 598 lines with all 14 signals and reaction patterns
@@ -39,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.0] - 2025-10-28
 
 ### Added
+
 - **Orchestrator Autonomy Protocol** - AI orchestrators make decisions without human approval
   - Added "Orchestrator Autonomy Protocol" section to AGENTS.md (300+ lines)
   - Rule 1: NO QUESTIONS TO HUMANS - Make autonomous decisions
@@ -51,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Performance metrics and orchestrator mantras
   - Updated README.md with "Autonomous Orchestration" principles
   - Key principle: "AI Orchestrator makes decisions autonomously. Humans are subordinate agents."
-- **PRP-009 Specification** - Tracks Wiki.js template implementation
+- **PRP-000-agents05.md Specification** - Tracks agents orchestrator implementation
   - Comprehensive PRP document with autonomous decision logs
   - Status tracking for 20 starter articles (7 complete, 13 stubs)
   - Technical implementation details
@@ -78,6 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Article update policy (6-month verification cycle)
 
 ### Fixed
+
 - **CLI version**: Updated hardcoded version from 0.1.0 to 0.2.0 in src/cli.ts:13
 - **Non-interactive mode**: Implemented missing non-interactive mode functionality for CLI
   - Created src/nonInteractive.ts with full non-interactive project generation support
@@ -89,11 +93,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed tsconfig.json parsing test to check content instead of parsing JSON with comments
   - Added CLI path verification in test setup
   - All 18 tests now passing (9 unit + 9 E2E)
-- **ESM compatibility**: Fixed __dirname usage in ESM modules using fileURLToPath and import.meta.url
+- **ESM compatibility**: Fixed \_\_dirname usage in ESM modules using fileURLToPath and import.meta.url
 
 ## [0.2.0] - 2025-10-28
 
 ### Added
+
 - **PRP Methodology & Signal System** - Revolutionary context-driven development workflow
   - **Signal System**: 14 emotional/state indicators (ATTENTION, BLOCKED, TIRED, ENCANTADO, etc.)
   - **Signal Strength**: Priority system (1-10 scale) for intelligent work prioritization
@@ -129,10 +134,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - AGENTS.md with comprehensive PRP workflow and signal system
   - AGENTS.md with mandatory CHANGELOG policy
   - README.md updated with PRP methodology as main project goal
-  - PRP-007 specification document for signal system
+  - PRP-000-agents05.md specification document for signal system
   - CLAUDE.md updated with AGENTS.md reference
 
 ### Changed
+
 - **PRP Directory Structure** - **BREAKING CHANGE**: Enforced flat structure with outcome-focused naming
   - All PRPs now in flat structure (no subdirectories allowed)
   - Naming convention: `PRP-XXX-what-will-change.md` (2-4 words, kebab-case)
@@ -149,24 +155,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Package.json** - Added husky and lint-staged as dev dependencies
 
 ### Fixed
+
 - Jest configuration warning (`coverageThresholds` → `coverageThreshold`)
 
 ### Security
+
 - None
 
 ## [0.1.1] - 2025-10-28
 
 ### Fixed
+
 - **package.json bin path**: Corrected bin path to `dist/cli.js` for proper npm global installation
 - **ESLint configuration**: Added Node.js globals (\_\_dirname, \_\_filename) to ESLint config to fix publishing errors
 - **Jest configuration**: Added `--passWithNoTests` flag to allow npm publish without test files in initial release
 
 ### Changed
+
 - Updated build process to ensure executable permissions on `dist/cli.js`
 
 ## [0.1.0] - 2025-10-28
 
 ### Added
+
 - **Interactive CLI** with beautiful Ink-based terminal UI
   - Wizard-style project setup flow
   - Step-by-step prompts for project metadata
@@ -211,6 +222,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - CLAUDE.md for AI development guidelines
 
 ### Technical Details
+
 - Built with TypeScript 5.6+ in strict mode
 - Uses Ink 5.0+ for React-based terminal UI
 - Commander.js for CLI argument parsing

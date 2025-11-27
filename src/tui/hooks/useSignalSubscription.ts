@@ -4,8 +4,11 @@
  * Real-time signal subscription and management hook for TUI components
  * Provides filtered signal updates with performance optimizations and TypeScript strict compliance
  */
-
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+
+import { SignalTypeEnum, SignalSourceEnum, SignalPriorityEnum } from '../../types';
+import { eventBusIntegration } from '../../shared/signals';
+
 import type {
   SignalEvent,
   SignalFilter,
@@ -15,23 +18,16 @@ import type {
   UseSignalDisplayReturn,
   EventBusIntegration,
   SignalPerformanceMetrics,
-  SignalDisplay
-} from '../../types.js';
-import {
-  SignalTypeEnum,
-  SignalSourceEnum,
-  SignalPriorityEnum
-} from '../../types.js';
-
+  SignalDisplay,
+} from '../../types';
 // Default configuration
 const DEFAULT_CONFIG = {
   historySize: 100,
   debounceDelay: 100,
   refreshInterval: 1000,
   maxRetries: 3,
-  retryDelay: 1000
+  retryDelay: 1000,
 } as const;
-
 // Type guard functions
 function isValidSignalEvent(event: unknown): event is SignalEvent {
   return (
@@ -46,17 +42,12 @@ function isValidSignalEvent(event: unknown): event is SignalEvent {
     'state' in event
   );
 }
-
 function isValidSignalFilter(filter: unknown): filter is SignalFilter {
-  return (
-    filter === null ||
-    (typeof filter === 'object' && !Array.isArray(filter))
-  );
+  return filter === null ?? (typeof filter === 'object' && !Array.isArray(filter));
 }
-
 // Utility functions
-const createSignalId = (): string => `signal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
+const createSignalId = (): string =>
+  `signal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 const aggregateSignals = (signals: SignalEvent[]): SignalAggregation => {
   const aggregation: SignalAggregation = {
     total: signals.length,
@@ -65,103 +56,83 @@ const aggregateSignals = (signals: SignalEvent[]): SignalAggregation => {
     byPriority: {} as Record<SignalPriorityEnum, number>,
     byState: { active: 0, resolved: 0, pending: 0, failed: 0 },
     recent: [],
-    critical: []
+    critical: [],
   };
-
   // Initialize counters
   const signalTypes: SignalTypeEnum[] = Object.values(SignalTypeEnum);
   const signalSources: SignalSourceEnum[] = Object.values(SignalSourceEnum);
   const signalPriorities: SignalPriorityEnum[] = Object.values(SignalPriorityEnum);
-
-  signalTypes.forEach(type => {
-    aggregation.byType[type] = 0; 
+  signalTypes.forEach((type) => {
+    aggregation.byType[type] = 0;
   });
-  signalSources.forEach(source => {
-    aggregation.bySource[source] = 0; 
+  signalSources.forEach((source) => {
+    aggregation.bySource[source] = 0;
   });
-  signalPriorities.forEach(priority => {
-    aggregation.byPriority[priority] = 0; 
+  signalPriorities.forEach((priority) => {
+    aggregation.byPriority[priority] = 0;
   });
-
   // Aggregate signals
   const now = new Date();
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-
-  signals.forEach(signal => {
+  signals.forEach((signal) => {
     // Count by type
     aggregation.byType[signal.type] = (aggregation.byType[signal.type] ?? 0) + 1;
-
     // Count by source
     aggregation.bySource[signal.source] = (aggregation.bySource[signal.source] ?? 0) + 1;
-
     // Count by priority
     aggregation.byPriority[signal.priority] = (aggregation.byPriority[signal.priority] ?? 0) + 1;
-
     // Count by state
     aggregation.byState[signal.state] = (aggregation.byState[signal.state] ?? 0) + 1;
-
     // Recent signals (last hour)
     if (signal.timestamp >= oneHourAgo) {
       aggregation.recent.push(signal);
     }
-
     // Critical signals
     if (signal.priority === 'critical') {
       aggregation.critical.push(signal);
     }
   });
-
   // Sort recent and critical by timestamp (newest first)
   aggregation.recent.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   aggregation.critical.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-
   return aggregation;
 };
-
 const filterSignal = (signal: SignalEvent, filter?: SignalFilter): boolean => {
   if (!filter) {
     return true;
   }
-
   // Type filter
   if (filter.types && !filter.types.includes(signal.type)) {
     return false;
   }
-
   // Source filter
   if (filter.sources && !filter.sources.includes(signal.source)) {
     return false;
   }
-
   // Priority filter
   if (filter.priorities && !filter.priorities.includes(signal.priority)) {
     return false;
   }
-
   // State filter
   if (filter.states && !filter.states.includes(signal.state)) {
     return false;
   }
-
   // PRP ID filter
   if (filter.prpId && signal.prpId !== filter.prpId) {
     return false;
   }
-
   // Agent ID filter
   if (filter.agentId && signal.agentId !== filter.agentId) {
     return false;
   }
-
   // Tags filter
   if (filter.tags && filter.tags.length > 0) {
     const signalTags = signal.tags ?? [];
-    const hasMatchingTag = filter.tags.some(tag => signalTags.includes(tag));
+    const hasMatchingTag = filter.tags.some((tag) => signalTags.includes(tag));
     if (!hasMatchingTag) {
       return false;
     }
   }
-
   // Date range filter
   if (filter.dateRange) {
     const signalTime = signal.timestamp.getTime();
@@ -171,7 +142,6 @@ const filterSignal = (signal: SignalEvent, filter?: SignalFilter): boolean => {
       return false;
     }
   }
-
   // Search filter
   if (filter.search?.trim()) {
     const searchTerm = filter.search.toLowerCase();
@@ -182,41 +152,35 @@ const filterSignal = (signal: SignalEvent, filter?: SignalFilter): boolean => {
       signal.source,
       signal.prpId ?? '',
       signal.agentId ?? '',
-      ...(signal.tags ?? [])
-    ].join(' ').toLowerCase();
-
+      ...(signal.tags ?? []),
+    ]
+      .join(' ')
+      .toLowerCase();
     if (!searchableText.includes(searchTerm)) {
       return false;
     }
   }
-
   return true;
 };
-
 /**
  * Main signal subscription hook
  */
 export function useSignalSubscription(
-  eventBus?: EventBusIntegration,
   initialFilter?: SignalFilter,
-  config: Partial<typeof DEFAULT_CONFIG> = {}
+  config: Partial<typeof DEFAULT_CONFIG> = {},
 ): UseSignalSubscriptionReturn {
   const [signals, setSignals] = useState<SignalEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-
   // Merge configuration
   const finalConfig = useMemo(() => ({ ...DEFAULT_CONFIG, ...config }), [config]);
-
   // Refs for performance and cleanup
   const subscriptionsRef = useRef<Map<string, SignalSubscription>>(new Map());
   const debounceRef = useRef<NodeJS.Timeout>();
   const retryCountRef = useRef(0);
   const signalHistoryRef = useRef<SignalEvent[]>([]);
-
   // Memoized aggregation
   const aggregation = useMemo(() => aggregateSignals(signals), [signals]);
-
   // Cleanup function
   const cleanup = useCallback(() => {
     // Clear debounce timer
@@ -224,107 +188,102 @@ export function useSignalSubscription(
       clearTimeout(debounceRef.current);
       debounceRef.current = undefined;
     }
-
     // Unsubscribe all subscriptions
-    subscriptionsRef.current.forEach(subscription => {
+    subscriptionsRef.current.forEach((subscription) => {
       try {
-        eventBus?.unsubscribe(subscription.id);
+        eventBusIntegration.unsubscribe(subscription.id);
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('Error unsubscribing from event bus:', err);
       }
     });
     subscriptionsRef.current.clear();
-
     // Reset retry count
     retryCountRef.current = 0;
-  }, [eventBus]);
-
-  // Apply filters to signals
-  const applyFilters = useCallback((allSignals: SignalEvent[], filter?: SignalFilter): SignalEvent[] => {
-    if (!filter) {
-      return allSignals;
-    }
-
-    return allSignals.filter(signal => filterSignal(signal, filter));
   }, []);
-
-  // Debounced signal update
-  const updateSignalsDebounced = useCallback((newSignals: SignalEvent[], filter?: SignalFilter) => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-
-    debounceRef.current = setTimeout(() => {
-      try {
-        const filteredSignals = applyFilters(newSignals, filter);
-        setSignals(filteredSignals.slice(-finalConfig.historySize));
-        setError(null);
-        retryCountRef.current = 0;
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error('Unknown error updating signals'));
+  // Apply filters to signals
+  const applyFilters = useCallback(
+    (allSignals: SignalEvent[], filter?: SignalFilter): SignalEvent[] => {
+      if (!filter) {
+        return allSignals;
       }
-    }, finalConfig.debounceDelay);
-  }, [applyFilters, finalConfig]);
-
+      return allSignals.filter((signal) => filterSignal(signal, filter));
+    },
+    [],
+  );
+  // Debounced signal update
+  const updateSignalsDebounced = useCallback(
+    (newSignals: SignalEvent[], filter?: SignalFilter) => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+      debounceRef.current = setTimeout(() => {
+        try {
+          const filteredSignals = applyFilters(newSignals, filter);
+          setSignals(filteredSignals.slice(-finalConfig.historySize));
+          setError(null);
+          retryCountRef.current = 0;
+        } catch (err) {
+          setError(err instanceof Error ? err : new Error('Unknown error updating signals'));
+        }
+      }, finalConfig.debounceDelay);
+    },
+    [applyFilters, finalConfig],
+  );
   // Handle incoming signal events
-  const handleSignalEvent = useCallback((event: unknown) => {
-    if (!isValidSignalEvent(event)) {
-      // eslint-disable-next-line no-console
-      console.warn('Received invalid signal event:', event);
-      return;
-    }
-
-    try {
-      // Add to history
-      signalHistoryRef.current = [...signalHistoryRef.current, event].slice(-finalConfig.historySize);
-
-      // Update debounced
-      updateSignalsDebounced(signalHistoryRef.current, initialFilter);
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('Error handling signal event:', err);
-      setError(err instanceof Error ? err : new Error('Error handling signal event'));
-    }
-  }, [updateSignalsDebounced, initialFilter, finalConfig.historySize]);
-
+  const handleSignalEvent = useCallback(
+    (event: unknown) => {
+      if (!isValidSignalEvent(event)) {
+        // eslint-disable-next-line no-console
+        console.warn('Received invalid signal event:', event);
+        return;
+      }
+      try {
+        // Add to history
+        signalHistoryRef.current = [...signalHistoryRef.current, event].slice(
+          -finalConfig.historySize,
+        );
+        // Update debounced
+        updateSignalsDebounced(signalHistoryRef.current, initialFilter);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('Error handling signal event:', err);
+        setError(err instanceof Error ? err : new Error('Error handling signal event'));
+      }
+    },
+    [updateSignalsDebounced, initialFilter, finalConfig.historySize],
+  );
   // Initialize subscriptions
   useEffect(() => {
-    if (!eventBus) {
-      setLoading(false);
-      return;
-    }
-
     const initializeSubscriptions = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Subscribe to all signal events
-        const subscriptionId = eventBus.subscribe('*', handleSignalEvent);
+        // Initialize EventBus if not already initialized
+        await eventBusIntegration.initialize();
 
+        // Subscribe to all signal events
+        const subscriptionId = eventBusIntegration.subscribeToAll(handleSignalEvent);
         const subscription: SignalSubscription = {
           id: subscriptionId,
-          filter: initialFilter,
           handler: handleSignalEvent,
-          createdAt: new Date()
+          createdAt: new Date(),
+          ...(initialFilter && { filter: initialFilter }),
         };
-
         subscriptionsRef.current.set(subscriptionId, subscription);
 
         // Load initial signals
-        const recentEvents = eventBus.getRecentEvents(finalConfig.historySize);
+        const recentEvents = eventBusIntegration.getRecentEvents(finalConfig.historySize);
         const validEvents = recentEvents.filter(isValidSignalEvent);
-
         signalHistoryRef.current = validEvents;
         const filteredSignals = applyFilters(validEvents, initialFilter);
         setSignals(filteredSignals);
-
         setLoading(false);
       } catch (err) {
-        const error = err instanceof Error ? err : new Error('Failed to initialize signal subscriptions');
+        const error =
+          err instanceof Error ? err : new Error('Failed to initialize signal subscriptions');
         setError(error);
-
         // Retry logic
         if (retryCountRef.current < finalConfig.maxRetries) {
           retryCountRef.current++;
@@ -334,76 +293,62 @@ export function useSignalSubscription(
         }
       }
     };
-
     initializeSubscriptions();
-
     return cleanup;
-  }, [eventBus, handleSignalEvent, applyFilters, initialFilter, finalConfig, cleanup]);
-
+  }, [handleSignalEvent, applyFilters, initialFilter, finalConfig, cleanup]);
   // Update filter when it changes
   useEffect(() => {
     const filteredSignals = applyFilters(signalHistoryRef.current, initialFilter);
     setSignals(filteredSignals.slice(-finalConfig.historySize));
   }, [initialFilter, applyFilters, finalConfig.historySize]);
-
   // Subscribe to specific filter
-  const subscribe = useCallback((filter?: SignalFilter): string => {
-    if (!eventBus) {
-      throw new Error('EventBus not available for subscription');
-    }
-
-    if (!isValidSignalFilter(filter)) {
-      throw new Error('Invalid filter provided');
-    }
-
-    const subscriptionId = createSignalId();
-    const subscription: SignalSubscription = {
-      id: subscriptionId,
-      filter,
-      handler: handleSignalEvent,
-      createdAt: new Date()
-    };
-
-    subscriptionsRef.current.set(subscriptionId, subscription);
-
-    // Apply new filter immediately
-    const filteredSignals = applyFilters(signalHistoryRef.current, filter);
-    setSignals(filteredSignals.slice(-finalConfig.historySize));
-
-    return subscriptionId;
-  }, [eventBus, handleSignalEvent, applyFilters, finalConfig.historySize]);
-
-  // Unsubscribe from specific filter
-  const unsubscribe = useCallback((subscriptionId: string) => {
-    const subscription = subscriptionsRef.current.get(subscriptionId);
-    if (subscription) {
-      try {
-        eventBus?.unsubscribe(subscriptionId);
-        subscriptionsRef.current.delete(subscriptionId);
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error('Error unsubscribing:', err);
+  const subscribe = useCallback(
+    (filter?: SignalFilter): string => {
+      if (!isValidSignalFilter(filter)) {
+        throw new Error('Invalid filter provided');
       }
-    }
-  }, [eventBus]);
-
+      const subscriptionId = createSignalId();
+      const subscription: SignalSubscription = {
+        id: subscriptionId,
+        handler: handleSignalEvent,
+        createdAt: new Date(),
+        ...(filter && { filter }),
+      };
+      subscriptionsRef.current.set(subscriptionId, subscription);
+      // Apply new filter immediately
+      const filteredSignals = applyFilters(signalHistoryRef.current, filter);
+      setSignals(filteredSignals.slice(-finalConfig.historySize));
+      return subscriptionId;
+    },
+    [handleSignalEvent, applyFilters, finalConfig.historySize],
+  );
+  // Unsubscribe from specific filter
+  const unsubscribe = useCallback(
+    (subscriptionId: string) => {
+      const subscription = subscriptionsRef.current.get(subscriptionId);
+      if (subscription) {
+        try {
+          eventBusIntegration.unsubscribe(subscriptionId);
+          subscriptionsRef.current.delete(subscriptionId);
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error('Error unsubscribing:', err);
+        }
+      }
+    },
+    [],
+  );
   // Clear all signals
   const clearSignals = useCallback(() => {
     signalHistoryRef.current = [];
     setSignals([]);
   }, []);
-
   // Refetch signals
   const refetch = useCallback(async () => {
-    if (!eventBus) {
-      return;
-    }
-
     try {
       setLoading(true);
-      const recentEvents = eventBus.getRecentEvents(finalConfig.historySize);
+      const recentEvents = eventBusIntegration.getRecentEvents(finalConfig.historySize);
       const validEvents = recentEvents.filter(isValidSignalEvent);
-
       signalHistoryRef.current = validEvents;
       const filteredSignals = applyFilters(validEvents, initialFilter);
       setSignals(filteredSignals);
@@ -413,13 +358,11 @@ export function useSignalSubscription(
     } finally {
       setLoading(false);
     }
-  }, [eventBus, applyFilters, initialFilter, finalConfig.historySize]);
-
+  }, [applyFilters, initialFilter, finalConfig.historySize]);
   // Cleanup on unmount
   useEffect(() => {
     return cleanup;
   }, [cleanup]);
-
   return {
     signals,
     loading,
@@ -428,10 +371,9 @@ export function useSignalSubscription(
     unsubscribe,
     clearSignals,
     refetch,
-    aggregation
+    aggregation,
   };
 }
-
 /**
  * Hook for signal display mapping and search
  */
@@ -446,7 +388,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Blocker',
         priority: SignalPriorityEnum.HIGH,
         category: 'blocker',
-        role: SignalSourceEnum.SYSTEM
+        role: SignalSourceEnum.SYSTEM,
       },
       '[af]': {
         signal: '[af]',
@@ -455,7 +397,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Feedback Request',
         priority: SignalPriorityEnum.MEDIUM,
         category: 'feedback',
-        role: SignalSourceEnum.SYSTEM
+        role: SignalSourceEnum.SYSTEM,
       },
       '[da]': {
         signal: '[da]',
@@ -464,7 +406,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Done Assessment',
         priority: SignalPriorityEnum.MEDIUM,
         category: 'quality',
-        role: SignalSourceEnum.SYSTEM
+        role: SignalSourceEnum.SYSTEM,
       },
       '[no]': {
         signal: '[no]',
@@ -472,9 +414,8 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         animation: 'wave',
         description: 'Not Obvious',
         priority: SignalPriorityEnum.MEDIUM,
-        category: 'feedback'
+        category: 'feedback',
       },
-
       // System Analyst Signals
       '[gg]': {
         signal: '[gg]',
@@ -483,7 +424,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Goal Clarification',
         priority: SignalPriorityEnum.HIGH,
         category: 'feedback',
-        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST
+        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST,
       },
       '[ff]': {
         signal: '[ff]',
@@ -492,7 +433,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Goal Not Achievable',
         priority: SignalPriorityEnum.CRITICAL,
         category: 'blocker',
-        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST
+        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST,
       },
       '[rp]': {
         signal: '[rp]',
@@ -501,7 +442,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Ready for Preparation',
         priority: SignalPriorityEnum.HIGH,
         category: 'coordination',
-        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST
+        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST,
       },
       '[vr]': {
         signal: '[vr]',
@@ -510,7 +451,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Validation Required',
         priority: SignalPriorityEnum.HIGH,
         category: 'coordination',
-        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST
+        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST,
       },
       '[rr]': {
         signal: '[rr]',
@@ -519,7 +460,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Research Request',
         priority: SignalPriorityEnum.MEDIUM,
         category: 'coordination',
-        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST
+        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST,
       },
       '[vp]': {
         signal: '[vp]',
@@ -528,7 +469,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Verification Plan',
         priority: SignalPriorityEnum.MEDIUM,
         category: 'quality',
-        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST
+        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST,
       },
       '[ip]': {
         signal: '[ip]',
@@ -537,7 +478,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Implementation Plan',
         priority: SignalPriorityEnum.HIGH,
         category: 'coordination',
-        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST
+        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST,
       },
       '[er]': {
         signal: '[er]',
@@ -546,7 +487,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Experiment Required',
         priority: SignalPriorityEnum.MEDIUM,
         category: 'coordination',
-        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST
+        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST,
       },
       '[rc]': {
         signal: '[rc]',
@@ -555,9 +496,8 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Research Complete',
         priority: SignalPriorityEnum.MEDIUM,
         category: 'progress',
-        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST
+        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST,
       },
-
       // Developer Signals
       '[tp]': {
         signal: '[tp]',
@@ -566,7 +506,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Tests Prepared',
         priority: SignalPriorityEnum.MEDIUM,
         category: 'quality',
-        role: SignalSourceEnum.ROBO_DEVELOPER
+        role: SignalSourceEnum.ROBO_DEVELOPER,
       },
       '[dp]': {
         signal: '[dp]',
@@ -575,7 +515,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Development Progress',
         priority: SignalPriorityEnum.MEDIUM,
         category: 'progress',
-        role: SignalSourceEnum.ROBO_DEVELOPER
+        role: SignalSourceEnum.ROBO_DEVELOPER,
       },
       '[br]': {
         signal: '[br]',
@@ -584,7 +524,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Blocker Resolved',
         priority: SignalPriorityEnum.MEDIUM,
         category: 'progress',
-        role: SignalSourceEnum.ROBO_DEVELOPER
+        role: SignalSourceEnum.ROBO_DEVELOPER,
       },
       '[tw]': {
         signal: '[tw]',
@@ -593,7 +533,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Tests Written',
         priority: SignalPriorityEnum.MEDIUM,
         category: 'quality',
-        role: SignalSourceEnum.ROBO_DEVELOPER
+        role: SignalSourceEnum.ROBO_DEVELOPER,
       },
       '[bf]': {
         signal: '[bf]',
@@ -602,7 +542,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Bug Fixed',
         priority: SignalPriorityEnum.MEDIUM,
         category: 'progress',
-        role: SignalSourceEnum.ROBO_DEVELOPER
+        role: SignalSourceEnum.ROBO_DEVELOPER,
       },
       '[mg]': {
         signal: '[mg]',
@@ -611,7 +551,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Merged',
         priority: SignalPriorityEnum.HIGH,
         category: 'progress',
-        role: SignalSourceEnum.ROBO_DEVELOPER
+        role: SignalSourceEnum.ROBO_DEVELOPER,
       },
       '[rl]': {
         signal: '[rl]',
@@ -620,7 +560,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Released',
         priority: SignalPriorityEnum.HIGH,
         category: 'progress',
-        role: SignalSourceEnum.ROBO_DEVELOPER
+        role: SignalSourceEnum.ROBO_DEVELOPER,
       },
       '[cc]': {
         signal: '[cc]',
@@ -629,9 +569,8 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Cleanup Complete',
         priority: SignalPriorityEnum.LOW,
         category: 'system',
-        role: SignalSourceEnum.ROBO_DEVELOPER
+        role: SignalSourceEnum.ROBO_DEVELOPER,
       },
-
       // QA Signals
       '[cq]': {
         signal: '[cq]',
@@ -640,7 +579,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Code Quality',
         priority: SignalPriorityEnum.MEDIUM,
         category: 'quality',
-        role: SignalSourceEnum.ROBO_AQA
+        role: SignalSourceEnum.ROBO_AQA,
       },
       '[cp]': {
         signal: '[cp]',
@@ -649,7 +588,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'CI Passed',
         priority: SignalPriorityEnum.HIGH,
         category: 'quality',
-        role: SignalSourceEnum.ROBO_AQA
+        role: SignalSourceEnum.ROBO_AQA,
       },
       '[tr]': {
         signal: '[tr]',
@@ -658,7 +597,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Tests Red',
         priority: SignalPriorityEnum.HIGH,
         category: 'quality',
-        role: SignalSourceEnum.ROBO_AQA
+        role: SignalSourceEnum.ROBO_AQA,
       },
       '[tg]': {
         signal: '[tg]',
@@ -667,7 +606,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Tests Green',
         priority: SignalPriorityEnum.HIGH,
         category: 'quality',
-        role: SignalSourceEnum.ROBO_AQA
+        role: SignalSourceEnum.ROBO_AQA,
       },
       '[cf]': {
         signal: '[cf]',
@@ -676,7 +615,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'CI Failed',
         priority: SignalPriorityEnum.CRITICAL,
         category: 'blocker',
-        role: SignalSourceEnum.ROBO_AQA
+        role: SignalSourceEnum.ROBO_AQA,
       },
       '[pc]': {
         signal: '[pc]',
@@ -685,7 +624,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Pre-release Complete',
         priority: SignalPriorityEnum.HIGH,
         category: 'quality',
-        role: SignalSourceEnum.ROBO_AQA
+        role: SignalSourceEnum.ROBO_AQA,
       },
       '[rg]': {
         signal: '[rg]',
@@ -694,7 +633,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Review Progress',
         priority: SignalPriorityEnum.LOW,
         category: 'coordination',
-        role: SignalSourceEnum.ROBO_AQA
+        role: SignalSourceEnum.ROBO_AQA,
       },
       '[rv]': {
         signal: '[rv]',
@@ -703,7 +642,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Review Passed',
         priority: SignalPriorityEnum.MEDIUM,
         category: 'quality',
-        role: SignalSourceEnum.ROBO_AQA
+        role: SignalSourceEnum.ROBO_AQA,
       },
       '[iv]': {
         signal: '[iv]',
@@ -712,9 +651,8 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Implementation Verified',
         priority: SignalPriorityEnum.HIGH,
         category: 'quality',
-        role: SignalSourceEnum.ROBO_QUALITY_CONTROL
+        role: SignalSourceEnum.ROBO_QUALITY_CONTROL,
       },
-
       // System/Coordination Signals
       '[oa]': {
         signal: '[oa]',
@@ -723,7 +661,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Orchestrator Attention',
         priority: SignalPriorityEnum.HIGH,
         category: 'coordination',
-        role: SignalSourceEnum.ORCHESTRATOR
+        role: SignalSourceEnum.ORCHESTRATOR,
       },
       '[aa]': {
         signal: '[aa]',
@@ -731,7 +669,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         animation: 'none',
         description: 'Admin Attention',
         priority: SignalPriorityEnum.MEDIUM,
-        category: 'coordination'
+        category: 'coordination',
       },
       '[ap]': {
         signal: '[ap]',
@@ -739,9 +677,8 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         animation: 'bounce',
         description: 'Admin Preview Ready',
         priority: SignalPriorityEnum.MEDIUM,
-        category: 'coordination'
+        category: 'coordination',
       },
-
       // Release and Post-release
       '[ra]': {
         signal: '[ra]',
@@ -750,7 +687,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Release Approved',
         priority: SignalPriorityEnum.CRITICAL,
         category: 'coordination',
-        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST
+        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST,
       },
       '[ps]': {
         signal: '[ps]',
@@ -759,7 +696,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Post-release Status',
         priority: SignalPriorityEnum.LOW,
         category: 'system',
-        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST
+        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST,
       },
       '[ic]': {
         signal: '[ic]',
@@ -767,7 +704,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         animation: 'flash',
         description: 'Incident',
         priority: SignalPriorityEnum.CRITICAL,
-        category: 'blocker'
+        category: 'blocker',
       },
       '[JC]': {
         signal: '[JC]',
@@ -775,7 +712,7 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         animation: 'bounce',
         description: 'Jesus Christ (Incident Resolved)',
         priority: SignalPriorityEnum.CRITICAL,
-        category: 'progress'
+        category: 'progress',
       },
       '[pm]': {
         signal: '[pm]',
@@ -784,13 +721,11 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
         description: 'Post-mortem',
         priority: SignalPriorityEnum.MEDIUM,
         category: 'system',
-        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST
-      }
+        role: SignalSourceEnum.ROBO_SYSTEM_ANALYST,
+      },
     };
-
     return signalMapping[signal] ?? null;
   }, []);
-
   const getAllSignals = useCallback((): SignalDisplay[] => {
     return Object.values({
       // Agent Signals
@@ -798,7 +733,6 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
       '[af]': getSignalDisplay('[af]'),
       '[da]': getSignalDisplay('[da]'),
       '[no]': getSignalDisplay('[no]'),
-
       // System Analyst Signals
       '[gg]': getSignalDisplay('[gg]'),
       '[ff]': getSignalDisplay('[ff]'),
@@ -809,7 +743,6 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
       '[ip]': getSignalDisplay('[ip]'),
       '[er]': getSignalDisplay('[er]'),
       '[rc]': getSignalDisplay('[rc]'),
-
       // Developer Signals
       '[tp]': getSignalDisplay('[tp]'),
       '[dp]': getSignalDisplay('[dp]'),
@@ -819,7 +752,6 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
       '[mg]': getSignalDisplay('[mg]'),
       '[rl]': getSignalDisplay('[rl]'),
       '[cc]': getSignalDisplay('[cc]'),
-
       // QA Signals
       '[cq]': getSignalDisplay('[cq]'),
       '[cp]': getSignalDisplay('[cp]'),
@@ -830,52 +762,54 @@ export function useSignalDisplay(): UseSignalDisplayReturn {
       '[rg]': getSignalDisplay('[rg]'),
       '[rv]': getSignalDisplay('[rv]'),
       '[iv]': getSignalDisplay('[iv]'),
-
       // System/Coordination Signals
       '[oa]': getSignalDisplay('[oa]'),
       '[aa]': getSignalDisplay('[aa]'),
       '[ap]': getSignalDisplay('[ap]'),
-
       // Release and Post-release
       '[ra]': getSignalDisplay('[ra]'),
       '[ps]': getSignalDisplay('[ps]'),
       '[ic]': getSignalDisplay('[ic]'),
       '[JC]': getSignalDisplay('[JC]'),
-      '[pm]': getSignalDisplay('[pm]')
+      '[pm]': getSignalDisplay('[pm]'),
     }).filter((display): display is SignalDisplay => display !== null);
   }, [getSignalDisplay]);
-
-  const getSignalsByCategory = useCallback((category: SignalDisplay['category']): SignalDisplay[] => {
-    return getAllSignals().filter(display => display.category === category);
-  }, [getAllSignals]);
-
-  const getSignalsByPriority = useCallback((priority: SignalPriorityEnum): SignalDisplay[] => {
-    return getAllSignals().filter(display => display.priority === priority);
-  }, [getAllSignals]);
-
-  const searchSignals = useCallback((query: string): SignalDisplay[] => {
-    const searchTerm = query.toLowerCase().trim();
-    if (!searchTerm) {
-      return [];
-    }
-
-    return getAllSignals().filter(display =>
-      display.signal.toLowerCase().includes(searchTerm) ||
-      (display.description?.toLowerCase() ?? '').includes(searchTerm) ||
-      (display.category?.toLowerCase() ?? '').includes(searchTerm) ||
-      (display.role?.toLowerCase() ?? '').includes(searchTerm)
-    );
-  }, [getAllSignals]);
-
+  const getSignalsByCategory = useCallback(
+    (category: SignalDisplay['category']): SignalDisplay[] => {
+      return getAllSignals().filter((display) => display.category === category);
+    },
+    [getAllSignals],
+  );
+  const getSignalsByPriority = useCallback(
+    (priority: SignalPriorityEnum): SignalDisplay[] => {
+      return getAllSignals().filter((display) => display.priority === priority);
+    },
+    [getAllSignals],
+  );
+  const searchSignals = useCallback(
+    (query: string): SignalDisplay[] => {
+      const searchTerm = query.toLowerCase().trim();
+      if (!searchTerm) {
+        return [];
+      }
+      return getAllSignals().filter(
+        (display) =>
+          display.signal.toLowerCase().includes(searchTerm) ||
+          (display.description?.toLowerCase() ?? '').includes(searchTerm) ||
+          (display.category?.toLowerCase() ?? '').includes(searchTerm) ||
+          (display.role?.toLowerCase() ?? '').includes(searchTerm),
+      );
+    },
+    [getAllSignals],
+  );
   return {
     getSignalDisplay,
     getAllSignals,
     getSignalsByCategory,
     getSignalsByPriority,
-    searchSignals
+    searchSignals,
   };
 }
-
 /**
  * Hook for signal performance monitoring
  */
@@ -887,9 +821,8 @@ export function useSignalPerformance(): SignalPerformanceMetrics {
     memoryUsage: 0,
     cacheHitRate: 0,
     errorRate: 0,
-    lastUpdate: new Date()
+    lastUpdate: new Date(),
   });
-
   // This would integrate with actual performance monitoring
   // For now, return mock metrics
   return metrics;

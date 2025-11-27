@@ -4,7 +4,12 @@
  * Tests for paste handling with token counting and 5% reserve enforcement
  */
 
-import { PasteHandler, processPaste, validatePaste, formatPasteMetadata } from '../paste-handler.js';
+import {
+  PasteHandler,
+  processPaste,
+  validatePaste,
+  formatPasteMetadata,
+} from '../paste-handler';
 
 describe('PasteHandler', () => {
   let pasteHandler: PasteHandler;
@@ -13,7 +18,7 @@ describe('PasteHandler', () => {
     pasteHandler = new PasteHandler({
       maxTokens: 1000,
       reservePercentage: 5,
-      enableHashing: true
+      enableHashing: true,
     });
   });
 
@@ -96,7 +101,7 @@ describe('PasteHandler', () => {
         tokens: 150,
         hash: 'a1b2c3d4',
         processedContent: 'Test content',
-        originalLength: 13
+        originalLength: 13,
       };
 
       const formatted = pasteHandler.formatMetadata(metadata);
@@ -109,7 +114,7 @@ describe('PasteHandler', () => {
         hash: 'e5f6g7h8',
         cut: 50,
         processedContent: 'Truncated content',
-        originalLength: 200
+        originalLength: 200,
       };
 
       const formatted = pasteHandler.formatMetadata(metadata);
@@ -192,7 +197,7 @@ describe('convenience functions', () => {
       tokens: 100,
       hash: 'test1234',
       processedContent: 'content',
-      originalLength: 7
+      originalLength: 7,
     };
 
     const formatted = formatPasteMetadata(metadata);

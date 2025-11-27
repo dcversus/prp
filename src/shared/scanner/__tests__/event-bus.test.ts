@@ -1,4 +1,6 @@
-import { ScannerEventBus, ScannerEvent } from '../event-bus.js';
+import { ScannerEventBus } from '../event-bus.js';
+
+import type { ScannerEvent } from '../event-bus.js';
 
 describe('ScannerEventBus', () => {
   let eventBus: ScannerEventBus;
@@ -16,7 +18,7 @@ describe('ScannerEventBus', () => {
         type: 'test-event',
         signal: 'tp',
         timestamp: new Date(),
-        source: 'test'
+        source: 'test',
       };
 
       eventBus.emit(testEvent);
@@ -31,7 +33,7 @@ describe('ScannerEventBus', () => {
 
       const testEvent: ScannerEvent = {
         type: 'test-event',
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
       eventBus.emit(testEvent);
@@ -42,7 +44,7 @@ describe('ScannerEventBus', () => {
     it('should store events in history', () => {
       const testEvent: ScannerEvent = {
         type: 'test-event',
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
       eventBus.emit(testEvent);
@@ -82,7 +84,7 @@ describe('ScannerEventBus', () => {
 
       const testEvent: ScannerEvent = {
         type: 'test-event',
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
       // Should not throw even if handler throws
@@ -110,7 +112,7 @@ describe('ScannerEventBus', () => {
 
       const testEvent: ScannerEvent = {
         type: 'test-event',
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
       eventBus.emit(testEvent);
@@ -129,7 +131,7 @@ describe('ScannerEventBus', () => {
 
       const testEvent: ScannerEvent = {
         type: 'test-event',
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
       eventBus.emit(testEvent);
@@ -147,15 +149,15 @@ describe('ScannerEventBus', () => {
       const events: ScannerEvent[] = [
         { type: 'event1', timestamp: new Date(Date.now() - 3000) },
         { type: 'event2', timestamp: new Date(Date.now() - 2000) },
-        { type: 'event3', timestamp: new Date(Date.now() - 1000) }
+        { type: 'event3', timestamp: new Date(Date.now() - 1000) },
       ];
 
-      events.forEach(event => eventBus.emit(event));
+      events.forEach((event) => eventBus.emit(event));
 
       const recent = eventBus.getRecentEvents(2);
       expect(recent).toHaveLength(2);
-      expect(recent[0].type).toBe('event2');
-      expect(recent[1].type).toBe('event3');
+      expect(recent[0]!.type).toBe('event2');
+      expect(recent[1]!.type).toBe('event3');
     });
 
     it('should return all events if count exceeds available', () => {
@@ -173,12 +175,12 @@ describe('ScannerEventBus', () => {
       const event2: ScannerEvent = { type: 'type-b', timestamp: new Date() };
       const event3: ScannerEvent = { type: 'type-a', timestamp: new Date() };
 
-      [event1, event2, event3].forEach(event => eventBus.emit(event));
+      [event1, event2, event3].forEach((event) => eventBus.emit(event));
 
       const typeAEvents = eventBus.getEventsByType('type-a');
       expect(typeAEvents).toHaveLength(2);
-      expect(typeAEvents[0].type).toBe('type-a');
-      expect(typeAEvents[1].type).toBe('type-a');
+      expect(typeAEvents[0]!.type).toBe('type-a');
+      expect(typeAEvents[1]!.type).toBe('type-a');
     });
 
     it('should return empty array for non-existent type', () => {

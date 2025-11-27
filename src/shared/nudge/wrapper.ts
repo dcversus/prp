@@ -5,28 +5,38 @@
  * direct and LLM-mode nudge messages with intelligent fallback.
  */
 
-import { NudgeClient, createNudgeClient } from './client.js';
+// Simple logger fallback since logger module doesn't exist
+const logger = {
+  debug: (message: string, ...args: any[]) => console.debug(`[NUDGE-DEBUG] ${message}`, ...args),
+  info: (message: string, ...args: any[]) => console.info(`[NUDGE-INFO] ${message}`, ...args),
+  warn: (message: string, ...args: any[]) => console.warn(`[NUDGE-WARN] ${message}`, ...args),
+  error: (message: string, ...args: any[]) => console.error(`[NUDGE-ERROR] ${message}`, ...args),
+};
+
+import { createNudgeClient } from './client';
 import {
+  NudgeError
+} from './types';
+
+import type { NudgeClient} from './client';
+import type {
   NudgeRequest,
   NudgeResponse,
   DirectNudgeRequest,
   LLMModeNudgeRequest,
   NudgeContext,
   AgentNudgeMessage,
-  NudgeError,
-  NudgeClientOptions
-} from './types.js';
-import { logger } from '../utils/logger.js';
+  NudgeClientOptions} from './types';
+
+
 
 export class NudgeWrapper {
-  private client: NudgeClient;
-  private fallbackEnabled: boolean;
-
-  constructor(options: NudgeClientOptions = {}, fallbackEnabled: boolean = true) {
+  private readonly client: NudgeClient;
+  private readonly fallbackEnabled: boolean;
+  constructor(options: NudgeClientOptions = {}, fallbackEnabled = true) {
     this.client = createNudgeClient(options);
     this.fallbackEnabled = fallbackEnabled;
   }
-
   /**
    * Send a direct nudge message (immediate delivery, bypasses LLM)
    */
@@ -34,7 +44,7 @@ export class NudgeWrapper {
     message: string,
     urgency: 'high' | 'medium' | 'low',
     context?: NudgeContext,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): Promise<NudgeResponse> {
     const request: DirectNudgeRequest = {
       type: 'direct',
@@ -44,13 +54,11 @@ export class NudgeWrapper {
       metadata: {
         timestamp: new Date().toISOString(),
         delivery_type: 'direct',
-        ...metadata
-      }
+        ...metadata,
+      },
     };
-
     return this.sendWithFallback(request);
   }
-
   /**
    * Send an LLM-mode nudge message (enhanced processing)
    */
@@ -60,7 +68,7 @@ export class NudgeWrapper {
     agentAnalysis?: string,
     recommendations?: string[],
     expectedResponseType?: 'decision' | 'approval' | 'information',
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ): Promise<NudgeResponse> {
     const request: LLMModeNudgeRequest = {
       type: 'llm-mode',
@@ -72,19 +80,17 @@ export class NudgeWrapper {
       metadata: {
         timestamp: new Date().toISOString(),
         delivery_type: 'llm-enhanced',
-        ...metadata
-      }
+        ...metadata,
+      },
     };
-
     return this.sendWithFallback(request);
   }
-
   /**
    * Send nudge from agent with automatic message formatting
    */
   async sendAgentNudge(agentMessage: AgentNudgeMessage): Promise<NudgeResponse> {
-    const { agentType, signal, prpId, message, context, urgency, expectedResponseType } = agentMessage;
-
+    const { agentType, signal, prpId, message, context, urgency, expectedResponseType } =
+      agentMessage;
     // Build nudge context
     const nudgeContext: NudgeContext = {
       prp_id: prpId,
@@ -93,25 +99,18 @@ export class NudgeWrapper {
       urgency,
       prp_link: `https://github.com/dcversus/prp/blob/main/PRPs/${prpId.toLowerCase()}.md`,
       timestamp: new Date().toISOString(),
-      ...context
+      ...context,
     };
-
     // Determine nudge type based on urgency and complexity
     const isHighPriority = urgency === 'high' || signal === '[ic]' || signal === '[aa]';
     const isComplexDecision = expectedResponseType === 'decision' && context.options;
-
     if (isHighPriority || !isComplexDecision) {
       // Use direct nudge for urgent or simple messages
-      return this.sendDirectNudge(
-        message,
-        urgency,
-        nudgeContext,
-        {
-          agent_type: agentType,
-          signal_type: signal,
-          auto_generated: true
-        }
-      );
+      return this.sendDirectNudge(message, urgency, nudgeContext, {
+        agent_type: agentType,
+        signal_type: signal,
+        auto_generated: true,
+      });
     } else {
       // Use LLM-mode for complex decisions
       return this.sendLLMModeNudge(
@@ -123,12 +122,11 @@ export class NudgeWrapper {
         {
           agent_type: agentType,
           signal_type: signal,
-          auto_generated: true
-        }
+          auto_generated: true,
+        },
       );
     }
   }
-
   /**
    * Send nudge with intelligent fallback
    */
@@ -140,11 +138,9 @@ export class NudgeWrapper {
       if (!this.fallbackEnabled) {
         throw error;
       }
-
       // If LLM-mode failed, try direct nudge as fallback
       if (request.type === 'llm-mode') {
         logger.warn('nudge', 'LLM-mode nudge failed, attempting direct nudge fallback...');
-
         const fallbackRequest: DirectNudgeRequest = {
           type: 'direct',
           message: request.message,
@@ -152,36 +148,37 @@ export class NudgeWrapper {
           context: request.context,
           metadata: {
             ...request.metadata,
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         };
-
         try {
           const response = await this.client.sendNudge(fallbackRequest);
           logger.info('nudge', 'Direct nudge fallback successful');
           return {
             ...response,
-            delivery_type: 'direct'
+            delivery_type: 'direct',
           };
         } catch (fallbackError) {
-          logger.error('nudge', 'Direct nudge fallback also failed', fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError)));
+          logger.error(
+            'nudge',
+            'Direct nudge fallback also failed',
+            fallbackError instanceof Error ? fallbackError : new Error(String(fallbackError)),
+          );
           throw new NudgeError(
             'FALLBACK_FAILED',
             'Both LLM-mode and direct nudge delivery failed',
             {
               originalError: error,
               fallbackError,
-              request
-            }
+              request,
+            },
           );
         }
       }
-
       // For direct nudge failures, no fallback available
       throw error;
     }
   }
-
   /**
    * Test nudge system connectivity and configuration
    */
@@ -193,20 +190,18 @@ export class NudgeWrapper {
     try {
       const connectivity = await this.client.testConnectivity();
       const config = this.client.getConfigStatus();
-
       return {
         connectivity,
-        config
+        config,
       };
     } catch (error) {
       return {
         connectivity: false,
         config: this.client.getConfigStatus(),
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
-
   /**
    * Get system status and health information
    */
@@ -223,8 +218,7 @@ export class NudgeWrapper {
     };
   }> {
     const testResult = await this.testSystem();
-    const config = testResult.config;
-
+    const {config} = testResult;
     let status: 'healthy' | 'degraded' | 'unhealthy';
     if (!config.configured) {
       status = 'unhealthy';
@@ -233,7 +227,6 @@ export class NudgeWrapper {
     } else {
       status = 'healthy';
     }
-
     return {
       status,
       details: {
@@ -242,12 +235,11 @@ export class NudgeWrapper {
         last_test: {
           connectivity: testResult.connectivity,
           timestamp: new Date().toISOString(),
-          error: testResult.error
-        }
-      }
+          error: testResult.error,
+        },
+      },
     };
   }
-
   /**
    * Send a simple nudge message with automatic type selection
    */
@@ -260,7 +252,7 @@ export class NudgeWrapper {
       agentAnalysis?: string;
       recommendations?: string[];
       expectedResponseType?: 'decision' | 'approval' | 'information';
-    } = {}
+    } = {},
   ): Promise<NudgeResponse> {
     const {
       urgency = 'medium',
@@ -268,9 +260,8 @@ export class NudgeWrapper {
       type,
       agentAnalysis,
       recommendations,
-      expectedResponseType
+      expectedResponseType,
     } = options;
-
     // Auto-determine nudge type if not specified
     if (!type) {
       if (agentAnalysis || recommendations || expectedResponseType) {
@@ -279,13 +270,12 @@ export class NudgeWrapper {
           context ?? {},
           agentAnalysis,
           recommendations,
-          expectedResponseType
+          expectedResponseType,
         );
       } else {
         return this.sendDirectNudge(message, urgency, context);
       }
     }
-
     if (type === 'direct') {
       return this.sendDirectNudge(message, urgency, context);
     } else {
@@ -294,16 +284,15 @@ export class NudgeWrapper {
         context ?? {},
         agentAnalysis,
         recommendations,
-        expectedResponseType
+        expectedResponseType,
       );
     }
   }
 }
-
 // Create default wrapper instance
 export const createNudgeWrapper = (
   options?: NudgeClientOptions,
-  fallbackEnabled?: boolean
+  fallbackEnabled?: boolean,
 ): NudgeWrapper => {
   return new NudgeWrapper(options, fallbackEnabled);
 };

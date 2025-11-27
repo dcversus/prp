@@ -4,7 +4,6 @@
  * Complete testing framework for TUI components with
  * mock environments, animation control, and utilities
  */
-
 // Core testing environment
 export {
   TUITestEnvironment,
@@ -12,17 +11,15 @@ export {
   AnimationController,
   defaultTestEnvironment,
   renderTUI,
-  VisualRegression
-} from './TUITestEnvironment.js';
-
+  VisualRegression,
+} from './TUITestEnvironment';
 export type {
   MockTerminalConfig,
   MockTerminalDimensions,
   TUITestRenderOptions,
   TUITestInstance,
-  TUITestFrame
-} from './TUITestEnvironment.js';
-
+  TUITestFrame,
+} from './TUITestEnvironment';
 // Component testing helpers
 export {
   ComponentAssertions,
@@ -31,13 +28,9 @@ export {
   PerformanceTester,
   IntegrationTester,
   renderComponentForTesting,
-  expectComponent
-} from './ComponentTestHelpers.js';
-
-export type {
-  ComponentTestResult
-} from './ComponentTestHelpers.js';
-
+  expectComponent,
+} from './ComponentTestHelpers';
+export type { ComponentTestResult } from './ComponentTestHelpers';
 // Re-export commonly used types - TUIConfig types may not exist yet, commenting out
 // export type {
 //   TUIConfig,
@@ -47,7 +40,6 @@ export type {
 //   Theme,
 //   LayoutMode
 // } from ../../shared/types/TUIConfig.js';
-
 /**
  * Default export with all utilities
  */
@@ -57,9 +49,8 @@ import {
   AnimationController,
   defaultTestEnvironment,
   renderTUI,
-  VisualRegression
-} from './TUITestEnvironment.js';
-
+  VisualRegression,
+} from './TUITestEnvironment';
 import {
   ComponentAssertions,
   MockComponents,
@@ -67,8 +58,8 @@ import {
   PerformanceTester,
   IntegrationTester,
   renderComponentForTesting,
-  expectComponent
-} from './ComponentTestHelpers.js';
+  expectComponent,
+} from './ComponentTestHelpers';
 
 export default {
   // Environment
@@ -78,7 +69,6 @@ export default {
   defaultTestEnvironment,
   renderTUI,
   VisualRegression,
-
   // Helpers
   ComponentAssertions,
   MockComponents,
@@ -86,5 +76,5 @@ export default {
   PerformanceTester,
   IntegrationTester,
   renderComponentForTesting,
-  expectComponent
+  expectComponent,
 };

@@ -1,7 +1,6 @@
 /**
  * Git operations utilities
  */
-
 import { execa } from 'execa';
 
 export class GitUtils {
@@ -11,21 +10,18 @@ export class GitUtils {
   async init(cwd: string): Promise<void> {
     await execa('git', ['init'], { cwd });
   }
-
   /**
    * Add all files to git
    */
   async addAll(cwd: string): Promise<void> {
     await execa('git', ['add', '.'], { cwd });
   }
-
   /**
    * Create initial commit
    */
-  async commit(cwd: string, message: string = 'Initial commit'): Promise<void> {
+  async commit(cwd: string, message = 'Initial commit'): Promise<void> {
     await execa('git', ['commit', '-m', message], { cwd });
   }
-
   /**
    * Check if git is available
    */
@@ -38,5 +34,4 @@ export class GitUtils {
     }
   }
 }
-
 export const gitUtils = new GitUtils();

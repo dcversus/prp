@@ -4,13 +4,10 @@
  * Supports interactive and non-interactive CLI modes with robust error handling
  */
 
-import { spawn, ChildProcess, exec as execCallback } from 'child_process';
-import { promisify } from 'util';
+import { spawn, type ChildProcess } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
-
-const exec = promisify(execCallback);
 
 // Enhanced interfaces for better type safety
 export interface CLIOptions {
@@ -23,7 +20,7 @@ export interface CLIOptions {
   uid?: number;
   gid?: number;
   maxBuffer?: number;
-  killSignal?: NodeJS.Signals;
+  killSignal?: 'SIGTERM' | 'SIGKILL' | 'SIGINT';
 }
 
 export interface ProcessControl {
@@ -64,7 +61,13 @@ export interface ProcessMetrics {
   exitCode: number | null;
   stdoutLength: number;
   stderrLength: number;
-  memoryUsage?: NodeJS.MemoryUsage;
+  memoryUsage?: {
+    rss: number;
+    heapTotal: number;
+    heapUsed: number;
+    external: number;
+    arrayBuffers: number;
+  };
 }
 
 // Error classes for better error handling
@@ -108,8 +111,8 @@ export async function executeCommand(
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const nodeProcess = getCurrentProcess();
   const env = { ...nodeProcess.env, ...options.env };
-  const timeout = options.timeout || 30000;
-  const cwd = options.cwd || nodeProcess.cwd();
+  const timeout = options.timeout ?? 30000;
+  const cwd = options.cwd ?? nodeProcess.cwd();
 
   return new Promise((resolve, reject) => {
     const child = spawn(command, [], {
@@ -117,10 +120,10 @@ export async function executeCommand(
       cwd,
       env,
       stdio: 'pipe',
-      detached: options.detached || false,
+      detached: options.detached ?? false,
       uid: options.uid,
       gid: options.gid,
-      killSignal: options.killSignal || 'SIGTERM'
+      killSignal: options.killSignal || 'SIGTERM',
     });
 
     let stdout = '';
@@ -139,17 +142,21 @@ export async function executeCommand(
       reject(new ProcessTimeoutError(command, timeout));
     }, timeout);
 
-    child.stdout?.on('data', (data) => {
-      stdout += data.toString();
+    child.stdout?.on('data', (data: Buffer) => {
+      const text = data.toString();
+      stdout += text;
       if (isDebugEnabled()) {
-        console.log(`[STDOUT] ${data.toString().trim()}`);
+        // eslint-disable-next-line no-console -- Debug logging is acceptable in test utilities
+        console.log(`[STDOUT] ${text.trim()}`);
       }
     });
 
-    child.stderr?.on('data', (data) => {
-      stderr += data.toString();
+    child.stderr?.on('data', (data: Buffer) => {
+      const text = data.toString();
+      stderr += text;
       if (isDebugEnabled()) {
-        console.log(`[STDERR] ${data.toString().trim()}`);
+        // eslint-disable-next-line no-console -- Debug logging is acceptable in test utilities
+        console.log(`[STDERR] ${text.trim()}`);
       }
     });
 
@@ -159,9 +166,9 @@ export async function executeCommand(
       if (signal === 'SIGKILL' && isKilled) {
         reject(new ProcessTimeoutError(command, timeout));
       } else if (code !== 0) {
-        reject(new ProcessExitError(command, code || -1, stderr));
+        reject(new ProcessExitError(command, code ?? -1, stderr));
       } else {
-        resolve({ stdout, stderr, exitCode: code || 0 });
+        resolve({ stdout, stderr, exitCode: code ?? 0 });
       }
     });
 
@@ -182,22 +189,22 @@ export async function executeCommand(
 /**
  * Spawn a process for interactive testing with enhanced control
  */
-export async function spawnProcess(
+export const spawnProcess = async function(
   command: string,
   args: string[] = [],
   options: CLIOptions = {}
 ): Promise<ProcessControl> {
   const nodeProcess = getCurrentProcess();
   const env = { ...nodeProcess.env, ...options.env };
-  const cwd = options.cwd || nodeProcess.cwd();
+  const cwd = options.cwd ?? nodeProcess.cwd();
 
   const childProcess = spawn(command, args, {
     cwd,
     env,
     stdio: ['pipe', 'pipe', 'pipe'],
-    detached: options.detached || false,
+    detached: options.detached ?? false,
     uid: options.uid,
-    gid: options.gid
+    gid: options.gid,
   });
 
   const startTime = Date.now();
@@ -209,7 +216,7 @@ export async function spawnProcess(
     exitCode: null,
     pid: childProcess.pid || -1,
     startTime,
-    isAlive: true
+    isAlive: true,
   };
 
   childProcess.stdout?.on('data', (data) => {
@@ -253,7 +260,7 @@ export async function spawnProcess(
   });
 
   // Give process a moment to start
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise((resolve) => setTimeout(resolve, 100));
 
   return control;
 }
@@ -308,11 +315,13 @@ export async function waitForOutput(
       }
 
       if (control.exitCode !== null) {
-        reject(new ProcessExitError(
-          `Process ${control.pid}`,
-          control.exitCode,
-          `Process exited while waiting for pattern: ${pattern}`
-        ));
+        reject(
+          new ProcessExitError(
+            `Process ${control.pid}`,
+            control.exitCode,
+            `Process exited while waiting for pattern: ${pattern}`
+          )
+        );
         return;
       }
 
@@ -350,7 +359,10 @@ export async function sendInput(
         reject(error);
       } else {
         const currentProcess = getCurrentProcess();
-        if ('env' in currentProcess && (currentProcess.env as Record<string, string | undefined>)?.DEBUG_CLI_TESTS) {
+        if (
+          'env' in currentProcess &&
+          (currentProcess.env as Record<string, string | undefined>)?.DEBUG_CLI_TESTS
+        ) {
           console.log(`[INPUT:${control.pid}] ${data.trim()}`);
         }
         resolve();
@@ -403,7 +415,10 @@ export async function killProcess(
       control.process.kill(signal);
 
       const currentProcess = getCurrentProcess();
-      if ('env' in currentProcess && (currentProcess.env as Record<string, string | undefined>)?.DEBUG_CLI_TESTS) {
+      if (
+        'env' in currentProcess &&
+        (currentProcess.env as Record<string, string | undefined>)?.DEBUG_CLI_TESTS
+      ) {
         console.log(`[KILL:${control.pid}] Signal: ${signal}, Force: ${force}`);
       }
     } catch (error) {
@@ -416,14 +431,17 @@ export async function killProcess(
 /**
  * Create temporary directory with automatic cleanup tracking
  */
-export async function createTempDirectory(prefix: string = 'prp-test-'): Promise<TempDirectory> {
+export async function createTempDirectory(prefix = 'prp-test-'): Promise<TempDirectory> {
   const tempPath = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
 
   const cleanup = async () => {
     try {
       await fs.rm(tempPath, { recursive: true, force: true });
       const currentProcess = getCurrentProcess();
-      if ('env' in currentProcess && (currentProcess.env as Record<string, string | undefined>)?.DEBUG_CLI_TESTS) {
+      if (
+        'env' in currentProcess &&
+        (currentProcess.env as Record<string, string | undefined>)?.DEBUG_CLI_TESTS
+      ) {
         console.log(`[CLEANUP] Removed temp directory: ${tempPath}`);
       }
     } catch (error) {
@@ -442,7 +460,7 @@ export async function createTempDirectory(prefix: string = 'prp-test-'): Promise
 
   return {
     path: tempPath,
-    cleanup
+    cleanup,
   };
 }
 
@@ -459,11 +477,13 @@ export async function setupTestEnvironment(
   const tempDir = await createTempDirectory(options.tempDirPrefix);
   const nodeProcess = getCurrentProcess();
 
-  const env = {
-    ...nodeProcess.env,
+  const env: Record<string, string> = {
+    ...Object.fromEntries(
+      Object.entries(nodeProcess.env).filter(([_, value]) => value !== undefined)
+    ),
     NODE_ENV: 'test',
     CI: 'true',
-    ...options.env
+    ...options.env,
   };
 
   const cleanup = async () => {
@@ -473,7 +493,7 @@ export async function setupTestEnvironment(
   return {
     tempDir,
     env,
-    cleanup
+    cleanup,
   };
 }
 
@@ -535,11 +555,19 @@ export async function runInteractiveCLI(
     mockStdout?: boolean;
   } = {}
 ): Promise<{ exitCode: number; output: string; matchedPatterns: string[] }> {
-  const control = await spawnProcess(command, [], {
-    cwd: options.cwd,
-    env: options.env,
-    timeout: options.timeout || 30000
-  });
+  const cliOptions: CLIOptions = {
+    timeout: options.timeout || 30000,
+  };
+
+  if (options.cwd !== undefined) {
+    cliOptions.cwd = options.cwd;
+  }
+
+  if (options.env !== undefined) {
+    cliOptions.env = options.env;
+  }
+
+  const control = await spawnProcess(command, [], cliOptions);
 
   const matchedPatterns: string[] = [];
 
@@ -571,7 +599,7 @@ export async function runInteractiveCLI(
     return {
       exitCode: control.exitCode || 0,
       output: control.combinedOutput.join(''),
-      matchedPatterns
+      matchedPatterns,
     };
   } finally {
     await killProcess(control);
@@ -593,7 +621,13 @@ export function getProcessMetrics(control: ProcessControl): ProcessMetrics {
     exitCode: control.exitCode,
     stdoutLength: control.stdout.join('').length,
     stderrLength: control.stderr.join('').length,
-    memoryUsage: getCurrentProcess().memoryUsage?.() || {}
+    memoryUsage: getCurrentProcess().memoryUsage?.() || {
+    rss: 0,
+    heapTotal: 0,
+    heapUsed: 0,
+    external: 0,
+    arrayBuffers: 0,
+  },
   };
 }
 
@@ -607,7 +641,7 @@ export const PlatformUtils = {
   getExecutable(command: string): string {
     const currentProcess = getCurrentProcess();
     if ('platform' in currentProcess && currentProcess.platform === 'win32') {
-      return command + '.cmd';
+      return `${command  }.cmd`;
     }
     return command;
   },
@@ -618,7 +652,7 @@ export const PlatformUtils = {
   getShell(): string {
     const currentProcess = getCurrentProcess();
     if ('platform' in currentProcess && currentProcess.platform === 'win32') {
-      return ((currentProcess.env as Record<string, string | undefined>)?.COMSPEC) || 'cmd.exe';
+      return (currentProcess.env as Record<string, string | undefined>)?.COMSPEC || 'cmd.exe';
     }
     return '/bin/bash';
   },
@@ -656,7 +690,7 @@ export const PlatformUtils = {
   isLinux(): boolean {
     const currentProcess = getCurrentProcess();
     return 'platform' in currentProcess && currentProcess.platform === 'linux';
-  }
+  },
 };
 
 /**
@@ -688,7 +722,7 @@ export class MockStdout {
  */
 export function createMockStdin(inputs: string[]): NodeJS.ReadableStream {
   const { Readable } = require('stream');
-  const inputStream = Readable.from(inputs.join('\n') + '\n');
+  const inputStream = Readable.from(`${inputs.join('\n')  }\n`);
   return inputStream;
 }
 
@@ -718,7 +752,7 @@ export const TestUtils = {
   /**
    * Write JSON file with proper formatting
    */
-  async writeJsonFile(filePath: string, data: any, indent: number = 2): Promise<void> {
+  async writeJsonFile(filePath: string, data: any, indent = 2): Promise<void> {
     const content = JSON.stringify(data, null, indent);
     await fs.writeFile(filePath, content, 'utf8');
   },
@@ -745,7 +779,7 @@ export const TestUtils = {
   /**
    * Generate random string for unique test data
    */
-  randomString(length: number = 8): string {
+  randomString(length = 8): string {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
     for (let i = 0; i < length; i++) {
@@ -757,10 +791,7 @@ export const TestUtils = {
   /**
    * Create test project structure
    */
-  async createTestProject(
-    projectDir: string,
-    projectName: string = 'test-project'
-  ): Promise<void> {
+  async createTestProject(projectDir: string, projectName = 'test-project'): Promise<void> {
     await this.ensureDir(path.join(projectDir, projectName));
 
     const packageJson = {
@@ -768,14 +799,11 @@ export const TestUtils = {
       version: '1.0.0',
       description: 'Test project',
       scripts: {
-        test: 'echo "No tests specified"'
-      }
+        test: 'echo "No tests specified"',
+      },
     };
 
-    await this.writeJsonFile(
-      path.join(projectDir, projectName, 'package.json'),
-      packageJson
-    );
+    await this.writeJsonFile(path.join(projectDir, projectName, 'package.json'), packageJson);
 
     await fs.writeFile(
       path.join(projectDir, projectName, 'README.md'),
@@ -815,7 +843,7 @@ export const TestUtils = {
       }
       return { stdout: '', stderr: error.message };
     }
-  }
+  },
 };
 
 /**
@@ -825,7 +853,7 @@ export const JestUtils = {
   /**
    * Extend Jest timeout for long-running tests
    */
-  extendTimeout(ms: number = 30000): void {
+  extendTimeout(ms = 30000): void {
     if (typeof jest !== 'undefined') {
       jest.setTimeout(ms);
     }
@@ -846,8 +874,8 @@ export const JestUtils = {
         tempDirPrefix: `jest-${testName}-`,
         env: {
           JEST_TEST_NAME: testName,
-          JEST_WORKER_ID: process.env.JEST_WORKER_ID || 'unknown'
-        }
+          JEST_WORKER_ID: process.env.JEST_WORKER_ID || 'unknown',
+        },
       });
     });
 
@@ -858,7 +886,7 @@ export const JestUtils = {
     });
 
     return env;
-  }
+  },
 };
 
 /**
@@ -880,8 +908,8 @@ function getCurrentProcess() {
       heapTotal: 0,
       heapUsed: 0,
       external: 0,
-      arrayBuffers: 0
-    })
+      arrayBuffers: 0,
+    }),
   };
 }
 
@@ -890,11 +918,13 @@ function getCurrentProcess() {
  */
 function isDebugEnabled(): boolean {
   const currentProcess = getCurrentProcess();
-  return 'env' in currentProcess &&
-         currentProcess.env &&
-         typeof currentProcess.env === 'object' &&
-         'DEBUG_CLI_TESTS' in currentProcess.env &&
-         Boolean(currentProcess.env.DEBUG_CLI_TESTS);
+  return (
+    'env' in currentProcess &&
+    currentProcess.env &&
+    typeof currentProcess.env === 'object' &&
+    'DEBUG_CLI_TESTS' in currentProcess.env &&
+    Boolean(currentProcess.env.DEBUG_CLI_TESTS)
+  );
 }
 
 // Backward compatibility aliases
@@ -902,4 +932,4 @@ export const tempDir = createTempDirectory;
 export const waitForText = waitForOutput;
 export const terminateProcess = killProcess;
 export const execAsync = executeCommand;
-export const readJsonFile = TestUtils.readJsonFile;
+export const {readJsonFile} = TestUtils;

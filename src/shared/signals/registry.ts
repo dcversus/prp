@@ -4,17 +4,31 @@
  * Comprehensive signal definitions following the hierarchy:
  * oo → aa → OO → AA (ascending urgency)
  */
-
-import { Signal, SignalType } from '../types';
+import type { Signal, SignalType } from '../types';
 
 export interface ExtendedSignal extends Signal {
   tag?: string;
 }
-
 export interface SignalDefinition {
   tag: string;
   type: SignalType;
-  category: 'admin_action' | 'admin_info' | 'agent_action' | 'agent_info' | 'analysis' | 'communication' | 'coordination' | 'deployment' | 'design' | 'development' | 'incident' | 'orchestrator_action' | 'orchestrator_info' | 'system_action' | 'system_info' | 'testing';
+  category:
+    | 'admin_action'
+    | 'admin_info'
+    | 'agent_action'
+    | 'agent_info'
+    | 'analysis'
+    | 'communication'
+    | 'coordination'
+    | 'deployment'
+    | 'design'
+    | 'development'
+    | 'incident'
+    | 'orchestrator_action'
+    | 'orchestrator_info'
+    | 'system_action'
+    | 'system_info'
+    | 'testing';
   priority: number;
   description: string;
   handler: 'orchestrator' | 'admin';
@@ -26,13 +40,12 @@ export interface SignalDefinition {
   metadataSchema?: Record<string, unknown>;
   examples?: string[];
 }
-
 /**
  * Signal Registry containing all defined signals
  */
 export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
   // Orchestrator Information Signals (oo)
-  'oo': {
+  oo: {
     tag: 'oo',
     type: 'info',
     category: 'orchestrator_info',
@@ -41,10 +54,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     handler: 'orchestrator',
     escalationRules: {
       timeout: 600000, // 10 minutes
-      escalateTo: 'OO'
-    }
+      escalateTo: 'OO',
+    },
   },
-
   'oo-init': {
     tag: 'oo-init',
     type: 'info',
@@ -55,10 +67,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       component: 'string',
       progress: 'number',
-      status: 'string'
-    }
+      status: 'string',
+    },
   },
-
   'oo-scan': {
     tag: 'oo-scan',
     type: 'info',
@@ -69,10 +80,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       scanType: 'string',
       signalsFound: 'number',
-      duration: 'number'
-    }
+      duration: 'number',
+    },
   },
-
   'oo-agent': {
     tag: 'oo-agent',
     type: 'info',
@@ -83,10 +93,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       agentId: 'string',
       activity: 'string',
-      status: 'string'
-    }
+      status: 'string',
+    },
   },
-
   'oo-resource': {
     tag: 'oo-resource',
     type: 'info',
@@ -97,10 +106,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       resource: 'string',
       usage: 'number',
-      threshold: 'number'
-    }
+      threshold: 'number',
+    },
   },
-
   'oo-progress': {
     tag: 'oo-progress',
     type: 'info',
@@ -111,10 +119,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       taskId: 'string',
       progress: 'number',
-      status: 'string'
-    }
+      status: 'string',
+    },
   },
-
   'oo-analysis': {
     tag: 'oo-analysis',
     type: 'info',
@@ -125,12 +132,11 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       analysisType: 'string',
       result: 'string',
-      recommendations: 'array'
-    }
+      recommendations: 'array',
+    },
   },
-
   // Admin Information Signals (aa)
-  'aa': {
+  aa: {
     tag: 'aa',
     type: 'info',
     category: 'admin_info',
@@ -139,10 +145,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     handler: 'admin',
     escalationRules: {
       timeout: 1800000, // 30 minutes
-      escalateTo: 'AA'
-    }
+      escalateTo: 'AA',
+    },
   },
-
   'aa-progress': {
     tag: 'aa-progress',
     type: 'info',
@@ -153,10 +158,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       taskId: 'string',
       progress: 'number',
-      eta: 'string'
-    }
+      eta: 'string',
+    },
   },
-
   'aa-preview': {
     tag: 'aa-preview',
     type: 'info',
@@ -167,14 +171,13 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       previewUrl: 'string',
       contentType: 'string',
-      expiresAt: 'string'
+      expiresAt: 'string',
     },
     examples: [
       'Preview available: https://example.com/preview',
-      'Report ready for review: https://example.com/report'
-    ]
+      'Report ready for review: https://example.com/report',
+    ],
   },
-
   'aa-summary': {
     tag: 'aa-summary',
     type: 'info',
@@ -185,10 +188,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       period: 'string',
       metrics: 'object',
-      highlights: 'array'
-    }
+      highlights: 'array',
+    },
   },
-
   'aa-reminder': {
     tag: 'aa-reminder',
     type: 'info',
@@ -199,10 +201,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       reminderType: 'string',
       action: 'string',
-      dueDate: 'string'
-    }
+      dueDate: 'string',
+    },
   },
-
   'aa-analysis': {
     tag: 'aa-analysis',
     type: 'info',
@@ -213,10 +214,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       analysisId: 'string',
       summary: 'string',
-      recommendations: 'array'
-    }
+      recommendations: 'array',
+    },
   },
-
   'aa-share': {
     tag: 'aa-share',
     type: 'info',
@@ -227,10 +227,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       shareUrl: 'string',
       contentType: 'string',
-      audience: 'string'
-    }
+      audience: 'string',
+    },
   },
-
   'aa-report': {
     tag: 'aa-report',
     type: 'info',
@@ -241,10 +240,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       reportType: 'string',
       reportUrl: 'string',
-      period: 'string'
-    }
+      period: 'string',
+    },
   },
-
   'aa-feedback': {
     tag: 'aa-feedback',
     type: 'info',
@@ -255,12 +253,11 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       feedbackType: 'string',
       context: 'string',
-      deadline: 'string'
-    }
+      deadline: 'string',
+    },
   },
-
   // Orchestrator Action Signals (OO)
-  'OO': {
+  OO: {
     tag: 'OO',
     type: 'action',
     category: 'orchestrator_action',
@@ -270,10 +267,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     escalationRules: {
       timeout: 300000, // 5 minutes
       escalateTo: 'AA',
-      conditions: ['resolution_failed', 'timeout_exceeded']
-    }
+      conditions: ['resolution_failed', 'timeout_exceeded'],
+    },
   },
-
   'OO-signal': {
     tag: 'OO-signal',
     type: 'action',
@@ -284,10 +280,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       signalPattern: 'string',
       frequency: 'number',
-      impact: 'string'
-    }
+      impact: 'string',
+    },
   },
-
   'OO-conflict': {
     tag: 'OO-conflict',
     type: 'action',
@@ -298,10 +293,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       conflictType: 'string',
       parties: 'array',
-      resolution: 'string'
-    }
+      resolution: 'string',
+    },
   },
-
   'OO-resource': {
     tag: 'OO-resource',
     type: 'action',
@@ -313,10 +307,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
       resource: 'string',
       currentUsage: 'number',
       threshold: 'number',
-      impact: 'string'
-    }
+      impact: 'string',
+    },
   },
-
   'OO-failure': {
     tag: 'OO-failure',
     type: 'action',
@@ -327,10 +320,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       failureType: 'string',
       component: 'string',
-      recovery: 'string'
-    }
+      recovery: 'string',
+    },
   },
-
   'OO-decision': {
     tag: 'OO-decision',
     type: 'action',
@@ -341,10 +333,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       decisionType: 'string',
       options: 'array',
-      criteria: 'string'
-    }
+      criteria: 'string',
+    },
   },
-
   'OO-agent': {
     tag: 'OO-agent',
     type: 'action',
@@ -355,20 +346,18 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       agentId: 'string',
       issue: 'string',
-      requiredAction: 'string'
-    }
+      requiredAction: 'string',
+    },
   },
-
   // Admin Action Signals (AA)
-  'AA': {
+  AA: {
     tag: 'AA',
     type: 'action',
     category: 'admin_action',
     priority: 10,
     description: 'Critical admin intervention required',
-    handler: 'admin'
+    handler: 'admin',
   },
-
   'AA-error': {
     tag: 'AA-error',
     type: 'action',
@@ -380,10 +369,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
       errorType: 'string',
       component: 'string',
       impact: 'string',
-      stackTrace: 'string'
-    }
+      stackTrace: 'string',
+    },
   },
-
   'AA-security': {
     tag: 'AA-security',
     type: 'action',
@@ -395,10 +383,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
       securityLevel: 'string',
       threat: 'string',
       affectedSystems: 'array',
-      immediateAction: 'string'
-    }
+      immediateAction: 'string',
+    },
   },
-
   'AA-decision': {
     tag: 'AA-decision',
     type: 'action',
@@ -410,10 +397,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
       decisionType: 'string',
       urgency: 'string',
       impact: 'string',
-      deadline: 'string'
-    }
+      deadline: 'string',
+    },
   },
-
   'AA-emergency': {
     tag: 'AA-emergency',
     type: 'action',
@@ -425,10 +411,9 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
       emergencyType: 'string',
       severity: 'string',
       immediateAction: 'string',
-      affectedSystems: 'array'
-    }
+      affectedSystems: 'array',
+    },
   },
-
   'AA-agent': {
     tag: 'AA-agent',
     type: 'action',
@@ -440,13 +425,11 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
       agentId: 'string',
       failureType: 'string',
       impact: 'string',
-      requiredAction: 'string'
-    }
+      requiredAction: 'string',
+    },
   },
-
   // === SYSTEM SIGNALS ===
-
-  'HF': {
+  HF: {
     tag: 'HF',
     type: 'info',
     category: 'system_info',
@@ -456,11 +439,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       cycleStatus: 'string',
       healthMetrics: 'object',
-      systemStatus: 'string'
-    }
+      systemStatus: 'string',
+    },
   },
-
-  'pr': {
+  pr: {
     tag: 'pr',
     type: 'info',
     category: 'development',
@@ -470,11 +452,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       prNumber: 'number',
       preparationStatus: 'string',
-      optimizationApplied: 'boolean'
-    }
+      optimizationApplied: 'boolean',
+    },
   },
-
-  'PR': {
+  PR: {
     tag: 'PR',
     type: 'info',
     category: 'development',
@@ -484,11 +465,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       prNumber: 'number',
       prUrl: 'string',
-      changedFiles: 'number'
-    }
+      changedFiles: 'number',
+    },
   },
-
-  'FF': {
+  FF: {
     tag: 'FF',
     type: 'action',
     category: 'system_action',
@@ -497,16 +477,15 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     handler: 'admin',
     escalationRules: {
       timeout: 0, // Immediate escalation
-      escalateTo: 'AA'
+      escalateTo: 'AA',
     },
     metadataSchema: {
       errorType: 'string',
       affectedComponents: 'array',
-      systemImpact: 'string'
-    }
+      systemImpact: 'string',
+    },
   },
-
-  'TF': {
+  TF: {
     tag: 'TF',
     type: 'info',
     category: 'system_info',
@@ -516,14 +495,12 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       sessionId: 'string',
       sessionDuration: 'number',
-      exitCode: 'number'
-    }
+      exitCode: 'number',
+    },
   },
-
   // === AGENT SIGNALS ===
-
   // Blocker & Feedback
-  'bb': {
+  bb: {
     tag: 'bb',
     type: 'action',
     category: 'agent_action',
@@ -533,11 +510,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       blockerType: 'string',
       blockingTask: 'string',
-      unblockingRequired: 'string'
-    }
+      unblockingRequired: 'string',
+    },
   },
-
-  'af': {
+  af: {
     tag: 'af',
     type: 'info',
     category: 'agent_info',
@@ -547,11 +523,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       feedbackType: 'string',
       context: 'string',
-      deadline: 'string'
-    }
+      deadline: 'string',
+    },
   },
-
-  'gg': {
+  gg: {
     tag: 'gg',
     type: 'info',
     category: 'agent_info',
@@ -561,11 +536,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       goalId: 'string',
       clarificationNeeded: 'string',
-      proposedChanges: 'array'
-    }
+      proposedChanges: 'array',
+    },
   },
-
-  'ff': {
+  ff: {
     tag: 'ff',
     type: 'action',
     category: 'agent_action',
@@ -575,11 +549,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       goalId: 'string',
       reason: 'string',
-      alternatives: 'array'
-    }
+      alternatives: 'array',
+    },
   },
-
-  'da': {
+  da: {
     tag: 'da',
     type: 'info',
     category: 'agent_info',
@@ -589,11 +562,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       taskId: 'string',
       completionEvidence: 'string',
-      assessor: 'string'
-    }
+      assessor: 'string',
+    },
   },
-
-  'no': {
+  no: {
     tag: 'no',
     type: 'info',
     category: 'agent_info',
@@ -603,12 +575,11 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       complexity: 'string',
       unknownFactors: 'array',
-      researchNeeded: 'boolean'
-    }
+      researchNeeded: 'boolean',
+    },
   },
-
   // System Analysis
-  'rp': {
+  rp: {
     tag: 'rp',
     type: 'info',
     category: 'agent_info',
@@ -618,11 +589,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       analysisComplete: 'boolean',
       requirementsClear: 'boolean',
-      readyForPlanning: 'boolean'
-    }
+      readyForPlanning: 'boolean',
+    },
   },
-
-  'vr': {
+  vr: {
     tag: 'vr',
     type: 'action',
     category: 'agent_action',
@@ -632,11 +602,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       validationType: 'string',
       validator: 'string',
-      deadline: 'string'
-    }
+      deadline: 'string',
+    },
   },
-
-  'rr': {
+  rr: {
     tag: 'rr',
     type: 'action',
     category: 'agent_action',
@@ -646,11 +615,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       researchTopic: 'string',
       researchQuestions: 'array',
-      timeframe: 'string'
-    }
+      timeframe: 'string',
+    },
   },
-
-  'vp': {
+  vp: {
     tag: 'vp',
     type: 'info',
     category: 'agent_info',
@@ -660,11 +628,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       planId: 'string',
       verificationSteps: 'array',
-      successCriteria: 'array'
-    }
+      successCriteria: 'array',
+    },
   },
-
-  'ip': {
+  ip: {
     tag: 'ip',
     type: 'info',
     category: 'agent_info',
@@ -674,11 +641,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       planId: 'string',
       tasks: 'array',
-      estimatedDuration: 'string'
-    }
+      estimatedDuration: 'string',
+    },
   },
-
-  'er': {
+  er: {
     tag: 'er',
     type: 'action',
     category: 'agent_action',
@@ -688,12 +654,11 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       experimentId: 'string',
       hypothesis: 'string',
-      successMetrics: 'array'
-    }
+      successMetrics: 'array',
+    },
   },
-
   // Development & Testing
-  'tp': {
+  tp: {
     tag: 'tp',
     type: 'info',
     category: 'testing',
@@ -703,11 +668,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       testSuite: 'string',
       testCount: 'number',
-      coverageTarget: 'number'
-    }
+      coverageTarget: 'number',
+    },
   },
-
-  'dp': {
+  dp: {
     tag: 'dp',
     type: 'info',
     category: 'development',
@@ -717,11 +681,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       featureId: 'string',
       progressPercent: 'number',
-      nextMilestone: 'string'
-    }
+      nextMilestone: 'string',
+    },
   },
-
-  'br': {
+  br: {
     tag: 'br',
     type: 'info',
     category: 'coordination',
@@ -731,11 +694,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       blockerId: 'string',
       resolutionMethod: 'string',
-      timeToResolve: 'number'
-    }
+      timeToResolve: 'number',
+    },
   },
-
-  'rc': {
+  rc: {
     tag: 'rc',
     type: 'info',
     category: 'analysis',
@@ -745,11 +707,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       researchId: 'string',
       findings: 'string',
-      recommendations: 'array'
-    }
+      recommendations: 'array',
+    },
   },
-
-  'tw': {
+  tw: {
     tag: 'tw',
     type: 'info',
     category: 'testing',
@@ -759,11 +720,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       testSuite: 'string',
       testCount: 'number',
-      coverageAchieved: 'number'
-    }
+      coverageAchieved: 'number',
+    },
   },
-
-  'bf': {
+  bf: {
     tag: 'bf',
     type: 'info',
     category: 'development',
@@ -773,12 +733,11 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       bugId: 'string',
       fixMethod: 'string',
-      verificationComplete: 'boolean'
-    }
+      verificationComplete: 'boolean',
+    },
   },
-
   // Quality & CI/CD
-  'cq': {
+  cq: {
     tag: 'cq',
     type: 'info',
     category: 'testing',
@@ -788,11 +747,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       qualityScore: 'number',
       issuesFound: 'number',
-      recommendations: 'array'
-    }
+      recommendations: 'array',
+    },
   },
-
-  'cp': {
+  cp: {
     tag: 'cp',
     type: 'info',
     category: 'deployment',
@@ -802,11 +760,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       buildId: 'string',
       buildNumber: 'string',
-      testResults: 'object'
-    }
+      testResults: 'object',
+    },
   },
-
-  'tr': {
+  tr: {
     tag: 'tr',
     type: 'action',
     category: 'testing',
@@ -816,11 +773,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       testSuite: 'string',
       failingTests: 'number',
-      errors: 'array'
-    }
+      errors: 'array',
+    },
   },
-
-  'tg': {
+  tg: {
     tag: 'tg',
     type: 'info',
     category: 'testing',
@@ -830,11 +786,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       testSuite: 'string',
       passingTests: 'number',
-      coverage: 'number'
-    }
+      coverage: 'number',
+    },
   },
-
-  'cf': {
+  cf: {
     tag: 'cf',
     type: 'action',
     category: 'deployment',
@@ -844,11 +799,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       buildId: 'string',
       failureReason: 'string',
-      errorLogs: 'string'
-    }
+      errorLogs: 'string',
+    },
   },
-
-  'pc': {
+  pc: {
     tag: 'pc',
     type: 'info',
     category: 'deployment',
@@ -858,11 +812,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       releaseVersion: 'string',
       checklistComplete: 'boolean',
-      approvalStatus: 'string'
-    }
+      approvalStatus: 'string',
+    },
   },
-
-  'rg': {
+  rg: {
     tag: 'rg',
     type: 'info',
     category: 'coordination',
@@ -872,12 +825,11 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       reviewId: 'string',
       progressPercent: 'number',
-      reviewer: 'string'
-    }
+      reviewer: 'string',
+    },
   },
-
   // Release & Deployment
-  'cd': {
+  cd: {
     tag: 'cd',
     type: 'info',
     category: 'deployment',
@@ -887,11 +839,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       cleanupType: 'string',
       itemsRemoved: 'array',
-      spaceFreed: 'number'
-    }
+      spaceFreed: 'number',
+    },
   },
-
-  'rv': {
+  rv: {
     tag: 'rv',
     type: 'info',
     category: 'testing',
@@ -901,11 +852,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       reviewId: 'string',
       reviewer: 'string',
-      feedback: 'string'
-    }
+      feedback: 'string',
+    },
   },
-
-  'iv': {
+  iv: {
     tag: 'iv',
     type: 'info',
     category: 'testing',
@@ -915,11 +865,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       implementationId: 'string',
       verificationMethod: 'string',
-      result: 'string'
-    }
+      result: 'string',
+    },
   },
-
-  'ra': {
+  ra: {
     tag: 'ra',
     type: 'action',
     category: 'deployment',
@@ -929,11 +878,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       releaseVersion: 'string',
       approver: 'string',
-      approvalDate: 'string'
-    }
+      approvalDate: 'string',
+    },
   },
-
-  'mg': {
+  mg: {
     tag: 'mg',
     type: 'info',
     category: 'deployment',
@@ -943,11 +891,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       prNumber: 'number',
       mergeCommit: 'string',
-      mergeDate: 'string'
-    }
+      mergeDate: 'string',
+    },
   },
-
-  'rl': {
+  rl: {
     tag: 'rl',
     type: 'info',
     category: 'deployment',
@@ -957,12 +904,11 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       releaseVersion: 'string',
       deploymentId: 'string',
-      releaseDate: 'string'
-    }
+      releaseDate: 'string',
+    },
   },
-
   // Post-Release & Incidents
-  'ps': {
+  ps: {
     tag: 'ps',
     type: 'info',
     category: 'deployment',
@@ -972,11 +918,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       releaseVersion: 'string',
       status: 'string',
-      metrics: 'object'
-    }
+      metrics: 'object',
+    },
   },
-
-  'ic': {
+  ic: {
     tag: 'ic',
     type: 'action',
     category: 'incident',
@@ -985,16 +930,15 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     handler: 'admin',
     escalationRules: {
       timeout: 300000, // 5 minutes
-      escalateTo: 'AA'
+      escalateTo: 'AA',
     },
     metadataSchema: {
       incidentId: 'string',
       severity: 'string',
-      impact: 'string'
-    }
+      impact: 'string',
+    },
   },
-
-  'JC': {
+  JC: {
     tag: 'JC',
     type: 'info',
     category: 'incident',
@@ -1004,11 +948,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       incidentId: 'string',
       resolutionMethod: 'string',
-      resolutionTime: 'number'
-    }
+      resolutionTime: 'number',
+    },
   },
-
-  'pm': {
+  pm: {
     tag: 'pm',
     type: 'info',
     category: 'incident',
@@ -1018,11 +961,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       incidentId: 'string',
       lessonsLearned: 'array',
-      preventionMeasures: 'array'
-    }
+      preventionMeasures: 'array',
+    },
   },
-
-  'oa': {
+  oa: {
     tag: 'oa',
     type: 'action',
     category: 'coordination',
@@ -1032,11 +974,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       attentionType: 'string',
       context: 'string',
-      urgency: 'string'
-    }
+      urgency: 'string',
+    },
   },
-
-  'ap': {
+  ap: {
     tag: 'ap',
     type: 'info',
     category: 'communication',
@@ -1046,12 +987,11 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       previewType: 'string',
       previewUrl: 'string',
-      expiresAt: 'string'
-    }
+      expiresAt: 'string',
+    },
   },
-
   // UX/UI Design Signals
-  'du': {
+  du: {
     tag: 'du',
     type: 'info',
     category: 'design',
@@ -1061,11 +1001,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       componentId: 'string',
       changeType: 'string',
-      description: 'string'
-    }
+      description: 'string',
+    },
   },
-
-  'ds': {
+  ds: {
     tag: 'ds',
     type: 'info',
     category: 'design',
@@ -1075,11 +1014,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       systemVersion: 'string',
       componentsUpdated: 'array',
-      breakingChanges: 'boolean'
-    }
+      breakingChanges: 'boolean',
+    },
   },
-
-  'dr': {
+  dr: {
     tag: 'dr',
     type: 'action',
     category: 'design',
@@ -1089,11 +1027,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       designId: 'string',
       reviewType: 'string',
-      deadline: 'string'
-    }
+      deadline: 'string',
+    },
   },
-
-  'dh': {
+  dh: {
     tag: 'dh',
     type: 'info',
     category: 'design',
@@ -1103,11 +1040,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       designId: 'string',
       deliverables: 'array',
-      handoffDate: 'string'
-    }
+      handoffDate: 'string',
+    },
   },
-
-  'df': {
+  df: {
     tag: 'df',
     type: 'info',
     category: 'design',
@@ -1117,11 +1053,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       designId: 'string',
       feedback: 'string',
-      actionItems: 'array'
-    }
+      actionItems: 'array',
+    },
   },
-
-  'di': {
+  di: {
     tag: 'di',
     type: 'action',
     category: 'design',
@@ -1131,11 +1066,10 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       issueId: 'string',
       severity: 'string',
-      description: 'string'
-    }
+      description: 'string',
+    },
   },
-
-  'dt': {
+  dt: {
     tag: 'dt',
     type: 'info',
     category: 'testing',
@@ -1145,53 +1079,46 @@ export const SIGNAL_REGISTRY: Record<string, SignalDefinition> = {
     metadataSchema: {
       testId: 'string',
       testResults: 'object',
-      recommendations: 'array'
-    }
-  }
+      recommendations: 'array',
+    },
+  },
 };
-
 /**
  * Signal Registry Manager
  */
 export class SignalRegistry {
   private static instance: SignalRegistry;
-  private escalationTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
-
+  private readonly escalationTimers = new Map<string, ReturnType<typeof setTimeout>>();
   static getInstance(): SignalRegistry {
     if (!SignalRegistry.instance) {
       SignalRegistry.instance = new SignalRegistry();
     }
     return SignalRegistry.instance;
   }
-
   /**
    * Get signal definition by tag
    */
   getDefinition(tag: string): SignalDefinition | undefined {
     return SIGNAL_REGISTRY[tag];
   }
-
   /**
    * Get all signals by category
    */
   getByCategory(category: SignalDefinition['category']): SignalDefinition[] {
-    return Object.values(SIGNAL_REGISTRY).filter(signal => signal.category === category);
+    return Object.values(SIGNAL_REGISTRY).filter((signal) => signal.category === category);
   }
-
   /**
    * Get all signals by handler
    */
   getByHandler(handler: 'orchestrator' | 'admin'): SignalDefinition[] {
-    return Object.values(SIGNAL_REGISTRY).filter(signal => signal.handler === handler);
+    return Object.values(SIGNAL_REGISTRY).filter((signal) => signal.handler === handler);
   }
-
   /**
    * Check if signal tag is valid
    */
   isValidTag(tag: string): boolean {
     return tag in SIGNAL_REGISTRY;
   }
-
   /**
    * Create signal from definition
    */
@@ -1200,7 +1127,6 @@ export class SignalRegistry {
     if (!definition) {
       return null;
     }
-
     return {
       id: `${tag}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type: `[${tag}]`,
@@ -1212,37 +1138,36 @@ export class SignalRegistry {
         definitionTag: definition.tag,
         category: definition.category,
         handler: definition.handler,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       },
       resolved: false,
       relatedSignals: [],
       metadata: {
-        ...metadata
-      }
+        ...metadata,
+      },
     };
   }
-
   /**
    * Setup escalation timer for signal
    */
-  setupEscalation(signal: Signal, escalateCallback: (signal: Signal, escalateTo: string) => void): void {
+  setupEscalation(
+    signal: Signal,
+    escalateCallback: (signal: Signal, escalateTo: string) => void,
+  ): void {
     const extendedSignal = signal as ExtendedSignal;
     const tag = extendedSignal.tag?.replace(/[[\]]/g, '') || signal.type;
     const definition = this.getDefinition(tag);
     if (!definition?.escalationRules) {
       return;
     }
-
     const { timeout, escalateTo } = definition.escalationRules;
     if (timeout && escalateTo) {
       const timer = setTimeout(() => {
         escalateCallback(signal, escalateTo);
       }, timeout);
-
       this.escalationTimers.set(signal.id, timer);
     }
   }
-
   /**
    * Cancel escalation timer for signal
    */
@@ -1253,23 +1178,20 @@ export class SignalRegistry {
       this.escalationTimers.delete(signalId);
     }
   }
-
   /**
    * Get all registered signal tags
    */
   getAllTags(): string[] {
     return Object.keys(SIGNAL_REGISTRY);
   }
-
   /**
    * Get signals by priority range
    */
   getByPriorityRange(minPriority: number, maxPriority: number): SignalDefinition[] {
     return Object.values(SIGNAL_REGISTRY).filter(
-      signal => signal.priority >= minPriority && signal.priority <= maxPriority
+      (signal) => signal.priority >= minPriority && signal.priority <= maxPriority,
     );
   }
 }
-
 // Export singleton instance
 export const signalRegistry = SignalRegistry.getInstance();

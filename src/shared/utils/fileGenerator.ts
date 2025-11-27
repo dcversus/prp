@@ -1,10 +1,10 @@
 /**
  * File generation utilities
  */
-
 import { promises as fs } from 'fs';
 import * as path from 'path';
-import { FileToGenerate } from '../types';
+
+import type { FileToGenerate } from '../types';
 
 export class FileGenerator {
   /**
@@ -14,22 +14,18 @@ export class FileGenerator {
     for (const file of files) {
       const filePath = path.join(targetPath, file.path);
       const dir = path.dirname(filePath);
-
       // Ensure directory exists
       await fs.mkdir(dir, { recursive: true });
-
       // Write file
       if (file.content !== undefined) {
         await fs.writeFile(filePath, file.content, 'utf-8');
       }
-
       // Set executable if needed
       if (file.executable) {
         await fs.chmod(filePath, 0o755);
       }
     }
   }
-
   /**
    * Check if directory exists and is empty
    */
@@ -41,7 +37,6 @@ export class FileGenerator {
       return true; // Directory doesn't exist, so it's "empty"
     }
   }
-
   /**
    * Create directory if it doesn't exist
    */
@@ -49,5 +44,4 @@ export class FileGenerator {
     await fs.mkdir(dirPath, { recursive: true });
   }
 }
-
 export const fileGenerator = new FileGenerator();

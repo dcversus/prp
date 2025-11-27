@@ -10,12 +10,12 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 
 // Import field components
-import InitShell from './InitShell.js';
-import FieldSelectCarousel from './FieldSelectCarousel.js';
-import AgentEditor from './AgentEditor.js';
+import InitShell from './InitShell';
+import FieldSelectCarousel from './FieldSelectCarousel';
+import AgentEditor from './AgentEditor';
 
 // Import types
-import type { InitState, AgentConfig } from './types.js';
+import type { InitState, AgentConfig } from './types';
 
 interface AgentsScreenProps {
   state: InitState;
@@ -23,7 +23,7 @@ interface AgentsScreenProps {
   onNext: () => void;
   onBack: () => void;
   onCancel: () => void;
-}
+};
 
 const AGENT_TYPES: string[] = ['claude', 'codex', 'gemini', 'amp', 'other'];
 
@@ -32,7 +32,7 @@ const AgentsScreen: React.FC<AgentsScreenProps> = ({
   onChange,
   onNext,
   onBack,
-  onCancel
+  onCancel,
 }) => {
   const [focusedField, setFocusedField] = useState(0);
   const [expandedAgent, setExpandedAgent] = useState<number | null>(null);
@@ -54,14 +54,14 @@ const AgentsScreen: React.FC<AgentsScreenProps> = ({
         compact_prediction: {
           percent_threshold: 0.82,
           auto_adjust: true,
-          cap: 24000
-        }
+          cap: 24000,
+        },
       };
 
       onChange({
         ...state,
         agents: [defaultAgent],
-        currentAgentIndex: 0
+        currentAgentIndex: 0,
       });
     }
   }, []);
@@ -80,12 +80,12 @@ const AgentsScreen: React.FC<AgentsScreenProps> = ({
       if (!agent.id.trim()) {
         validation[`${agentKey}_id`] = {
           isValid: false,
-          message: 'Agent ID is required'
+          message: 'Agent ID is required',
         };
       } else if (!/^[a-z0-9-]+$/.test(agent.id)) {
         validation[`${agentKey}_id`] = {
           isValid: false,
-          message: 'Agent ID must contain only lowercase letters, numbers, and hyphens'
+          message: 'Agent ID must contain only lowercase letters, numbers, and hyphens',
         };
       } else {
         validation[`${agentKey}_id`] = { isValid: true };
@@ -95,12 +95,12 @@ const AgentsScreen: React.FC<AgentsScreenProps> = ({
       if (!agent.limit.trim()) {
         validation[`${agentKey}_limit`] = {
           isValid: false,
-          message: 'Limit is required'
+          message: 'Limit is required',
         };
       } else if (!/^\d+[a-zA-Z]+#\w+$/.test(agent.limit)) {
         validation[`${agentKey}_limit`] = {
           isValid: false,
-          message: 'Limit must be in format: "100usd10k#agent-name"'
+          message: 'Limit must be in format: "100usd10k#agent-name"',
         };
       } else {
         validation[`${agentKey}_limit`] = { isValid: true };
@@ -110,7 +110,7 @@ const AgentsScreen: React.FC<AgentsScreenProps> = ({
       if (!agent.cv?.trim()) {
         validation[`${agentKey}_cv`] = {
           isValid: false,
-          message: 'Agent CV is required'
+          message: 'Agent CV is required',
         };
       } else {
         validation[`${agentKey}_cv`] = { isValid: true };
@@ -120,12 +120,12 @@ const AgentsScreen: React.FC<AgentsScreenProps> = ({
       if (!agent.warning_limit?.trim()) {
         validation[`${agentKey}_warning_limit`] = {
           isValid: false,
-          message: 'Warning limit is required'
+          message: 'Warning limit is required',
         };
       } else if (!/^\d+[a-zA-Z]+#\w+$/.test(agent.warning_limit)) {
         validation[`${agentKey}_warning_limit`] = {
           isValid: false,
-          message: 'Warning limit must be in format: "2k#role-name"'
+          message: 'Warning limit must be in format: "2k#role-name"',
         };
       } else {
         validation[`${agentKey}_warning_limit`] = { isValid: true };
@@ -136,7 +136,7 @@ const AgentsScreen: React.FC<AgentsScreenProps> = ({
       if (maxParallel < 1 || maxParallel > 20) {
         validation[`${agentKey}_max_parallel`] = {
           isValid: false,
-          message: 'Max parallel must be between 1 and 20'
+          message: 'Max parallel must be between 1 and 20',
         };
       } else {
         validation[`${agentKey}_max_parallel`] = { isValid: true };
@@ -147,7 +147,7 @@ const AgentsScreen: React.FC<AgentsScreenProps> = ({
       if (percentThreshold < 0 || percentThreshold > 1) {
         validation[`${agentKey}_percent_threshold`] = {
           isValid: false,
-          message: 'Percent threshold must be between 0 and 1'
+          message: 'Percent threshold must be between 0 and 1',
         };
       } else {
         validation[`${agentKey}_percent_threshold`] = { isValid: true };
@@ -157,7 +157,7 @@ const AgentsScreen: React.FC<AgentsScreenProps> = ({
       if (cap < 1000 || cap > 100000) {
         validation[`${agentKey}_cap`] = {
           isValid: false,
-          message: 'Cap must be between 1000 and 100000 tokens'
+          message: 'Cap must be between 1000 and 100000 tokens',
         };
       } else {
         validation[`${agentKey}_cap`] = { isValid: true };
@@ -188,14 +188,14 @@ const AgentsScreen: React.FC<AgentsScreenProps> = ({
       compact_prediction: {
         percent_threshold: 0.8,
         auto_adjust: true,
-        cap: 16000
-      }
+        cap: 16000,
+      },
     };
 
     onChange({
       ...state,
       agents: [...state.agents, newAgent],
-      currentAgentIndex: state.agents.length
+      currentAgentIndex: state.agents.length,
     });
     setExpandedAgent(state.agents.length);
   };
@@ -212,7 +212,7 @@ const AgentsScreen: React.FC<AgentsScreenProps> = ({
     onChange({
       ...state,
       agents: newAgents,
-      currentAgentIndex: newIndex
+      currentAgentIndex: newIndex,
     });
 
     if (expandedAgent === index) {
@@ -228,16 +228,14 @@ const AgentsScreen: React.FC<AgentsScreenProps> = ({
     newAgents[index] = agent;
     onChange({
       ...state,
-      agents: newAgents
+      agents: newAgents,
     });
   };
 
-  
   // Check if can proceed
-  const canProceed = state.agents.length > 0 &&
-    Object.values(state.validation).every(v => v?.isValid ?? true);
+  const canProceed =
+    state.agents.length > 0 && Object.values(state.validation).every((v) => v?.isValid ?? true);
 
-  
   // Render field based on focus
   const renderField = (fieldIndex: number) => {
     const isFocused = focusedField === fieldIndex;
@@ -256,9 +254,12 @@ const AgentsScreen: React.FC<AgentsScreenProps> = ({
                   ...currentAgent!,
                   type: newType as AgentConfig['type'],
                   // Auto-select provider based on type
-                  provider: newType === 'claude' ? 'anthropic' :
-                    newType === 'codex' ? 'openai' :
-                      currentAgent?.provider ?? 'anthropic'
+                  provider:
+                    newType === 'claude'
+                      ? 'anthropic'
+                      : newType === 'codex'
+                        ? 'openai'
+                        : (currentAgent?.provider ?? 'anthropic'),
                 };
                 updateAgent(state.currentAgentIndex, updatedAgent);
               }}
@@ -341,15 +342,13 @@ const AgentsScreen: React.FC<AgentsScreenProps> = ({
       icon={canProceed ? '♫' : '♪'}
       footerKeys={getFooterKeys()}
       onBack={onBack}
-      onForward={canProceed ? onNext : undefined}
+      {...(canProceed && { onForward: onNext })}
       onCancel={onCancel}
     >
       <Box flexDirection="column" gap={1}>
         {/* Render top-level fields */}
         {Array.from({ length: 2 }, (_, index) => (
-          <Box key={index}>
-            {renderField(index)}
-          </Box>
+          <Box key={index}>{renderField(index)}</Box>
         ))}
 
         {/* Agent editors */}
@@ -365,9 +364,7 @@ const AgentsScreen: React.FC<AgentsScreenProps> = ({
               <Text color={expandedAgent === index ? 'white' : 'cyan'}>
                 {expandedAgent === index ? '▼' : '▶'} Agent #{index + 1}
               </Text>
-              <Text color={expandedAgent === index ? 'white' : 'gray'}>
-                {agent.id}
-              </Text>
+              <Text color={expandedAgent === index ? 'white' : 'gray'}>{agent.id}</Text>
             </Box>
 
             {/* Expanded agent editor */}
@@ -387,9 +384,7 @@ const AgentsScreen: React.FC<AgentsScreenProps> = ({
         {/* Validation errors */}
         {!canProceed && (
           <Box marginTop={1}>
-            <Text color="red">
-              ⚠ Please fix validation errors before continuing
-            </Text>
+            <Text color="red">⚠ Please fix validation errors before continuing</Text>
           </Box>
         )}
       </Box>

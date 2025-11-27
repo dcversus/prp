@@ -1,11 +1,11 @@
 /**
  * Template engine using Handlebars
  */
+import { promises as fs } from 'fs';
 
 import * as Handlebars from 'handlebars';
-import { promises as fs } from 'fs';
-import { TemplateData, TemplateEngine } from './types';
 
+import type { TemplateData, TemplateEngine } from '../../types';
 // Register Handlebars helpers
 Handlebars.registerHelper('uppercase', (str: string) => str.toUpperCase());
 Handlebars.registerHelper('lowercase', (str: string) => str.toLowerCase());
@@ -19,21 +19,17 @@ Handlebars.registerHelper('pascalCase', (str: string) =>
   str.replace(/(^|-)([a-z])/g, (_: string, __: string, c: string) => c.toUpperCase())
 );
 Handlebars.registerHelper('currentYear', () => new Date().getFullYear());
-
 class HandlebarsTemplateEngine implements TemplateEngine {
   render(template: string, data: TemplateData): string {
     const compiled = Handlebars.compile(template);
     return compiled(data);
   }
-
   async renderFile(filePath: string, data: TemplateData): Promise<string> {
     const template = await fs.readFile(filePath, 'utf-8');
     return this.render(template, data);
   }
 }
-
 export const templateEngine = new HandlebarsTemplateEngine();
-
 export function createTemplateData(options: {
   name: string;
   description: string;

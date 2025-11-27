@@ -4,17 +4,16 @@
  * Provides unified security interface for all PRP components integrating
  * input validation, authentication, authorization, and monitoring.
  */
-
 import { InputValidator } from './input-validator';
 import { CredentialManager } from './credential-manager';
 import { SecurityMonitor } from './security-monitor';
 import { AuthSystem } from './auth-system';
-import { SecurityConfig, ValidationResult } from './input-validator';
+
+import type { SecurityConfig, ValidationResult } from './input-validator';
 
 export interface SecurityIntegrationConfig {
   // Input validation configuration
   validation: Partial<SecurityConfig>;
-
   // Authentication system configuration
   auth: {
     jwtSecret: string;
@@ -39,7 +38,6 @@ export interface SecurityIntegrationConfig {
       mfaWindowMs: number;
     };
   };
-
   // Security monitoring configuration
   monitoring: {
     enableRealTimeAlerting: boolean;
@@ -70,7 +68,6 @@ export interface SecurityIntegrationConfig {
       };
     };
   };
-
   // Credential management configuration
   credentials: {
     storagePath?: string;
@@ -79,7 +76,6 @@ export interface SecurityIntegrationConfig {
     enableAccessLogging: boolean;
   };
 }
-
 export interface SecureRequest {
   token?: string;
   apiKey?: string;
@@ -87,7 +83,6 @@ export interface SecureRequest {
   userAgent?: string;
   requestId?: string;
 }
-
 export interface SecureResponse {
   success: boolean;
   data?: unknown;
@@ -95,10 +90,21 @@ export interface SecureResponse {
   validationWarnings?: string[];
   securityHeaders?: Record<string, string>;
 }
-
 export interface SecurityContext {
-  user?: Record<string, unknown>;
-  session?: Record<string, unknown>;
+  user?: {
+    id?: string;
+    username?: string;
+    email?: string;
+    roles?: string[];
+    permissions?: string[];
+    [key: string]: unknown;
+  };
+  session?: {
+    id: string;
+    createdAt: Date;
+    expiresAt: Date;
+    [key: string]: unknown;
+  };
   permissions?: string[];
   isAuthenticated: boolean;
   isAuthorized: boolean;
@@ -107,7 +113,6 @@ export interface SecurityContext {
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
   validatedInputs: Map<string, ValidationResult>;
 }
-
 /**
  * Unified Security Integration Class
  *
@@ -116,13 +121,12 @@ export interface SecurityContext {
  */
 export class SecurityIntegration {
   private static instance: SecurityIntegration;
-  private inputValidator: typeof InputValidator;
-  private credentialManager: CredentialManager;
-  private securityMonitor: SecurityMonitor;
-  private authSystem: AuthSystem;
-  private config: SecurityIntegrationConfig;
+  private readonly inputValidator: typeof InputValidator;
+  private readonly credentialManager: CredentialManager;
+  private readonly securityMonitor: SecurityMonitor;
+  private readonly authSystem: AuthSystem;
+  private readonly config: SecurityIntegrationConfig;
   private initialized = false;
-
   private constructor(config: SecurityIntegrationConfig) {
     this.config = config;
     this.inputValidator = InputValidator;
@@ -133,7 +137,7 @@ export class SecurityIntegration {
       rateLimitThresholds: {
         authenticationFailures: config.monitoring.rateLimitThresholds.authenticationFailures,
         requestRate: config.monitoring.rateLimitThresholds.requestRate,
-        dataAccessAttempts: config.monitoring.rateLimitThresholds.dataAccessAttempts ?? 10
+        dataAccessAttempts: config.monitoring.rateLimitThresholds.dataAccessAttempts ?? 10,
       },
       suspiciousPatterns: config.monitoring.suspiciousPatterns,
       blacklistedIPs: config.monitoring.blacklistedIPs ?? [],
@@ -141,8 +145,8 @@ export class SecurityIntegration {
       alertChannels: config.monitoring.alertChannels ?? {
         email: { enabled: false, recipients: [] },
         webhook: { enabled: false, url: '' },
-        slack: { enabled: false, webhookUrl: '', channel: '' }
-      }
+        slack: { enabled: false, webhookUrl: '', channel: '' },
+      },
     });
     this.authSystem = AuthSystem.getInstance({
       jwtSecret: config.auth.jwtSecret,
@@ -158,17 +162,16 @@ export class SecurityIntegration {
         requireNumbers: config.auth.passwordPolicy.requireNumbers,
         requireSymbols: config.auth.passwordPolicy.requireSymbols,
         preventReuse: config.auth.passwordPolicy.preventReuse ?? 5,
-        maxAge: config.auth.passwordPolicy.maxAge ?? 90
+        maxAge: config.auth.passwordPolicy.maxAge ?? 90,
       },
       rateLimiting: config.auth.rateLimiting ?? {
         loginAttempts: 5,
         loginWindowMs: 900000, // 15 minutes
         mfaAttempts: 3,
-        mfaWindowMs: 300000 // 5 minutes
-      }
+        mfaWindowMs: 300000, // 5 minutes
+      },
     });
   }
-
   static getInstance(config?: SecurityIntegrationConfig): SecurityIntegration {
     if (!SecurityIntegration.instance) {
       if (!config) {
@@ -178,7 +181,6 @@ export class SecurityIntegration {
     }
     return SecurityIntegration.instance;
   }
-
   /**
    * Initialize the security integration
    */
@@ -186,46 +188,46 @@ export class SecurityIntegration {
     if (this.initialized) {
       return;
     }
-
     await this.credentialManager.initialize();
     await this.authSystem.initialize();
-
     this.initialized = true;
     // Security integration initialized successfully
   }
-
   /**
    * Create a security context from a request
    */
   async createSecurityContext(request: SecureRequest): Promise<SecurityContext> {
     this.ensureInitialized();
-
     const context: SecurityContext = {
       isAuthenticated: false,
       isAuthorized: false,
       isSecure: false,
       riskLevel: 'low',
-      validatedInputs: new Map()
+      validatedInputs: new Map(),
     };
-
     try {
       // Analyze security context first
       this.securityMonitor.analyzeSecurityContext({
         ipAddress: request.ipAddress,
-        userAgent: request.userAgent
+        userAgent: request.userAgent,
       });
-
       // Handle token-based authentication
       if (request.token) {
         const authRequest = this.authSystem.validateToken(
           request.token,
           request.ipAddress,
-          request.userAgent
+          request.userAgent,
         );
-
         if (authRequest.user) {
           context.user = authRequest.user as unknown as Record<string, unknown>;
-          context.session = authRequest.session as unknown as Record<string, unknown> | undefined;
+          if (authRequest.session) {
+            context.session = authRequest.session as unknown as {
+              id: string;
+              createdAt: Date;
+              expiresAt: Date;
+              [key: string]: unknown;
+            };
+          }
           context.permissions = authRequest.permissions ?? [];
           context.isAuthenticated = true;
           context.isAuthorized = true;
@@ -241,7 +243,6 @@ export class SecurityIntegration {
           context.isAuthorized = true;
         }
       }
-
       // Log authentication events
       if (context.isAuthenticated) {
         this.securityMonitor.logSecurityEvent({
@@ -252,8 +253,8 @@ export class SecurityIntegration {
           details: {
             userId: context.user?.id,
             method: request.token ? 'token' : 'api_key',
-            ipAddress: request.ipAddress
-          }
+            ipAddress: request.ipAddress,
+          },
         });
       } else if (request.token || request.apiKey) {
         this.securityMonitor.logSecurityEvent({
@@ -264,42 +265,35 @@ export class SecurityIntegration {
           details: {
             hasToken: !!request.token,
             hasApiKey: !!request.apiKey,
-            ipAddress: request.ipAddress
-          }
+            ipAddress: request.ipAddress,
+          },
         });
       }
-
     } catch (error) {
       this.securityMonitor.logSecurityEvent({
         type: 'authentication_failure',
         severity: 'medium',
         source: 'security_integration',
         message: `Authentication error: ${error instanceof Error ? error.message : String(error)}`,
-        details: { error, ipAddress: request.ipAddress }
+        details: { error, ipAddress: request.ipAddress },
       });
     }
-
     return context;
   }
-
   /**
    * Validate and sanitize input data
    */
   validateInput(
-    input: string | unknown,
+    input: string | Record<string, unknown> | unknown[] | number | boolean,
     fieldName: string,
-    customConfig?: Partial<SecurityConfig>
+    customConfig?: Partial<SecurityConfig>,
   ): ValidationResult {
     this.ensureInitialized();
-
     const config = { ...this.config.validation, ...customConfig };
     const stringInput = typeof input === 'string' ? input : JSON.stringify(input);
-
     const result = this.inputValidator.validateInput(stringInput, config);
-
     // Store validation result in context for auditing
     // Note: In a real implementation, this would be stored per-request
-
     // Log security events for high-risk validations
     if (result.riskLevel === 'high' || result.riskLevel === 'critical') {
       this.securityMonitor.logSecurityEvent({
@@ -311,75 +305,65 @@ export class SecurityIntegration {
           fieldName,
           riskLevel: result.riskLevel,
           warnings: result.warnings,
-          inputLength: stringInput.length
-        }
+          inputLength: stringInput.length,
+        },
       });
     }
-
     return result;
   }
-
   /**
    * Validate file path for security
    */
-  validatePath(
-    filePath: string,
-    allowedBasePaths: string[] = []
-  ): ValidationResult {
+  validatePath(filePath: string, allowedBasePaths: string[] = []): ValidationResult {
     this.ensureInitialized();
-
     const result = this.inputValidator.validatePath(filePath, allowedBasePaths);
-
     if (!result.isValid) {
       this.securityMonitor.logSecurityEvent({
-        type: result.error?.includes('traversal') ? 'path_traversal_attempt' : 'suspicious_activity',
+        type: result.error?.includes('traversal')
+          ? 'path_traversal_attempt'
+          : 'suspicious_activity',
         severity: result.riskLevel === 'critical' ? 'critical' : 'high',
         source: 'security_integration',
         message: `Path validation failed: ${result.error}`,
         details: {
           filePath,
           allowedBasePaths,
-          riskLevel: result.riskLevel
-        }
+          riskLevel: result.riskLevel,
+        },
       });
     }
-
     return result;
   }
-
   /**
    * Validate URL for security (SSRF protection)
    */
   validateURL(url: string, allowedSchemes: string[] = ['http', 'https']): ValidationResult {
     this.ensureInitialized();
-
     const result = this.inputValidator.validateURL(url, allowedSchemes);
-
     if (!result.isValid) {
       this.securityMonitor.logSecurityEvent({
-        type: result.error?.includes('localhost') || result.error?.includes('private') ? 'ssrf_attempt' : 'suspicious_activity',
+        type:
+          result.error?.includes('localhost') || result.error?.includes('private')
+            ? 'ssrf_attempt'
+            : 'suspicious_activity',
         severity: 'high',
         source: 'security_integration',
         message: `URL validation failed: ${result.error}`,
         details: {
           url,
           allowedSchemes,
-          riskLevel: result.riskLevel
-        }
+          riskLevel: result.riskLevel,
+        },
       });
     }
-
     return result;
   }
-
   /**
    * Validate JSON input for security
    */
   validateJSON(jsonString: string): ValidationResult {
     this.ensureInitialized();
-
     const result = this.inputValidator.validateJSON(jsonString);
-
     if (!result.isValid) {
       this.securityMonitor.logSecurityEvent({
         type: 'injection_attempt',
@@ -388,23 +372,23 @@ export class SecurityIntegration {
         message: `JSON validation failed: ${result.error}`,
         details: {
           inputLength: jsonString.length,
-          riskLevel: result.riskLevel
-        }
+          riskLevel: result.riskLevel,
+        },
       });
     }
-
     return result;
   }
-
   /**
    * Check if a security context has the required permission
    */
   hasPermission(context: SecurityContext, permission: string): boolean {
-    return Boolean(context.isAuthenticated &&
-           context.permissions &&
-           (context.permissions.includes(permission) || (context.user?.roles as string[]).includes('admin')));
+    return Boolean(
+      context.isAuthenticated &&
+        context.permissions &&
+        (context.permissions.includes(permission) ||
+          (context.user?.roles as string[]).includes('admin')),
+    );
   }
-
   /**
    * Check if a security context has any of the required roles
    */
@@ -412,10 +396,8 @@ export class SecurityIntegration {
     if (!context.isAuthenticated || !context.user) {
       return false;
     }
-
-    return roles.some(role => (context.user?.roles as string[]).includes(role));
+    return roles.some((role) => (context.user?.roles as string[]).includes(role));
   }
-
   /**
    * Require authentication - throws if not authenticated
    */
@@ -426,19 +408,16 @@ export class SecurityIntegration {
         severity: 'medium',
         source: 'security_integration',
         message: 'Unauthorized access attempt - authentication required',
-        details: { context: 'authentication_required' }
+        details: { context: 'authentication_required' },
       });
-
       throw new Error('Authentication required');
     }
   }
-
   /**
    * Require specific permission - throws if not authorized
    */
   requirePermission(context: SecurityContext, permission: string): void {
     this.requireAuthentication(context);
-
     if (!this.hasPermission(context, permission)) {
       this.securityMonitor.logSecurityEvent({
         type: 'authorization_violation',
@@ -448,20 +427,17 @@ export class SecurityIntegration {
         details: {
           userId: context.user?.id,
           permission,
-          userPermissions: context.permissions
-        }
+          userPermissions: context.permissions,
+        },
       });
-
       throw new Error(`Permission required: ${permission}`);
     }
   }
-
   /**
    * Require specific role - throws if not authorized
    */
   requireRole(context: SecurityContext, roles: string[]): void {
     this.requireAuthentication(context);
-
     if (!this.hasRole(context, roles)) {
       this.securityMonitor.logSecurityEvent({
         type: 'authorization_violation',
@@ -471,25 +447,22 @@ export class SecurityIntegration {
         details: {
           userId: context.user?.id,
           requiredRoles: roles,
-          userRoles: context.user?.roles
-        }
+          userRoles: context.user?.roles,
+        },
       });
-
       throw new Error(`Role required: ${roles.join(' or ')}`);
     }
   }
-
   /**
    * Create a secure response with appropriate headers
    */
   createSecureResponse(
     data: unknown,
     context: SecurityContext,
-    additionalHeaders?: Record<string, string>
+    additionalHeaders?: Record<string, string>,
   ): SecureResponse {
     // Use security context to determine appropriate headers
     const cspDirectives = this.buildCSPFromContext(context);
-
     const securityHeaders: Record<string, string> = {
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',
@@ -497,56 +470,47 @@ export class SecurityIntegration {
       'Content-Security-Policy': cspDirectives,
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'X-Security-Context': context.requestId ?? 'unknown',
-      ...additionalHeaders
+      ...additionalHeaders,
     };
-
     // Only add HSTS header if context is secure
     if (context.isSecure) {
       securityHeaders['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
     }
-
     return {
       success: true,
       data,
-      securityHeaders
+      securityHeaders,
     };
   }
-
   /**
    * Build Content Security Policy based on security context
    */
   private buildCSPFromContext(context: SecurityContext): string {
     const directives = ["default-src 'self'"];
-
     // Add context-specific CSP directives
     if (context.permissions?.includes('external-scripts')) {
       directives.push("script-src 'self' 'unsafe-inline'");
     } else {
       directives.push("script-src 'self'");
     }
-
     if (context.permissions?.includes('api-access')) {
       directives.push("connect-src 'self' api:");
     }
-
     if (context.isSecure) {
       directives.push('upgrade-insecure-requests');
     }
-
     return directives.join('; ');
   }
-
   /**
    * Create a secure error response
    */
   createSecureErrorResponse(
     error: string,
     context: SecurityContext,
-    statusCode: number = 400
+    statusCode = 400,
   ): SecureResponse {
     // Don't expose sensitive error details to unauthorized users
     const safeError = context.isAuthenticated ? error : 'Access denied';
-
     this.securityMonitor.logSecurityEvent({
       type: statusCode === 403 ? 'authorization_violation' : 'suspicious_activity',
       severity: 'medium',
@@ -555,50 +519,44 @@ export class SecurityIntegration {
       details: {
         statusCode,
         isAuthenticated: context.isAuthenticated,
-        userId: context.user?.id
-      }
+        userId: context.user?.id,
+      },
     });
-
     return {
       success: false,
       error: safeError,
       securityHeaders: {
         'X-Content-Type-Options': 'nosniff',
-        'X-Frame-Options': 'DENY'
-      }
+        'X-Frame-Options': 'DENY',
+      },
     };
   }
-
   /**
    * Generate a secure random token
    */
-  generateSecureToken(length: number = 32): string {
+  generateSecureToken(length = 32): string {
     return this.inputValidator.generateSecureToken(length);
   }
-
   /**
    * Hash sensitive data securely
    */
   hashSensitiveData(data: string, salt?: string): string {
     return this.inputValidator.hashSensitiveData(data, salt);
   }
-
   /**
    * Get security statistics
    */
-  getSecurityStats(timeframeHours: number = 24) {
+  getSecurityStats(timeframeHours = 24) {
     this.ensureInitialized();
     return this.securityMonitor.getSecurityStats(timeframeHours);
   }
-
   /**
    * Generate security report
    */
-  generateSecurityReport(timeframeHours: number = 24) {
+  generateSecurityReport(timeframeHours = 24) {
     this.ensureInitialized();
     return this.securityMonitor.generateSecurityReport(timeframeHours);
   }
-
   /**
    * Export security events
    */
@@ -606,7 +564,6 @@ export class SecurityIntegration {
     this.ensureInitialized();
     return this.securityMonitor.exportSecurityEvents(format, timeframeHours);
   }
-
   /**
    * Get credential manager for direct access
    */
@@ -614,7 +571,6 @@ export class SecurityIntegration {
     this.ensureInitialized();
     return this.credentialManager;
   }
-
   /**
    * Get auth system for direct access
    */
@@ -622,7 +578,6 @@ export class SecurityIntegration {
     this.ensureInitialized();
     return this.authSystem;
   }
-
   /**
    * Get security monitor for direct access
    */
@@ -630,7 +585,6 @@ export class SecurityIntegration {
     this.ensureInitialized();
     return this.securityMonitor;
   }
-
   /**
    * Run security test for a control
    */
@@ -645,7 +599,6 @@ export class SecurityIntegration {
       return false;
     }
   }
-
   /**
    * Shutdown security integration
    */
@@ -656,14 +609,12 @@ export class SecurityIntegration {
       this.initialized = false;
     }
   }
-
   private ensureInitialized(): void {
     if (!this.initialized) {
       throw new Error('SecurityIntegration not initialized. Call initialize() first.');
     }
   }
 }
-
 /**
  * Default security configuration
  */
@@ -672,7 +623,7 @@ export const defaultSecurityConfig: SecurityIntegrationConfig = {
     maxInputLength: 10000,
     enableRateLimit: true,
     enableContentScanning: true,
-    sanitizeHTML: true
+    sanitizeHTML: true,
   },
   auth: {
     jwtSecret: process.env.JWT_SECRET ?? 'change-me-in-production',
@@ -688,21 +639,21 @@ export const defaultSecurityConfig: SecurityIntegrationConfig = {
       requireNumbers: true,
       requireSymbols: false,
       preventReuse: 5,
-      maxAge: 90
+      maxAge: 90,
     },
     rateLimiting: {
       loginAttempts: 5,
       loginWindowMs: 900000, // 15 minutes
       mfaAttempts: 3,
-      mfaWindowMs: 300000 // 5 minutes
-    }
+      mfaWindowMs: 300000, // 5 minutes
+    },
   },
   monitoring: {
     enableRealTimeAlerting: true,
     alertRetentionDays: 30,
     rateLimitThresholds: {
       authenticationFailures: 5,
-      requestRate: 100
+      requestRate: 100,
     },
     suspiciousPatterns: [
       /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
@@ -712,14 +663,13 @@ export const defaultSecurityConfig: SecurityIntegrationConfig = {
       /`[^`]*`/g,
       /\.\.[/\\]/g,
       /(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION)/gi,
-      /\{\s*\$[^}]*\}/g
-    ]
+      /\{\s*\$[^}]*\}/g,
+    ],
   },
   credentials: {
     enableAutoRotation: true,
     rotationDays: 90,
-    enableAccessLogging: true
-  }
+    enableAccessLogging: true,
+  },
 };
-
 export default SecurityIntegration;

@@ -5,7 +5,7 @@
  */
 
 import { spawn } from 'child_process';
-import { existsSync, statSync, readFileSync, promises as fs } from 'fs';
+import { existsSync, statSync, readFileSync, rmSync, promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { randomUUID } from 'crypto';
@@ -44,7 +44,7 @@ export function createTestProject(name?: string): TestProject {
       if (existsSync(projectPath)) {
         rmSync(projectPath, { recursive: true, force: true });
       }
-    }
+    },
   };
 }
 
@@ -61,26 +61,21 @@ export async function executeCLI(
   } = {}
 ): Promise<CLIExecutionResult> {
   const startTime = Date.now();
-  const {
-    cwd = process.cwd(),
-    timeout = 30000,
-    env = {},
-    input
-  } = options;
+  const { cwd = process.cwd(), timeout = 30000, env = {}, input } = options;
 
   return new Promise((resolve) => {
     let stdout = '';
     let stderr = '';
     let isResolved = false;
 
-    const child = spawn('node', ['dist/cli.js', ...args], {
+    const child = spawn('node', [join(process.cwd(), 'dist', 'cli.mjs'), ...args], {
       cwd,
       env: {
         ...process.env,
         NODE_ENV: 'test',
-        ...env
+        ...env,
       },
-      stdio: 'pipe'
+      stdio: 'pipe',
     });
 
     // Set up timeout
@@ -92,9 +87,9 @@ export async function executeCLI(
           stdout,
           stderr: `Command timed out after ${timeout}ms`,
           exitCode: 124,
-          command: 'node dist/cli.js',
+          command: `node ${join(process.cwd(), 'dist', 'cli.mjs')}`,
           args,
-          duration: Date.now() - startTime
+          duration: Date.now() - startTime,
         });
       }
     }, timeout);
@@ -128,9 +123,9 @@ export async function executeCLI(
           stdout,
           stderr,
           exitCode: code || 0,
-          command: 'node dist/cli.js',
+          command: `node ${join(process.cwd(), 'dist', 'cli.mjs')}`,
           args,
-          duration: Date.now() - startTime
+          duration: Date.now() - startTime,
         });
       }
     });
@@ -144,9 +139,9 @@ export async function executeCLI(
           stdout,
           stderr: error.message,
           exitCode: 1,
-          command: 'node dist/cli.js',
+          command: `node ${join(process.cwd(), 'dist', 'cli.mjs')}`,
           args,
-          duration: Date.now() - startTime
+          duration: Date.now() - startTime,
         });
       }
     });
@@ -202,11 +197,8 @@ export function readFile(project: TestProject, relativePath: string): string {
 /**
  * Check if directory structure matches expected pattern
  */
-export function expectDirectoryStructure(
-  project: TestProject,
-  expectedPaths: string[]
-): void {
-  const missingPaths = expectedPaths.filter(path => !fileExists(project, path));
+export function expectDirectoryStructure(project: TestProject, expectedPaths: string[]): void {
+  const missingPaths = expectedPaths.filter((path) => !fileExists(project, path));
 
   if (missingPaths.length > 0) {
     throw new Error(`Missing expected files/directories: ${missingPaths.join(', ')}`);
@@ -228,7 +220,7 @@ export function getFileStats(project: TestProject, relativePath: string) {
  * Mock user input for interactive commands
  */
 export function createMockInput(inputs: string[]): string {
-  return inputs.join('\n') + '\n';
+  return `${inputs.join('\n')  }\n`;
 }
 
 /**
@@ -246,7 +238,7 @@ export async function waitForFile(
     if (existsSync(fullPath)) {
       return;
     }
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
   throw new Error(`File not created within timeout: ${relativePath}`);
@@ -263,7 +255,7 @@ export const CLIScenarios = {
       expect(result.stdout).toContain('Usage:');
       expect(result.stdout).toContain('Options:');
       return result;
-    }
+    },
   },
 
   // Version scenarios
@@ -272,26 +264,24 @@ export const CLIScenarios = {
       const result = await expectCLISuccess(['--version']);
       expect(result.stdout).toMatch(/\d+\.\d+\.\d+/);
       return result;
-    }
+    },
   },
 
   // Init command scenarios
   init: {
-    shouldCreateProject: async (template: string = 'typescript') => {
+    shouldCreateProject: async (template = 'typescript') => {
       const project = createTestProject();
       try {
-        const result = await expectCLISuccess([
-          'init',
-          project.name,
-          '--template', template,
-          '--no-interactive'
-        ], { cwd: tmpdir() });
+        const result = await expectCLISuccess(
+          ['init', project.name, '--template', template, '--no-interactive'],
+          { cwd: tmpdir() }
+        );
 
         expectDirectoryStructure(project, [
           'package.json',
           'tsconfig.json',
           'src/index.ts',
-          'README.md'
+          'README.md',
         ]);
 
         return { project, result };
@@ -308,19 +298,17 @@ export const CLIScenarios = {
         const fs = require('fs');
         fs.writeFileSync(join(project.path, 'existing.txt'), 'test');
 
-        const result = await expectCLIFailure([
-          'init',
-          '.',
-          '--template', 'typescript',
-          '--no-interactive'
-        ], { cwd: project.path });
+        const result = await expectCLIFailure(
+          ['init', '.', '--template', 'typescript', '--no-interactive'],
+          { cwd: project.path }
+        );
 
         expect(result.stderr).toContain('already exists');
         return result;
       } finally {
         project.cleanup();
       }
-    }
+    },
   },
 
   // TUI scenarios
@@ -330,8 +318,8 @@ export const CLIScenarios = {
       // Should either start successfully or timeout (which is expected for TUI)
       expect(result.exitCode === 0 || result.duration >= 1000).toBe(true);
       return result;
-    }
-  }
+    },
+  },
 };
 
 /**
@@ -364,7 +352,7 @@ export async function cleanupTestProjects(): Promise<void> {
 
   try {
     const files = await fs.readdir(testDir);
-    const testProjects = files.filter(file => file.startsWith('test-prp-'));
+    const testProjects = files.filter((file) => file.startsWith('test-prp-'));
 
     for (const project of testProjects) {
       const projectPath = join(testDir, project);

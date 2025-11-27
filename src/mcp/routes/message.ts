@@ -2,43 +2,90 @@
  * MCP Message Routes
  * Endpoints for sending messages to orchestrator and agents
  */
+import { Router } from 'express';
 
-import { Router, Request, Response } from 'express';
-import { MCPAuth } from '../auth';
-import { MCPOrchestratorMessage } from '../types';
-import { Server as SocketIOServer } from 'socket.io';
+import { createLayerLogger } from '../../shared';
 
+import type { Server as SocketIOServer } from 'socket.io';
+import type { MCPAuth } from '../auth';
+import type { MCPOrchestratorMessage } from '../types';
+import type { Request, Response } from 'express';
+
+const logger = createLayerLogger('shared');
+
+// Response interfaces for message handlers
+interface OrchestratorMessageResponse {
+  status: 'started' | 'stopped' | 'running' | 'configured' | 'unknown_action';
+  message?: string;
+  uptime?: number;
+  config?: unknown;
+}
+
+interface AgentMessageResponse {
+  status: 'started' | 'stopped' | 'idle' | 'task_assigned' | 'unknown_action';
+  agentId: string;
+  message?: string;
+  uptime?: number;
+  taskId?: string;
+}
+
+interface SystemMessageResponse {
+  status: 'healthy' | 'error';
+  uptime?: number;
+  memory?: NodeJS.MemoryUsage;
+  timestamp?: number;
+  error?: string;
+  message?: string;
+}
+
+interface SystemMetricsResponse {
+  timestamp: number;
+  metrics: {
+    cpu: number;
+    memory: {
+      used: number;
+      total: number;
+      percentage: number;
+    };
+    disk: {
+      used: number;
+      total: number;
+      percentage: number;
+    };
+    network: {
+      requests: number;
+      errors: number;
+    };
+  };
+}
+
+type MessageHandlerResponse = OrchestratorMessageResponse | AgentMessageResponse | SystemMessageResponse | SystemMetricsResponse;
 export function messageRouter(auth: MCPAuth, io: SocketIOServer): Router {
   const router = Router();
-
   // Send message to orchestrator
-  router.post('/orchestrator', async (req: Request, res: Response): Promise<void> => {
+  router.post('/orchestrator', async (req: Request, res: Response) => {
     try {
       const { type, action, data, agent, streaming = false } = req.body;
-
       if (!type || !action) {
         return res.status(400).json({
           error: {
             code: -10,
-            message: 'Missing required fields: type and action'
-          }
+            message: 'Missing required fields: type and action',
+          },
         });
       }
-
       const message: MCPOrchestratorMessage = {
         type,
         payload: {
           action,
           data,
           agent,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         },
-        streaming
+        streaming,
       };
-
       // Process the message based on type
-      let result: any;
-
+      let result: MessageHandlerResponse;
       switch (type) {
         case 'orchestrator':
           result = await handleOrchestratorMessage(message, io);
@@ -48,8 +95,8 @@ export function messageRouter(auth: MCPAuth, io: SocketIOServer): Router {
             return res.status(400).json({
               error: {
                 code: -10,
-                message: 'Agent ID required for agent messages'
-              }
+                message: 'Agent ID required for agent messages',
+              },
             });
           }
           result = await handleAgentMessage(agent, message, io);
@@ -61,17 +108,15 @@ export function messageRouter(auth: MCPAuth, io: SocketIOServer): Router {
           return res.status(400).json({
             error: {
               code: -10,
-              message: `Unknown message type: ${type}`
-            }
+              message: `Unknown message type: ${type}`,
+            },
           });
       }
-
       // Broadcast message if not private
       if (!req.body.private) {
         io.emit('orchestrator-message', message);
       }
-
-      res.json({
+      return res.json({
         id: req.headers['x-request-id'] || `msg-${Date.now()}`,
         result: {
           message: 'Message processed successfully',
@@ -79,37 +124,34 @@ export function messageRouter(auth: MCPAuth, io: SocketIOServer): Router {
           type,
           action,
           result,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         },
         timestamp: Date.now(),
-        server: 'prp-mcp'
+        server: 'prp-mcp',
       });
     } catch (error) {
       console.error('Message endpoint error:', error);
-      res.status(500).json({
+      return res.status(500).json({
         error: {
           code: -7,
           message: 'Failed to process message',
-          data: process.env['NODE_ENV'] === 'development' ? (error as Error).message : undefined
-        }
+          data: process.env['NODE_ENV'] === 'development' ? (error as Error).message : undefined,
+        },
       });
     }
   });
-
   // Send broadcast message to all clients
-  router.post('/broadcast', async (req: Request, res: Response): Promise<void> => {
+  router.post('/broadcast', async (req: Request, res: Response) => {
     try {
       const { message, level = 'info', target = 'all' } = req.body;
-
       if (!message) {
         return res.status(400).json({
           error: {
             code: -10,
-            message: 'Message content is required'
-          }
+            message: 'Message content is required',
+          },
         });
       }
-
       const broadcast = {
         type: 'broadcast',
         payload: {
@@ -117,76 +159,70 @@ export function messageRouter(auth: MCPAuth, io: SocketIOServer): Router {
           level,
           target,
           timestamp: Date.now(),
-          sender: req.auth?.client.name || 'unknown'
-        }
+          sender: req.auth?.client.name || 'unknown',
+        },
       };
-
       // Broadcast to all connected clients
       io.emit('broadcast', broadcast);
-
-      res.json({
+      return res.json({
         id: req.headers['x-request-id'] || `broadcast-${Date.now()}`,
         result: {
           message: 'Broadcast sent successfully',
           broadcastId: `broadcast-${Date.now()}`,
           recipients: auth.getActiveClients().length,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         },
         timestamp: Date.now(),
-        server: 'prp-mcp'
+        server: 'prp-mcp',
       });
     } catch (error) {
       console.error('Broadcast endpoint error:', error);
-      res.status(500).json({
+      return res.status(500).json({
         error: {
           code: -7,
-          message: 'Failed to send broadcast'
-        }
+          message: 'Failed to send broadcast',
+        },
       });
     }
   });
-
   // Get message history (limited)
-  router.get('/history', async (req: Request, res: Response): Promise<void> => {
+  router.get('/history', async (req: Request, res: Response) => {
     try {
       const limit = parseInt(req.query['limit'] as string, 10) || 50;
       const offset = parseInt(req.query['offset'] as string, 10) || 0;
-
       // This would integrate with actual message storage
       const history = {
         messages: [],
         total: 0,
         limit,
         offset,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
-
       res.json({
         id: req.headers['x-request-id'] || `history-${Date.now()}`,
         result: history,
         timestamp: Date.now(),
-        server: 'prp-mcp'
+        server: 'prp-mcp',
       });
     } catch (error) {
       console.error('Message history endpoint error:', error);
       res.status(500).json({
         error: {
           code: -7,
-          message: 'Failed to get message history'
-        }
+          message: 'Failed to get message history',
+        },
       });
     }
   });
-
   return router;
 }
-
-async function handleOrchestratorMessage(message: MCPOrchestratorMessage, _io: SocketIOServer): Promise<any> {
-  console.log('Handling orchestrator message:', message);
-
+async function handleOrchestratorMessage(
+  message: MCPOrchestratorMessage,
+  _io: SocketIOServer,
+): Promise<OrchestratorMessageResponse> {
+  logger.debug('Handling orchestrator message', JSON.stringify(message));
   // This would integrate with the actual orchestrator system
   // For now, simulate processing
-
   switch (message.payload.action) {
     case 'start':
       return { status: 'started', message: 'Orchestrator started' };
@@ -200,14 +236,15 @@ async function handleOrchestratorMessage(message: MCPOrchestratorMessage, _io: S
       return { status: 'unknown_action', message: `Unknown action: ${message.payload.action}` };
   }
 }
-
-async function handleAgentMessage(agentId: string, message: MCPOrchestratorMessage, io: SocketIOServer): Promise<any> {
-  console.log(`Handling message for agent ${agentId}:`, message);
-
+async function handleAgentMessage(
+  agentId: string,
+  message: MCPOrchestratorMessage,
+  io: SocketIOServer,
+): Promise<AgentMessageResponse> {
+  logger.debug(`Handling message for agent ${agentId}`, JSON.stringify(message));
   // This would integrate with the actual agent system
   // Send message to specific agent listeners
   io.emit(`agent-${agentId}-message`, message);
-
   switch (message.payload.action) {
     case 'start':
       return { status: 'started', agentId, message: 'Agent started' };
@@ -218,20 +255,25 @@ async function handleAgentMessage(agentId: string, message: MCPOrchestratorMessa
     case 'task':
       return { status: 'task_assigned', agentId, taskId: `task-${Date.now()}` };
     default:
-      return { status: 'unknown_action', agentId, message: `Unknown action: ${message.payload.action}` };
+      return {
+        status: 'unknown_action',
+        agentId,
+        message: `Unknown action: ${message.payload.action}`,
+      };
   }
 }
-
-async function handleSystemMessage(message: MCPOrchestratorMessage, _io: SocketIOServer): Promise<any> {
-  console.log('Handling system message:', message);
-
+async function handleSystemMessage(
+  message: MCPOrchestratorMessage,
+  _io: SocketIOServer,
+): Promise<SystemMessageResponse | SystemMetricsResponse> {
+  logger.debug('Handling system message', JSON.stringify(message));
   switch (message.payload.action) {
     case 'health':
       return {
         status: 'healthy',
         uptime: process.uptime(),
         memory: process.memoryUsage(),
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
     case 'metrics':
       return {
@@ -240,8 +282,8 @@ async function handleSystemMessage(message: MCPOrchestratorMessage, _io: SocketI
           uptime: process.uptime(),
           memory: process.memoryUsage(),
           cpu: process.cpuUsage(),
-          timestamp: Date.now()
-        }
+          timestamp: Date.now(),
+        },
       };
     case 'restart':
       // Graceful restart would be handled here

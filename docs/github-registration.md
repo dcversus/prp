@@ -23,6 +23,7 @@ PRP integrates with GitHub to provide seamless workflow automation, issue tracki
 ### 1. GitHub Account Configuration
 
 #### Personal Access Token
+
 ```bash
 # Create token with scopes:
 # - repo (Full control of private repositories)
@@ -31,6 +32,7 @@ PRP integrates with GitHub to provide seamless workflow automation, issue tracki
 ```
 
 #### GitHub CLI Installation
+
 ```bash
 # Install GitHub CLI
 brew install gh  # macOS
@@ -44,6 +46,7 @@ gh auth login
 ### 2. Repository Setup
 
 #### Create Repository
+
 ```bash
 # Using PRP CLI
 prp init my-project
@@ -52,6 +55,7 @@ gh repo create my-project --public --source=. --remote=origin --push
 ```
 
 #### Repository Structure
+
 ```
 my-project/
 ├── .github/
@@ -67,11 +71,13 @@ my-project/
 ### 3. GitHub Actions Integration
 
 #### CI/CD Pipeline
+
 - Automatic testing on PR
 - Build and deploy automation
 - Quality gate enforcement
 
 #### Issue Templates
+
 - PRP creation templates
 - Bug report templates
 - Feature request templates
@@ -79,16 +85,19 @@ my-project/
 ## GitHub Features Used
 
 ### 1. Pull Requests
+
 - Automated PRP status updates
 - Quality gate validation
 - Merge requirements enforcement
 
 ### 2. Projects
+
 - PRP tracking boards
 - Progress visualization
 - Agent coordination
 
 ### 3. Releases
+
 - Automated releases
 - Changelog generation
 - Version tagging

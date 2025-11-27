@@ -6,12 +6,18 @@
  * budget progress bars, and interactive limit management.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, JSX } from 'react';
 import { Box, Text, Newline, useInput } from 'ink';
-import type { TokenMetricsScreenProps } from '../../../shared/types/TUIConfig.js';
-import type { TUIDashboardData, AgentTokenStatus, TokenAlert } from '../../../shared/types/token-metrics.js';
-import { TokenMetricsStream } from '../../../shared/monitoring/TokenMetricsStream.js';
-import { TokenMonitoringTools } from '../../../orchestrator/tools/token-monitoring-tools.js';
+
+import { TokenMetricsStream } from '../../../shared/monitoring/TokenMetricsStream';
+import { TokenMonitoringTools } from '../../../orchestrator/tools/token-monitoring-tools';
+
+import type { TokenMetricsScreenProps } from '../../../shared/types/TUIConfig';
+import type {
+  TUIDashboardData,
+  AgentTokenStatus,
+  TokenAlert,
+} from '../../../shared/types/token-metrics';
 
 // Real data integration with token monitoring tools
 const createRealDashboardData = (tokenTools: TokenMonitoringTools): TUIDashboardData => {
@@ -24,7 +30,7 @@ const createRealDashboardData = (tokenTools: TokenMonitoringTools): TUIDashboard
 
   // Add system components as agents
   if (currentCaps.inspector) {
-    const inspectorUsage = latestMetrics.find(m => m.component === 'inspector');
+    const inspectorUsage = latestMetrics.find((m: any) => m.component === 'inspector');
     agents.push({
       agentId: 'inspector-001',
       agentType: 'inspector',
@@ -34,12 +40,12 @@ const createRealDashboardData = (tokenTools: TokenMonitoringTools): TUIDashboard
       cost: inspectorUsage?.cost || 0,
       status: 'normal',
       lastActivity: new Date(),
-      efficiency: 0.92 // Could be calculated from real data
+      efficiency: 0.92, // Could be calculated from real data
     });
   }
 
   if (currentCaps.orchestrator) {
-    const orchestratorUsage = latestMetrics.find(m => m.component === 'orchestrator');
+    const orchestratorUsage = latestMetrics.find((m: any) => m.component === 'orchestrator');
     agents.push({
       agentId: 'orchestrator-001',
       agentType: 'orchestrator',
@@ -49,14 +55,14 @@ const createRealDashboardData = (tokenTools: TokenMonitoringTools): TUIDashboard
       cost: orchestratorUsage?.cost || 0,
       status: 'normal',
       lastActivity: new Date(),
-      efficiency: 0.85 // Could be calculated from real data
+      efficiency: 0.85, // Could be calculated from real data
     });
   }
 
   // Add configured agents
   const agentTypes = currentCaps.agents?.entries() || [];
   for (const [agentType, caps] of agentTypes) {
-    const agentUsage = latestMetrics.find(m => m.agentType === agentType);
+    const agentUsage = latestMetrics.find((m: any) => m.agentType === agentType);
     const percentage = ((agentUsage?.currentUsage || 0) / caps.waste) * 100;
 
     agents.push({
@@ -68,25 +74,27 @@ const createRealDashboardData = (tokenTools: TokenMonitoringTools): TUIDashboard
       cost: agentUsage?.cost || 0,
       status: percentage > 90 ? 'critical' : percentage > 75 ? 'warning' : 'normal',
       lastActivity: new Date(),
-      efficiency: agentUsage?.averagePerSignal ? 1 / agentUsage.averagePerSignal : 0.8
+      efficiency: agentUsage?.averagePerSignal ? 1 / agentUsage.averagePerSignal : 0.8,
     });
   }
 
   // Calculate totals
   const totalCost = agents.reduce((sum, agent) => sum + agent.cost, 0);
   const totalTokensUsed = agents.reduce((sum, agent) => sum + agent.currentUsage, 0);
-  const activeAlerts = agents.filter(agent => agent.status === 'critical' || agent.status === 'warning').length;
+  const activeAlerts = agents.filter(
+    (agent) => agent.status === 'critical' || agent.status === 'warning',
+  ).length;
 
   // Generate alerts based on thresholds
   const alerts: TokenAlert[] = [];
-  agents.forEach(agent => {
+  agents.forEach((agent) => {
     if (agent.percentage > 90) {
       alerts.push({
         type: 'limit_exceeded',
         severity: 'critical',
         message: `${agent.agentType} approaching token limit (${agent.percentage.toFixed(1)}%)`,
         agentId: agent.agentId,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     } else if (agent.percentage > 75) {
       alerts.push({
@@ -94,7 +102,7 @@ const createRealDashboardData = (tokenTools: TokenMonitoringTools): TUIDashboard
         severity: 'warning',
         message: `${agent.agentType} token usage high (${agent.percentage.toFixed(1)}%)`,
         agentId: agent.agentId,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     }
   });
@@ -105,15 +113,15 @@ const createRealDashboardData = (tokenTools: TokenMonitoringTools): TUIDashboard
       totalAgents: agents.length,
       totalTokensUsed,
       totalCost,
-      activeAlerts: alerts.length
+      activeAlerts: alerts.length,
     },
     alerts,
     historicalData: latestMetrics,
     projections: {
       dailyProjection: totalTokensUsed * 24, // Simple projection
       weeklyProjection: totalTokensUsed * 168,
-      monthlyProjection: totalTokensUsed * 720
-    }
+      monthlyProjection: totalTokensUsed * 720,
+    },
   };
 };
 
@@ -129,7 +137,7 @@ const createMockDashboardData = (): TUIDashboardData => {
       cost: 0.23,
       status: 'normal',
       lastActivity: new Date(),
-      efficiency: 0.85
+      efficiency: 0.85,
     },
     {
       agentId: 'inspector-001',
@@ -140,7 +148,7 @@ const createMockDashboardData = (): TUIDashboardData => {
       cost: 12.45,
       status: 'warning',
       lastActivity: new Date(),
-      efficiency: 0.92
+      efficiency: 0.92,
     },
     {
       agentId: 'orchestrator-001',
@@ -151,8 +159,8 @@ const createMockDashboardData = (): TUIDashboardData => {
       cost: 2.89,
       status: 'warning',
       lastActivity: new Date(),
-      efficiency: 0.78
-    }
+      efficiency: 0.78,
+    },
   ];
 
   const alerts: TokenAlert[] = [
@@ -162,7 +170,7 @@ const createMockDashboardData = (): TUIDashboardData => {
       type: 'warning',
       message: 'Inspector approaching 80% token limit',
       timestamp: new Date(Date.now() - 5 * 60 * 1000),
-      acknowledged: false
+      acknowledged: false,
     },
     {
       id: 'alert-002',
@@ -170,8 +178,8 @@ const createMockDashboardData = (): TUIDashboardData => {
       type: 'warning',
       message: 'Orchestrator usage trending upward',
       timestamp: new Date(Date.now() - 15 * 60 * 1000),
-      acknowledged: true
-    }
+      acknowledged: true,
+    },
   ];
 
   return {
@@ -179,12 +187,12 @@ const createMockDashboardData = (): TUIDashboardData => {
       totalAgents: 3,
       totalTokensUsed: 965650,
       totalCost: 15.57,
-      activeAlerts: 1
+      activeAlerts: 1,
     },
     agents,
     alerts,
     trends: [],
-    projections: []
+    projections: [],
   };
 };
 
@@ -194,21 +202,25 @@ interface TokenProgressBarProps {
   percentage: number;
   status: 'normal' | 'warning' | 'critical' | 'blocked';
   width: number;
-}
+};
 
 const TokenProgressBar = ({
   current: _current,
   limit: _limit,
   percentage,
   status,
-  width
+  width,
 }: TokenProgressBarProps) => {
   const getBarColor = () => {
     switch (status) {
-      case 'blocked': return 'red';
-      case 'critical': return 'red';
-      case 'warning': return 'yellow';
-      default: return 'green';
+      case 'blocked':
+        return 'red';
+      case 'critical':
+        return 'red';
+      case 'warning':
+        return 'yellow';
+      default:
+        return 'green';
     }
   };
 
@@ -229,24 +241,32 @@ interface AgentTokenCardProps {
   agent: AgentTokenStatus;
   isSelected: boolean;
   onSelect: () => void;
-}
+};
 
 const AgentTokenCard = ({ agent, isSelected, onSelect: _onSelect }: AgentTokenCardProps) => {
   const getAgentColor = () => {
     switch (agent.agentType) {
-      case 'scanner': return 'cyan';
-      case 'inspector': return 'magenta';
-      case 'orchestrator': return 'orange';
-      default: return 'gray';
+      case 'scanner':
+        return 'cyan';
+      case 'inspector':
+        return 'magenta';
+      case 'orchestrator':
+        return 'orange';
+      default:
+        return 'gray';
     }
   };
 
   const getStatusColor = () => {
     switch (agent.status) {
-      case 'blocked': return 'red';
-      case 'critical': return 'red';
-      case 'warning': return 'yellow';
-      default: return 'green';
+      case 'blocked':
+        return 'red';
+      case 'critical':
+        return 'red';
+      case 'warning':
+        return 'yellow';
+      default:
+        return 'green';
     }
   };
 
@@ -274,18 +294,14 @@ const AgentTokenCard = ({ agent, isSelected, onSelect: _onSelect }: AgentTokenCa
         <Text color={agentColor} bold>
           {agent.agentId.toUpperCase()}
         </Text>
-        <Text color={statusColor}>
-          {agent.status.toUpperCase()}
-        </Text>
+        <Text color={statusColor}>{agent.status.toUpperCase()}</Text>
       </Box>
 
       <Box justifyContent="space-between" marginBottom={1}>
         <Text color="muted">
           {formatTokens(agent.currentUsage)} / {formatTokens(agent.limit)} tokens
         </Text>
-        <Text color="muted">
-          ${agent.cost.toFixed(2)}
-        </Text>
+        <Text color="muted">${agent.cost.toFixed(2)}</Text>
       </Box>
 
       <TokenProgressBar
@@ -297,9 +313,7 @@ const AgentTokenCard = ({ agent, isSelected, onSelect: _onSelect }: AgentTokenCa
       />
 
       <Box justifyContent="space-between" marginTop={1}>
-        <Text color="muted">
-          Efficiency: {(agent.efficiency * 100).toFixed(0)}%
-        </Text>
+        <Text color="muted">Efficiency: {(agent.efficiency * 100).toFixed(0)}%</Text>
         <Text color="muted">
           Last: {Math.floor((Date.now() - agent.lastActivity.getTime()) / 60000)}m ago
         </Text>
@@ -311,24 +325,32 @@ const AgentTokenCard = ({ agent, isSelected, onSelect: _onSelect }: AgentTokenCa
 interface AlertPanelProps {
   alerts: TokenAlert[];
   onAcknowledge: (alertId: string) => void;
-}
+};
 
 const AlertPanel = ({ alerts, onAcknowledge: _onAcknowledge }: AlertPanelProps) => {
   const getAlertColor = (type: TokenAlert['type']) => {
     switch (type) {
-      case 'blocked': return 'red';
-      case 'critical': return 'red';
-      case 'warning': return 'yellow';
-      default: return 'gray';
+      case 'blocked':
+        return 'red';
+      case 'critical':
+        return 'red';
+      case 'warning':
+        return 'yellow';
+      default:
+        return 'gray';
     }
   };
 
   const getAlertIcon = (type: TokenAlert['type']) => {
     switch (type) {
-      case 'blocked': return '🚫';
-      case 'critical': return '⚠️';
-      case 'warning': return '⚡';
-      default: return 'ℹ️';
+      case 'blocked':
+        return '🚫';
+      case 'critical':
+        return '⚠️';
+      case 'warning':
+        return '⚡';
+      default:
+        return 'ℹ️';
     }
   };
 
@@ -338,9 +360,7 @@ const AlertPanel = ({ alerts, onAcknowledge: _onAcknowledge }: AlertPanelProps) 
         <Text color="green" bold>
           ✓ System Status: Normal
         </Text>
-        <Text color="muted">
-          No active alerts
-        </Text>
+        <Text color="muted">No active alerts</Text>
       </Box>
     );
   }
@@ -348,7 +368,7 @@ const AlertPanel = ({ alerts, onAcknowledge: _onAcknowledge }: AlertPanelProps) 
   return (
     <Box flexDirection="column" borderStyle="single" borderColor="yellow" paddingX={1}>
       <Text color="yellow" bold>
-        ⚠️ Active Alerts ({alerts.filter(a => !a.acknowledged).length})
+        ⚠️ Active Alerts ({alerts.filter((a) => !a.acknowledged).length})
       </Text>
       <Newline />
       {alerts.slice(0, 5).map((alert) => (
@@ -380,13 +400,13 @@ interface SummaryPanelProps {
   totalTokensUsed: number;
   totalCost: number;
   activeAlerts: number;
-}
+};
 
 const SummaryPanel = ({
   totalAgents,
   totalTokensUsed,
   totalCost,
-  activeAlerts
+  activeAlerts,
 }: SummaryPanelProps) => {
   const formatTokens = (tokens: number): string => {
     if (tokens >= 1000000) {
@@ -417,18 +437,13 @@ const SummaryPanel = ({
       </Box>
       <Box justifyContent="space-between">
         <Text color="muted">Active Alerts:</Text>
-        <Text color={activeAlerts > 0 ? 'red' : 'green'}>
-          {activeAlerts}
-        </Text>
+        <Text color={activeAlerts > 0 ? 'red' : 'green'}>{activeAlerts}</Text>
       </Box>
     </Box>
   );
 };
 
-export const TokenMetricsScreen = ({
-  isActive,
-  onNavigate
-}: TokenMetricsScreenProps) => {
+export const TokenMetricsScreen = ({ isActive, onNavigate }: TokenMetricsScreenProps) => {
   const [dashboardData, setDashboardData] = useState<TUIDashboardData>(createMockDashboardData());
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -474,21 +489,21 @@ export const TokenMetricsScreen = ({
     }
 
     const interval = setInterval(() => {
-      setDashboardData(prevData => ({
+      setDashboardData((prevData) => ({
         ...prevData,
-        agents: prevData.agents.map(agent => ({
+        agents: prevData.agents.map((agent) => ({
           ...agent,
           currentUsage: agent.currentUsage + Math.floor(Math.random() * 100),
           percentage: Math.min(100, agent.percentage + Math.random() * 0.5),
           cost: agent.cost + Math.random() * 0.01,
           lastActivity: new Date(),
-          efficiency: Math.max(0.1, Math.min(1, agent.efficiency + (Math.random() - 0.5) * 0.05))
+          efficiency: Math.max(0.1, Math.min(1, agent.efficiency + (Math.random() - 0.5) * 0.05)),
         })),
         summary: {
           ...prevData.summary,
           totalTokensUsed: prevData.summary.totalTokensUsed + Math.floor(Math.random() * 200),
-          totalCost: prevData.summary.totalCost + Math.random() * 0.02
-        }
+          totalCost: prevData.summary.totalCost + Math.random() * 0.02,
+        },
       }));
     }, 2000);
 
@@ -496,46 +511,49 @@ export const TokenMetricsScreen = ({
   }, [isActive, autoRefresh]);
 
   const handleAcknowledgeAlert = useCallback((alertId: string) => {
-    setDashboardData(prevData => ({
+    setDashboardData((prevData) => ({
       ...prevData,
-      alerts: prevData.alerts.map(alert =>
-        alert.id === alertId ? { ...alert, acknowledged: true } : alert
+      alerts: prevData.alerts.map((alert) =>
+        alert.id === alertId ? { ...alert, acknowledged: true } : alert,
       ),
       summary: {
         ...prevData.summary,
-        activeAlerts: prevData.alerts.filter(a => !a.acknowledged && a.id !== alertId).length
-      }
+        activeAlerts: prevData.alerts.filter((a) => !a.acknowledged && a.id !== alertId).length,
+      },
     }));
   }, []);
 
-  const handleKeyPress = useCallback((input: string, _key: any) => {
-    if (!isActive) {
-      return;
-    }
+  const handleKeyPress = useCallback(
+    (input: string, _key: any) => {
+      if (!isActive) {
+        return;
+      }
 
-    switch (input) {
-      case 'q':
-        onNavigate('orchestrator');
-        break;
-      case 'r':
-        setAutoRefresh(!autoRefresh);
-        break;
-      case 'a':
-        if (dashboardData.alerts.length > 0) {
-          const unacknowledgedAlert = dashboardData.alerts.find(a => !a.acknowledged);
-          if (unacknowledgedAlert) {
-            handleAcknowledgeAlert(unacknowledgedAlert.id);
+      switch (input) {
+        case 'q':
+          onNavigate('orchestrator');
+          break;
+        case 'r':
+          setAutoRefresh(!autoRefresh);
+          break;
+        case 'a':
+          if (dashboardData.alerts.length > 0) {
+            const unacknowledgedAlert = dashboardData.alerts.find((a) => !a.acknowledged);
+            if (unacknowledgedAlert) {
+              handleAcknowledgeAlert(unacknowledgedAlert.id);
+            }
           }
-        }
-        break;
-      case 'up':
-        setSelectedIndex(prev => Math.max(0, prev - 1));
-        break;
-      case 'down':
-        setSelectedIndex(prev => Math.min(dashboardData.agents.length - 1, prev + 1));
-        break;
-    }
-  }, [isActive, onNavigate, autoRefresh, dashboardData.alerts, handleAcknowledgeAlert]);
+          break;
+        case 'up':
+          setSelectedIndex((prev) => Math.max(0, prev - 1));
+          break;
+        case 'down':
+          setSelectedIndex((prev) => Math.min(dashboardData.agents.length - 1, prev + 1));
+          break;
+      }
+    },
+    [isActive, onNavigate, autoRefresh, dashboardData.alerts, handleAcknowledgeAlert],
+  );
 
   useInput(handleKeyPress);
 
@@ -555,9 +573,7 @@ export const TokenMetricsScreen = ({
         </Text>
       </Box>
 
-      <Text color="muted">
-        ─────────────────────────────────────────────────────────────────
-      </Text>
+      <Text color="muted">─────────────────────────────────────────────────────────────────</Text>
 
       {/* Main Content */}
       <Box flexDirection="row" marginBottom={1}>
@@ -572,10 +588,7 @@ export const TokenMetricsScreen = ({
 
           <Newline />
 
-          <AlertPanel
-            alerts={dashboardData.alerts}
-            onAcknowledge={handleAcknowledgeAlert}
-          />
+          <AlertPanel alerts={dashboardData.alerts} onAcknowledge={handleAcknowledgeAlert} />
         </Box>
 
         {/* Right Column - Agent Cards */}
@@ -596,9 +609,7 @@ export const TokenMetricsScreen = ({
       </Box>
 
       {/* Footer */}
-      <Text color="muted">
-        ─────────────────────────────────────────────────────────────────
-      </Text>
+      <Text color="muted">─────────────────────────────────────────────────────────────────</Text>
       <Text color="muted">
         Controls: [r] Toggle auto-refresh | [a] Acknowledge alert | [↑↓] Navigate | [q] Back
       </Text>

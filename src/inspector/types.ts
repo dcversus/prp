@@ -3,12 +3,9 @@
  *
  * Types for the analysis layer - GPT-5 mini classification and signal preparation.
  */
-
-import { Signal, GuidelineConfiguration, AgentRole } from '../shared/types';
-
+import type { Signal, GuidelineConfiguration, AgentRole } from '../shared/types';
 // Re-export GuidelineConfig for backward compatibility
 export type GuidelineConfig = GuidelineConfiguration;
-
 // Enhanced type definitions for better type safety
 export interface JSONSchema {
   type: 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null';
@@ -25,7 +22,6 @@ export interface JSONSchema {
   pattern?: string;
   [key: string]: unknown; // Index signature to allow additional properties
 }
-
 export interface ContextData {
   signalContent?: string;
   agentContext?: Record<string, unknown>;
@@ -37,7 +33,6 @@ export interface ContextData {
   }>;
   environment?: Record<string, string | number | boolean>;
 }
-
 export interface EventData {
   type: string;
   payload?: unknown;
@@ -45,7 +40,6 @@ export interface EventData {
   source: string;
   severity?: 'low' | 'medium' | 'high' | 'critical';
 }
-
 // Forward declarations for types that will be defined in shared/types.ts
 export interface SignalClassification {
   category: string;
@@ -62,7 +56,6 @@ export interface SignalClassification {
   suggestedActions?: string[];
   reasoning?: string;
 }
-
 export interface EnhancedSignalClassification extends SignalClassification {
   signalId: string;
   complexity: 'low' | 'medium' | 'high' | 'critical';
@@ -76,16 +69,14 @@ export interface EnhancedSignalClassification extends SignalClassification {
     timestamp: Date;
   }>;
 }
-
 export interface Recommendation {
   type: string;
   priority: string;
   description: string;
-  reasoning?: string;  // Added reasoning property
+  reasoning?: string; // Added reasoning property
   estimatedTime: number;
   prerequisites: string[];
 }
-
 export interface PreparedContext {
   id: string;
   signalId: string;
@@ -95,7 +86,6 @@ export interface PreparedContext {
   tokenCount: number;
   summary?: string;
 }
-
 export interface InspectorPayload {
   id: string;
   signalId: string;
@@ -107,7 +97,6 @@ export interface InspectorPayload {
   compressed: boolean;
   estimatedTokens?: number;
 }
-
 export interface SignalProcessor {
   signal: Signal;
   guideline: string;
@@ -115,13 +104,11 @@ export interface SignalProcessor {
   priority: number;
   createdAt: Date;
 }
-
 export interface InspectorEvent {
   type: string;
   timestamp: Date;
   data: EventData;
 }
-
 export interface InspectorConfig {
   model: string; // GPT-5 mini
   maxTokens: number;
@@ -141,14 +128,12 @@ export interface InspectorConfig {
   };
   structuredOutput: StructuredOutputConfig;
 }
-
 export interface StructuredOutputConfig {
   enabled: boolean;
   schema: JSONSchema;
   validation: boolean;
   fallbackToText: boolean;
 }
-
 export interface InspectorState {
   status: 'idle' | 'processing' | 'busy' | 'error';
   currentBatch?: string;
@@ -159,21 +144,25 @@ export interface InspectorState {
   metrics: InspectorMetrics;
   lastError?: InspectorError;
 }
-
 export interface InspectorProcessing {
   id: string;
   signal: Signal;
   startedAt: Date;
   context?: ProcessingContext;
   guideline?: GuidelineConfig;
-  status: 'analyzing' | 'classifying' | 'preparing_context' | 'generating_payload' | 'completed' | 'failed';
+  status:
+    | 'analyzing'
+    | 'classifying'
+    | 'preparing_context'
+    | 'generating_payload'
+    | 'completed'
+    | 'failed';
   tokenUsage: {
     input: number;
     output: number;
     total: number;
   };
 }
-
 export interface InspectorResult {
   id: string;
   signal: Signal;
@@ -194,7 +183,6 @@ export interface InspectorResult {
   success: boolean;
   error?: string;
 }
-
 export interface DetailedInspectorResult {
   id: string;
   signal: Signal;
@@ -213,7 +201,6 @@ export interface DetailedInspectorResult {
   timestamp: Date;
   confidence: number;
 }
-
 export interface InspectorError {
   id: string;
   signal: Signal;
@@ -233,8 +220,6 @@ export interface InspectorError {
   retryCount: number;
   recoverable: boolean;
 }
-
-
 export interface ProcessingContext {
   signalId: string;
   worktree?: string;
@@ -249,7 +234,6 @@ export interface ProcessingContext {
   guidelineContext: GuidelineContext;
   historicalData: HistoricalData;
 }
-
 export interface ActivityEntry {
   timestamp: Date;
   actor: string;
@@ -258,25 +242,26 @@ export interface ActivityEntry {
   relevantTo: string[];
   priority: number;
 }
-
 export interface TokenStatusInfo {
   totalUsed: number;
   totalLimit: number;
   approachingLimit: boolean;
   criticalLimit: boolean;
-  agentBreakdown: Record<string, {
-    used: number;
-    limit: number;
-    percentage: number;
-    status: 'healthy' | 'warning' | 'critical';
-  }>;
+  agentBreakdown: Record<
+    string,
+    {
+      used: number;
+      limit: number;
+      percentage: number;
+      status: 'healthy' | 'warning' | 'critical';
+    }
+  >;
   projections: {
     daily: number;
     weekly: number;
     monthly: number;
   };
 }
-
 export interface AgentStatusInfo {
   id: string;
   name: string;
@@ -297,7 +282,6 @@ export interface AgentStatusInfo {
     errorRate: number;
   };
 }
-
 export interface SharedNoteInfo {
   id: string;
   name: string;
@@ -310,7 +294,6 @@ export interface SharedNoteInfo {
   wordCount: number;
   readingTime: number;
 }
-
 export interface EnvironmentInfo {
   worktree: string;
   branch: string;
@@ -328,24 +311,25 @@ export interface EnvironmentInfo {
     lastChange: Date;
   };
 }
-
 export interface GuidelineContext {
   applicableGuidelines: string[];
   enabledGuidelines: string[];
   disabledGuidelines: string[];
-  protocolSteps: Record<string, {
-    id: string;
-    name: string;
-    status: string;
-    completed: boolean;
-  }>;
+  protocolSteps: Record<
+    string,
+    {
+      id: string;
+      name: string;
+      status: string;
+      completed: boolean;
+    }
+  >;
   requirements: {
     met: string[];
     unmet: string[];
     blocked: string[];
   };
 }
-
 export interface HistoricalData {
   similarSignals: Array<{
     signal: Signal;
@@ -354,11 +338,14 @@ export interface HistoricalData {
     recommendations: string[];
     timestamp: Date;
   }>;
-  agentPerformance: Record<string, {
-    successRate: number;
-    averageTime: number;
-    preferredTasks: string[];
-  }>;
+  agentPerformance: Record<
+    string,
+    {
+      successRate: number;
+      averageTime: number;
+      preferredTasks: string[];
+    }
+  >;
   systemPerformance: {
     averageProcessingTime: number;
     successRate: number;
@@ -371,7 +358,6 @@ export interface HistoricalData {
     typicalResolution: string;
   }>;
 }
-
 export interface ClassificationRequest {
   id: string;
   signal: Signal;
@@ -379,7 +365,6 @@ export interface ClassificationRequest {
   guidelines: GuidelineConfig[];
   requirements: ClassificationRequirements;
 }
-
 export interface ClassificationRequirements {
   categories: string[];
   urgencyLevels: string[];
@@ -387,7 +372,6 @@ export interface ClassificationRequirements {
   specialCases: string[];
   customRules: ClassificationRule[];
 }
-
 export interface ClassificationRule {
   id: string;
   name: string;
@@ -398,7 +382,6 @@ export interface ClassificationRule {
   priority: number;
   confidence: number;
 }
-
 export interface PayloadGenerationRequest {
   id: string;
   classification: SignalClassification;
@@ -408,7 +391,6 @@ export interface PayloadGenerationRequest {
   compressionLevel: 'low' | 'medium' | 'high';
   includeSections: PayloadSection[];
 }
-
 export interface PayloadSection {
   id: string;
   name: string;
@@ -419,7 +401,6 @@ export interface PayloadSection {
   content?: ContextData;
   metadata?: Record<string, unknown>;
 }
-
 export interface InspectorMetrics {
   startTime: Date;
   totalProcessed: number;
@@ -436,16 +417,22 @@ export interface InspectorMetrics {
   queueLength: number;
   processingRate: number; // signals per minute
   errorRate: number;
-  byCategory: Record<string, {
-    count: number;
-    averageTime: number;
-    successRate: number;
-  }>;
-  byUrgency: Record<string, {
-    count: number;
-    averageTime: number;
-    tokenUsage: number;
-  }>;
+  byCategory: Record<
+    string,
+    {
+      count: number;
+      averageTime: number;
+      successRate: number;
+    }
+  >;
+  byUrgency: Record<
+    string,
+    {
+      count: number;
+      averageTime: number;
+      tokenUsage: number;
+    }
+  >;
   performance: {
     fastestClassification: number;
     slowestClassification: number;
@@ -453,7 +440,6 @@ export interface InspectorMetrics {
     memoryUsage: number;
   };
 }
-
 export interface InspectorBatch {
   id: string;
   signals: Signal[];
@@ -474,7 +460,6 @@ export interface InspectorBatch {
     averageConfidence: number;
   };
 }
-
 export interface ModelResponse {
   id: string;
   model: string;
@@ -489,7 +474,6 @@ export interface ModelResponse {
   timestamp: Date;
   processingTime: number;
 }
-
 export interface PromptTemplate {
   id: string;
   name: string;
@@ -500,7 +484,6 @@ export interface PromptTemplate {
   temperature: number;
   systemPrompt?: string;
 }
-
 export interface PromptVariable {
   name: string;
   type: 'string' | 'number' | 'boolean' | 'array' | 'object';
@@ -509,13 +492,11 @@ export interface PromptVariable {
   defaultValue?: string | number | boolean | Array<unknown> | Record<string, unknown>;
   validation?: ValidationRule[];
 }
-
 export interface ValidationRule {
   type: 'required' | 'min_length' | 'max_length' | 'pattern' | 'enum' | 'range';
   value?: string | number | boolean | Array<string | number> | Record<string, unknown>;
   message?: string;
 }
-
 export interface CacheEntry {
   id: string;
   key: string;
@@ -526,49 +507,41 @@ export interface CacheEntry {
   lastAccessed: Date;
   size: number; // bytes
 }
-
 // Event types
 export interface InspectorSignalReceivedEvent {
   signal: Signal;
   timestamp: Date;
 }
-
 export interface InspectorProcessingStartedEvent {
   processingId: string;
   signal: Signal;
   context: ProcessingContext;
 }
-
 export interface InspectorClassificationCompletedEvent {
   processingId: string;
   classification: SignalClassification;
   confidence: number;
 }
-
 export interface InspectorPayloadGeneratedEvent {
   processingId: string;
   payload: InspectorPayload;
   tokenCount: number;
 }
-
 export interface InspectorProcessingCompletedEvent {
   processingId: string;
   result: DetailedInspectorResult;
   processingTime: number;
 }
-
 export interface InspectorProcessingFailedEvent {
   processingId: string;
   error: InspectorError;
   retryCount: number;
 }
-
 export interface InspectorBatchCompletedEvent {
   batchId: string;
   results: DetailedInspectorResult[];
   summary: EventData;
 }
-
 // Missing types that are being imported
 export interface ConfidenceCalibration {
   baseline: number;
@@ -576,7 +549,6 @@ export interface ConfidenceCalibration {
   confidence: number;
   timestamp: Date;
 }
-
 export interface ClassificationFeatures {
   category: string;
   urgency: string;
@@ -585,14 +557,12 @@ export interface ClassificationFeatures {
   priority: number;
   context: string;
 }
-
 export interface EnsembleResult {
   classifications: SignalClassification[];
   confidence: number;
   consensus: number;
   timestamp: Date;
 }
-
 export interface TokenAnalysis {
   input: number;
   output: number;
@@ -600,9 +570,8 @@ export interface TokenAnalysis {
   estimated: number;
   efficiency: number;
 }
-
 // Helper function for creating test signals
-export function createTestSignal(overrides: Partial<Signal> = {}): Signal {
+export const createTestSignal = (overrides: Partial<Signal> = {}): Signal => {
   return {
     id: `test-signal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     type: 'test',
@@ -612,10 +581,9 @@ export function createTestSignal(overrides: Partial<Signal> = {}): Signal {
     priority: 5,
     resolved: false,
     relatedSignals: [],
-    ...overrides
+    ...overrides,
   };
 }
-
 // Missing interface that's being imported
 export interface InspectorAnalysisRequest {
   id: string;
@@ -623,8 +591,15 @@ export interface InspectorAnalysisRequest {
   context: ProcessingContext;
   guidelines: GuidelineConfig[];
   requirements: ClassificationRequirements;
+  priority?: number;
+  createdAt?: Date;
+  options?: {
+    forceReprocess?: boolean;
+    useCache?: boolean;
+    maxRetries?: number;
+    timeout?: number;
+  };
 }
-
 // Additional types for enhanced signal classification
 export interface SignalFeatures {
   type: string;

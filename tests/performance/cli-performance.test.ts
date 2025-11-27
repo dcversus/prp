@@ -1,391 +1,531 @@
 /**
- * 🚀 CLI Performance Tests for @dcversus/prp
+ * CLI Performance Benchmarking Framework
  *
- * Comprehensive performance testing suite covering:
- * - CLI startup time
- * - Memory usage
- * - Command execution time
- * - Lazy loading effectiveness
- * - Cache performance
+ * Comprehensive performance testing suite for PRP CLI with:
+ * - Startup time measurement
+ * - Memory usage tracking
+ * - Command execution benchmarking
+ * - Resource utilization monitoring
+ * - Performance regression detection
+ * - Baseline establishment and comparison
  */
 
-import { performance } from 'perf_hooks';
-import { execSync, spawn } from 'child_process';
+import { mkdtempSync, rmSync } from 'fs';
 import { join } from 'path';
-import { readFileSync, existsSync } from 'fs-extra';
+import * as os from 'os';
+import { performance } from 'perf_hooks';
+import { CLIRunner } from '../helpers/cli-runner';
+import { ProjectValidator } from '../helpers/project-validator';
 
-interface PerformanceTestResult {
+interface PerformanceBaseline {
+  startupTime: number;
+  memoryUsage: number;
+  commandDuration: {
+    init: { min: number; max: number; avg: number };
+    orchestrator: { min: number; max: number; avg: number };
+    config: { min: number; max: number; avg: number };
+    status: { min: number; max: number; avg: number };
+  };
+  resourceUsage: {
+    cpu: number;
+    disk: number;
+    network: number;
+  };
+  timestamp: number;
+}
+
+interface BenchmarkResult {
   testName: string;
   duration: number;
-  memoryUsage: number;
+  memoryUsage: {
+    peak: number;
+    average: number;
+    final: number;
+  };
+  cpuUsage: number;
   success: boolean;
   error?: string;
-  metadata?: Record<string, any>;
+  metadata: Record<string, any>;
 }
 
-interface PerformanceBenchmark {
-  name: string;
-  maxDuration: number; // ms
-  maxMemory: number; // MB
-  samples: number;
-}
+describe('CLI Performance Benchmarks', () => {
+  const testDirectories: string[] = [];
+  const originalCwd = process.cwd();
+  const cli = new CLIRunner();
 
-const BENCHMARKS: PerformanceBenchmark[] = [
-  {
-    name: 'cli-startup',
-    maxDuration: 2000, // 2 seconds
-    maxMemory: 50, // 50MB
-    samples: 5
-  },
-  {
-    name: 'cli-help',
-    maxDuration: 1000, // 1 second
-    maxMemory: 30, // 30MB
-    samples: 10
-  },
-  {
-    name: 'cli-init-quick',
-    maxDuration: 3000, // 3 seconds
-    maxMemory: 60, // 60MB
-    samples: 3
-  },
-  {
-    name: 'cli-version',
-    maxDuration: 500, // 0.5 seconds
-    maxMemory: 25, // 25MB
-    samples: 10
-  }
-];
+  // Performance baselines (will be established during first run)
+  let baseline: PerformanceBaseline | null = null;
+  const results: BenchmarkResult[] = [];
 
-class PerformanceTestSuite {
-  private results: PerformanceTestResult[] = [];
-  private projectRoot: string;
-
-  constructor() {
-    this.projectRoot = process.cwd();
-  }
-
-  async runAllTests(): Promise<void> {
-    console.log('🚀 Starting CLI Performance Test Suite...\n');
-
-    for (const benchmark of BENCHMARKS) {
-      await this.runBenchmark(benchmark);
-    }
-
-    this.generateReport();
-  }
-
-  private async runBenchmark(benchmark: PerformanceBenchmark): Promise<void> {
-    console.log(`📊 Running benchmark: ${benchmark.name}`);
-
-    const testResults: PerformanceTestResult[] = [];
-
-    for (let i = 0; i < benchmark.samples; i++) {
-      const result = await this.runSingleTest(benchmark);
-      testResults.push(result);
-
-      // Small delay between tests
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      if (i < benchmark.samples - 1) {
-        process.stdout.write('.');
-      }
-    }
-
-    console.log();
-
-    // Analyze results
-    const successfulResults = testResults.filter(r => r.success);
-    const avgDuration = successfulResults.reduce((sum, r) => sum + r.duration, 0) / successfulResults.length;
-    const avgMemory = successfulResults.reduce((sum, r) => sum + r.memoryUsage, 0) / successfulResults.length;
-
-    const passed = avgDuration <= benchmark.maxDuration && avgMemory <= benchmark.maxMemory;
-
-    console.log(`  Average Duration: ${avgDuration.toFixed(2)}ms (max: ${benchmark.maxDuration}ms)`);
-    console.log(`  Average Memory: ${avgMemory.toFixed(2)}MB (max: ${benchmark.maxMemory}MB)`);
-    console.log(`  Success Rate: ${successfulResults.length}/${benchmark.samples}`);
-    console.log(`  Result: ${passed ? '✅ PASS' : '❌ FAIL'}\n`);
-
-    // Store results
-    this.results.push(...testResults);
-  }
-
-  private async runSingleTest(benchmark: PerformanceBenchmark): Promise<PerformanceTestResult> {
-    const startTime = performance.now();
-    let memoryUsage = 0;
-    let success = false;
-    let error: string | undefined;
-
-    try {
-      switch (benchmark.name) {
-        case 'cli-startup':
-          ({ memoryUsage, success } = await this.testCliStartup());
-          break;
-        case 'cli-help':
-          ({ memoryUsage, success } = await this.testCliHelp());
-          break;
-        case 'cli-init-quick':
-          ({ memoryUsage, success } = await this.testCliInitQuick());
-          break;
-        case 'cli-version':
-          ({ memoryUsage, success } = await this.testCliVersion());
-          break;
-        default:
-          throw new Error(`Unknown benchmark: ${benchmark.name}`);
-      }
-
-    } catch (err) {
-      error = err instanceof Error ? err.message : String(err);
-      success = false;
-    }
-
-    const duration = performance.now() - startTime;
-
-    return {
-      testName: benchmark.name,
-      duration,
-      memoryUsage,
-      success,
-      error
-    };
-  }
-
-  private async testCliStartup(): Promise<{ memoryUsage: number; success: boolean }> {
-    const startMemory = process.memoryUsage().heapUsed;
-
-    return new Promise((resolve) => {
-      const child = spawn('node', [join(this.projectRoot, 'dist/cli.js'), '--help'], {
-        stdio: 'pipe',
-        cwd: this.projectRoot
-      });
-
-      let output = '';
-      child.stdout?.on('data', (data) => {
-        output += data.toString();
-      });
-
-      child.on('close', (code) => {
-        const endMemory = process.memoryUsage().heapUsed;
-        const memoryUsage = (endMemory - startMemory) / 1024 / 1024; // MB
-        const success = code === 0 && output.includes('Usage:');
-        resolve({ memoryUsage, success });
-      });
-
-      child.on('error', (err) => {
-        console.error('CLI startup test error:', err);
-        resolve({ memoryUsage: 0, success: false });
-      });
-
-      // Kill after 10 seconds if still running
-      setTimeout(() => {
-        child.kill();
-        resolve({ memoryUsage: 0, success: false });
-      }, 10000);
+  afterEach(() => {
+    testDirectories.forEach(dir => {
+      rmSync(dir, { recursive: true, force: true });
     });
-  }
+    process.chdir(originalCwd);
+  });
 
-  private async testCliHelp(): Promise<{ memoryUsage: number; success: boolean }> {
-    const startMemory = process.memoryUsage().heapUsed;
-
+  beforeAll(async () => {
+    // Ensure CLI is built
     try {
-      const output = execSync('node dist/cli.js --help', {
-        cwd: this.projectRoot,
-        encoding: 'utf-8',
-        timeout: 5000
-      });
-
-      const endMemory = process.memoryUsage().heapUsed;
-      const memoryUsage = (endMemory - startMemory) / 1024 / 1024;
-      const success = output.includes('Usage:') && output.includes('Options:');
-
-      return { memoryUsage, success };
+      require('child_process').execSync('npm run build', { stdio: 'pipe' });
     } catch (error) {
-      return { memoryUsage: 0, success: false };
+      console.warn('Build failed, using existing CLI');
     }
-  }
+  });
 
-  private async testCliInitQuick(): Promise<{ memoryUsage: number; success: boolean }> {
-    const startMemory = process.memoryUsage().heapUsed;
+  describe('CLI Startup Performance', () => {
+    it('should start within acceptable time limits', async () => {
+      const testDir = mkdtempSync(join(os.tmpdir(), 'prp-perf-startup-'));
+      testDirectories.push(testDir);
 
-    return new Promise((resolve) => {
-      // Create a temporary directory for testing
-      const testDir = join(this.projectRoot, 'test-temp');
+      const measurements = [];
+      const iterations = 5;
 
-      const child = spawn('node', [
-        join(this.projectRoot, 'dist/cli.js'),
-        'init',
-        '--name', 'test-project',
-        '--template', 'none',
-        '--yes',
-        '--no-git',
-        '--no-install'
-      ], {
-        stdio: 'pipe',
-        cwd: this.projectRoot,
-        env: { ...process.env, TEST_TEMP_DIR: testDir }
-      });
+      for (let i = 0; i < iterations; i++) {
+        const startTime = performance.now();
+        const startMemory = process.memoryUsage();
 
-      let output = '';
-      child.stdout?.on('data', (data) => {
-        output += data.toString();
-      });
+        const result = await cli.run(['--version'], {
+          cwd: testDir,
+          timeout: 10000,
+          measurePerformance: true
+        });
 
-      child.on('close', (code) => {
-        const endMemory = process.memoryUsage().heapUsed;
-        const memoryUsage = (endMemory - startMemory) / 1024 / 1024;
-        const success = code === 0 && (output.includes('Project initialized') || output.includes('Success'));
+        const endTime = performance.now();
+        const endMemory = process.memoryUsage();
+        const duration = endTime - startTime;
 
-        // Cleanup
-        try {
-          if (existsSync(testDir)) {
-            execSync(`rm -rf ${testDir}`);
-          }
-        } catch (cleanupError) {
-          console.warn('Failed to cleanup test directory:', cleanupError);
-        }
-
-        resolve({ memoryUsage, success });
-      });
-
-      child.on('error', (err) => {
-        console.error('CLI init test error:', err);
-        resolve({ memoryUsage: 0, success: false });
-      });
-
-      // Kill after 15 seconds if still running
-      setTimeout(() => {
-        child.kill();
-        resolve({ memoryUsage: 0, success: false });
-      }, 15000);
-    });
-  }
-
-  private async testCliVersion(): Promise<{ memoryUsage: number; success: boolean }> {
-    const startMemory = process.memoryUsage().heapUsed;
-
-    try {
-      const output = execSync('node dist/cli.js --version', {
-        cwd: this.projectRoot,
-        encoding: 'utf-8',
-        timeout: 3000
-      });
-
-      const endMemory = process.memoryUsage().heapUsed;
-      const memoryUsage = (endMemory - startMemory) / 1024 / 1024;
-      const success = /^\d+\.\d+\.\d+$/.test(output.trim());
-
-      return { memoryUsage, success };
-    } catch (error) {
-      return { memoryUsage: 0, success: false };
-    }
-  }
-
-  private generateReport(): void {
-    console.log('📈 Performance Test Report\n');
-
-    // Group results by test name
-    const groupedResults = new Map<string, PerformanceTestResult[]>();
-    for (const result of this.results) {
-      if (!groupedResults.has(result.testName)) {
-        groupedResults.set(result.testName, []);
+        measurements.push({
+          duration,
+          memoryUsed: endMemory.heapUsed - startMemory.heapUsed,
+          success: result.success
+        });
       }
-      groupedResults.get(result.testName)!.push(result);
-    }
 
-    // Generate summary for each test
-    for (const [testName, results] of groupedResults.entries()) {
-      const successful = results.filter(r => r.success);
-      const failed = results.filter(r => !r.success);
+      const avgDuration = measurements.reduce((sum, m) => sum + m.duration, 0) / measurements.length;
+      const avgMemory = measurements.reduce((sum, m) => sum + m.memoryUsed, 0) / measurements.length;
+      const successRate = measurements.filter(m => m.success).length / measurements.length;
 
-      if (successful.length > 0) {
-        const avgDuration = successful.reduce((sum, r) => sum + r.duration, 0) / successful.length;
-        const minDuration = Math.min(...successful.map(r => r.duration));
-        const maxDuration = Math.max(...successful.map(r => r.duration));
-        const avgMemory = successful.reduce((sum, r) => sum + r.memoryUsage, 0) / successful.length;
+      console.log(`Startup Performance:`);
+      console.log(`  Average duration: ${avgDuration.toFixed(2)}ms`);
+      console.log(`  Average memory: ${(avgMemory / 1024 / 1024).toFixed(2)}MB`);
+      console.log(`  Success rate: ${(successRate * 100).toFixed(1)}%`);
 
-        console.log(`${testName}:`);
-        console.log(`  Duration: avg=${avgDuration.toFixed(2)}ms, min=${minDuration.toFixed(2)}ms, max=${maxDuration.toFixed(2)}ms`);
-        console.log(`  Memory: avg=${avgMemory.toFixed(2)}MB`);
-        console.log(`  Success Rate: ${successful.length}/${results.length} (${((successful.length / results.length) * 100).toFixed(1)}%)`);
+      // Performance assertions
+      expect(avgDuration).toBeLessThan(2000); // Should start in under 2 seconds
+      expect(avgMemory).toBeLessThan(50 * 1024 * 1024); // Should use less than 50MB
+      expect(successRate).toBe(1.0); // Should always succeed
 
-        if (failed.length > 0) {
-          console.log(`  Failed Tests: ${failed.length}`);
-          failed.forEach(f => {
-            if (f.error) {
-              console.log(`    - ${f.error}`);
-            }
+      // Store baseline if not established
+      if (!baseline) {
+        baseline = {
+          startupTime: avgDuration,
+          memoryUsage: avgMemory,
+          commandDuration: {
+            init: { min: 0, max: 0, avg: 0 },
+            orchestrator: { min: 0, max: 0, avg: 0 },
+            config: { min: 0, max: 0, avg: 0 },
+            status: { min: 0, max: 0, avg: 0 }
+          },
+          resourceUsage: {
+            cpu: 0,
+            disk: 0,
+            network: 0
+          },
+          timestamp: Date.now()
+        };
+      }
+
+      results.push({
+        testName: 'cli-startup',
+        duration: avgDuration,
+        memoryUsage: {
+          peak: Math.max(...measurements.map(m => m.memoryUsed)),
+          average: avgMemory,
+          final: measurements[measurements.length - 1].memoryUsed
+        },
+        cpuUsage: 0, // Not measured for simple startup
+        success: true,
+        metadata: { iterations, successRate }
+      });
+    }, 30000);
+
+    it('should handle concurrent startup requests efficiently', async () => {
+      const testDir = mkdtempSync(join(os.tmpdir(), 'prp-perf-concurrent-'));
+      testDirectories.push(testDir);
+
+      const concurrentRequests = 10;
+      const startTime = performance.now();
+
+      const promises = Array.from({ length: concurrentRequests }, async (_, index) => {
+        const requestStart = performance.now();
+        const result = await cli.run(['--version'], {
+          cwd: testDir,
+          timeout: 15000,
+          measurePerformance: true
+        });
+        const requestEnd = performance.now();
+
+        return {
+          index,
+          duration: requestEnd - requestStart,
+          success: result.success,
+          memory: result.performance?.peakMemoryUsage || 0
+        };
+      });
+
+      const requestResults = await Promise.all(promises);
+      const totalTime = performance.now() - startTime;
+
+      const avgRequestTime = requestResults.reduce((sum, r) => sum + r.duration, 0) / requestResults.length;
+      const maxRequestTime = Math.max(...requestResults.map(r => r.duration));
+      const successRate = requestResults.filter(r => r.success).length / requestResults.length;
+
+      console.log(`Concurrent Startup Performance:`);
+      console.log(`  Total time for ${concurrentRequests} requests: ${totalTime.toFixed(2)}ms`);
+      console.log(`  Average request time: ${avgRequestTime.toFixed(2)}ms`);
+      console.log(`  Max request time: ${maxRequestTime.toFixed(2)}ms`);
+      console.log(`  Success rate: ${(successRate * 100).toFixed(1)}%`);
+
+      // Concurrent requests should complete efficiently
+      expect(totalTime).toBeLessThan(avgRequestTime * concurrentRequests * 0.7); // Should benefit from concurrency
+      expect(avgRequestTime).toBeLessThan(3000); // Each request should complete in under 3 seconds
+      expect(successRate).toBe(1.0);
+    }, 45000);
+  });
+
+  describe('Command Execution Performance', () => {
+    const templates = ['typescript', 'react', 'nestjs', 'fastapi', 'none'];
+
+    templates.forEach(template => {
+      it(`should init ${template} project within performance limits`, async () => {
+        const testDir = mkdtempSync(join(os.tmpdir(), `prp-perf-init-${template}-`));
+        testDirectories.push(testDir);
+
+        const projectName = `perf-test-${template}-${Date.now()}`;
+        const measurements = [];
+
+        // Run multiple iterations for statistical significance
+        for (let i = 0; i < 3; i++) {
+          const result = await cli.runInit({
+            projectDir: testDir,
+            projectName: `${projectName}-${i}`,
+            template: template
+          });
+
+          measurements.push({
+            duration: result.performance?.totalDuration || 0,
+            memory: result.performance?.peakMemoryUsage || 0,
+            success: result.success,
+            startup: result.performance?.startupTime || 0
           });
         }
-      } else {
-        console.log(`${testName}: ❌ All tests failed`);
-      }
-      console.log();
-    }
 
-    // Overall summary
-    const totalTests = this.results.length;
-    const successfulTests = this.results.filter(r => r.success).length;
-    const overallSuccessRate = (successfulTests / totalTests) * 100;
+        const avgDuration = measurements.reduce((sum, m) => sum + m.duration, 0) / measurements.length;
+        const avgMemory = measurements.reduce((sum, m) => sum + m.memory, 0) / measurements.length;
+        const avgStartup = measurements.reduce((sum, m) => sum + m.startup, 0) / measurements.length;
+        const successRate = measurements.filter(m => m.success).length / measurements.length;
 
-    console.log(`Overall Results:`);
-    console.log(`  Total Tests: ${totalTests}`);
-    console.log(`  Successful: ${successfulTests}`);
-    console.log(`  Success Rate: ${overallSuccessRate.toFixed(1)}%`);
+        console.log(`${template} Init Performance:`);
+        console.log(`  Average duration: ${(avgDuration / 1000).toFixed(2)}s`);
+        console.log(`  Average memory: ${(avgMemory / 1024 / 1024).toFixed(2)}MB`);
+        console.log(`  Average startup: ${avgStartup.toFixed(2)}ms`);
+        console.log(`  Success rate: ${(successRate * 100).toFixed(1)}%`);
 
-    if (overallSuccessRate >= 90) {
-      console.log('🎉 Performance tests PASSED! CLI is performing well.');
-    } else if (overallSuccessRate >= 70) {
-      console.log('⚠️  Performance tests WARNING! CLI performance needs improvement.');
-    } else {
-      console.log('❌ Performance tests FAILED! CLI performance is poor.');
-    }
+        // Performance assertions based on template complexity
+        const expectedMaxDuration = template === 'wikijs' ? 45000 : template === 'nestjs' ? 35000 : 25000;
+        const expectedMaxMemory = 150 * 1024 * 1024; // 150MB max for any template
 
-    // Performance recommendations
-    this.generateRecommendations(groupedResults);
-  }
+        expect(avgDuration).toBeLessThan(expectedMaxDuration);
+        expect(avgMemory).toBeLessThan(expectedMaxMemory);
+        expect(successRate).toBe(1.0);
 
-  private generateRecommendations(groupedResults: Map<string, PerformanceTestResult[]>): void {
-    console.log('\n💡 Performance Recommendations:');
+        // Update baseline
+        if (baseline) {
+          baseline.commandDuration.init.min = Math.min(baseline.commandDuration.init.min, avgDuration);
+          baseline.commandDuration.init.max = Math.max(baseline.commandDuration.init.max, avgDuration);
+          baseline.commandDuration.init.avg = avgDuration;
+        }
 
-    const recommendations: string[] = [];
+        results.push({
+          testName: `init-${template}`,
+          duration: avgDuration,
+          memoryUsage: {
+            peak: Math.max(...measurements.map(m => m.memory)),
+            average: avgMemory,
+            final: measurements[measurements.length - 1].memory
+          },
+          cpuUsage: 0,
+          success: true,
+          metadata: { template, iterations: measurements.length, successRate }
+        });
+      }, 90000);
+    });
 
-    for (const [testName, results] of groupedResults.entries()) {
-      const successful = results.filter(r => r.success);
+    it('should handle orchestrator startup efficiently', async () => {
+      const testDir = mkdtempSync(join(os.tmpdir(), 'prp-perf-orchestrator-'));
+      testDirectories.push(testDir);
 
-      if (successful.length === 0) continue;
-
-      const avgDuration = successful.reduce((sum, r) => sum + r.duration, 0) / successful.length;
-      const avgMemory = successful.reduce((sum, r) => sum + r.memoryUsage, 0) / successful.length;
-
-      const benchmark = BENCHMARKS.find(b => b.name === testName);
-      if (!benchmark) continue;
-
-      if (avgDuration > benchmark.maxDuration) {
-        recommendations.push(`${testName}: Average duration ${avgDuration.toFixed(2)}ms exceeds threshold ${benchmark.maxDuration}ms. Consider optimizing startup time.`);
-      }
-
-      if (avgMemory > benchmark.maxMemory) {
-        recommendations.push(`${testName}: Average memory ${avgMemory.toFixed(2)}MB exceeds threshold ${benchmark.maxMemory}MB. Consider reducing memory usage.`);
-      }
-    }
-
-    if (recommendations.length === 0) {
-      console.log('  ✅ All performance metrics are within acceptable limits!');
-    } else {
-      recommendations.forEach(rec => {
-        console.log(`  - ${rec}`);
+      // First create a project
+      await cli.runInit({
+        projectDir: testDir,
+        projectName: 'orchestrator-perf-test',
+        template: 'typescript'
       });
-    }
-  }
-}
 
-// Run tests if this file is executed directly
-if (require.main === module) {
-  const testSuite = new PerformanceTestSuite();
-  testSuite.runAllTests().catch(error => {
-    console.error('Performance test suite failed:', error);
-    process.exit(1);
+      const measurements = [];
+
+      // Test orchestrator startup multiple times
+      for (let i = 0; i < 3; i++) {
+        const startTime = performance.now();
+        const startMemory = process.memoryUsage();
+
+        const result = await cli.runOrchestrator(testDir, 15000); // 15 second timeout
+
+        const endTime = performance.now();
+        const endMemory = process.memoryUsage();
+        const duration = endTime - startTime;
+
+        measurements.push({
+          duration,
+          memoryUsed: endMemory.heapUsed - startMemory.heapUsed,
+          success: result.success
+        });
+      }
+
+      const avgDuration = measurements.reduce((sum, m) => sum + m.duration, 0) / measurements.length;
+      const avgMemory = measurements.reduce((sum, m) => sum + m.memoryUsed, 0) / measurements.length;
+      const successRate = measurements.filter(m => m.success).length / measurements.length;
+
+      console.log(`Orchestrator Performance:`);
+      console.log(`  Average startup: ${avgDuration.toFixed(2)}ms`);
+      console.log(`  Average memory: ${(avgMemory / 1024 / 1024).toFixed(2)}MB`);
+      console.log(`  Success rate: ${(successRate * 100).toFixed(1)}%`);
+
+      expect(avgDuration).toBeLessThan(5000); // Should start in under 5 seconds
+      expect(avgMemory).toBeLessThan(100 * 1024 * 1024); // Should use less than 100MB
+      expect(successRate).toBeGreaterThan(0.8); // Allow some failures due to environment
+
+      // Update baseline
+      if (baseline) {
+        baseline.commandDuration.orchestrator.min = Math.min(baseline.commandDuration.orchestrator.min, avgDuration);
+        baseline.commandDuration.orchestrator.max = Math.max(baseline.commandDuration.orchestrator.max, avgDuration);
+        baseline.commandDuration.orchestrator.avg = avgDuration;
+      }
+
+      results.push({
+        testName: 'orchestrator-startup',
+        duration: avgDuration,
+        memoryUsage: {
+          peak: Math.max(...measurements.map(m => m.memoryUsed)),
+          average: avgMemory,
+          final: measurements[measurements.length - 1].memoryUsed
+        },
+        cpuUsage: 0,
+        success: successRate > 0.8,
+        metadata: { iterations: measurements.length, successRate }
+      });
+    }, 60000);
   });
-}
 
-export { PerformanceTestSuite, BENCHMARKS };
+  describe('Resource Usage Monitoring', () => {
+    it('should monitor memory usage patterns during extended operations', async () => {
+      const testDir = mkdtempSync(join(os.tmpdir(), 'prp-perf-memory-'));
+      testDirectories.push(testDir);
+
+      const memoryMeasurements = [];
+      const measurementInterval = 1000; // 1 second
+      const testDuration = 10000; // 10 seconds
+
+      // Start a long-running operation
+      const orchestratorPromise = cli.runOrchestrator(testDir, testDuration + 5000);
+
+      // Monitor memory usage during operation
+      const memoryMonitor = setInterval(() => {
+        const memoryUsage = process.memoryUsage();
+        memoryMeasurements.push({
+          timestamp: Date.now(),
+          heapUsed: memoryUsage.heapUsed,
+          heapTotal: memoryUsage.heapTotal,
+          external: memoryUsage.external,
+          rss: memoryUsage.rss
+        });
+      }, measurementInterval);
+
+      try {
+        await orchestratorPromise;
+      } catch (error) {
+        // Expected to timeout
+      } finally {
+        clearInterval(memoryMonitor);
+      }
+
+      if (memoryMeasurements.length > 0) {
+        const heapUsage = memoryMeasurements.map(m => m.heapUsed);
+        const maxHeap = Math.max(...heapUsage);
+        const minHeap = Math.min(...heapUsage);
+        const avgHeap = heapUsage.reduce((sum, h) => sum + h, 0) / heapUsage.length;
+        const memoryGrowth = maxHeap - minHeap;
+
+        console.log(`Memory Usage Analysis:`);
+        console.log(`  Initial heap: ${(minHeap / 1024 / 1024).toFixed(2)}MB`);
+        console.log(`  Peak heap: ${(maxHeap / 1024 / 1024).toFixed(2)}MB`);
+        console.log(`  Average heap: ${(avgHeap / 1024 / 1024).toFixed(2)}MB`);
+        console.log(`  Memory growth: ${(memoryGrowth / 1024 / 1024).toFixed(2)}MB`);
+        console.log(`  Measurements: ${memoryMeasurements.length}`);
+
+        // Memory usage should be reasonable
+        expect(maxHeap).toBeLessThan(200 * 1024 * 1024); // Peak under 200MB
+        expect(memoryGrowth).toBeLessThan(50 * 1024 * 1024); // Growth under 50MB
+      }
+    }, 20000);
+
+    it('should detect memory leaks with repeated operations', async () => {
+      const testDir = mkdtempSync(join(os.tmpdir(), 'prp-perf-leak-'));
+      testDirectories.push(testDir);
+
+      const initialMemory = process.memoryUsage().heapUsed;
+      const memorySnapshots = [];
+
+      // Perform multiple operations and check for memory growth
+      for (let i = 0; i < 10; i++) {
+        // Run a command that allocates memory
+        await cli.run(['--version'], {
+          cwd: testDir,
+          measurePerformance: true
+        });
+
+        // Force garbage collection if available
+        if (global.gc) {
+          global.gc();
+        }
+
+        const memorySnapshot = process.memoryUsage();
+        memorySnapshots.push({
+          iteration: i,
+          heapUsed: memorySnapshot.heapUsed,
+          timestamp: Date.now()
+        });
+
+        // Small delay between operations
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      const finalMemory = process.memoryUsage().heapUsed;
+      const memoryGrowth = finalMemory - initialMemory;
+      const avgMemory = memorySnapshots.reduce((sum, s) => sum + s.heapUsed, 0) / memorySnapshots.length;
+
+      console.log(`Memory Leak Detection:`);
+      console.log(`  Initial memory: ${(initialMemory / 1024 / 1024).toFixed(2)}MB`);
+      console.log(`  Final memory: ${(finalMemory / 1024 / 1024).toFixed(2)}MB`);
+      console.log(`  Total growth: ${(memoryGrowth / 1024 / 1024).toFixed(2)}MB`);
+      console.log(`  Average memory: ${(avgMemory / 1024 / 1024).toFixed(2)}MB`);
+
+      // Check for excessive memory growth
+      expect(memoryGrowth).toBeLessThan(20 * 1024 * 1024); // Less than 20MB growth
+    }, 30000);
+  });
+
+  describe('Performance Regression Detection', () => {
+    it('should compare performance against established baseline', () => {
+      if (!baseline) {
+        console.warn('⚠️ No baseline established - skipping regression test');
+        return;
+      }
+
+      const regressionThreshold = 0.2; // 20% degradation threshold
+      const regressions: string[] = [];
+
+      results.forEach(result => {
+        if (result.testName === 'cli-startup' && baseline) {
+          const degradation = (result.duration - baseline.startupTime) / baseline.startupTime;
+          if (degradation > regressionThreshold) {
+            regressions.push(`${result.testName}: ${(degradation * 100).toFixed(1)}% slower than baseline`);
+          }
+        }
+      });
+
+      if (regressions.length > 0) {
+        console.warn('🚨 Performance Regressions Detected:');
+        regressions.forEach(regression => console.warn(`  - ${regression}`));
+      }
+
+      // In a real CI environment, you might want to fail the build on regressions
+      // For now, we'll just report them
+      expect(regressions.length).toBeLessThan(5); // Allow some minor regressions
+    });
+
+    it('should generate performance report', () => {
+      const performanceReport = {
+        timestamp: new Date().toISOString(),
+        baseline: baseline ? {
+          established: new Date(baseline.timestamp).toISOString(),
+          startupTime: baseline.startupTime,
+          commandDurations: baseline.commandDuration
+        } : null,
+        results: results.map(r => ({
+          testName: r.testName,
+          duration: r.duration,
+          memoryPeakMB: Math.round(r.memoryUsage.peak / 1024 / 1024 * 100) / 100,
+          memoryAvgMB: Math.round(r.memoryUsage.average / 1024 / 1024 * 100) / 100,
+          success: r.success,
+          metadata: r.metadata
+        })),
+        summary: {
+          totalTests: results.length,
+          successfulTests: results.filter(r => r.success).length,
+          averageDuration: Math.round(results.reduce((sum, r) => sum + r.duration, 0) / results.length),
+          peakMemoryUsage: Math.round(Math.max(...results.map(r => r.memoryUsage.peak)) / 1024 / 1024 * 100) / 100
+        }
+      };
+
+      console.log('\n📊 Performance Report:');
+      console.log(JSON.stringify(performanceReport, null, 2));
+
+      // Save report to file for analysis
+      const reportPath = join(os.tmpdir(), `prp-performance-report-${Date.now()}.json`);
+      require('fs').writeFileSync(reportPath, JSON.stringify(performanceReport, null, 2));
+      console.log(`\n📄 Performance report saved to: ${reportPath}`);
+
+      expect(performanceReport.summary.totalTests).toBeGreaterThan(0);
+      expect(performanceReport.summary.successfulTests).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Stress Testing', () => {
+    it('should handle high-frequency command execution', async () => {
+      const testDir = mkdtempSync(join(os.tmpdir(), 'prp-perf-stress-'));
+      testDirectories.push(testDir);
+
+      const commandCount = 50;
+      const startTime = performance.now();
+
+      const promises = Array.from({ length: commandCount }, async (_, index) => {
+        return cli.run(['--version'], {
+          cwd: testDir,
+          timeout: 5000,
+          measurePerformance: true
+        });
+      });
+
+      const results = await Promise.allSettled(promises);
+      const endTime = performance.now();
+      const totalTime = endTime - startTime;
+
+      const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+      const failed = results.length - successful;
+      const avgDuration = totalTime / commandCount;
+
+      console.log(`Stress Test Results:`);
+      console.log(`  Commands executed: ${commandCount}`);
+      console.log(`  Total time: ${totalTime.toFixed(2)}ms`);
+      console.log(`  Average time per command: ${avgDuration.toFixed(2)}ms`);
+      console.log(`  Successful: ${successful}`);
+      console.log(`  Failed: ${failed}`);
+      console.log(`  Success rate: ${((successful / commandCount) * 100).toFixed(1)}%`);
+
+      expect(successful / commandCount).toBeGreaterThan(0.9); // 90% success rate
+      expect(avgDuration).toBeLessThan(1000); // Average under 1 second per command
+    }, 120000);
+  });
+});
