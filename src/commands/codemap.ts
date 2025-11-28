@@ -611,11 +611,11 @@ const loadCodemapData = async (inputPath: string): Promise<CodemapData> => {
     ) {
       data.metrics = {
         ...(data.metrics ?? {}),
-        ...parsedData.metrics,
+        ...(parsedData.metrics as any || {}),
         languageDistribution: new Map(
-          Object.entries(parsedData.metrics.languageDistribution),
+          Object.entries(parsedData.metrics?.languageDistribution || {}),
         ),
-      };
+      } as any;
     }
 
     return data as unknown as CodemapData;

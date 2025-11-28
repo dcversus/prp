@@ -49,21 +49,19 @@ const activePRPs = new client.Gauge({
   help: 'Number of active PRPs',
   registers: [register],
 });
-// @ts-expect-error - metrics used in runtime
+// Metrics used in runtime
 const tokenUsage = new client.Gauge({
   name: 'token_usage_total',
   help: 'Total token usage',
   labelNames: ['model', 'type'],
   registers: [register],
 });
-// @ts-expect-error - metrics used in runtime
 const signalCount = new client.Counter({
   name: 'signals_total',
   help: 'Total number of signals processed',
   labelNames: ['type', 'severity'],
   registers: [register],
 });
-// @ts-expect-error - metrics used in runtime
 const taskCompletionTime = new client.Histogram({
   name: 'task_completion_seconds',
   help: 'Time taken to complete tasks',
@@ -158,20 +156,18 @@ const fileSizeBytes = new client.Histogram({
   registers: [register],
 });
 // Git-specific metrics
-// @ts-expect-error - metrics used in runtime
+// Git metrics used in runtime
 const _gitStatusCheckDuration = new client.Histogram({
   name: 'git_status_check_duration_seconds',
   help: 'Time taken to check git status',
   buckets: [0.01, 0.05, 0.1, 0.5, 1, 2],
   registers: [register],
 });
-// @ts-expect-error - metrics used in runtime
 const _gitBranchesCount = new client.Gauge({
   name: 'git_branches_count',
   help: 'Number of git branches being monitored',
   registers: [register],
 });
-// @ts-expect-error - metrics used in runtime
 const _gitCommitsAheadBehind = new client.Gauge({
   name: 'git_commits_ahead_behind',
   help: 'Number of commits ahead/behind main branch',
@@ -319,7 +315,7 @@ router.get('/', trackMetrics, async (req: Request, res: Response) => {
 // Health check for readiness probe (detailed)
 router.get('/health/readiness', trackMetrics, async (req: Request, res: Response) => {
   try {
-    // @ts-expect-error - server data used in runtime
+    // Server data used in runtime
     const _mcpServerData = (req as any).mcpServer;
     const checks = {
       status: 'ready',

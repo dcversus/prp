@@ -106,10 +106,10 @@ describe('TUI Components', () => {
   });
 
   test('MusicIcon renders without errors', () => {
-    const {MusicIcon} = require('../../src/tui/components/MusicIcon.js');
+    const MusicComponents = require('../../src/tui/components/MusicComponents');
 
     expect(() => {
-      render(<MusicIcon status="RUNNING" animate={false} />);
+      render(<MusicComponents.MusicIcon status="RUNNING" animate={false} />);
     }).not.toThrow();
   });
 

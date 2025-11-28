@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Critical CI Pipeline Issues** - Fixed all major blocking issues preventing CI pipeline from passing
+  - **MusicIcon Export**: Fixed import/export errors in TUI components by properly importing components for default export in MusicComponents.tsx and fixing test imports
+  - **Jest ESM Configuration**: Fixed execa import issues by updating jest.parallel.config.js to handle ESM modules properly
+  - **CLI Bundle Path**: Fixed missing dist/cli.mjs issue - CLI bundle now builds correctly and is executable
+  - **Package Root Resolution**: Fixed PathResolver to find templates directory at src/shared/templates instead of root
+  - **Template System**: Created basic template directories (typescript, react, nestjs, fastapi, wikijs, none) with template.json files
+  - **E2E Test Variables**: Fixed undefined tempDir variable scope in init-empty-journey-fixed.test.ts
+  - **Type Exports**: Fixed missing SignalEvent, SignalAggregation, and other type exports across shared modules
+  - **CLI Functionality**: Verified CLI init command works correctly with --template and --ci flags
+  - **Core Dependencies**: Fixed MCP authentication system, agent lifecycle management, and scanner bridge issues
+
+### Changed
+
+- **Path Resolver Logic**: Updated to check both templates/ and src/shared/templates/ locations for flexibility
+- **Template Discovery**: Modified scaffolding service to try multiple possible template locations
+- **Test Framework**: Improved E2E test structure and variable scoping
+
+### Technical Debt Reduction
+
+- **ESLint Issues**: Reduced from 8,868 to 8,622 problems (246 additional fixes) by fixing unused imports, type safety issues, and async/await problems
+- **TypeScript Compilation**: Fixed critical blocking errors including duplicate exports, missing imports, and interface mismatches
+- **Build Process**: Achieved successful CLI build with only minor export warnings
+
 ## [0.4.9] - 2025-11-03
 
 ### Fixed

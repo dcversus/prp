@@ -202,7 +202,7 @@ export class MetricsCalculator {
     const categoryGroups: Record<string, OperationResult[]> = {};
     // Group by category
     for (const result of results) {
-      const category = result.category || 'unknown';
+      const category = result.category ?? 'unknown';
       if (!categoryGroups[category]) {
         categoryGroups[category] = [];
       }
@@ -231,7 +231,7 @@ export class MetricsCalculator {
     const urgencyGroups: Record<string, OperationResult[]> = {};
     // Group by urgency
     for (const result of results) {
-      const urgency = result.urgency || 'medium';
+      const urgency = result.urgency ?? 'medium';
       if (!urgencyGroups[urgency]) {
         urgencyGroups[urgency] = [];
       }
@@ -284,7 +284,7 @@ export class MetricsCalculator {
     successfulResults: OperationResult[],
     averageTokenUsage: { input: number; output: number; total: number },
   ): number {
-    if (successfulResults.length === 0 || averageTokenUsage.total === 0) {
+    if (successfulResults.length === 0 ?? averageTokenUsage.total === 0) {
       return 0;
     }
     // Simple efficiency metric: success rate divided by average token usage
@@ -433,7 +433,7 @@ export class PerformanceMonitor {
    */
   private updateComponentMetrics(component: string): void {
     const history = this.operationHistory.get(component);
-    if (!history || history.length === 0) {
+    if (!history ?? history.length === 0) {
       return;
     }
     const startTime = history[0]?.timestamp ?? new Date();

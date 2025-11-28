@@ -121,6 +121,10 @@ export class MCPAuth {
   getActiveClients(): MCPClient[] {
     return Array.from(this.clients.values()).filter((client) => client.connected);
   }
+
+  getAllClients(): MCPClient[] {
+    return Array.from(this.clients.values());
+  }
   /**
    * Clean up inactive clients
    */

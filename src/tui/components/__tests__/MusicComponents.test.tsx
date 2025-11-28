@@ -17,7 +17,7 @@ jest.mock('ink', () => ({
   Box: ({ children, ...props }: any) => <div {...props}>{children}</div>,
   Text: ({ children, ...props }: any) => <span {...props}>{children}</span>,
   useApp: () => ({ exit: jest.fn() }),
-  useStdoutDimensions: () => ({ columns: 80, rows: 24 }),
+  useTerminalDimensionsWithColumns: () => ({ columns: 80, rows: 24, width: 80, height: 24 }),
 }));
 
 // Mock animation engine

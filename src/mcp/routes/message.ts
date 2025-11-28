@@ -7,7 +7,7 @@ import { Router } from 'express';
 import { createLayerLogger } from '../../shared';
 
 import type { Server as SocketIOServer } from 'socket.io';
-import type { MCPAuth } from '../auth';
+import type { MCPAuth } from '../../shared/mcp/auth';
 import type { MCPOrchestratorMessage } from '../types';
 import type { Request, Response } from 'express';
 
@@ -30,7 +30,7 @@ interface AgentMessageResponse {
 }
 
 interface SystemMessageResponse {
-  status: 'healthy' | 'error';
+  status: 'healthy' | 'error' | 'restart_initiated' | 'shutdown_initiated' | 'unknown_action' | 'metrics_collected';
   uptime?: number;
   memory?: NodeJS.MemoryUsage;
   timestamp?: number;
@@ -276,13 +276,26 @@ async function handleSystemMessage(
         timestamp: Date.now(),
       };
     case 'metrics':
+      const memUsage = process.memoryUsage();
+      const cpuUsage = process.cpuUsage();
       return {
-        status: 'metrics_collected',
+        timestamp: Date.now(),
         metrics: {
-          uptime: process.uptime(),
-          memory: process.memoryUsage(),
-          cpu: process.cpuUsage(),
-          timestamp: Date.now(),
+          cpu: (cpuUsage.user + cpuUsage.system) / 1000000, // Convert from microseconds to seconds
+          memory: {
+            used: memUsage.heapUsed,
+            total: memUsage.heapTotal,
+            percentage: (memUsage.heapUsed / memUsage.heapTotal) * 100,
+          },
+          disk: {
+            used: 0, // TODO: Implement actual disk usage
+            total: 1000000000, // TODO: Implement actual disk total
+            percentage: 0,
+          },
+          network: {
+            requests: 0, // TODO: Implement actual network metrics
+            errors: 0,
+          },
         },
       };
     case 'restart':

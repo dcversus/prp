@@ -6,7 +6,8 @@
  */
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { useApp, Box, useStdoutDimensions } from 'ink';
+import { useApp, Box } from 'ink';
+import { useTerminalDimensionsWithColumns } from '../hooks/useTerminalDimensions';
 
 import {
   SignalTypeEnum,
@@ -200,7 +201,7 @@ export const TUIApp = ({ config, eventBus }: TUIAppProps): React.ReactElement =>
   }));
 
   // Track terminal dimensions for responsive layout using Ink's hook
-  const { columns: terminalColumns, rows: terminalRows } = useStdoutDimensions();
+  const { columns: terminalColumns, rows: terminalRows } = useTerminalDimensionsWithColumns();
 
   // Debounced state update to prevent excessive re-renders
   const debouncedSetState = useCallback((updater: () => TUIState) => {

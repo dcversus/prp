@@ -20,7 +20,9 @@ import { eventBusIntegration } from '../shared/signals/event-bus-integration';
 
 import type { TmuxManagerAPI } from '../shared/types/tmux';
 import type { AgentSession, LogStream, StreamingConfig, AgentLogEntry } from '../shared/types/common';
+import type { Signal } from '../shared/types/common';
 import type { SignalEvent } from '../shared/types/signals';
+import { SignalTypeEnum, SignalSourceEnum, SignalPriorityEnum } from '../types';
 
 const logger = createLayerLogger('orchestrator');
 
@@ -50,8 +52,13 @@ export class AgentLogStreamingManager extends EventEmitter {
 
     this.tmuxManager = tmuxManager;
     this.config = {
+      enabled: true,
       bufferSize: 1000,
       flushInterval: 100,
+      maxRetries: 3,
+      retryDelay: 1000,
+      compressionEnabled: false,
+      encryptionEnabled: false,
       maxConcurrency: 10,
       enableCompression: false,
       enableFiltering: true,
@@ -134,6 +141,9 @@ export class AgentLogStreamingManager extends EventEmitter {
         id: randomUUID(),
         sessionId,
         agentId,
+        level: 'info',
+        message: `Log stream for session ${sessionId}`,
+        timestamp: TimeUtils.now(),
         isActive: true,
         startTime: TimeUtils.now(),
         lastActivity: TimeUtils.now(),
@@ -149,10 +159,19 @@ export class AgentLogStreamingManager extends EventEmitter {
       this.activeSessions.set(sessionId, {
         id: sessionId,
         agentId,
-        tmuxSession: sessionId,
+        agentType: 'agent',
+        status: 'active',
         startTime: TimeUtils.now(),
         isActive: true,
         lastSeen: TimeUtils.now(),
+        logs: [],
+        metrics: {
+          duration: 0,
+          tokensUsed: 0,
+          cost: 0,
+          tasksCompleted: 0,
+          errors: 0,
+        },
       });
 
       // Start log monitoring for the session
@@ -245,10 +264,10 @@ export class AgentLogStreamingManager extends EventEmitter {
       // Create log entry
       const logEntry: AgentLogEntry = {
         id: randomUUID(),
-        sessionId,
         agentId: session.agentId,
         timestamp: TimeUtils.now(),
-        content: logLine.substring(0, this.config.maxLogLineLength),
+        message: logLine.substring(0, this.config.maxLogLineLength || 10000),
+        content: logLine.substring(0, this.config.maxLogLineLength || 10000),
         level: this.detectLogLevel(logLine),
         signals: this.detectSignals(logLine),
       };
@@ -270,15 +289,17 @@ export class AgentLogStreamingManager extends EventEmitter {
           // Publish signal event
           const signalEvent: SignalEvent = {
             id: signal.id,
-            type: 'agent_log_signal',
-            signal: signal.pattern,
+            type: SignalTypeEnum.AGENT,
+            signal: signal.pattern as any, // Convert to proper signal code type
+            title: `Agent Log Signal: ${signal.pattern}`,
+            description: `Signal detected in agent log: ${signal.pattern}`,
             timestamp: logEntry.timestamp,
-            source: `agent:${session.agentId}`,
+            source: `agent:${session.agentId}` as any, // Convert to SignalSourceEnum
             priority: this.mapSignalPriority(signal.priority),
             state: 'active',
-            metadata: {
+            agentId: session.agentId,
+            data: {
               sessionId,
-              agentId: session.agentId,
               logEntryId: logEntry.id,
               lineNumber: stream.lineCount,
               context: signal.context,
@@ -389,12 +410,12 @@ export class AgentLogStreamingManager extends EventEmitter {
       const sessions = await this.tmuxManager.listSessions();
       let discoveredCount = 0;
 
-      for (const session of sessions) {
+      for (const sessionName of sessions) {
         // Check if session looks like an agent session
-        if (this.isAgentSession(session.name)) {
-          const agentId = this.extractAgentId(session.name);
+        if (this.isAgentSession(sessionName)) {
+          const agentId = this.extractAgentId(sessionName);
           if (agentId) {
-            await this.startAgentStreaming(session.name, agentId);
+            await this.startAgentStreaming(sessionName, agentId);
             discoveredCount++;
           }
         }
@@ -415,7 +436,7 @@ export class AgentLogStreamingManager extends EventEmitter {
 
       try {
         const sessions = await this.tmuxManager.listSessions();
-        const activeSessionNames = new Set(sessions.map(s => s.name));
+        const activeSessionNames = new Set(sessions);
 
         // Check for stopped sessions
         for (const [sessionId, stream] of Array.from(this.activeStreams.entries())) {
@@ -426,12 +447,12 @@ export class AgentLogStreamingManager extends EventEmitter {
         }
 
         // Check for new sessions
-        for (const session of sessions) {
-          if (this.isAgentSession(session.name) && !this.activeStreams.has(session.name)) {
-            const agentId = this.extractAgentId(session.name);
+        for (const sessionName of sessions) {
+          if (this.isAgentSession(sessionName) && !this.activeStreams.has(sessionName)) {
+            const agentId = this.extractAgentId(sessionName);
             if (agentId) {
-              logger.info('AgentLogStreamingManager', 'Detected new agent session', { sessionId: session.name, agentId });
-              await this.startAgentStreaming(session.name, agentId);
+              logger.info('AgentLogStreamingManager', 'Detected new agent session', { sessionId: sessionName, agentId });
+              await this.startAgentStreaming(sessionName, agentId);
             }
           }
         }
@@ -589,7 +610,6 @@ export class AgentLogStreamingManager extends EventEmitter {
       'ip': 7,
       'dp': 5,
       'cq': 5,
-      'pc': 7,
       'rg': 4,
       'rv': 6,
       'cc': 4,
@@ -627,11 +647,11 @@ export class AgentLogStreamingManager extends EventEmitter {
     return logLine.substring(start, end).trim();
   }
 
-  private mapSignalPriority(priority: number): 'low' | 'medium' | 'high' | 'critical' {
-    if (priority >= 9) return 'critical';
-    if (priority >= 7) return 'high';
-    if (priority >= 5) return 'medium';
-    return 'low';
+  private mapSignalPriority(priority: number): any { // Use any for now to avoid enum conflicts
+    if (priority >= 9) return SignalPriorityEnum.CRITICAL;
+    if (priority >= 7) return SignalPriorityEnum.HIGH;
+    if (priority >= 5) return SignalPriorityEnum.MEDIUM;
+    return SignalPriorityEnum.LOW;
   }
 }
 

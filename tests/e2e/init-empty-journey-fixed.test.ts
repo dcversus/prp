@@ -86,9 +86,11 @@ describe('Init Empty Journey - Bootstrap from Scratch (Fixed)', () => {
     });
 
     describe('Complete User Journey - CI Mode', () => {
+      let runner: CLIRunner;
+
       it('should complete full init → orchestrator → interrupt workflow', async () => {
         const projectName = `test-full-journey-${Date.now()}`;
-        tempDir = join(require('os').tmpdir(), `prp-test-${projectName}`);
+        const tempDir = join(require('os').tmpdir(), `prp-test-${projectName}`);
 
         runner = new CLIRunner();
 
@@ -119,7 +121,7 @@ describe('Init Empty Journey - Bootstrap from Scratch (Fixed)', () => {
           console.log(`📝 Session events: ${sessionLogs.length}`);
         } finally {
           // Cleanup
-          if (tempDir && existsSync(tempDir)) {
+          if (existsSync(tempDir)) {
             rmSync(tempDir, { recursive: true, force: true });
           }
         }

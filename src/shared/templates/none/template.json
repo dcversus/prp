@@ -1,0 +1,6 @@
+{
+  "name": "none",
+  "description": "Minimal template (no framework)",
+  "default": true,
+  "files": []
+}

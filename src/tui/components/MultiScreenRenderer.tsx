@@ -5,7 +5,8 @@
  */
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Box, Text, useStdoutDimensions } from 'ink';
+import { Box, Text } from 'ink';
+import { useTerminalDimensionsWithColumns } from '../hooks/useTerminalDimensions';
 
 import { multiScreenLayout, type ScreenId } from '../layout/MultiScreenLayout';
 
@@ -28,7 +29,7 @@ export const MultiScreenRenderer = ({
   showNavigation = true,
   onScreenFocus,
 }: MultiScreenRendererProps) => {
-  const { columns: terminalWidth, rows: terminalHeight } = useStdoutDimensions();
+  const { columns: terminalWidth, rows: terminalHeight } = useTerminalDimensionsWithColumns();
   const [focusedScreen, setFocusedScreen] = useState<ScreenId>('orchestrator');
   const [showLayoutInfo, setShowLayoutInfo] = useState(false);
 

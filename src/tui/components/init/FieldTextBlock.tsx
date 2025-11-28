@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 
 import { useTheme } from '../../config/theme-provider';
+import { useTerminalDimensionsWithColumns } from '../../hooks/useTerminalDimensions';
 
 import type { FieldTextBlockProps } from './types';
 
@@ -27,7 +28,7 @@ const FieldTextBlock: React.FC<FieldTextBlockProps> = ({
   multiline = false,
 }) => {
   const theme = useTheme();
-  // const { columns } = useStdoutDimensions(); // TODO: Get terminal dimensions properly
+  const { columns } = useTerminalDimensionsWithColumns();
   const [isFocused, setIsFocused] = useState(focused);
   const [internalValue, setInternalValue] = useState(value);
   const [cursorPosition, setCursorPosition] = useState(value.length);

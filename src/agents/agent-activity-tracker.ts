@@ -206,13 +206,4 @@ export interface ActivityCorrelation {
   reasoning: string;
 }
 
-/**
- * Export all types for external use
- */
-export type {
-  AgentActivity,
-  SignalAttribution,
-  AgentActivityTrackerConfig,
-  AttributedSignal,
-  ActivityCorrelation
-};
+// Note: All types are already exported through their interface declarations

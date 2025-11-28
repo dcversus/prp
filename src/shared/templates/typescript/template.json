@@ -1,0 +1,6 @@
+{
+  "name": "typescript",
+  "description": "TypeScript project template",
+  "default": false,
+  "files": []
+}

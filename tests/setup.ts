@@ -15,3 +15,24 @@ Object.defineProperty(global, 'fetch', {
   writable: true,
   value: jest.fn(),
 });
+
+
+// Mock execa completely to avoid ESM issues
+jest.mock('execa', () => {
+  return {
+    execa: jest.fn(() => Promise.resolve({ stdout: '', stderr: '', exitCode: 0 })),
+    default: jest.fn(() => Promise.resolve({ stdout: '', stderr: '', exitCode: 0 })),
+  };
+});
+
+// Mock git operations
+jest.mock('../src/shared/utils/gitUtils', () => ({
+  GitUtils: {
+    isGitRepository: jest.fn(() => Promise.resolve(true)),
+    getCurrentBranch: jest.fn(() => Promise.resolve('main')),
+    getUncommittedFiles: jest.fn(() => Promise.resolve([])),
+    getTrackedFiles: jest.fn(() => Promise.resolve(['package.json'])),
+    getDiffFiles: jest.fn(() => Promise.resolve([])),
+    getCommitHash: jest.fn(() => Promise.resolve('abc123')),
+  },
+}));

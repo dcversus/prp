@@ -5,7 +5,7 @@
 import { Router } from 'express';
 
 import type { Request, Response } from 'express';
-import type { MCPAuth } from '../auth';
+import type { MCPAuth } from '../../shared/mcp/auth';
 
 export function prpsRouter(_auth: MCPAuth): Router {
   const router = Router();

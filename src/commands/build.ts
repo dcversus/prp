@@ -34,7 +34,7 @@ export const createBuildCommand = (): Command => {
 /**
  * Handle build command execution
  */
-export const handleBuildCommand = (options: BuildOptions): Promise<void> => {
+export const handleBuildCommand = async (options: BuildOptions): Promise<void> => {
   initializeLogger({
     ci: options.ci,
     debug: options.debug,

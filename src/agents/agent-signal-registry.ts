@@ -12,7 +12,6 @@ import { createLayerLogger, HashUtils } from '../shared';
 import type { BaseAgent } from './base-agent';
 import type {
   AgentSignalRegistry as IAgentSignalRegistry,
-  AgentActivityTracker,
   AttributionConfidence
 } from './agent-activity-tracker';
 import type { Signal } from '../shared/types';

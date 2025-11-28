@@ -68,11 +68,20 @@ export class ScaffoldingService {
   constructor() {
     // Use the robust PathResolver to find the package root
     // This ensures templates are found regardless of execution context
-    this.templatesPath = PathResolver.getPackagePath('templates');
+    // Try both possible templates locations
+    const packageRoot = PathResolver.getPackageRoot();
+    const possiblePaths = [
+      path.join(packageRoot, 'templates'),
+      path.join(packageRoot, 'src', 'shared', 'templates')
+    ];
+
+    this.templatesPath = possiblePaths.find(p => existsSync(p)) || '';
+
     this.initGenerationService = new InitGenerationService();
     this.mcpConfigurator = new MCPConfigurator();
+
     // Validate that templates directory exists
-    if (!existsSync(this.templatesPath)) {
+    if (!this.templatesPath || !existsSync(this.templatesPath)) {
       const validation = PathResolver.validatePackageStructure();
       throw new Error(
         `Templates directory not found at ${this.templatesPath}. Missing: ${validation.missing.join(', ')}. Execution: ${PathResolver.getExecutionInfo().type}`,

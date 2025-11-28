@@ -14,13 +14,10 @@ import type {
   AgentSignalRegistry,
   AgentActivity,
   SignalAttribution,
-  AttributedSignal,
   AgentActivityType,
   AttributionConfidence
 } from './agent-activity-tracker';
-import type { BaseAgent } from './base-agent';
 import type { Signal, FileChange, PRPFile } from '../shared/types';
-import type { ScannerConfig, ScanResult } from '../scanner/types';
 
 const logger = createLayerLogger('agent-scanner-bridge');
 
@@ -54,6 +51,17 @@ export interface CorrelationResult {
 }
 
 /**
+ * Signal correlation context
+ */
+export interface SignalCorrelationContext {
+  timestamp: Date;
+  filePath?: string;
+  prpContext?: string;
+  relatedFiles?: FileChange[];
+  relatedPRPs?: PRPFile[];
+}
+
+/**
  * Agent session information
  */
 export interface AgentSession {
@@ -72,6 +80,8 @@ export interface AgentSession {
 /**
  * Agent-Scanner Bridge implementation
  */
+export { SignalCorrelationContext };
+
 export class AgentScannerBridge extends EventEmitter {
   private readonly config: AgentScannerBridgeConfig;
   private readonly activityTracker: AgentActivityTracker;
@@ -118,8 +128,8 @@ export class AgentScannerBridge extends EventEmitter {
 
     // Setup cleanup interval
     setInterval(() => {
-      this.performCleanup().catch(error => {
-        logger.error('Bridge cleanup failed', { error: error.message });
+      this.performCleanup().catch((error: unknown) => {
+        logger.error('Bridge cleanup failed', { error: error instanceof Error ? error.message : String(error) });
       });
     }, 60000); // Every minute
   }
@@ -127,7 +137,7 @@ export class AgentScannerBridge extends EventEmitter {
   /**
    * Initialize the bridge and set up event listeners
    */
-  async initialize(): Promise<void> {
+  initialize(): void {
     logger.info('Initializing Agent-Scanner Bridge');
 
     // Set up scanner event listeners if available
@@ -147,13 +157,7 @@ export class AgentScannerBridge extends EventEmitter {
    */
   async correlateSignalWithAgents(
     signal: Signal,
-    scanContext?: {
-      timestamp: Date;
-      filePath?: string;
-      prpContext?: string;
-      relatedFiles?: FileChange[];
-      relatedPRPs?: PRPFile[];
-    }
+    scanContext?: SignalCorrelationContext
   ): Promise<SignalAttribution> {
     const startTime = Date.now();
     this.metrics.correlationsAttempted++;
@@ -166,8 +170,8 @@ export class AgentScannerBridge extends EventEmitter {
 
     try {
       // Get recent activities from all active agents
-      const recentActivities = await this.getRecentAgentActivities(
-        scanContext?.timestamp || new Date()
+      const recentActivities = this.getRecentAgentActivities(
+        scanContext?.timestamp ?? new Date()
       );
 
       // Apply correlation strategies
@@ -191,11 +195,11 @@ export class AgentScannerBridge extends EventEmitter {
 
       // Cache correlation result
       const correlationResult: CorrelationResult = {
-        activityId: bestAttribution.attributedAgent?.agentId || '',
+        activityId: bestAttribution.attributedAgent?.agentId ?? '',
         signalId: signal.id,
         correlationScore: bestAttribution.attributedAgent?.confidence === 'high' ? 1.0 : 0.5,
         correlationMethod: bestAttribution.attributionMethod,
-        evidence: bestAttribution.attributedAgent?.evidence || [],
+        evidence: bestAttribution.attributedAgent?.evidence ?? [],
         timestamp: new Date()
       };
 
@@ -217,13 +221,15 @@ export class AgentScannerBridge extends EventEmitter {
 
       return bestAttribution;
 
-    } catch (error) {
+    } catch (error: unknown) {
       const duration = Date.now() - startTime;
       this.updateCorrelationMetrics(duration, false);
 
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
       logger.error('Signal correlation failed', {
         signalId: signal.id,
-        error: error.message,
+        error: errorMessage,
         duration
       });
 
@@ -231,10 +237,10 @@ export class AgentScannerBridge extends EventEmitter {
       return {
         signalId: signal.id,
         signalCode: signal.code,
-        detectedAt: scanContext?.timestamp || new Date(),
+        detectedAt: scanContext?.timestamp ?? new Date(),
         attributionMethod: 'pattern_match',
         metadata: {
-          error: error.message,
+          error: errorMessage,
           fallbackAttribution: true
         }
       };
@@ -251,12 +257,12 @@ export class AgentScannerBridge extends EventEmitter {
     metadata: Record<string, unknown> = {}
   ): Promise<string> {
     // Ensure agent session exists
-    await this.ensureAgentSession(agentId);
+    this.ensureAgentSession(agentId);
 
     // Create activity record
     const activityId = await this.activityTracker.trackActivity({
       agentId,
-      agentType: await this.getAgentType(agentId),
+      agentType: this.getAgentType(agentId),
       activityType,
       description,
       metadata,
@@ -271,7 +277,7 @@ export class AgentScannerBridge extends EventEmitter {
 
     // Try to correlate with recent signals
     if (this.config.enableRealTimeCorrelation) {
-      await this.correlateActivityWithSignals(activityId);
+      this.correlateActivityWithSignals(activityId);
     }
 
     // Update metrics
@@ -326,7 +332,7 @@ export class AgentScannerBridge extends EventEmitter {
   /**
    * Cleanup expired sessions and cache entries
    */
-  async performCleanup(): Promise<void> {
+  performCleanup(): void {
     const now = Date.now();
 
     // Cleanup expired sessions
@@ -367,11 +373,7 @@ export class AgentScannerBridge extends EventEmitter {
     logger.debug('Agent listeners would be set up here');
   }
 
-  private async getRecentAgentActivities(timestamp: Date): Promise<AgentActivity[]> {
-    // Get activities from the last correlation time window
-    const timeWindow = this.config.correlationTimeWindow;
-    const cutoffTime = new Date(timestamp.getTime() - timeWindow);
-
+  private getRecentAgentActivities(_timestamp: Date): AgentActivity[] {
     // This would query the activity tracker for recent activities
     // For now, return empty array
     return [];
@@ -380,7 +382,7 @@ export class AgentScannerBridge extends EventEmitter {
   private async applyCorrelationStrategies(
     signal: Signal,
     activities: AgentActivity[],
-    context?: any
+    context?: SignalCorrelationContext
   ): Promise<SignalAttribution[]> {
     const attributions: SignalAttribution[] = [];
 
@@ -396,10 +398,10 @@ export class AgentScannerBridge extends EventEmitter {
         if (attribution) {
           attributions.push(attribution);
         }
-      } catch (error) {
+      } catch (error: unknown) {
         logger.warn(`Correlation strategy ${strategy} failed`, {
           signalId: signal.id,
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         });
       }
     }
@@ -411,7 +413,7 @@ export class AgentScannerBridge extends EventEmitter {
     strategy: string,
     signal: Signal,
     activities: AgentActivity[],
-    context?: any
+    context?: SignalCorrelationContext
   ): Promise<SignalAttribution | null> {
     switch (strategy) {
       case 'temporal':
@@ -427,14 +429,14 @@ export class AgentScannerBridge extends EventEmitter {
     }
   }
 
-  private async applyTemporalCorrelation(
+  private applyTemporalCorrelation(
     signal: Signal,
     activities: AgentActivity[],
-    context?: any
-  ): Promise<SignalAttribution | null> {
+    context?: SignalCorrelationContext
+  ): SignalAttribution | null {
     // Find activities within time window
     const timeWindow = this.config.correlationTimeWindow;
-    const signalTime = context?.timestamp || new Date();
+    const signalTime = context?.timestamp ?? new Date();
 
     const recentActivities = activities.filter(activity => {
       const timeDiff = Math.abs(signalTime.getTime() - activity.timestamp.getTime());
@@ -469,11 +471,11 @@ export class AgentScannerBridge extends EventEmitter {
     };
   }
 
-  private async applyContextualCorrelation(
+  private applyContextualCorrelation(
     signal: Signal,
     activities: AgentActivity[],
-    context?: any
-  ): Promise<SignalAttribution | null> {
+    context?: SignalCorrelationContext
+  ): SignalAttribution | null {
     // Contextual correlation based on file paths, PRP context, etc.
     const filePath = context?.filePath;
     const prpContext = context?.prpContext;
@@ -516,7 +518,7 @@ export class AgentScannerBridge extends EventEmitter {
   private async applyPatternMatchCorrelation(
     signal: Signal,
     activities: AgentActivity[],
-    context?: any
+    context?: SignalCorrelationContext
   ): Promise<SignalAttribution | null> {
     // Pattern matching based on learned agent-signal patterns
     const signalCode = signal.code;
@@ -539,7 +541,7 @@ export class AgentScannerBridge extends EventEmitter {
       detectedAt: context?.timestamp || new Date(),
       attributedAgent: {
         agentId: bestMatch.agentId,
-        agentType: await this.getAgentType(bestMatch.agentId),
+        agentType: this.getAgentType(bestMatch.agentId),
         confidence: bestMatch.confidence > 0.8 ? AttributionConfidence.HIGH : AttributionConfidence.MEDIUM,
         evidence: [`Pattern match: ${signalCode} seen ${bestMatch.frequency} times`],
         reasoning: 'Historical pattern matching indicates likely agent'
@@ -552,11 +554,11 @@ export class AgentScannerBridge extends EventEmitter {
     };
   }
 
-  private async applySignatureCorrelation(
+  private applySignatureCorrelation(
     signal: Signal,
     activities: AgentActivity[],
-    context?: any
-  ): Promise<SignalAttribution | null> {
+    context?: SignalCorrelationContext
+  ): SignalAttribution | null {
     // Signature-based correlation using unique agent identifiers in signal content
     const signalContent = typeof signal.data === 'string' ? signal.data : JSON.stringify(signal.data);
 
@@ -608,12 +610,16 @@ export class AgentScannerBridge extends EventEmitter {
     }
 
     // Sort by confidence level and method priority
-    const confidenceOrder = { 'high': 3, 'medium': 2, 'low': 1, 'unknown': 0 };
-    const methodOrder = { 'signature': 4, 'contextual': 3, 'pattern_match': 2, 'temporal': 1 };
+    const confidenceOrder: Record<AttributionConfidence, number> = {
+      'high': 3, 'medium': 2, 'low': 1, 'unknown': 0
+    };
+    const methodOrder: Record<string, number> = {
+      'signature': 4, 'contextual': 3, 'pattern_match': 2, 'temporal': 1
+    };
 
     return attributions.sort((a, b) => {
-      const aConfidence = a.attributedAgent?.confidence || 'unknown';
-      const bConfidence = b.attributedAgent?.confidence || 'unknown';
+      const aConfidence = a.attributedAgent?.confidence ?? 'unknown';
+      const bConfidence = b.attributedAgent?.confidence ?? 'unknown';
 
       const confidenceDiff = confidenceOrder[bConfidence] - confidenceOrder[aConfidence];
       if (confidenceDiff !== 0) return confidenceDiff;
@@ -625,14 +631,16 @@ export class AgentScannerBridge extends EventEmitter {
   private async updateSignalPatterns(
     agentId: string,
     signalCode: string,
-    context?: any
+    context?: SignalCorrelationContext
   ): Promise<void> {
     if (!this.agentSignalPatterns.has(agentId)) {
       this.agentSignalPatterns.set(agentId, new Map());
     }
 
-    const patterns = this.agentSignalPatterns.get(agentId)!;
-    const currentCount = patterns.get(signalCode) || 0;
+    const patterns = this.agentSignalPatterns.get(agentId);
+    if (!patterns) return;
+
+    const currentCount = patterns.get(signalCode) ?? 0;
     patterns.set(signalCode, currentCount + 1);
 
     // Update signal registry with learned patterns
@@ -665,7 +673,7 @@ export class AgentScannerBridge extends EventEmitter {
       this.metrics.averageCorrelationTime * (1 - alpha) + duration * alpha;
   }
 
-  private async ensureAgentSession(agentId: string): Promise<void> {
+  private ensureAgentSession(agentId: string): void {
     const existingSession = this.getAgentSession(agentId);
 
     if (!existingSession && this.config.sessionTracking.enabled) {
@@ -673,7 +681,7 @@ export class AgentScannerBridge extends EventEmitter {
       const session: AgentSession = {
         sessionId,
         agentId,
-        agentType: await this.getAgentType(agentId),
+        agentType: this.getAgentType(agentId),
         startTime: new Date(),
         lastActivity: new Date(),
         currentTasks: [],
@@ -702,7 +710,7 @@ export class AgentScannerBridge extends EventEmitter {
     }
   }
 
-  private async correlateActivityWithSignals(activityId: string): Promise<void> {
+  private correlateActivityWithSignals(activityId: string): void {
     // This would query recent signals and try to correlate them with the activity
     // Implementation depends on having access to signal storage/query system
     logger.debug('Activity-signal correlation would happen here', { activityId });
@@ -713,7 +721,7 @@ export class AgentScannerBridge extends EventEmitter {
     return session?.sessionId;
   }
 
-  private async getAgentType(agentId: string): Promise<string> {
+  private getAgentType(agentId: string): string {
     // Extract agent type from agent ID or query agent registry
     if (agentId.includes('developer')) return 'robo-developer';
     if (agentId.includes('aqa')) return 'robo-aqa';

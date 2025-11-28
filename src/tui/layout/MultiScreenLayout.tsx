@@ -6,7 +6,8 @@
  */
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Box, Text, useStdoutDimensions } from 'ink';
+import { Box, Text } from 'ink';
+import { useTerminalDimensionsWithColumns } from '../hooks/useTerminalDimensions';
 
 import type { TUIConfig } from '../../shared/types/TUIConfig';
 

@@ -12,7 +12,7 @@
  *   npm run melody:generate --list     # List available melodies
  */
 
-import { writeFileSync, readFileSync } from 'fs';
+import { writeFileSync } from 'fs';
 import { join } from 'path';
 import { program } from 'commander';
 
@@ -49,7 +49,7 @@ const INSTRUMENT_MAP: Record<InstrumentType, number> = {
   'woodwinds': 3,
   'percussion': 4,
   'synth': 5,
-  'organ': 6,
+  'lead': 6,
   'choir': 7,
 };
 
@@ -69,7 +69,7 @@ function encodeMelody(melody: typeof MelodyPatterns[string]): string {
   // Encode each note as a 16-bit value
   const encodedNotes = notes.map((note, i) => {
     const noteValue = NOTE_MAP[note];
-    const duration = Math.min(255, Math.max(0, durations[i]));
+    const _duration = Math.min(255, Math.max(0, durations[i]));
 
     // Pack note (4 bits) and duration (8 bits) into 12 bits, leaving 4 bits for future use
     return (noteValue << 8) | duration;
@@ -94,7 +94,7 @@ function decodeMelody(melodyJson: string): typeof MelodyPatterns[string] {
   // Decode notes
   const notes = encodedNotes.map((code: number) => {
     const noteValue = (code >> 8) & 0xF;
-    const duration = code & 0xFF;
+    const _duration = code & 0xFF;
 
     const noteKeys = Object.keys(NOTE_MAP) as MusicalNote[];
     return noteKeys[noteValue];

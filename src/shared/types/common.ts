@@ -13,6 +13,82 @@ export type JsonArray = Array<JsonValue>
 // ================================
 // AGENT TYPES
 // ================================
+
+export interface AgentSession {
+  id: string;
+  agentId: string;
+  agentType: string;
+  startTime: Date;
+  endTime?: Date;
+  status: 'active' | 'completed' | 'error' | 'terminated';
+  worktree?: string;
+  prpId?: string;
+  taskId?: string;
+  tmuxSession?: string;
+  isActive?: boolean;
+  lastSeen?: Date;
+  metadata?: Record<string, unknown>;
+  logs: AgentLogEntry[];
+  metrics: {
+    duration?: number;
+    tokensUsed?: number;
+    cost?: number;
+    tasksCompleted?: number;
+    errors?: number;
+  };
+}
+
+export interface LogStream {
+  id: string;
+  sessionId: string;
+  agentId: string;
+  level: 'debug' | 'info' | 'warn' | 'error' | 'critical';
+  message: string;
+  timestamp: Date;
+  startTime?: Date;
+  endTime?: Date;
+  isActive?: boolean;
+  lastActivity?: Date;
+  buffer?: AgentLogEntry[];
+  bufferSize?: number;
+  lineCount?: number;
+  errors?: number;
+  signalsDetected?: number;
+  metadata?: Record<string, unknown>;
+  tokenCost?: number;
+  context?: {
+    worktree?: string;
+    prpId?: string;
+    taskId?: string;
+    signalId?: string;
+  };
+}
+
+export interface StreamingConfig {
+  enabled: boolean;
+  bufferSize: number;
+  flushInterval: number; // milliseconds
+  maxRetries: number;
+  retryDelay: number; // milliseconds
+  compressionEnabled: boolean;
+  encryptionEnabled: boolean;
+  maxConcurrency?: number;
+  enableCompression?: boolean;
+  enableFiltering?: boolean;
+  enableDeduplication?: boolean;
+  autoDiscovery?: boolean;
+  monitorInterval?: number;
+  maxLogLineLength?: number;
+  signalDetectionTimeout?: number;
+  endpoint?: string;
+  apiKey?: string;
+  filters?: {
+    levels: string[];
+    agents: string[];
+    worktrees: string[];
+    prpIds: string[];
+  };
+}
 export interface AgentConfig {
   id: string;
   name: string;
@@ -71,6 +147,18 @@ export interface AgentMessage {
   type: 'request' | 'response' | 'notification';
   payload: Record<string, unknown>;
   timestamp: number;
+}
+
+export interface AgentLogEntry {
+  id: string;
+  timestamp: Date;
+  level: 'debug' | 'info' | 'warn' | 'error' | 'critical';
+  message: string;
+  agentId?: string;
+  content?: string;
+  signals?: any[];
+  metadata?: Record<string, unknown>;
+  tokenCost?: number;
 }
 // ================================
 // API TYPES
@@ -231,6 +319,11 @@ export interface SignalMetadata {
   patternVersion?: string; // Pattern version used
   tokenCost?: number;     // Token cost for processing
   error?: string;         // Last error if any
+  fileName?: string;      // File name for file-based signals
+  lineNumber?: number;    // Line number for file-based signals
+  context?: string;       // Context around signal
+  duration?: number;      // Duration for long-running operations
+  sessionId?: string;     // Session ID for session-based signals
   [key: string]: unknown; // Additional metadata
 }
 

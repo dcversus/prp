@@ -84,7 +84,6 @@ export { UnifiedTokenMonitoringDashboard } from './unified-token-monitoring-dash
 export type {
   UnifiedTokenMetrics,
   TokenCapEnforcement,
-  EnforcedAction,
   MonitoringDashboardConfig,
 } from './unified-token-monitoring-dashboard';
 

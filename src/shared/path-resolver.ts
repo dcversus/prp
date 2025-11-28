@@ -79,8 +79,8 @@ export class PathResolver {
   private static isPackageRoot(dir: string): boolean {
     return (
       existsSync(join(dir, 'package.json')) &&
-      existsSync(join(dir, 'templates')) &&
-      existsSync(join(dir, 'AGENTS.md'))
+      existsSync(join(dir, 'AGENTS.md')) &&
+      (existsSync(join(dir, 'templates')) || existsSync(join(dir, 'src', 'shared', 'templates')))
     );
   }
   /**
@@ -150,13 +150,23 @@ export class PathResolver {
    */
   static validatePackageStructure(): { valid: boolean; missing: string[] } {
     const root = this.getPackageRoot();
-    const required = ['templates', 'AGENTS.md'];
+    const required = ['AGENTS.md'];
+    const optionalTemplates = ['templates', 'src/shared/templates'];
     const missing: string[] = [];
+
+    // Check required files
     for (const item of required) {
       if (!existsSync(join(root, item))) {
         missing.push(item);
       }
     }
+
+    // Check if any templates directory exists
+    const templatesExist = optionalTemplates.some(templatePath => existsSync(join(root, templatePath)));
+    if (!templatesExist) {
+      missing.push('templates (or src/shared/templates)');
+    }
+
     return {
       valid: missing.length === 0,
       missing,

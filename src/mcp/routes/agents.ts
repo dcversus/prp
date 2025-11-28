@@ -7,7 +7,7 @@ import { Router } from 'express';
 // import { createLayerLogger } from '../../shared/logger';
 
 import type { Request, Response } from 'express';
-import type { MCPAuth } from '../auth';
+import type { MCPAuth } from '../../shared/mcp/auth';
 import type { MCPAgentStatus } from '../types';
 
 // const logger = createLayerLogger('mcp-agents');

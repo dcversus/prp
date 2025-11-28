@@ -2,7 +2,14 @@
  * MCP Server Type Definitions
  * Defines interfaces and types for the Model Context Protocol server
  */
-import type { MemoryUsage } from 'node:vm';
+// Define MemoryUsage interface since it's not exported from node:process
+export interface MemoryUsage {
+  rss: number;
+  heapTotal: number;
+  heapUsed: number;
+  external: number;
+  arrayBuffers: number;
+}
 
 export interface MCPRequest {
   id: string;

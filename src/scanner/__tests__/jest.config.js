@@ -13,6 +13,9 @@ module.exports = {
   transform: {
     '^.+\\.ts$': 'ts-jest'
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(execa)/)'
+  ],
   collectCoverageFrom: [
     '../**/*.ts',
     '!../**/__tests__/**',

@@ -528,6 +528,11 @@ export interface TmuxManagerAPI {
   listActiveAgents(): Promise<AgentTerminalSession[]>;
 
   /**
+   * List all tmux sessions
+   */
+  listSessions(): Promise<string[]>;
+
+  /**
    * Get logs from an agent session
    */
   getAgentLogs(

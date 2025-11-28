@@ -21,7 +21,7 @@ import { unifiedSignalDetector } from '../../scanner/unified-signal-detector';
 import { RealTimeEventStreamAdapter } from '../../scanner/realtime-event-stream-adapter';
 
 import type { Signal } from '../types/common';
-import type { EventBusIntegration, SignalEvent, SignalFilter } from '../types/signals';
+import type { EventBusIntegration, SignalEvent, SignalFilter } from '../../types';
 
 const logger = createLayerLogger('signals');
 

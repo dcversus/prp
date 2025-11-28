@@ -52,8 +52,28 @@ export class CLIRunner {
     this.cliPath = cliPath || join(process.cwd(), 'dist', 'cli.mjs');
 
     // Verify CLI exists
-    if (!require('fs').existsSync(this.cliPath)) {
-      throw new Error(`CLI not found at ${this.cliPath}. Please run 'npm run build' first.`);
+    const fs = require('fs');
+    if (!fs.existsSync(this.cliPath)) {
+      // Try alternative path resolutions
+      const alternativePaths = [
+        join(__dirname, '../../dist/cli.mjs'), // From tests/helpers to dist
+        join(process.cwd(), 'cli.mjs'), // Direct in cwd
+        '/Users/dcversus/Documents/GitHub/prp/dist/cli.mjs', // Absolute fallback
+      ];
+
+      let foundPath = null;
+      for (const altPath of alternativePaths) {
+        if (fs.existsSync(altPath)) {
+          foundPath = altPath;
+          break;
+        }
+      }
+
+      if (foundPath) {
+        this.cliPath = foundPath;
+      } else {
+        throw new Error(`CLI not found at ${this.cliPath} or any alternative paths. Please run 'npm run build' first.`);
+      }
     }
   }
 
@@ -567,8 +587,9 @@ export class CLIRunner {
     this.logSession('keyboard_simulation_start', { args, actionCount: keyboardActions.length });
 
     return new Promise((resolve) => {
-      // Use 'node' from PATH to avoid ENOENT errors with full paths
-      const cliProcess = spawn('node', [this.cliPath, ...args], {
+      // Use full node path to avoid ENOENT errors
+      const nodePath = process.execPath;
+      const cliProcess = spawn(nodePath, [this.cliPath, ...args], {
         cwd: options.cwd,
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {

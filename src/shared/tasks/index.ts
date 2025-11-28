@@ -9,3 +9,20 @@ export * from './task-manager';
 export { TaskManager } from './task-manager';
 // Re-export specific types that are commonly imported
 export { TaskType, TaskPriority, AssignmentStatus, TaskOutcome } from './types';
+
+// Agent capability type for orchestrator compatibility
+export interface AgentCapability {
+  id: string;
+  name: string;
+  description: string;
+  category: 'primary' | 'secondary' | 'tool' | 'specialization';
+  type: string;
+  enabled: boolean;
+  version?: string;
+  certification?: {
+    certified: boolean;
+    level?: 'basic' | 'intermediate' | 'advanced' | 'expert';
+    expiresAt?: Date;
+  };
+  metadata?: Record<string, unknown>;
+}

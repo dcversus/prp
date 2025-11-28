@@ -4,6 +4,7 @@ export default {
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   roots: ['<rootDir>/src', '<rootDir>/tests'],
+  modulePathIgnorePatterns: ['<rootDir>/dist/'],
   testMatch: [
     '**/__tests__/**/*.ts',
     '**/__tests__/**/*.tsx',
@@ -17,7 +18,6 @@ export default {
     '^@shared/(.*)$': '<rootDir>/src/shared/$1',
     '^@tui/(.*)$': '<rootDir>/src/tui/$1',
     'axios$': 'axios/dist/node/axios.cjs',
-    'execa$': 'execa',
     'tree-sitter$': '<rootDir>/node_modules/tree-sitter',
     'tree-sitter-javascript$': '<rootDir>/node_modules/tree-sitter-javascript',
   },

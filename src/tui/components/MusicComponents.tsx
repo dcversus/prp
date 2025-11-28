@@ -12,7 +12,6 @@
 import MusicVisualizerComponent, {
   CompactMusicIndicator,
   MusicStatusBar,
-  FrequencySpectrum,
 } from './MusicVisualizer';
 import EnhancedSignalTickerComponent, {
   HeaderSignalTicker,
@@ -27,6 +26,11 @@ export { MusicIcon, OptimizedMusicIcon, useMusicIcon } from './MusicIcon';
 export { SignalAnimation } from './SignalAnimation';
 export { SignalDisplay, SignalBadge, SignalList } from './SignalDisplay';
 
+// Import for default export
+import { MusicIcon as ImportedMusicIcon, OptimizedMusicIcon as ImportedOptimizedMusicIcon, useMusicIcon as ImportedUseMusicIcon } from './MusicIcon';
+import { SignalAnimation as ImportedSignalAnimation } from './SignalAnimation';
+import { SignalDisplay as ImportedSignalDisplay } from './SignalDisplay';
+
 // Export the main components
 export {
   MusicVisualizerComponent as MusicVisualizer,
@@ -34,7 +38,6 @@ export {
   SignalOrchestrationDisplayComponent as SignalOrchestrationDisplay,
   CompactMusicIndicator,
   MusicStatusBar,
-  FrequencySpectrum,
   HeaderSignalTicker,
   SignalOrchestrationHeader,
   AgentCard,
@@ -177,8 +180,10 @@ export default {
   setupMusicComponents,
   MusicComponentUtils,
 
-  // Legacy exports
-  MusicIcon,
-  SignalAnimation,
-  SignalDisplay,
+  // Legacy exports - Use imported components
+  MusicIcon: ImportedMusicIcon,
+  OptimizedMusicIcon: ImportedOptimizedMusicIcon,
+  useMusicIcon: ImportedUseMusicIcon,
+  SignalAnimation: ImportedSignalAnimation,
+  SignalDisplay: ImportedSignalDisplay,
 };

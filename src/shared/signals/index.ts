@@ -37,7 +37,7 @@ export type {
 
 // EventBus integration for TUI connectivity
 export { EventBusIntegrationManager, eventBusIntegration } from './event-bus-integration';
-export type { EventBusIntegration } from '../types/signals';
+export type { EventBusIntegration } from '../../types';
 
 // Signal flow coordination and pipeline management
 export { SignalFlowCoordinator, signalFlowCoordinator } from './signal-flow-coordinator';
@@ -53,11 +53,16 @@ export {
 export type { SignalSystemConfig, SignalSystemStatus } from './signal-system-integration';
 
 // Re-export Signal types for convenience
-export type { Signal, SignalEvent } from '../types/common';
+export type { Signal } from '../types/common';
+export type { SignalEvent } from '../../types';
 export type {
   EnhancedSignal,
-  SignalStatus,
+  SignalStatusType as SignalStatus,
+  SignalFilter,
+  SignalQueryResult
+} from '../types/signals';
+export type {
   SignalAggregation,
   SignalSubscription,
   SignalDisplay
-} from '../types/signals';
+} from '../../types';
