@@ -1,0 +1,195 @@
+{
+  "id": "implement-protocol",
+  "name": "Implementation Protocol",
+  "description": "Comprehensive implementation workflow with TDD approach and quality gates",
+  "version": "1.0.0",
+  "category": "implementation",
+  "priority": "critical",
+  "enabled": true,
+  "protocol": {
+    "id": "implementation-workflow",
+    "description": "Complete implementation process following TDD principles with continuous quality validation",
+    "steps": [
+      {
+        "id": "test-preparation",
+        "name": "Test Preparation (TDD First)",
+        "description": "Prepare comprehensive tests before implementation starts",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["test-specifications", "test-cases", "coverage-plan"],
+        "nextSteps": ["implementation-setup"]
+      },
+      {
+        "id": "implementation-setup",
+        "name": "Implementation Setup",
+        "description": "Set up development environment and initialize implementation",
+        "type": "action_execution",
+        "required": true,
+        "outputs": ["development-environment", "file-structure", "initial-commit"],
+        "nextSteps": ["core-implementation"]
+      },
+      {
+        "id": "core-implementation",
+        "name": "Core Implementation",
+        "description": "Implement core functionality following TDD red-green-refactor cycle",
+        "type": "action_execution",
+        "required": true,
+        "outputs": ["implemented-features", "test-results", "quality-metrics"],
+        "nextSteps": ["quality-validation"]
+      },
+      {
+        "id": "quality-validation",
+        "name": "Quality Validation",
+        "description": "Validate implementation quality and compliance with standards",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["quality-report", "lint-results", "test-coverage"],
+        "nextSteps": ["integration-testing"]
+      },
+      {
+        "id": "integration-testing",
+        "name": "Integration Testing",
+        "description": "Perform comprehensive integration and E2E testing",
+        "type": "action_execution",
+        "required": true,
+        "outputs": ["integration-results", "e2e-test-results", "performance-metrics"],
+        "nextSteps": ["implementation-review"]
+      },
+      {
+        "id": "implementation-review",
+        "name": "Implementation Review",
+        "description": "Review implementation completeness and quality",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["review-report", "approval-status", "feedback-items"],
+        "nextSteps": ["finalization"]
+      },
+      {
+        "id": "finalization",
+        "name": "Implementation Finalization",
+        "description": "Finalize implementation and prepare for testing phase",
+        "type": "action_execution",
+        "required": true,
+        "outputs": ["finalized-code", "documentation-updates", "test-readiness"],
+        "nextSteps": []
+      }
+    ],
+    "decisionPoints": [
+      {
+        "id": "quality-gate-check",
+        "question": "Does implementation meet quality gate requirements?",
+        "options": [
+          {
+            "id": "quality-passed",
+            "label": "Quality gates passed - proceed to testing",
+            "action": "approve-quality",
+            "nextSteps": ["integration-testing"]
+          },
+          {
+            "id": "quality-issues-minor",
+            "label": "Minor quality issues - fix and continue",
+            "action": "fix-minor-issues",
+            "nextSteps": ["core-implementation"]
+          },
+          {
+            "id": "quality-issues-major",
+            "label": "Major quality issues - requires significant refactoring",
+            "action": "major-refactoring-required",
+            "nextSteps": ["core-implementation"]
+          }
+        ],
+        "requiresInput": true
+      },
+      {
+        "id": "implementation-approval",
+        "question": "Is implementation ready for comprehensive testing phase?",
+        "options": [
+          {
+            "id": "approve-implementation",
+            "label": "Implementation approved - ready for testing",
+            "action": "move-to-testing",
+            "nextSteps": ["finalization"]
+          },
+          {
+            "id": "request-changes",
+            "label": "Changes required before testing",
+            "action": "request-implementation-changes",
+            "nextSteps": ["core-implementation"]
+          },
+          {
+            "id": "requires-redesign",
+            "label": "Requires significant redesign",
+            "action": "back-to-planning",
+            "nextSteps": []
+          }
+        ],
+        "requiresInput": true
+      }
+    ],
+    "successCriteria": [
+      "Tests written before implementation (TDD approach)",
+      "All tests passing with 90%+ coverage",
+      "Code quality standards met (lint, formatting)",
+      "Integration tests passing",
+      "Performance requirements met",
+      "Documentation updated",
+      "Implementation review approved",
+      "Ready for comprehensive testing phase"
+    ],
+    "fallbackActions": [
+      "Refactor implementation to meet quality standards",
+      "Add missing test coverage",
+      "Optimize performance bottlenecks",
+      "Fix integration issues",
+      "Update documentation",
+      "Request additional development expertise"
+    ]
+  },
+  "requirements": [
+    {
+      "type": "tool",
+      "name": "Development Environment",
+      "required": true,
+      "check": "async () => await FileUtils.pathExists('src')",
+      "errorMessage": "Development environment required"
+    },
+    {
+      "type": "tool",
+      "name": "Testing Framework",
+      "required": true,
+      "check": "async () => await FileUtils.pathExists('package.json')",
+      "errorMessage": "Testing framework required"
+    },
+    {
+      "type": "service",
+      "name": "Code Quality Tools",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Code quality tools (ESLint, Prettier) required"
+    }
+  ],
+  "prompts": {
+    "inspector": "You are an Implementation Inspector. Your role is to oversee implementation following TDD principles.\n\nTASK: Analyze implementation progress and ensure quality standards\n\nCONTEXT:\n{{context}}\n\nIMPLEMENTATION PLAN:\n{{implementationPlan}}\n\nCURRENT STATUS:\n{{implementationStatus}}\n\nTDD IMPLEMENTATION FRAMEWORK:\n1. **Test First**: Write tests before implementation\n2. **Red Phase**: Tests fail initially\n3. **Green Phase**: Write minimum code to pass tests\n4. **Refactor Phase**: Improve code while maintaining test success\n\nQUALITY VALIDATION:\n- **Code Quality**: Lint, formatting, style consistency\n- **Test Coverage**: Minimum 90% coverage required\n- **Integration Testing**: All integration points tested\n- **Performance**: Meets performance requirements\n- **Documentation**: Code comments and documentation updated\n\nIMPLEMENTATION AREAS:\n- **Core Functionality**: Main features implemented\n- **Error Handling**: Proper error handling and edge cases\n- **Integration**: Integration with existing systems\n- **Performance**: Optimization and efficiency\n- **Security**: Security best practices followed\n- **Documentation**: Code documentation and comments\n\nRESPOND WITH STRUCTURED JSON:\n{\n  \"implementation_analysis\": {\n    \"features_implemented\": [\n      {\n        \"feature\": string,\n        \"status\": \"complete\" | \"in_progress\" | \"not_started\",\n        \"test_coverage\": number (0-100),\n        \"quality_score\": number (0-100),\n        \"issues\": string[]\n      }\n    ],\n    \"test_analysis\": {\n      \"total_tests\": number,\n      \"passing_tests\": number,\n      \"failing_tests\": number,\n      \"coverage_percentage\": number,\n      \"missing_test_areas\": string[],\n      \"test_quality_issues\": string[]\n    },\n    \"code_quality_analysis\": {\n      \"lint_issues\": number,\n      \"formatting_issues\": number,\n      \"style_violations\": number,\n      \"security_issues\": number,\n      \"performance_issues\": number,\n      \"maintainability_score\": number (0-100)\n    },\n    \"integration_analysis\": {\n      \"integration_points_tested\": string[],\n      \"integration_issues\": string[],\n      \"api_compatibility\": boolean,\n      \"database_compatibility\": boolean\n    },\n    \"performance_analysis\": {\n      \"performance_metrics_met\": boolean,\n      \"bottlenecks_identified\": string[],\n      \"optimization_opportunities\": string[],\n      \"memory_usage\": string,\n      \"execution_time\": string\n    }\n  },\n  \"quality_assessment\": {\n    \"overall_quality_score\": number (0-100),\n    \"tdd_compliance\": boolean,\n    \"ready_for_testing\": boolean,\n    \"blocking_issues\": string[],\n    \"recommendations\": string[],\n    \"next_actions\": string[]\n  },\n  \"implementation_review\": {\n    \"completeness_assessment\": {\n      \"requirements_implemented\": number (0-100),\n      \"missing_features\": string[],\n      \"additional_features_implemented\": string[]\n    },\n    \"compliance_check\": {\n      \"coding_standards_met\": boolean,\n      \"security_standards_met\": boolean,\n      \"documentation_complete\": boolean,\n      \"testing_complete\": boolean\n    },\n    \"readiness_assessment\": {\n      \"ready_for_review\": boolean,\n      \"ready_for_testing\": boolean,\n      \"blockers\": string[],\n      \"dependencies_satisfied\": boolean\n    }\n  }\n}",
+    "orchestrator": "You are an Implementation Orchestrator. Based on the Inspector's analysis, guide implementation to completion.\n\nINSPECTOR ANALYSIS:\n{{inspectorAnalysis}}\n\nCONTEXT:\n{{context}}\n\nYOUR ROLE:\n1. **Review Progress**: Assess implementation status and quality\n2. **Make Decisions**: Approve progress or request changes\n3. **Guide Development**: Provide specific implementation guidance\n4. **Ensure Quality**: Maintain TDD principles and quality standards\n\nDECISION CRITERIA:\n- **Test Coverage**: Minimum 90% coverage required\n- **Code Quality**: All lint and quality checks must pass\n- **Functionality**: All required features implemented\n- **Integration**: All integration points working\n- **Performance**: Performance requirements met\n- **Documentation**: Documentation complete and updated\n\nTDD COMPLIANCE:\n- Tests written before implementation\n- All tests passing\n- Refactoring done while maintaining test success\n- Test coverage meets requirements\n\nQUALITY GATES:\n- Code style and formatting consistent\n- No security vulnerabilities\n- Performance within acceptable limits\n- Integration tests passing\n- Documentation complete\n\nIMPLEMENTATION GUIDANCE:\n- Follow TDD red-green-refactor cycle\n- Maintain test coverage standards\n- Ensure code quality at each step\n- Document implementation decisions\n- Handle edge cases and errors\n\nEXECUTE ACTIONS:\n1. Review implementation progress and quality\n2. Make approval decisions with specific conditions\n3. Provide implementation guidance and corrections\n4. Ensure TDD principles are followed\n5. Coordinate testing and validation\n6. Prepare for next implementation phase\n\nRESPOND WITH:\n1. Implementation status assessment and approval decision\n2. Specific guidance for implementation improvements\n3. TDD compliance assessment and corrections needed\n4. Quality gate validation results\n5. Next implementation steps and priorities\n6. Testing coordination requirements\n7. Documentation and finalization instructions"
+  },
+  "tokenLimits": {
+    "inspector": 30000,
+    "orchestrator": 25000
+  },
+  "tools": [
+    "test-runner",
+    "code-quality-checker",
+    "coverage-analyzer",
+    "performance-profiler",
+    "integration-tester",
+    "documentation-generator"
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "author": "system",
+    "createdAt": "2025-01-09T00:00:00Z",
+    "lastModified": "2025-01-09T00:00:00Z",
+    "tags": ["implementation", "tdd", "quality-gates", "testing", "code-quality"],
+    "dependencies": []
+  }
+}

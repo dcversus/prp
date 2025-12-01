@@ -1,0 +1,199 @@
+{
+  "id": "test-protocol",
+  "name": "Testing Protocol",
+  "description": "Comprehensive testing workflow with E2E validation and LLM-judge integration",
+  "version": "1.0.0",
+  "category": "testing",
+  "priority": "critical",
+  "enabled": true,
+  "protocol": {
+    "id": "comprehensive-testing-workflow",
+    "description": "Complete testing process including unit, integration, E2E, and LLM-judge validation",
+    "steps": [
+      {
+        "id": "test-plan-validation",
+        "name": "Test Plan Validation",
+        "description": "Validate and finalize comprehensive test plan",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["validated-test-plan", "test-coverage-requirements", "testing-resources"],
+        "nextSteps": ["unit-testing"]
+      },
+      {
+        "id": "unit-testing",
+        "name": "Unit Testing Execution",
+        "description": "Execute comprehensive unit test suite",
+        "type": "action_execution",
+        "required": true,
+        "outputs": ["unit-test-results", "coverage-report", "unit-test-metrics"],
+        "nextSteps": ["integration-testing"]
+      },
+      {
+        "id": "integration-testing",
+        "name": "Integration Testing",
+        "description": "Execute integration tests for all system components",
+        "type": "action_execution",
+        "required": true,
+        "outputs": ["integration-results", "api-tests", "database-tests"],
+        "nextSteps": ["e2e-testing"]
+      },
+      {
+        "id": "e2e-testing",
+        "name": "End-to-End Testing",
+        "description": "Execute comprehensive E2E test scenarios",
+        "type": "action_execution",
+        "required": true,
+        "outputs": ["e2e-results", "user-scenarios", "workflow-tests"],
+        "nextSteps": ["performance-testing"]
+      },
+      {
+        "id": "performance-testing",
+        "name": "Performance Testing",
+        "description": "Execute performance and load testing",
+        "type": "action_execution",
+        "required": true,
+        "outputs": ["performance-results", "load-tests", "stress-tests"],
+        "nextSteps": ["llm-judge-testing"]
+      },
+      {
+        "id": "llm-judge-testing",
+        "name": "LLM-Judge Validation",
+        "description": "LLM-judge based testing and validation",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["llm-judge-results", "ai-validation-report", "quality-assessment"],
+        "nextSteps": ["test-analysis"]
+      },
+      {
+        "id": "test-analysis",
+        "name": "Test Results Analysis",
+        "description": "Comprehensive analysis of all test results",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["test-summary", "quality-assessment", "release-readiness"],
+        "nextSteps": ["test-reporting"]
+      },
+      {
+        "id": "test-reporting",
+        "name": "Test Reporting",
+        "description": "Generate comprehensive test reports and documentation",
+        "type": "action_execution",
+        "required": true,
+        "outputs": ["test-reports", "quality-metrics", "release-recommendation"],
+        "nextSteps": []
+      }
+    ],
+    "decisionPoints": [
+      {
+        "id": "test-quality-gate",
+        "question": "Do test results meet quality gate requirements?",
+        "options": [
+          {
+            "id": "tests-passed",
+            "label": "All tests passed - ready for release",
+            "action": "approve-release-testing",
+            "nextSteps": ["test-reporting"]
+          },
+          {
+            "id": "minor-issues",
+            "label": "Minor test issues - fix and retest",
+            "action": "fix-minor-test-issues",
+            "nextSteps": ["unit-testing"]
+          },
+          {
+            "id": "major-issues",
+            "label": "Major test failures - requires implementation fixes",
+            "action": "request-implementation-fixes",
+            "nextSteps": []
+          }
+        ],
+        "requiresInput": true
+      },
+      {
+        "id": "llm-judge-approval",
+        "question": "Does LLM-judge validation meet quality standards?",
+        "options": [
+          {
+            "id": "llm-approval",
+            "label": "LLM-judge approval - validation passed",
+            "action": "llm-validation-approved",
+            "nextSteps": ["test-analysis"]
+          },
+          {
+            "id": "llm-concerns",
+            "label": "LLM-judge has concerns - additional validation needed",
+            "action": "additional-llm-validation",
+            "nextSteps": ["e2e-testing"]
+          }
+        ],
+        "requiresInput": true
+      }
+    ],
+    "successCriteria": [
+      "Test plan comprehensive and validated",
+      "Unit tests: 95%+ coverage, all passing",
+      "Integration tests: All integration points tested and passing",
+      "E2E tests: All user scenarios tested and passing",
+      "Performance tests: All performance requirements met",
+      "LLM-judge validation: Quality assessment passed",
+      "Test analysis: Comprehensive analysis completed",
+      "Test reports: Detailed reports generated and documented"
+    ],
+    "fallbackActions": [
+      "Fix failing tests and update code",
+      "Add missing test coverage",
+      "Optimize performance bottlenecks",
+      "Resolve integration issues",
+      "Address LLM-judge concerns",
+      "Update test cases and scenarios"
+    ]
+  },
+  "requirements": [
+    {
+      "type": "tool",
+      "name": "Testing Framework",
+      "required": true,
+      "check": "async () => await FileUtils.pathExists('package.json')",
+      "errorMessage": "Testing framework required"
+    },
+    {
+      "type": "service",
+      "name": "LLM-Judge Service",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "LLM-judge validation service required"
+    },
+    {
+      "type": "environment",
+      "name": "Test Environment",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Standalone test environment required"
+    }
+  ],
+  "prompts": {
+    "inspector": "You are a Testing Inspector. Your role is to oversee comprehensive testing and validation.\n\nTASK: Analyze test results and ensure comprehensive validation\n\nCONTEXT:\n{{context}}\n\nIMPLEMENTATION DETAILS:\n{{implementationDetails}}\n\nTEST RESULTS:\n{{testResults}}\n\nCOMPREHENSIVE TESTING FRAMEWORK:\n1. **Unit Testing**: Individual component testing\n2. **Integration Testing**: Component interaction testing\n3. **E2E Testing**: Complete workflow testing\n4. **Performance Testing**: Load and stress testing\n5. **LLM-Judge Testing**: AI-based validation\n\nTESTING CRITERIA:\n- **Unit Tests**: 95%+ coverage, all tests passing\n- **Integration Tests**: All integration points validated\n- **E2E Tests**: All user scenarios working\n- **Performance**: Meets performance requirements\n- **LLM-Judge**: AI validation passes quality gates\n\nQUALITY VALIDATION:\n- **Functionality**: All features working as specified\n- **Usability**: User interface and experience validated\n- **Performance**: Response times and resource usage acceptable\n- **Security**: Security requirements validated\n- **Compatibility**: Cross-platform and browser compatibility\n\nANALYSIS AREAS:\n- **Test Coverage**: Comprehensive coverage analysis\n- **Test Quality**: Test effectiveness and relevance\n- **Bug Analysis**: Bug identification and prioritization\n- **Performance Analysis**: Performance bottlenecks and optimization\n- **User Experience**: Usability and accessibility assessment\n\nRESPOND WITH STRUCTURED JSON:\n{\n  \"test_analysis\": {\n    \"unit_test_analysis\": {\n      \"total_tests\": number,\n      \"passing_tests\": number,\n      \"failing_tests\": number,\n      \"coverage_percentage\": number,\n      \"critical_failures\": string[],\n      \"coverage_gaps\": string[],\n      \"test_quality_score\": number (0-100)\n    },\n    \"integration_test_analysis\": {\n      \"integration_points_tested\": string[],\n      \"passing_integrations\": string[],\n      \"failing_integrations\": string[],\n      \"api_compatibility\": boolean,\n      \"database_compatibility\": boolean,\n      \"integration_issues\": string[]\n    },\n    \"e2e_test_analysis\": {\n      \"user_scenarios_tested\": string[],\n      \"passing_scenarios\": string[],\n      \"failing_scenarios\": string[],\n      \"workflow_completeness\": number (0-100),\n      \"usability_issues\": string[],\n      \"accessibility_issues\": string[]\n    },\n    \"performance_test_analysis\": {\n      \"response_time_metrics\": {\n        \"average_response_time\": string,\n        \"max_response_time\": string,\n        \"p95_response_time\": string\n      },\n      \"resource_usage\": {\n        \"cpu_usage\": string,\n        \"memory_usage\": string,\n        \"disk_io\": string\n      },\n      \"load_test_results\": {\n        \"concurrent_users\": number,\n        \"requests_per_second\": number,\n        \"error_rate\": number\n      },\n      \"performance_issues\": string[]\n    },\n    \"llm_judge_analysis\": {\n      \"validation_score\": number (0-100),\n      \"quality_assessment\": {\n        \"functionality_score\": number (0-100),\n        \"usability_score\": number (0-100),\n        \"performance_score\": number (0-100),\n        \"security_score\": number (0-100)\n      },\n      \"ai_identified_issues\": string[],\n      \"recommendations\": string[],\n      \"validation_passed\": boolean\n    }\n  },\n  \"quality_assessment\": {\n    \"overall_quality_score\": number (0-100),\n    \"release_readiness\": boolean,\n    \"blocking_issues\": string[],\n    \"critical_bugs\": string[],\n    \"minor_issues\": string[],\n    \"performance_concerns\": string[],\n    \"security_concerns\": string[]\n  },\n  \"test_recommendations\": {\n    \"additional_tests_needed\": string[],\n    \"test_improvements\": string[],\n    \"coverage_improvements\": string[],\n    \"testing_strategy_updates\": string[]\n  },\n  \"release_validation\": {\n    \"meets_release_criteria\": boolean,\n    \"release_risks\": string[],\n    \"mitigation_strategies\": string[],\n    \"release_recommendation\": \"approve\" | \"approve_with_conditions\" | \"reject\"\n  }\n}",
+    "orchestrator": "You are a Testing Orchestrator. Based on the Inspector's comprehensive test analysis, make release decisions.\n\nINSPECTOR TEST ANALYSIS:\n{{inspectorAnalysis}}\n\nCONTEXT:\n{{context}}\n\nYOUR ROLE:\n1. **Review Test Results**: Assess comprehensive testing outcomes\n2. **Quality Gate Validation**: Ensure all quality gates passed\n3. **Release Decisions**: Make informed release recommendations\n4. **Risk Assessment**: Evaluate release risks and mitigation\n\nDECISION CRITERIA:\n- **Test Coverage**: Minimum 95% unit coverage required\n- **Test Success**: All tests must pass for release approval\n- **Performance**: Must meet performance requirements\n- **LLM-Judge**: AI validation must pass quality gates\n- **User Experience**: E2E scenarios must validate user experience\n- **Security**: Security validation must pass\n\nQUALITY GATES:\n- Unit tests: 95%+ coverage, 100% pass rate\n- Integration tests: All integration points validated\n- E2E tests: All user scenarios working\n- Performance: Meets defined performance criteria\n- LLM-Judge: Quality assessment above threshold\n- Security: No critical security issues\n\nRELEASE READINESS:\n- All quality gates passed\n- No critical blocking issues\n- Performance requirements met\n- Security validation complete\n- User experience validated\n- Documentation complete\n\nRISK ASSESSMENT:\n- Identify potential release risks\n- Assess risk impact and probability\n- Plan mitigation strategies\n- Define rollback procedures\n\nEXECUTE ACTIONS:\n1. Review comprehensive test analysis\n2. Validate all quality gates\n3. Make release approval decision\n4. Generate test reports\n5. Coordinate release preparation\n6. Document testing outcomes\n\nRESPOND WITH:\n1. Comprehensive test results assessment\n2. Quality gate validation results\n3. Release readiness decision with reasoning\n4. Risk assessment and mitigation strategies\n5. Test report generation instructions\n6. Release preparation requirements\n7. Post-release monitoring recommendations"
+  },
+  "tokenLimits": {
+    "inspector": 35000,
+    "orchestrator": 30000
+  },
+  "tools": [
+    "test-runner",
+    "coverage-analyzer",
+    "performance-profiler",
+    "e2e-tester",
+    "llm-judge-service",
+    "quality-gate-validator",
+    "report-generator"
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "author": "system",
+    "createdAt": "2025-01-09T00:00:00Z",
+    "lastModified": "2025-01-09T00:00:00Z",
+    "tags": ["testing", "e2e-testing", "quality-gates", "llm-judge", "performance-testing"],
+    "dependencies": []
+  }
+}

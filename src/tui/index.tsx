@@ -5,21 +5,25 @@
  * implementing the full specification from PRPs/tui-implementation.md
  */
 
-import React from 'react';
 import { render } from 'ink';
-import { TUIApp } from './components/TUIApp.js';
-import { TUIConfig, createTUIConfig } from './config/TUIConfig.js';
-import { EventBus } from '../shared/events.js';
-import { createLayerLogger } from '../shared/logger.js';
 
-const logger = createLayerLogger('tui-main');
+import { EventBus } from '../shared/events';
+import { createLayerLogger, setLoggerTUIMode } from '../shared/logger';
+
+import { TUIApp } from './components/TUIApp';
+import { TUIErrorBoundary } from './components/TUIErrorBoundary';
+import { createTUIConfig } from './config/TUIConfig';
+
+import type { TUIConfig} from './config/TUIConfig';
+
+const logger = createLayerLogger('tui');
 
 /**
  * Main TUI application launcher
  */
 export class TUIMain {
-  private config: TUIConfig;
-  private eventBus: EventBus;
+  private readonly config: TUIConfig;
+  private readonly eventBus: EventBus;
   private cleanup: (() => void) | null = null;
 
   constructor(customConfig?: Partial<TUIConfig>) {
@@ -29,8 +33,8 @@ export class TUIMain {
     logger.info('TUIMain', 'TUI initialized', {
       terminal: {
         columns: process.stdout.columns,
-        rows: process.stdout.rows
-      }
+        rows: process.stdout.rows,
+      },
     });
   }
 
@@ -44,9 +48,11 @@ export class TUIMain {
       // Set up terminal
       this.setupTerminal();
 
-      // Render the TUI app
+      // Render the TUI app with top-level error boundary
       const { waitUntilExit } = render(
-        <TUIApp config={this.config} eventBus={this.eventBus} />
+        <TUIErrorBoundary debugMode={this.config.debugMode || false}>
+          <TUIApp config={this.config} eventBus={this.eventBus} />
+        </TUIErrorBoundary>,
       );
 
       this.cleanup = () => {
@@ -56,9 +62,12 @@ export class TUIMain {
 
       // Wait for the app to exit
       await waitUntilExit;
-
     } catch (error) {
-      logger.error('start', 'Failed to start TUI', error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        'start',
+        'Failed to start TUI',
+        error instanceof Error ? error : new Error(String(error)),
+      );
       throw error;
     }
   }
@@ -77,6 +86,9 @@ export class TUIMain {
    * Setup terminal for TUI
    */
   private setupTerminal(): void {
+    // Clear screen completely and move cursor to top-left
+    process.stdout.write('\x1b[2J\x1b[H');
+
     // Hide cursor
     process.stdout.write('\x1b[?25l');
 
@@ -84,8 +96,8 @@ export class TUIMain {
     process.stdout.on('resize', () => {
       this.eventBus.emit('terminal.resize', {
         columns: process.stdout.columns,
-        rows: process.stdout.rows
-      });
+        rows: process.stdout.rows,
+      } as Record<string, unknown>);
     });
 
     // Handle process signals
@@ -111,7 +123,7 @@ export class TUIMain {
     process.stdout.write('\x1b[2J\x1b[H');
 
     // Show goodbye message
-    console.log('🎵 ♫ @dcversus/prp TUI stopped. Goodbye! 🎵');
+    logger.info('cleanupTerminal', '🎵 ♫ @dcversus/prp TUI stopped. Goodbye! 🎵');
   }
 }
 
@@ -119,12 +131,26 @@ export class TUIMain {
  * Launch TUI from command line
  */
 export async function launchTUI(customConfig?: Partial<TUIConfig>): Promise<void> {
+  // Set logger to TUI mode to disable console output and avoid interfering with Ink
+  // This prevents ALL JSON logs from appearing in TUI mode
+  setLoggerTUIMode(true);
+
   const tui = new TUIMain(customConfig);
 
   try {
     await tui.start();
   } catch (error) {
-    logger.error('launchTUI', 'TUI launch failed', error instanceof Error ? error : new Error(String(error)));
+    // Only log error if not in TUI mode (to avoid JSON output)
+    if (!(logger as any).config?.tuiMode) {
+      logger.error(
+        'launchTUI',
+        'TUI launch failed',
+        error instanceof Error ? error : new Error(String(error)),
+      );
+    }
     process.exit(1);
+  } finally {
+    // Restore normal logging when TUI exits
+    setLoggerTUIMode(false);
   }
 }

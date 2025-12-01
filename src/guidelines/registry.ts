@@ -4,9 +4,24 @@
  * Central registry for managing guidelines, their dependencies,
  * and signal mappings with enable/disable functionality.
  */
-
+ 
 import { EventEmitter } from 'events';
+
 import {
+  eventBus,
+  logger,
+  FileUtils,
+  ConfigUtils,
+  TimeUtils,
+  HashUtils,
+  Validator
+} from '../shared';
+import { configManager } from '../shared/config';
+
+import type {
+  Signal,
+  AgentRole} from '../shared';
+import type {
   GuidelineDefinition,
   GuidelineRegistry,
   GuidelineExecution,
@@ -20,21 +35,8 @@ import {
   SharedNoteInfo,
   EnvironmentInfo,
   ExecutionError,
-  GuidelineResult
+  GuidelineResult,
 } from './types';
-import {
-  Signal,
-  eventBus,
-  logger,
-  FileUtils,
-  ConfigUtils,
-  TimeUtils,
-  HashUtils,
-  Validator,
-  AgentRole
-} from '../shared';
-import { configManager, PRPConfig } from '../shared/config';
-
 // Interface for GitHub agent with credentials
 interface GitHubAgentConfig {
   type: string;
@@ -42,7 +44,6 @@ interface GitHubAgentConfig {
     token?: string;
   };
 }
-
 // Event data interfaces
 interface GuidelineCompletedEventData {
   executionId: string;
@@ -50,25 +51,24 @@ interface GuidelineCompletedEventData {
   result: unknown;
   performance: unknown;
 }
-
 interface GuidelineFailedEventData {
   executionId: string;
   guidelineId: string;
   error: ExecutionError;
   context: GuidelineContext;
 }
-
 /**
  * ♫ Guidelines Registry - The conductor's rulebook
  */
 export class GuidelinesRegistry extends EventEmitter {
-  private registry: GuidelineRegistry;
-  private executions: Map<string, GuidelineExecution> = new Map();
-  private metrics: Map<string, GuidelineMetrics> = new Map();
-  private templates: Map<string, GuidelineTemplate> = new Map();
-  private signalPatterns: Map<string, SignalPattern> = new Map();
-  private configPath: string = '.prp/guidelines.json';
-
+  private readonly registry: GuidelineRegistry;
+  private readonly executions = new Map<string, GuidelineExecution>();
+  private readonly metrics = new Map<string, GuidelineMetrics>();
+  private readonly templates = new Map<string, GuidelineTemplate>();
+  private readonly signalPatterns = new Map<string, SignalPattern>();
+  private readonly configPath = '.prp/guidelines.json';
+  private readonly defaultLanguage = 'EN';
+  private readonly supportedLanguages = new Set<string>(['EN', 'DE', 'SC']);
   constructor() {
     super();
     this.registry = {
@@ -76,12 +76,13 @@ export class GuidelinesRegistry extends EventEmitter {
       categories: new Map(),
       dependencies: new Map(),
       dependents: new Map(),
-      signalMappings: new Map()
+      signalMappings: new Map(),
+      languages: new Map(),
+      filePaths: new Map(),
     };
     this.initializeDefaultGuidelines();
     this.setupEventHandlers();
   }
-
   /**
    * Initialize default guidelines
    */
@@ -90,83 +91,91 @@ export class GuidelinesRegistry extends EventEmitter {
     this.registerGuideline({
       id: 'pull-request-analysis',
       name: 'Comprehensive Pull Request Analysis',
-      description: 'GitHub-integrated analysis of Pull Requests with implementation completeness assessment',
+      description:
+        'GitHub-integrated analysis of Pull Requests with implementation completeness assessment',
       category: 'development',
       priority: 'critical',
       enabled: true,
+      language: 'EN',
       protocol: {
         id: 'pull-request-analysis-protocol',
-        description: 'Complete Pull Request analysis workflow with GitHub data fetching and implementation assessment',
+        description:
+          'Complete Pull Request analysis workflow with GitHub data fetching and implementation assessment',
         steps: [
           {
             id: 'fetch-pull-request-data',
             name: 'Fetch Pull Request Data from GitHub',
-            description: 'Gather comprehensive Pull Request information including status, CI checks, comments, reviews, and files',
+            description:
+              'Gather comprehensive Pull Request information including status, CI checks, comments, reviews, and files',
             type: 'action_execution' as const,
             required: true,
             outputs: ['pr-data', 'ci-status', 'comments', 'reviews', 'files-changed'],
-            nextSteps: ['inspector-analysis']
+            nextSteps: ['inspector-analysis'],
           },
           {
             id: 'inspector-analysis',
             name: 'Inspector: Implementation Analysis',
-            description: 'Analyze how completely the Pull Request implements the requested task, match description vs actual code changes',
+            description:
+              'Analyze how completely the Pull Request implements the requested task, match description vs actual code changes',
             type: 'inspector_analysis' as const,
             required: true,
             outputs: ['implementation-analysis', 'task-completeness', 'requirement-compliance'],
-            nextSteps: ['structural-classification']
+            nextSteps: ['structural-classification'],
           },
           {
             id: 'structural-classification',
             name: 'Structural Classification',
-            description: 'Classify findings by priority/importance and create structured assessment',
+            description:
+              'Classify findings by priority/importance and create structured assessment',
             type: 'orchestrator_decision' as const,
             required: true,
             outputs: ['priority-classification', 'risk-assessment', 'next-actions'],
-            nextSteps: ['orchestrator-decision']
+            nextSteps: ['orchestrator-decision'],
           },
           {
             id: 'orchestrator-decision',
             name: 'Orchestrator: Decision & Action',
-            description: 'Make final Pull Request decision and take appropriate actions (approve, request changes, comment)',
+            description:
+              'Make final Pull Request decision and take appropriate actions (approve, request changes, comment)',
             type: 'orchestrator_decision' as const,
             required: true,
             outputs: ['final-decision', 'action-plan', 'feedback-generated'],
-            nextSteps: []
-          }
+            nextSteps: [],
+          },
         ],
         decisionPoints: [
           {
             id: 'approval-decision',
-            question: 'Based on the analysis, what is the appropriate action for this Pull Request?',
+            question:
+              'Based on the analysis, what is the appropriate action for this Pull Request?',
             options: [
               {
                 id: 'approve',
                 label: 'Approve Pull Request - Ready to merge',
                 action: 'approve-pr',
-                nextSteps: []
+                nextSteps: [],
               },
               {
                 id: 'changes',
                 label: 'Request Changes - Not ready yet',
                 action: 'request-changes',
-                nextSteps: []
+                nextSteps: [],
               },
               {
                 id: 'comment',
                 label: 'Add Comments - Minor issues only',
                 action: 'add-comments',
-                nextSteps: []
+                nextSteps: [],
               },
               {
                 id: 'escalate',
                 label: 'Escalate - Requires human review',
                 action: 'escalate-review',
-                nextSteps: []
-              }
+                nextSteps: [],
+              },
             ],
-            requiresInput: true
-          }
+            requiresInput: true,
+          },
         ],
         successCriteria: [
           'PR data fully fetched from GitHub',
@@ -174,14 +183,14 @@ export class GuidelinesRegistry extends EventEmitter {
           'Description vs realization analyzed',
           'Structural classification completed',
           'Action taken (approve/changes/comments)',
-          'Feedback generated and posted'
+          'Feedback generated and posted',
         ],
         fallbackActions: [
           'Escalate to human reviewer',
           'Request more context from PR author',
           'Schedule follow-up review',
-          'Mark PR as needing additional work'
-        ]
+          'Mark PR as needing additional work',
+        ],
       },
       requirements: [
         {
@@ -191,33 +200,30 @@ export class GuidelinesRegistry extends EventEmitter {
           check: async () => {
             try {
               const config = configManager.get();
-              const hasGitHubAgent = config.agents.some(a => a.type.includes('github'));
-              const githubAgent = config.agents.find(a => a.type.includes('github')) as GitHubAgentConfig | undefined;
-              const hasToken = process.env.GITHUB_TOKEN ||
-                githubAgent?.credentials?.token;
+              const hasGitHubAgent = config.agents.some((a) => a.type.includes('github'));
+              const githubAgent = config.agents.find((a) => a.type.includes('github')) as
+                | GitHubAgentConfig
+                | undefined;
+              const hasToken = process.env.GITHUB_TOKEN ?? githubAgent?.credentials?.token;
               return Boolean(hasGitHubAgent && hasToken);
             } catch {
               return false;
             }
           },
-          errorMessage: 'GitHub API access with valid token required for PR analysis'
-        }
+          errorMessage: 'GitHub API access with valid token required for PR analysis',
+        },
       ],
       prompts: {
         inspector: `You are a PR Implementation Inspector. Your role is to analyze how completely the PR implements the requested task.
-
 TASK: Assess implementation completeness and description vs realization match
-
 CONTEXT:
 {{context}}
-
 PR DATA:
 {{prData}}
 CI STATUS: {{ciStatus}}
 COMMENTS: {{comments}}
 REVIEWS: {{reviews}}
 FILES CHANGED: {{filesChanged}}
-
 ANALYSIS FOCUS:
 1. **Task Implementation**: How much of the requested task/feature is actually implemented?
 2. **Description Match**: Does the actual implementation match the PR description?
@@ -225,7 +231,6 @@ ANALYSIS FOCUS:
 4. **Code Quality**: Is the implementation well-structured and maintainable?
 5. **Testing**: Are appropriate tests included?
 6. **Edge Cases**: Are edge cases handled appropriately?
-
 RESPOND WITH STRUCTURED JSON:
 {
   "implementation_analysis": {
@@ -278,68 +283,57 @@ RESPOND WITH STRUCTURED JSON:
   }
 }`,
         orchestrator: `You are a PR Review Orchestrator. Based on the Inspector's analysis, make final decisions and take actions.
-
 INSPECTOR ANALYSIS:
 {{inspectorAnalysis}}
-
 PR CONTEXT:
 {{context}}
-
 YOUR ROLE:
 1. **Evaluate Inspector Findings**: Review the implementation analysis
 2. **Structural Classification**: Organize issues by priority and importance
 3. **Decision Making**: Choose appropriate action (approve/request changes/comment)
 4. **Action Execution**: Use GitHub tools to post comments, reviews, or approvals
-
 CLASSIFICATION FRAMEWORK:
 - **Critical**: Must fix before merge (security, functionality, major bugs)
 - **High**: Should fix before merge (performance, important edge cases)
 - **Medium**: Nice to have (code quality, documentation)
 - **Low**: Cosmetic issues (style, minor improvements)
-
 ACTION OPTIONS:
 - **Approve**: PR is ready, no blocking issues
 - **Request Changes**: Has blocking issues that need fixing
 - **Comment**: Minor issues only, can merge with suggestions
 - **Escalate**: Complex issues requiring human judgment
-
 EXECUTE APPROPRIATE ACTIONS using GitHub API tools.
-
 RESPOND WITH:
 1. Final decision with reasoning
 2. Action taken (comment posted, review created, etc.)
 3. Next steps for PR author
-4. Any follow-up needed`
+4. Any follow-up needed`,
       },
       tokenLimits: {
         inspector: 35000,
-        orchestrator: 25000
+        orchestrator: 25000,
       },
-      tools: [
-        'github-api',
-        'file-reader',
-        'comment-generator',
-        'review-creator',
-        'pr-analyzer'
-      ],
+      tools: ['github-api', 'file-reader', 'comment-generator', 'review-creator', 'pr-analyzer'],
       metadata: {
         version: '2.0.0',
         author: 'system',
         createdAt: new Date(),
         lastModified: new Date(),
         tags: ['pr-analysis', 'github', 'implementation-review', 'quality-assessment'],
-        dependencies: []
-      }
+        dependencies: [],
+        language: 'EN',
+      },
     });
-
     // Security Review Guideline - Specialized for security analysis
     this.registerGuideline({
       id: 'security-review',
       name: 'Security Vulnerability Assessment',
-      description: 'Specialized security analysis for PRs with focus on vulnerabilities and best practices',
+      description:
+        'Specialized security analysis for PRs with focus on vulnerabilities and best practices',
       category: 'security',
       priority: 'critical',
       enabled: true,
+      language: 'EN',
       protocol: {
         id: 'pull-request-security-analysis-protocol',
         description: 'Comprehensive security analysis of code changes',
@@ -351,7 +345,7 @@ RESPOND WITH:
             type: 'inspector_analysis',
             required: true,
             outputs: ['security-pr-data', 'changed-files', 'dependencies'],
-            nextSteps: ['vulnerability-scan']
+            nextSteps: ['vulnerability-scan'],
           },
           {
             id: 'vulnerability-scan',
@@ -360,7 +354,7 @@ RESPOND WITH:
             type: 'inspector_analysis',
             required: true,
             outputs: ['vulnerability-findings', 'risk-assessment', 'security-issues'],
-            nextSteps: ['security-classification']
+            nextSteps: ['security-classification'],
           },
           {
             id: 'security-classification',
@@ -369,7 +363,7 @@ RESPOND WITH:
             type: 'orchestrator_decision',
             required: true,
             outputs: ['severity-classification', 'security-recommendations'],
-            nextSteps: ['orchestrator-security-decision']
+            nextSteps: ['orchestrator-security-decision'],
           },
           {
             id: 'orchestrator-security-decision',
@@ -378,8 +372,8 @@ RESPOND WITH:
             type: 'orchestrator_decision',
             required: true,
             outputs: ['security-decision', 'security-report', 'blocking-issues'],
-            nextSteps: []
-          }
+            nextSteps: [],
+          },
         ],
         decisionPoints: [
           {
@@ -390,36 +384,36 @@ RESPOND WITH:
                 id: 'approve-secure',
                 label: 'Approve - No security issues',
                 action: 'security-approve',
-                nextSteps: []
+                nextSteps: [],
               },
               {
                 id: 'request-fixes',
                 label: 'Request Security Fixes',
                 action: 'security-changes',
-                nextSteps: []
+                nextSteps: [],
               },
               {
-              id: 'block-merge',
+                id: 'block-merge',
                 label: 'Block Merge - Critical Issues',
                 action: 'security-block',
-                nextSteps: []
-              }
+                nextSteps: [],
+              },
             ],
-            requiresInput: true
-          }
+            requiresInput: true,
+          },
         ],
         successCriteria: [
           'Security vulnerabilities identified',
           'Risk assessment completed',
           'Severity classification done',
           'Security recommendations provided',
-          'Decision made on security grounds'
+          'Decision made on security grounds',
         ],
         fallbackActions: [
           'Escalate to security expert',
           'Request security audit',
-          'Mark as security-sensitive'
-        ]
+          'Mark as security-sensitive',
+        ],
       },
       requirements: [
         {
@@ -428,28 +422,25 @@ RESPOND WITH:
           required: true,
           check: async () => {
             const config = configManager.get();
-            const hasGitHubAgent = config.agents.some(a => a.type.includes('github'));
-            const githubAgent = config.agents.find(a => a.type.includes('github')) as GitHubAgentConfig | undefined;
-            const hasToken = process.env.GITHUB_TOKEN ||
-              githubAgent?.credentials?.token;
+            const hasGitHubAgent = config.agents.some((a) => a.type.includes('github'));
+            const githubAgent = config.agents.find((a) => a.type.includes('github')) as
+              | GitHubAgentConfig
+              | undefined;
+            const hasToken = process.env.GITHUB_TOKEN ?? githubAgent?.credentials?.token;
             return Boolean(hasGitHubAgent && hasToken);
           },
-          errorMessage: 'GitHub API access required for security review'
-        }
+          errorMessage: 'GitHub API access required for security review',
+        },
       ],
       prompts: {
         inspector: `You are a Security Inspector. Analyze the PR for security vulnerabilities.
-
 TASK: Comprehensive security vulnerability assessment
-
 CONTEXT:
 {{context}}
-
 PR DATA:
 {{prData}}
 FILES CHANGED:
 {{filesChanged}}
-
 SECURITY ANALYSIS FOCUS:
 1. **Common Vulnerabilities**: SQL injection, XSS, CSRF, authentication bypass
 2. **Dependency Security**: Check for vulnerable dependencies
@@ -459,7 +450,6 @@ SECURITY ANALYSIS FOCUS:
 6. **Configuration Security**: Hardcoded secrets, insecure configs
 7. **API Security**: Proper authentication, rate limiting
 8. **Infrastructure Security**: Docker, CI/CD security
-
 RESPOND WITH STRUCTURED JSON:
 {
   "security_analysis": {
@@ -508,41 +498,36 @@ RESPOND WITH STRUCTURED JSON:
   }
 }`,
         orchestrator: `You are a Security Review Orchestrator. Based on security analysis, make security-focused decisions.
-
 SECURITY ANALYSIS:
 {{inspectorAnalysis}}
-
 PR CONTEXT:
 {{context}}
-
 SECURITY DECISION FRAMEWORK:
 - **Critical**: Block merge, immediate fixes required
 - **High**: Request changes before merge
 - **Medium**: Can merge with security comments
 - **Low**: Merge with recommendations
-
 EXECUTE SECURITY-ACTIONS:
 1. Post security-focused review
 2. Create security bug reports if needed
 3. Request additional security scans
 4. Coordinate with security team
-
 RESPOND WITH:
 1. Security decision and reasoning
 2. Security review posted (if applicable)
 3. Security recommendations for team
-4. Follow-up security actions needed`
+4. Follow-up security actions needed`,
       },
       tokenLimits: {
         inspector: 30000,
-        orchestrator: 20000
+        orchestrator: 20000,
       },
       tools: [
         'github-api',
         'security-scanner',
         'dependency-checker',
         'file-reader',
-        'vulnerability-database'
+        'vulnerability-database',
       ],
       metadata: {
         version: '1.0.0',
@@ -550,10 +535,10 @@ RESPOND WITH:
         createdAt: new Date(),
         lastModified: new Date(),
         tags: ['security', 'vulnerability', 'security-review'],
-        dependencies: []
-      }
+        dependencies: [],
+        language: 'EN',
+      },
     });
-
     // Pull Request Performance Analysis Guideline - Specialized for performance impact in Pull Requests
     this.registerGuideline({
       id: 'pull-request-performance-analysis',
@@ -562,6 +547,7 @@ RESPOND WITH:
       category: 'performance',
       priority: 'high',
       enabled: true,
+      language: 'EN',
       protocol: {
         id: 'pull-request-performance-analysis-protocol',
         description: 'Comprehensive performance analysis of code changes',
@@ -573,7 +559,7 @@ RESPOND WITH:
             type: 'inspector_analysis',
             required: true,
             outputs: ['performance-pr-data', 'performance-files'],
-            nextSteps: ['performance-analysis']
+            nextSteps: ['performance-analysis'],
           },
           {
             id: 'performance-analysis',
@@ -582,7 +568,7 @@ RESPOND WITH:
             type: 'inspector_analysis',
             required: true,
             outputs: ['performance-findings', 'bottlenecks', 'optimization-opportunities'],
-            nextSteps: ['performance-classification']
+            nextSteps: ['performance-classification'],
           },
           {
             id: 'performance-classification',
@@ -591,7 +577,7 @@ RESPOND WITH:
             type: 'orchestrator_decision',
             required: true,
             outputs: ['impact-classification', 'performance-recommendations'],
-            nextSteps: ['orchestrator-performance-decision']
+            nextSteps: ['orchestrator-performance-decision'],
           },
           {
             id: 'orchestrator-performance-decision',
@@ -600,8 +586,8 @@ RESPOND WITH:
             type: 'orchestrator_decision',
             required: true,
             outputs: ['performance-decision', 'optimization-plan'],
-            nextSteps: []
-          }
+            nextSteps: [],
+          },
         ],
         decisionPoints: [
           {
@@ -612,36 +598,36 @@ RESPOND WITH:
                 id: 'approve-performant',
                 label: 'Approve - No performance issues',
                 action: 'performance-approve',
-                nextSteps: []
+                nextSteps: [],
               },
               {
                 id: 'request-optimizations',
                 label: 'Request Performance Optimizations',
                 action: 'performance-changes',
-                nextSteps: []
+                nextSteps: [],
               },
               {
                 id: 'requires-benchmarks',
                 label: 'Requires Performance Benchmarks',
                 action: 'performance-benchmarks',
-                nextSteps: []
-              }
+                nextSteps: [],
+              },
             ],
-            requiresInput: true
-          }
+            requiresInput: true,
+          },
         ],
         successCriteria: [
           'Performance implications analyzed',
           'Bottlenecks identified',
           'Optimization opportunities found',
           'Performance recommendations provided',
-          'Decision made on performance grounds'
+          'Decision made on performance grounds',
         ],
         fallbackActions: [
           'Request performance benchmarks',
           'Escalate to performance expert',
-          'Add performance monitoring'
-        ]
+          'Add performance monitoring',
+        ],
       },
       requirements: [
         {
@@ -650,28 +636,25 @@ RESPOND WITH:
           required: true,
           check: async () => {
             const config = configManager.get();
-            const hasGitHubAgent = config.agents.some(a => a.type.includes('github'));
-            const githubAgent = config.agents.find(a => a.type.includes('github')) as GitHubAgentConfig | undefined;
-            const hasToken = process.env.GITHUB_TOKEN ||
-              githubAgent?.credentials?.token;
+            const hasGitHubAgent = config.agents.some((a) => a.type.includes('github'));
+            const githubAgent = config.agents.find((a) => a.type.includes('github')) as
+              | GitHubAgentConfig
+              | undefined;
+            const hasToken = process.env.GITHUB_TOKEN ?? githubAgent?.credentials?.token;
             return Boolean(hasGitHubAgent && hasToken);
           },
-          errorMessage: 'GitHub API access required for performance review'
-        }
+          errorMessage: 'GitHub API access required for performance review',
+        },
       ],
       prompts: {
         inspector: `You are a Performance Inspector. Analyze the PR for performance implications.
-
 TASK: Comprehensive performance impact assessment
-
 CONTEXT:
 {{context}}
-
 PR DATA:
 {{prData}}
 FILES CHANGED:
 {{filesChanged}}
-
 PERFORMANCE ANALYSIS FOCUS:
 1. **Algorithm Complexity**: Big O analysis, efficiency considerations
 2. **Database Queries**: N+1 queries, missing indexes, query optimization
@@ -681,7 +664,6 @@ PERFORMANCE ANALYSIS FOCUS:
 6. **Scalability**: Load handling, concurrent operations
 7. **Resource Usage**: CPU, I/O, network efficiency
 8. **Caching Strategy**: Cache invalidation, hit rates
-
 RESPOND WITH STRUCTURED JSON:
 {
   "performance_analysis": {
@@ -737,40 +719,35 @@ RESPOND WITH STRUCTURED JSON:
   }
 }`,
         orchestrator: `You are a Performance Review Orchestrator. Based on performance analysis, make performance-focused decisions.
-
 PERFORMANCE ANALYSIS:
 {{inspectorAnalysis}}
-
 PR CONTEXT:
 {{context}}
-
 PERFORMANCE DECISION FRAMEWORK:
 - **High Impact**: Block or request optimization
 - **Medium Impact**: Can merge with performance comments
 - **Low Impact**: Merge with recommendations
-
 EXECUTE PERFORMANCE-ACTIONS:
 1. Post performance-focused review
 2. Request performance benchmarks if needed
 3. Suggest optimization strategies
 4. Coordinate with performance team
-
 RESPOND WITH:
 1. Performance decision and reasoning
 2. Performance review posted (if applicable)
 3. Optimization recommendations
-4. Performance monitoring suggestions`
+4. Performance monitoring suggestions`,
       },
       tokenLimits: {
         inspector: 25000,
-        orchestrator: 20000
+        orchestrator: 20000,
       },
       tools: [
         'github-api',
         'performance-analyzer',
         'file-reader',
         'complexity-analyzer',
-        'benchmark-runner'
+        'benchmark-runner',
       ],
       metadata: {
         version: '1.0.0',
@@ -778,13 +755,14 @@ RESPOND WITH:
         createdAt: new Date(),
         lastModified: new Date(),
         tags: ['performance', 'optimization', 'scalability'],
-        dependencies: []
-      }
+        dependencies: [],
+        language: 'EN',
+      },
     });
-
-    logger.info('shared', 'GuidelinesRegistry', 'Default guidelines registered', { guidelinesCount: this.registry.guidelines.size });
+    logger.info('shared', 'GuidelinesRegistry', 'Default guidelines registered', {
+      guidelinesCount: this.registry.guidelines.size,
+    });
   }
-
   /**
    * Setup event handlers
    */
@@ -795,7 +773,6 @@ RESPOND WITH:
         this.processSignal(event.data as Signal);
       }
     });
-
     // Listen to guideline completion events
     eventBus.subscribeToChannel('guidelines', (event) => {
       if (event.type === 'guideline_completed') {
@@ -805,7 +782,6 @@ RESPOND WITH:
       }
     });
   }
-
   /**
    * Register a new guideline
    */
@@ -814,30 +790,52 @@ RESPOND WITH:
     if (!this.validateGuideline(guideline)) {
       throw new Error(`Invalid guideline: ${guideline.id}`);
     }
-
+    // Set default language if not provided
+    if (!guideline.language) {
+      guideline.language = this.defaultLanguage;
+    }
     // Check for conflicts
     if (this.registry.guidelines.has(guideline.id)) {
-      logger.warn('shared', 'GuidelinesRegistry', `Guideline ${guideline.id} already exists, updating`, { guidelineId: guideline.id });
+      logger.warn(
+        'shared',
+        'GuidelinesRegistry',
+        `Guideline ${guideline.id} already exists, updating`,
+        { guidelineId: guideline.id },
+      );
     }
-
     // Register guideline
     this.registry.guidelines.set(guideline.id, guideline);
-
     // Update category mapping
     if (!this.registry.categories.has(guideline.category)) {
       this.registry.categories.set(guideline.category, new Set());
     }
-    this.registry.categories.get(guideline.category)!.add(guideline.id);
-
+    const categorySet = this.registry.categories.get(guideline.category);
+    if (categorySet) {
+      categorySet.add(guideline.id);
+    }
+    // Update language mapping
+    if (!this.registry.languages.has(guideline.language)) {
+      this.registry.languages.set(guideline.language, new Set());
+    }
+    const languageSet = this.registry.languages.get(guideline.language);
+    if (languageSet) {
+      languageSet.add(guideline.id);
+    }
+    // Update file path mapping
+    if (guideline.metadata.filePath) {
+      this.registry.filePaths.set(guideline.id, guideline.metadata.filePath);
+    }
     // Update dependencies
     this.registry.dependencies.set(guideline.id, new Set(guideline.metadata.dependencies));
     for (const dep of guideline.metadata.dependencies) {
       if (!this.registry.dependents.has(dep)) {
         this.registry.dependents.set(dep, new Set());
       }
-      this.registry.dependents.get(dep)!.add(guideline.id);
+      const dependentSet = this.registry.dependents.get(dep);
+      if (dependentSet) {
+        dependentSet.add(guideline.id);
+      }
     }
-
     // Initialize metrics
     if (!this.metrics.has(guideline.id)) {
       this.metrics.set(guideline.id, {
@@ -849,14 +847,20 @@ RESPOND WITH:
         averageTokenCost: 0,
         successRate: 0,
         popularSteps: {},
-        commonErrors: {}
+        commonErrors: {},
       });
     }
-
-    logger.info('shared', 'GuidelinesRegistry', `Guideline registered: ${guideline.id}`, { guidelineId: guideline.id });
+    logger.info(
+      'shared',
+      'GuidelinesRegistry',
+      `Guideline registered: ${guideline.id} (${guideline.language})`,
+      {
+        guidelineId: guideline.id,
+        language: guideline.language,
+      },
+    );
     this.emit('guideline_registered', guideline);
   }
-
   /**
    * Unregister a guideline
    */
@@ -865,16 +869,15 @@ RESPOND WITH:
     if (!guideline) {
       return false;
     }
-
     // Check for dependents
     const dependents = this.registry.dependents.get(guidelineId);
     if (dependents && dependents.size > 0) {
-      throw new Error(`Cannot unregister guideline ${guidelineId} - it has dependents: ${Array.from(dependents).join(', ')}`);
+      throw new Error(
+        `Cannot unregister guideline ${guidelineId} - it has dependents: ${Array.from(dependents).join(', ')}`,
+      );
     }
-
     // Remove from registry
     this.registry.guidelines.delete(guidelineId);
-
     // Update category mapping
     const categoryGuidelines = this.registry.categories.get(guideline.category);
     if (categoryGuidelines) {
@@ -883,7 +886,6 @@ RESPOND WITH:
         this.registry.categories.delete(guideline.category);
       }
     }
-
     // Remove dependencies
     this.registry.dependencies.delete(guidelineId);
     for (const dep of guideline.metadata.dependencies) {
@@ -895,15 +897,14 @@ RESPOND WITH:
         }
       }
     }
-
     // Remove metrics
     this.metrics.delete(guidelineId);
-
-    logger.info('shared', 'GuidelinesRegistry', `Guideline unregistered: ${guidelineId}`, { guidelineId });
+    logger.info('shared', 'GuidelinesRegistry', `Guideline unregistered: ${guidelineId}`, {
+      guidelineId,
+    });
     this.emit('guideline_unregistered', guidelineId);
     return true;
   }
-
   /**
    * Enable/disable a guideline
    */
@@ -912,54 +913,58 @@ RESPOND WITH:
     if (!guideline) {
       return false;
     }
-
     const wasEnabled = guideline.enabled;
     guideline.enabled = enabled;
     guideline.metadata.lastModified = new Date();
-
     if (wasEnabled !== enabled) {
-      logger.info('shared', 'GuidelinesRegistry',
-        `Guideline ${guidelineId} ${enabled ? 'enabled' : 'disabled'}`, { guidelineId, enabled });
+      logger.info(
+        'shared',
+        'GuidelinesRegistry',
+        `Guideline ${guidelineId} ${enabled ? 'enabled' : 'disabled'}`,
+        { guidelineId, enabled },
+      );
       this.emit('guideline_toggled', { guidelineId, enabled });
     }
-
     return true;
   }
-
   /**
    * Process a signal and trigger relevant guidelines
    */
   async processSignal(signal: Signal): Promise<void> {
     const triggeredGuidelines: string[] = [];
-
     // Find guidelines that match this signal
     for (const [guidelineId, guideline] of Array.from(this.registry.guidelines.entries())) {
       if (!guideline.enabled) {
         continue;
       }
-
       // Check if signal matches guideline patterns
       if (this.signalMatchesGuideline(signal, guideline)) {
         triggeredGuidelines.push(guidelineId);
       }
     }
-
     // Trigger guidelines
     for (const guidelineId of triggeredGuidelines) {
       try {
         await this.triggerGuideline(guidelineId, signal);
       } catch (error) {
-        logger.error('shared', 'GuidelinesRegistry',
-          `Failed to trigger guideline ${guidelineId}`, error instanceof Error ? error : new Error(String(error)), { guidelineId, signalType: signal.type });
+        logger.error(
+          'shared',
+          'GuidelinesRegistry',
+          `Failed to trigger guideline ${guidelineId}`,
+          error instanceof Error ? error : new Error(String(error)),
+          { guidelineId, signalType: signal.type },
+        );
       }
     }
-
     if (triggeredGuidelines.length > 0) {
-      logger.info('shared', 'GuidelinesRegistry',
-        `Signal ${signal.type} triggered guidelines: ${triggeredGuidelines.join(', ')}`, { signalType: signal.type, triggeredGuidelines });
+      logger.info(
+        'shared',
+        'GuidelinesRegistry',
+        `Signal ${signal.type} triggered guidelines: ${triggeredGuidelines.join(', ')}`,
+        { signalType: signal.type, triggeredGuidelines },
+      );
     }
   }
-
   /**
    * Check if a signal matches a guideline
    */
@@ -969,7 +974,6 @@ RESPOND WITH:
     const protocolTriggers = this.extractProtocolTriggers(guideline.protocol);
     return protocolTriggers.includes(signal.type);
   }
-
   /**
    * Extract trigger signals from protocol
    */
@@ -978,23 +982,23 @@ RESPOND WITH:
     // For now, return common signals
     return ['At', 'Bb', 'Ur', 'Co', 'Gt', 'Vd'];
   }
-
   /**
    * Trigger a guideline execution
    */
-  async triggerGuideline(guidelineId: string, triggerSignal: Signal, context?: unknown): Promise<string> {
+  async triggerGuideline(
+    guidelineId: string,
+    triggerSignal: Signal,
+    context?: unknown,
+  ): Promise<string> {
     const guideline = this.registry.guidelines.get(guidelineId);
     if (!guideline) {
       throw new Error(`Guideline not found: ${guidelineId}`);
     }
-
     if (!guideline.enabled) {
       throw new Error(`Guideline not enabled: ${guidelineId}`);
     }
-
     // Check dependencies
     await this.checkDependencies(guideline);
-
     // Create execution
     const executionId = HashUtils.generateId();
     const execution: GuidelineExecution = {
@@ -1003,39 +1007,40 @@ RESPOND WITH:
       triggerSignal,
       status: 'pending',
       startedAt: TimeUtils.now(),
-      context: this.createExecutionContext(guideline, triggerSignal, context as Record<string, unknown>),
+      context: this.createExecutionContext(
+        guideline,
+        triggerSignal,
+        context as Record<string, unknown>,
+      ),
       steps: [],
       performance: {
         totalDuration: 0,
         tokenUsage: {
           inspector: 0,
           orchestrator: 0,
-          total: 0
+          total: 0,
         },
-        stepBreakdown: {}
-      }
+        stepBreakdown: {},
+      },
     };
-
     this.executions.set(executionId, execution);
-
     // Update metrics
     this.updateMetrics(guidelineId, 'execution_started');
-
     // Emit event
     this.emit('guideline_triggered', {
       guidelineId,
       executionId,
       triggerSignal,
-      context: execution.context
+      context: execution.context,
     });
-
-    logger.info('shared', 'GuidelinesRegistry',
+    logger.info(
+      'shared',
+      'GuidelinesRegistry',
       `Guideline ${guidelineId} triggered by signal ${triggerSignal.type}`,
-      { executionId });
-
+      { executionId },
+    );
     return executionId;
   }
-
   /**
    * Check guideline dependencies
    */
@@ -1045,37 +1050,38 @@ RESPOND WITH:
       if (!depGuideline) {
         throw new Error(`Dependency not found: ${depId}`);
       }
-
       if (!depGuideline.enabled) {
         throw new Error(`Dependency not enabled: ${depId}`);
       }
     }
-
     // Check requirements
     for (const requirement of guideline.requirements) {
       if (requirement.required) {
-        const satisfied = await requirement.check();
+        const satisfied = requirement.check ? await requirement.check() : true;
         if (!satisfied) {
-          throw new Error(`Requirement not satisfied: ${requirement.name} - ${requirement.errorMessage}`);
+          throw new Error(
+            `Requirement not satisfied: ${requirement.name} - ${requirement.errorMessage}`,
+          );
         }
       }
     }
   }
-
   /**
    * Create execution context
    */
   private createExecutionContext(
     guideline: GuidelineDefinition,
     triggerSignal: Signal,
-    additionalContext?: Record<string, unknown>
+    additionalContext?: Record<string, unknown>,
   ): GuidelineContext {
     return {
       guidelineId: guideline.id,
       executionId: HashUtils.generateId(),
       triggerSignal,
-      worktree: additionalContext?.['worktree'] as string | undefined,
-      agent: additionalContext?.['agent'] as AgentRole | undefined,
+      ...(additionalContext?.['worktree']
+        ? { worktree: additionalContext['worktree'] as string }
+        : {}),
+      ...(additionalContext?.['agent'] ? { agent: additionalContext['agent'] as AgentRole } : {}),
       additionalContext: {
         activePRPs: (additionalContext?.['activePRPs'] as string[]) || [],
         recentActivity: (additionalContext?.['recentActivity'] as ActivityEntry[]) || [],
@@ -1084,7 +1090,7 @@ RESPOND WITH:
           totalLimit: 1000000,
           approachingLimit: false,
           criticalLimit: false,
-          agentBreakdown: {}
+          agentBreakdown: {},
         },
         agentStatus: (additionalContext?.['agentStatus'] as AgentStatusInfo[]) || [],
         sharedNotes: (additionalContext?.['sharedNotes'] as SharedNoteInfo[]) || [],
@@ -1093,8 +1099,8 @@ RESPOND WITH:
           branch: 'main',
           availableTools: guideline.tools,
           systemCapabilities: [],
-          constraints: {}
-        }
+          constraints: {},
+        },
       },
       configuration: {
         enabled: true,
@@ -1106,19 +1112,17 @@ RESPOND WITH:
           timeout: 300000, // 5 minutes
           retryAttempts: 3,
           parallelExecution: false,
-          requireApproval: false
-        }
-      }
+          requireApproval: false,
+        },
+      },
     };
   }
-
   /**
    * Get guideline execution
    */
   getExecution(executionId: string): GuidelineExecution | undefined {
     return this.executions.get(executionId);
   }
-
   /**
    * Update execution status
    */
@@ -1127,18 +1131,15 @@ RESPOND WITH:
     if (!execution) {
       return;
     }
-
     Object.assign(execution, updates);
     this.emit('execution_updated', { executionId, execution, updates });
   }
-
   /**
    * Handle guideline completion
    */
   private handleGuidelineCompleted(data: GuidelineCompletedEventData): void {
     const { executionId, result, performance } = data;
     const execution = this.executions.get(executionId);
-
     if (execution) {
       execution.status = 'completed';
       execution.completedAt = TimeUtils.now();
@@ -1152,46 +1153,58 @@ RESPOND WITH:
         };
         stepBreakdown: Record<string, number>;
       };
-
-      this.updateMetrics(execution.guidelineId, 'execution_completed', performance as {
-        totalDuration?: number;
-        tokenUsage?: { total?: number };
-      });
-      logger.info('shared', 'GuidelinesRegistry',
-        `Guideline execution completed: ${execution.guidelineId}`, { executionId });
+      this.updateMetrics(
+        execution.guidelineId,
+        'execution_completed',
+        performance as {
+          totalDuration?: number;
+          tokenUsage?: { total?: number };
+        },
+      );
+      logger.info(
+        'shared',
+        'GuidelinesRegistry',
+        `Guideline execution completed: ${execution.guidelineId}`,
+        { executionId },
+      );
     }
   }
-
   /**
    * Handle guideline failure
    */
   private handleGuidelineFailed(data: GuidelineFailedEventData): void {
     const { executionId, error } = data;
     const execution = this.executions.get(executionId);
-
     if (execution) {
       execution.status = 'failed';
       execution.completedAt = TimeUtils.now();
       execution.error = {
         code: error.code,
         message: error.message,
-        details: error.details,
-        stack: error.stack,
-        stepId: error.stepId,
+        ...(error.details !== undefined && { details: error.details }),
+        ...(error.stack !== undefined && { stack: error.stack }),
+        ...(error.stepId !== undefined && { stepId: error.stepId }),
         recoverable: error.recoverable,
-        suggestions: error.suggestions
+        suggestions: error.suggestions,
       };
-
       this.updateMetrics(execution.guidelineId, 'execution_failed');
-      logger.error('shared', 'GuidelinesRegistry',
-        `Guideline execution failed: ${execution.guidelineId}`, new Error(error.message), { executionId });
+      logger.error(
+        'shared',
+        'GuidelinesRegistry',
+        `Guideline execution failed: ${execution.guidelineId}`,
+        new Error(error.message),
+        { executionId },
+      );
     }
   }
-
   /**
    * Update guideline metrics
    */
-  private updateMetrics(guidelineId: string, event: string, performance?: { totalDuration?: number; tokenUsage?: { total?: number } }): void {
+  private updateMetrics(
+    guidelineId: string,
+    event: string,
+    performance?: { totalDuration?: number; tokenUsage?: { total?: number } },
+  ): void {
     let metrics = this.metrics.get(guidelineId);
     if (!metrics) {
       metrics = {
@@ -1203,51 +1216,48 @@ RESPOND WITH:
         averageTokenCost: 0,
         successRate: 0,
         popularSteps: {},
-        commonErrors: {}
+        commonErrors: {},
       };
       this.metrics.set(guidelineId, metrics);
     }
-
     switch (event) {
       case 'execution_started':
         metrics.totalExecutions++;
         break;
-
       case 'execution_completed':
         metrics.successfulExecutions++;
         if (performance) {
           // Update averages
-          const totalTime = metrics.averageExecutionTime * (metrics.successfulExecutions - 1) + (performance?.totalDuration || 0);
+          const totalTime =
+            metrics.averageExecutionTime * (metrics.successfulExecutions - 1) +
+            (performance.totalDuration ?? 0);
           metrics.averageExecutionTime = totalTime / metrics.successfulExecutions;
-
-          const totalCost = metrics.averageTokenCost * (metrics.successfulExecutions - 1) + (performance?.tokenUsage?.total || 0);
+          const totalCost =
+            metrics.averageTokenCost * (metrics.successfulExecutions - 1) +
+            (performance.tokenUsage?.total ?? 0);
           metrics.averageTokenCost = totalCost / metrics.successfulExecutions;
         }
         break;
-
       case 'execution_failed':
         metrics.failedExecutions++;
         break;
     }
-
     // Update success rate
-    metrics.successRate = metrics.totalExecutions > 0 ? metrics.successfulExecutions / metrics.totalExecutions : 0;
+    metrics.successRate =
+      metrics.totalExecutions > 0 ? metrics.successfulExecutions / metrics.totalExecutions : 0;
   }
-
   /**
    * Get all guidelines
    */
   getAllGuidelines(): GuidelineDefinition[] {
     return Array.from(this.registry.guidelines.values());
   }
-
   /**
    * Get guideline by ID
    */
   getGuideline(guidelineId: string): GuidelineDefinition | undefined {
     return this.registry.guidelines.get(guidelineId);
   }
-
   /**
    * Get guidelines by category
    */
@@ -1256,19 +1266,65 @@ RESPOND WITH:
     if (!guidelineIds) {
       return [];
     }
-
     return Array.from(guidelineIds)
-      .map(id => this.registry.guidelines.get(id))
+      .map((id) => this.registry.guidelines.get(id))
       .filter(Boolean) as GuidelineDefinition[];
   }
-
+  /**
+   * Get guidelines by language
+   */
+  getGuidelinesByLanguage(language: string): GuidelineDefinition[] {
+    const guidelineIds = this.registry.languages.get(language);
+    if (!guidelineIds) {
+      return [];
+    }
+    return Array.from(guidelineIds)
+      .map((id) => this.registry.guidelines.get(id))
+      .filter(Boolean) as GuidelineDefinition[];
+  }
+  /**
+   * Get guideline with language fallback
+   */
+  getGuidelineWithFallback(
+    guidelineId: string,
+    preferredLanguage?: string,
+  ): GuidelineDefinition | undefined {
+    const guideline = this.registry.guidelines.get(guidelineId);
+    if (!guideline) {
+      return undefined;
+    }
+    // If guideline matches preferred language or no preference, return it
+    if (!preferredLanguage || guideline.language === preferredLanguage) {
+      return guideline;
+    }
+    // Try to find same guideline in preferred language
+    const languageGuidelines = this.getGuidelinesByLanguage(preferredLanguage);
+    const fallback = languageGuidelines.find(
+      (g) =>
+        g.id === guidelineId ||
+        g.id.startsWith(guidelineId.split('-')[0] || '') ||
+        g.name === guideline.name,
+    );
+    return fallback || guideline;
+  }
+  /**
+   * Get supported languages
+   */
+  getSupportedLanguages(): string[] {
+    return Array.from(this.supportedLanguages);
+  }
+  /**
+   * Get available languages (languages that have guidelines)
+   */
+  getAvailableLanguages(): string[] {
+    return Array.from(this.registry.languages.keys());
+  }
   /**
    * Get enabled guidelines
    */
   getEnabledGuidelines(): GuidelineDefinition[] {
-    return this.getAllGuidelines().filter(g => g.enabled);
+    return this.getAllGuidelines().filter((g) => g.enabled);
   }
-
   /**
    * Get guideline metrics
    */
@@ -1278,18 +1334,16 @@ RESPOND WITH:
     }
     return this.metrics;
   }
-
   /**
    * Get executions
    */
   getExecutions(status?: string): GuidelineExecution[] {
     const executions = Array.from(this.executions.values());
     if (status) {
-      return executions.filter(e => e.status === status);
+      return executions.filter((e) => e.status === status);
     }
     return executions;
   }
-
   /**
    * Validate guideline definition
    */
@@ -1299,10 +1353,17 @@ RESPOND WITH:
         Validator.isValidAgentId(guideline.id) &&
         guideline.name.length > 0 &&
         guideline.description.length > 0 &&
-        ['development', 'testing', 'deployment', 'security', 'performance', 'documentation', 'communication'].includes(guideline.category) &&
+        [
+          'development',
+          'testing',
+          'deployment',
+          'security',
+          'performance',
+          'documentation',
+          'communication',
+        ].includes(guideline.category) &&
         ['critical', 'high', 'medium', 'low'].includes(guideline.priority) &&
-        guideline.protocol &&
-        guideline.protocol.steps &&
+        guideline.protocol?.steps &&
         guideline.protocol.steps.length > 0 &&
         guideline.prompts.inspector.length > 0 &&
         guideline.prompts.orchestrator.length > 0 &&
@@ -1313,7 +1374,6 @@ RESPOND WITH:
       return false;
     }
   }
-
   /**
    * Save registry to disk
    */
@@ -1324,16 +1384,22 @@ RESPOND WITH:
         metrics: Array.from(this.metrics.entries()),
         templates: Array.from(this.templates.entries()),
         signalPatterns: Array.from(this.signalPatterns.entries()),
-        lastSaved: TimeUtils.now().toISOString()
+        lastSaved: TimeUtils.now().toISOString(),
       };
-
       await FileUtils.writeTextFile(this.configPath, JSON.stringify(data, null, 2));
-      logger.debug('shared', 'GuidelinesRegistry', 'Guidelines registry saved', { guidelinesCount: this.registry.guidelines.size });
+      logger.debug('shared', 'GuidelinesRegistry', 'Guidelines registry saved', {
+        guidelinesCount: this.registry.guidelines.size,
+      });
     } catch (error) {
-      logger.error('shared', 'GuidelinesRegistry', 'Failed to save guidelines registry', error instanceof Error ? error : new Error(String(error)), { configPath: this.configPath });
+      logger.error(
+        'shared',
+        'GuidelinesRegistry',
+        'Failed to save guidelines registry',
+        error instanceof Error ? error : new Error(String(error)),
+        { configPath: this.configPath },
+      );
     }
   }
-
   /**
    * Load registry from disk
    */
@@ -1341,37 +1407,43 @@ RESPOND WITH:
     try {
       const exists = await FileUtils.pathExists(this.configPath);
       if (!exists) {
-        logger.info('shared', 'GuidelinesRegistry', 'No saved registry found, using defaults', { configPath: this.configPath });
+        logger.info('shared', 'GuidelinesRegistry', 'No saved registry found, using defaults', {
+          configPath: this.configPath,
+        });
         return;
       }
-
       const data = await ConfigUtils.loadConfigFile<Record<string, unknown>>(this.configPath);
-      if (!data) return;
-
+      if (!data) {
+        return;
+      }
       // Load guidelines
       if (data['guidelines']) {
         for (const [id, guideline] of Object.entries(data['guidelines'])) {
           this.registry.guidelines.set(id, guideline as GuidelineDefinition);
         }
       }
-
       // Load metrics
       if (data['metrics']) {
         for (const [id, metrics] of Object.entries(data['metrics'])) {
           this.metrics.set(id, metrics as GuidelineMetrics);
         }
       }
-
-      logger.info('shared', 'GuidelinesRegistry', 'Guidelines registry loaded successfully', { guidelinesCount: this.registry.guidelines.size });
+      logger.info('shared', 'GuidelinesRegistry', 'Guidelines registry loaded successfully', {
+        guidelinesCount: this.registry.guidelines.size,
+      });
     } catch (error) {
-      logger.error('shared', 'GuidelinesRegistry', 'Failed to load guidelines registry', error instanceof Error ? error : new Error(String(error)), { configPath: this.configPath });
+      logger.error(
+        'shared',
+        'GuidelinesRegistry',
+        'Failed to load guidelines registry',
+        error instanceof Error ? error : new Error(String(error)),
+        { configPath: this.configPath },
+      );
     }
   }
 }
-
 // Global guidelines registry instance
 export const guidelinesRegistry = new GuidelinesRegistry();
-
 /**
  * Initialize guidelines system
  */

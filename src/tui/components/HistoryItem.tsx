@@ -5,16 +5,16 @@
  * and compact JSON formatting as specified in the PRP
  */
 
-import React from 'react';
 import { Box, Text } from 'ink';
-import { HistoryItem as HistoryItemType, TUIConfig } from '../types/TUIConfig.js';
+
+import type { HistoryItem as HistoryItemType, TUIConfig } from '../../shared/types/TUIConfig';
 
 interface HistoryItemProps {
   item: HistoryItemType;
   config: TUIConfig;
-}
+};
 
-export function HistoryItem({ item, config }: HistoryItemProps) {
+export const HistoryItem = ({ item, config }: HistoryItemProps) => {
   const getSourceColor = (source: string) => {
     switch (source) {
       case 'system':
@@ -33,13 +33,10 @@ export function HistoryItem({ item, config }: HistoryItemProps) {
   // Format JSON compactly on one line
   const formatCompactJSON = (data: Record<string, unknown>): string => {
     try {
-      const json = JSON.stringify(data)
-        .replace(/"/g, '')
-        .replace(/,/g, ', ')
-        .replace(/:/g, ': ');
-      return json.length > 100 ? json.substring(0, 97) + '...' : json;
+      const json = JSON.stringify(data).replace(/"/g, '').replace(/,/g, ', ').replace(/:/g, ': ');
+      return json.length > 100 ? `${json.substring(0, 97)  }...` : json;
     } catch {
-      return String(data);
+      return '[Invalid JSON]';
     }
   };
 
@@ -54,10 +51,8 @@ export function HistoryItem({ item, config }: HistoryItemProps) {
 
       {/* Compact JSON data */}
       <Box>
-        <Text color={config.colors.base_fg}>
-          {formatCompactJSON(item.data)}
-        </Text>
+        <Text color={config.colors.base_fg}>{formatCompactJSON(item.data)}</Text>
       </Box>
     </Box>
   );
-}
+};

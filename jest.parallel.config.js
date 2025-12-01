@@ -1,0 +1,80 @@
+/** @type {import('jest').Config} */
+export default {
+  preset: 'ts-jest/presets/default-esm',
+  testEnvironment: 'jsdom',
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+  roots: ['<rootDir>/src', '<rootDir>/tests'],
+  modulePathIgnorePatterns: ['<rootDir>/dist/'],
+  testMatch: [
+    '**/__tests__/**/*.ts',
+    '**/__tests__/**/*.tsx',
+    '**/?(*.)+(spec|test).ts',
+    '**/?(*.)+(spec|test).tsx',
+  ],
+  extensionsToTreatAsEsm: ['.ts', '.tsx'],
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^@shared/(.*)$': '<rootDir>/src/shared/$1',
+    '^@tui/(.*)$': '<rootDir>/src/tui/$1',
+    'axios$': 'axios/dist/node/axios.cjs',
+    'tree-sitter$': '<rootDir>/node_modules/tree-sitter',
+    'tree-sitter-javascript$': '<rootDir>/node_modules/tree-sitter-javascript',
+  },
+  transformIgnorePatterns: [
+    'node_modules/(?!(axios|chalk|ansi-styles|supports-color|ink|ink-testing-library|@testing-library|execa|fs-extra|tmp|glob|yaml|boxen|figlet|ora|semver|validate-npm-package-name|nanoid|lru-cache|lz-string|jsonwebtoken|openai|marked|highlight\\.js|socket\\.io|prom-client|tree-sitter|tree-sitter-javascript|tree-sitter-markdown))/',
+  ],
+  transform: {
+    '^.+\\.tsx?$': [
+      'ts-jest',
+      {
+        tsconfig: {
+          jsx: 'react-jsx',
+          module: 'ESNext',
+          target: 'ES2022',
+          strict: true,
+          noUnusedLocals: false,
+          noUnusedParameters: false,
+          exactOptionalPropertyTypes: false,
+          allowSyntheticDefaultImports: true,
+          esModuleInterop: true,
+          moduleResolution: 'node',
+          resolveJsonModule: true,
+          isolatedModules: true,
+          skipLibCheck: true,
+          forceConsistentCasingInFileNames: true,
+        },
+        useESM: true,
+      },
+    ],
+  },
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.d.ts',
+    '!src/**/*.test.ts',
+    '!src/**/*.test.tsx',
+    '!src/**/__tests__/**',
+    '!src/cli.ts',
+  ],
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80,
+    },
+    './src/shared/': {
+      branches: 100,
+      functions: 100,
+      lines: 100,
+      statements: 100,
+    },
+  },
+  maxWorkers: 4,
+  testTimeout: 30000,
+  verbose: true,
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  testEnvironmentOptions: {
+    customExportConditions: ['node', 'node-addons'],
+  },
+};

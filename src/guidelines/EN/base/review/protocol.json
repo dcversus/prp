@@ -1,0 +1,196 @@
+{
+  "id": "review-protocol",
+  "name": "Review Protocol",
+  "description": "Comprehensive review workflow including code review, quality validation, and stakeholder approval",
+  "version": "1.0.0",
+  "category": "review",
+  "priority": "critical",
+  "enabled": true,
+  "protocol": {
+    "id": "comprehensive-review-workflow",
+    "description": "Complete review process including technical review, quality assessment, and approval workflow",
+    "steps": [
+      {
+        "id": "code-review-preparation",
+        "name": "Code Review Preparation",
+        "description": "Prepare comprehensive code review package",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["review-package", "diff-analysis", "change-summary"],
+        "nextSteps": ["technical-review"]
+      },
+      {
+        "id": "technical-review",
+        "name": "Technical Code Review",
+        "description": "Conduct in-depth technical code review",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["technical-review-report", "code-issues", "improvements"],
+        "nextSteps": ["quality-review"]
+      },
+      {
+        "id": "quality-review",
+        "name": "Quality Assessment Review",
+        "description": "Review code quality, performance, and standards compliance",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["quality-assessment", "standards-compliance", "performance-review"],
+        "nextSteps": ["security-review"]
+      },
+      {
+        "id": "security-review",
+        "name": "Security Review",
+        "description": "Conduct security vulnerability assessment",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["security-assessment", "vulnerability-report", "security-recommendations"],
+        "nextSteps": ["documentation-review"]
+      },
+      {
+        "id": "documentation-review",
+        "name": "Documentation Review",
+        "description": "Review documentation completeness and accuracy",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["documentation-assessment", "missing-docs", "doc-updates"],
+        "nextSteps": ["stakeholder-review"]
+      },
+      {
+        "id": "stakeholder-review",
+        "name": "Stakeholder Review",
+        "description": "Coordinate stakeholder review and feedback collection",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["stakeholder-feedback", "approval-status", "change-requests"],
+        "nextSteps": ["review-consolidation"]
+      },
+      {
+        "id": "review-consolidation",
+        "name": "Review Consolidation",
+        "description": "Consolidate all review feedback and create action plan",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["consolidated-review", "action-items", "final-decision"],
+        "nextSteps": []
+      }
+    ],
+    "decisionPoints": [
+      {
+        "id": "technical-approval",
+        "question": "Does code meet technical quality standards?",
+        "options": [
+          {
+            "id": "technical-approved",
+            "label": "Technical review passed - code quality acceptable",
+            "action": "approve-technical-quality",
+            "nextSteps": ["quality-review"]
+          },
+          {
+            "id": "technical-concerns",
+            "label": "Technical concerns identified - requires fixes",
+            "action": "request-technical-fixes",
+            "nextSteps": []
+          },
+          {
+            "id": "technical-major-issues",
+            "label": "Major technical issues - requires refactoring",
+            "action": "require-major-refactoring",
+            "nextSteps": []
+          }
+        ],
+        "requiresInput": true
+      },
+      {
+        "id": "final-approval",
+        "question": "Should this implementation be approved for release?",
+        "options": [
+          {
+            "id": "approve-release",
+            "label": "Approved for release - all reviews passed",
+            "action": "approve-for-release",
+            "nextSteps": ["review-consolidation"]
+          },
+          {
+            "id": "approve-with-conditions",
+            "label": "Approved with conditions - minor fixes required",
+            "action": "conditional-approval",
+            "nextSteps": ["review-consolidation"]
+          },
+          {
+            "id": "reject-release",
+            "label": "Rejected - major issues need addressing",
+            "action": "reject-for-release",
+            "nextSteps": []
+          }
+        ],
+        "requiresInput": true
+      }
+    ],
+    "successCriteria": [
+      "Code review package prepared and comprehensive",
+      "Technical review completed with no blocking issues",
+      "Quality assessment meets all standards",
+      "Security review passed with no vulnerabilities",
+      "Documentation complete and accurate",
+      "Stakeholder feedback collected and addressed",
+      "All review findings consolidated",
+      "Final approval decision made with clear rationale"
+    ],
+    "fallbackActions": [
+      "Request code changes for identified issues",
+      "Add missing documentation",
+      "Fix security vulnerabilities",
+      "Improve code quality and performance",
+      "Address stakeholder concerns",
+      "Conduct additional review rounds"
+    ]
+  },
+  "requirements": [
+    {
+      "type": "tool",
+      "name": "Code Review Tools",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Code review tools required"
+    },
+    {
+      "type": "service",
+      "name": "Security Scanning",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Security scanning service required"
+    },
+    {
+      "type": "knowledge",
+      "name": "Code Review Expertise",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Code review expertise required"
+    }
+  ],
+  "prompts": {
+    "inspector": "You are a Review Inspector. Your role is to conduct comprehensive reviews of implementation changes.\n\nTASK: Analyze code changes and provide detailed review assessment\n\nCONTEXT:\n{{context}}\n\nCODE CHANGES:\n{{codeChanges}}\n\nIMPLEMENTATION DETAILS:\n{{implementationDetails}}\n\nCOMPREHENSIVE REVIEW FRAMEWORK:\n1. **Technical Review**: Code architecture, patterns, and implementation quality\n2. **Quality Review**: Code standards, maintainability, and best practices\n3. **Security Review**: Security vulnerabilities and best practices\n4. **Documentation Review**: Documentation completeness and accuracy\n5. **Performance Review**: Performance impact and optimization\n\nTECHNICAL REVIEW CRITERIA:\n- **Architecture**: Proper architecture and design patterns\n- **Code Quality**: Clean, readable, maintainable code\n- **Best Practices**: Industry best practices followed\n- **Error Handling**: Proper error handling and edge cases\n- **Testing**: Adequate test coverage and quality\n- **Integration**: Proper integration with existing systems\n\nQUALITY REVIEW CRITERIA:\n- **Code Standards**: Adherence to coding standards\n- **Naming**: Clear and consistent naming conventions\n- **Comments**: Appropriate code documentation\n- **Complexity**: Manageable complexity levels\n- **Duplication**: Minimal code duplication\n- **Refactoring**: Appropriate refactoring opportunities\n\nSECURITY REVIEW CRITERIA:\n- **Input Validation**: Proper input sanitization and validation\n- **Authentication**: Secure authentication mechanisms\n- **Authorization**: Proper access controls\n- **Data Protection**: Sensitive data protection\n- **Dependencies**: Secure dependency management\n- **Output Encoding**: Proper output encoding\n\nPERFORMANCE REVIEW CRITERIA:\n- **Algorithm Efficiency**: Efficient algorithms and data structures\n- **Resource Usage**: Optimal memory and CPU usage\n- **Database Queries**: Efficient database operations\n- **Caching**: Appropriate caching strategies\n- **Scalability**: Scalable implementation approach\n\nRESPOND WITH STRUCTURED JSON:\n{\n  \"technical_review\": {\n    \"architecture_assessment\": {\n      \"design_patterns_used\": string[],\n      \"architecture_compliance\": boolean,\n      \"scalability_considerations\": string[],\n      \"architecture_issues\": string[]\n    },\n    \"code_quality_assessment\": {\n      \"readability_score\": number (0-100),\n      \"maintainability_score\": number (0-100),\n      \"complexity_score\": number (0-100),\n      \"code_smells\": string[],\n      \"refactoring_opportunities\": string[]\n    },\n    \"implementation_assessment\": {\n      \"requirements_met\": string[],\n      \"requirements_partially_met\": string[],\n      \"requirements_not_met\": string[],\n      \"additional_features\": string[],\n      \"implementation_gaps\": string[]\n    },\n    \"testing_assessment\": {\n      \"test_coverage_adequate\": boolean,\n      \"test_quality_good\": boolean,\n      \"missing_tests\": string[],\n      \"test_improvements\": string[]\n    }\n  },\n  \"quality_review\": {\n    \"standards_compliance\": {\n      \"coding_standards_met\": boolean,\n      \"style_violations\": string[],\n      \"naming_conventions\": string[],\n      \"formatting_issues\": string[]\n    },\n    \"best_practices_assessment\": {\n      \"best_practices_followed\": string[],\n      \"best_practices_violated\": string[],\n      \"improvement_opportunities\": string[]\n    },\n    \"documentation_assessment\": {\n      \"code_comments_adequate\": boolean,\n      \"documentation_complete\": boolean,\n      \"missing_documentation\": string[],\n      \"documentation_quality\": string\n    }\n  },\n  \"security_review\": {\n    \"vulnerability_assessment\": {\n      \"vulnerabilities_found\": string[],\n      \"severity_levels\": string[],\n      \"security_score\": number (0-100),\n      \"security_issues\": string[]\n    },\n    \"security_best_practices\": {\n      \"practices_followed\": string[],\n      \"practices_missing\": string[],\n      \"security_recommendations\": string[]\n    },\n    \"data_protection\": {\n      \"sensitive_data_handled\": boolean,\n      \"encryption_used\": boolean,\n      \"access_controls_adequate\": boolean,\n      \"data_protection_issues\": string[]\n    }\n  },\n  \"performance_review\": {\n    \"performance_assessment\": {\n      \"performance_impact\": \"positive\" | \"neutral\" | \"negative\",\n      \"performance_score\": number (0-100),\n      \"bottlenecks_identified\": string[],\n      \"optimization_opportunities\": string[]\n    },\n    \"resource_usage\": {\n      \"memory_efficiency\": string,\n      \"cpu_efficiency\": string,\n      \"io_efficiency\": string,\n      \"resource_concerns\": string[]\n    }\n  },\n  \"review_summary\": {\n    \"overall_quality_score\": number (0-100),\n    \"blocking_issues\": string[],\n    \"critical_issues\": string[],\n    \"minor_issues\": string[],\n    \"recommendations\": string[],\n    \"approval_recommendation\": \"approve\" | \"approve_with_conditions\" | \"reject\"\n  },\n  \"action_items\": {\n    \"required_changes\": string[],\n    \"recommended_improvements\": string[],\n    \"documentation_updates\": string[],\n    \"additional_testing\": string[],\n      \"security_fixes\": string[]\n  }\n}",
+    "orchestrator": "You are a Review Orchestrator. Based on the Inspector's comprehensive review, make final approval decisions.\n\nINSPECTOR REVIEW:\n{{inspectorReview}}\n\nCONTEXT:\n{{context}}\n\nYOUR ROLE:\n1. **Review Assessment**: Evaluate all review findings\n2. **Decision Making**: Make informed approval/rejection decisions\n3. **Stakeholder Coordination**: Manage stakeholder review process\n4. **Action Planning**: Create clear action plans for required changes\n\nDECISION CRITERIA:\n- **Technical Quality**: Code must meet technical standards\n- **Security**: No critical security vulnerabilities\n- **Performance**: Performance requirements must be met\n- **Documentation**: Documentation must be complete and accurate\n- **Testing**: Adequate test coverage and quality\n- **Stakeholder Approval**: Relevant stakeholders must approve\n\nAPPROVAL LEVELS:\n- **Full Approval**: Ready for release without changes\n- **Conditional Approval**: Approved with minor changes required\n- **Rejected**: Major issues requiring significant work\n\nRISK ASSESSMENT:\n- **Technical Risk**: Complexity and maintainability concerns\n- **Security Risk**: Security vulnerabilities and exposure\n- **Performance Risk**: Performance impact on system\n- **Integration Risk**: Integration issues and compatibility\n\nSTAKEHOLDER MANAGEMENT:\n- **Stakeholder Identification**: Identify all relevant stakeholders\n- **Feedback Collection**: Gather and consolidate feedback\n- **Conflict Resolution**: Address conflicting requirements\n- **Approval Coordination**: Coordinate final approval process\n\nEXECUTE ACTIONS:\n1. Review comprehensive inspection findings\n2. Make informed approval decisions\n3. Coordinate stakeholder review process\n4. Create clear action plans for changes\n5. Document review outcomes and rationale\n6. Prepare for release or additional work\n\nRESPOND WITH:\n1. Comprehensive review assessment and decision\n2. Approval/rejection decision with clear rationale\n3. Stakeholder feedback summary and resolution\n4. Action plan for required changes\n5. Risk assessment and mitigation strategies\n6. Release readiness determination\n7. Next steps and timeline requirements"
+  },
+  "tokenLimits": {
+    "inspector": 35000,
+    "orchestrator": 30000
+  },
+  "tools": [
+    "code-differ",
+    "quality-analyzer",
+    "security-scanner",
+    "performance-profiler",
+    "documentation-validator",
+    "review-tracker",
+    "stakeholder-coordinator"
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "author": "system",
+    "createdAt": "2025-01-09T00:00:00Z",
+    "lastModified": "2025-01-09T00:00:00Z",
+    "tags": ["review", "code-review", "quality-assessment", "security-review", "stakeholder-approval"],
+    "dependencies": []
+  }
+}

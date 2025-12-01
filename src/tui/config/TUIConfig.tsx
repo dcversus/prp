@@ -5,7 +5,8 @@
  * with color schemes, fonts, layouts, and animation settings
  */
 
-import type { TUIConfig } from '../types/TUIConfig.js';
+// Re-export TUIConfig type for backward compatibility
+export type { TUIConfig };
 
 /**
  * Color scheme definitions for different roles and themes
@@ -58,7 +59,7 @@ export const COLOR_SCHEMES = {
 
     // Signal colors
     signal_braces: '#FFB56B',
-    signal_placeholder: '#6C7078'
+    signal_placeholder: '#6C7078',
   },
   light: {
     // Accent / Orchestrator colors
@@ -107,8 +108,8 @@ export const COLOR_SCHEMES = {
 
     // Signal colors
     signal_braces: '#E67E00',
-    signal_placeholder: '#888888'
-  }
+    signal_placeholder: '#888888',
+  },
 } as const;
 
 /**
@@ -122,49 +123,49 @@ const DEFAULT_CONFIG = {
     intro: {
       enabled: true,
       duration: 10000, // 10 seconds
-      fps: 12
+      fps: 12,
     },
     status: {
       enabled: true,
-      fps: 4
+      fps: 4,
     },
     signals: {
       enabled: true,
       waveSpeed: 50, // ms per slot
-      blinkSpeed: 1000 // ms
-    }
+      blinkSpeed: 1000, // ms
+    },
   },
   layout: {
     responsive: true,
     breakpoints: {
-      compact: 100,   // < 100 cols: single column
-      normal: 160,    // 100-159 cols: main + compressed right
-      wide: 240,      // 160-239 cols: main + right always visible
-      ultrawide: 240  // >= 240 cols: all screens visible
+      compact: 100, // < 100 cols: single column with tabs
+      normal: 160, // 100-159 cols: main left + compressed right PRP list
+      wide: 240, // 160-239 cols: main + right always visible, context collapses
+      ultrawide: 240, // >= 240 cols: show all screens with selection navigation
     },
     padding: {
       horizontal: 2,
-      vertical: 1
-    }
+      vertical: 1,
+    },
   },
   input: {
     maxTokens: 100000,
     tokenReserve: 0.05, // 5% reserve
-    pasteTimeout: 1000
+    pasteTimeout: 1000,
   },
   debug: {
     enabled: false,
     maxLogLines: 100,
-    showFullJSON: false
-  }
+    showFullJSON: false,
+  },
 } as const;
 
 /**
  * Create TUI configuration with defaults and overrides
  */
 export function createTUIConfig(overrides: Partial<TUIConfig> = {}): TUIConfig {
-  const theme = overrides.theme || DEFAULT_CONFIG.theme;
-  const colors = COLOR_SCHEMES[theme];
+  const theme = overrides.theme ?? DEFAULT_CONFIG.theme;
+  const colors = COLOR_SCHEMES[theme as keyof typeof COLOR_SCHEMES];
 
   return {
     ...DEFAULT_CONFIG,
@@ -173,32 +174,34 @@ export function createTUIConfig(overrides: Partial<TUIConfig> = {}): TUIConfig {
     colors,
     animations: {
       ...DEFAULT_CONFIG.animations,
-      ...overrides.animations
+      ...overrides.animations,
     },
     layout: {
       ...DEFAULT_CONFIG.layout,
-      ...overrides.layout
+      ...overrides.layout,
     },
     input: {
       ...DEFAULT_CONFIG.input,
-      ...overrides.input
+      ...overrides.input,
     },
     debug: {
       ...DEFAULT_CONFIG.debug,
-      ...overrides.debug
-    }
+      ...overrides.debug,
+    },
   };
 }
 
 /**
  * Get role color configuration
  */
-export function getRoleColors(role: string, colors: typeof COLOR_SCHEMES.dark) {
-  const roleKey = role.replace(/-/g, '_') as keyof typeof colors;
+export function getRoleColors(role: string, colors: ColorScheme) {
+  const roleKey = role.replace(/-/g, '_');
   return {
-    active: colors[`${roleKey}` as keyof typeof colors] || colors.orchestrator,
+    active: colors[roleKey as keyof typeof colors] || colors.orchestrator,
+
     dim: colors[`${roleKey}_dim` as keyof typeof colors] || colors.orchestrator_dim,
-    bg: colors[`${roleKey}_bg` as keyof typeof colors] || colors.orchestrator_bg
+
+    bg: colors[`${roleKey}_bg` as keyof typeof colors] || colors.orchestrator_bg,
   };
 }
 
@@ -208,7 +211,7 @@ export function getRoleColors(role: string, colors: typeof COLOR_SCHEMES.dark) {
 export function getSignalColor(
   code: string,
   state: 'placeholder' | 'active' | 'progress' | 'resolved',
-  colors: typeof COLOR_SCHEMES.dark
+  colors: ColorScheme,
 ): string {
   if (state === 'placeholder') {
     return colors.signal_placeholder;
@@ -242,10 +245,10 @@ export function getSignalColor(
       '[da]': 'robo-ux-ui',
       '[dc]': 'robo-ux-ui',
       '[df]': 'robo-ux-ui',
-      '[dt]': 'robo-ux-ui'
+      '[dt]': 'robo-ux-ui',
     };
 
-    const role = signalRoleMap[code] || 'orchestrator';
+    const role = signalRoleMap[code] ?? 'orchestrator';
     return getRoleColors(role, colors).active;
   }
 
@@ -272,8 +275,8 @@ export function getTerminalLayout(config: TUIConfig) {
   }
 
   // Calculate available space
-  const availableWidth = columns - (padding.horizontal * 2);
-  const availableHeight = rows - (padding.vertical * 2) - 4; // Account for header/footer
+  const availableWidth = columns - padding.horizontal * 2;
+  const availableHeight = rows - padding.vertical * 2 - 4; // Account for header/footer
 
   return {
     columns,
@@ -281,6 +284,6 @@ export function getTerminalLayout(config: TUIConfig) {
     layoutMode,
     availableWidth,
     availableHeight,
-    padding
+    padding,
   };
 }

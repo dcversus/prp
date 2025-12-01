@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     /* Language and Environment */
-    "target": "ES2020",
-    "lib": ["ES2020", "ES2015", "DOM"],
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "downlevelIteration": true,
     "jsx": "react-jsx",
     "module": "ESNext",
@@ -25,8 +25,10 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": false,
     "resolveJsonModule": true,
+    "allowUmdGlobalAccess": false,
+    "noResolve": false,
 
-    /* Type Checking */
+    /* Type Checking - Strictest Possible Settings */
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -35,16 +37,36 @@
     "strictPropertyInitialization": true,
     "noImplicitThis": true,
     "alwaysStrict": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": false,
+    "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": false,
+    "noUncheckedSideEffectImports": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+
+    /* Additional Type Safety */
+    "useUnknownInCatchVariables": true,
+    "noImplicitUseStrict": false,
+    "noStrictGenericChecks": false,
+    "exactOptionalPropertyTypes": false,
+
+    /* Type Definitions */
+    "types": ["node", "jest", "@testing-library/jest-dom"],
 
     /* Completeness */
     "skipLibCheck": true,
+
+    /* Experimental */
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    /* Advanced Type Checking */
+    "noErrorTruncation": true,
+    "preserveConstEnums": true,
 
     /* Path Aliases */
     "baseUrl": ".",
@@ -54,9 +76,20 @@
       "@generators/*": ["./src/generators/*"],
       "@templates/*": ["./src/templates/*"],
       "@ai/*": ["./src/ai/*"],
-      "@utils/*": ["./src/utils/*"]
+      "@utils/*": ["./src/utils/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@agents/*": ["./src/agents/*"],
+      "@orchestrator/*": ["./src/orchestrator/*"],
+      "@scanner/*": ["./src/scanner/*"],
+      "@tui/*": ["./src/tui/*"],
+      "@commands/*": ["./src/commands/*"],
+      "@config/*": ["./src/config/*"]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests", "**/__tests__/**/*", "**/*.test.ts", "**/*.spec.ts"]
+  "include": ["src/**/*", "tests/**/*", "scripts/**/*", "tsdown.config.ts"],
+  "exclude": ["node_modules", "dist", "coverage", "templates"],
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
+  }
 }

@@ -3,19 +3,92 @@
  *
  * Types for the configurable guidelines system with protocol-based signal resolution.
  */
-
-import type { GuidelineProtocol, GuidelineRequirement, AgentRole, Signal } from '../shared/types';
-
+import type { GuidelineProtocol, Signal } from '../shared/types';
+// Import missing types from appropriate modules
+import type { AgentRole } from '../config/agent-config';
 // Re-export types that are used by other modules
-export type { Signal, InspectorPayload } from '../shared/types';
-
+export type { Signal } from '../shared/types';
+export type { InspectorPayload } from '../inspector/types';
+// Define GuidelineRequirement locally since it's missing
+export interface GuidelineRequirement {
+  type: 'feature' | 'service' | 'auth' | 'config' | 'command';
+  name: string;
+  description?: string;
+  required: boolean;
+  errorMessage?: string;
+  check?: () => Promise<boolean>;
+  dependencies?: string[];
+  validation?: {
+    type: 'file' | 'directory' | 'command' | 'api' | 'custom';
+    pattern?: string;
+    expected?: string | boolean;
+  };
+}
+export interface ValidationResult {
+  isValid: boolean;
+  errors: ValidationError[];
+  warnings: ValidationWarning[];
+  score: number;
+  blockingIssues?: ValidationError[];
+  recommendations?: ValidationError[];
+  suggestions?: ValidationError[];
+  passed?: boolean;
+}
+export interface GuidelineValidationResult extends ValidationResult {
+  guidelineId: string;
+  category?: string;
+  severity: ValidationSeverity;
+  dependencies?: {
+    satisfied: string[];
+    missing: string[];
+    conflicting: string[];
+  };
+  score: number;
+  metadata?: {
+    validationTime: Date;
+    validatorVersion: string;
+    checklistPassed: string[];
+    checklistFailed: string[];
+  };
+  suggestions?: ValidationError[];
+}
+export interface ValidationError {
+  code: string;
+  message: string;
+  field?: string;
+  severity: ValidationSeverity;
+  suggestion?: string;
+  fixable?: boolean;
+}
+export interface ValidationWarning {
+  code: string;
+  message: string;
+  field?: string;
+  suggestion?: string;
+}
+export const ValidationSeverityValues = {
+  CRITICAL: 'critical' as const,
+  HIGH: 'high' as const,
+  MEDIUM: 'medium' as const,
+  LOW: 'low' as const,
+  INFO: 'info' as const,
+} as const;
+export type ValidationSeverity = (typeof ValidationSeverityValues)[keyof typeof ValidationSeverityValues];
 export interface GuidelineDefinition {
   id: string;
   name: string;
   description: string;
-  category: 'development' | 'testing' | 'deployment' | 'security' | 'performance' | 'documentation' | 'communication';
+  category:
+    | 'development'
+    | 'testing'
+    | 'deployment'
+    | 'security'
+    | 'performance'
+    | 'documentation'
+    | 'communication';
   priority: 'critical' | 'high' | 'medium' | 'low';
   enabled: boolean;
+  language: string; // Language code: 'EN', 'DE', 'SC', etc.
   protocol: GuidelineProtocol;
   requirements: GuidelineRequirement[];
   prompts: {
@@ -35,9 +108,10 @@ export interface GuidelineDefinition {
     lastModified: Date;
     tags: string[];
     dependencies: string[]; // Other guidelines this depends on
+    filePath?: string; // Path to the guideline file
+    language: string; // Language code
   };
 }
-
 export interface GuidelineContext {
   guidelineId: string;
   executionId: string;
@@ -54,7 +128,6 @@ export interface GuidelineContext {
   };
   configuration: GuidelineConfiguration;
 }
-
 export interface ActivityEntry {
   timestamp: Date;
   actor: string;
@@ -62,7 +135,6 @@ export interface ActivityEntry {
   details: string;
   relevantTo: string[]; // PRP IDs, signal IDs, etc.
 }
-
 export interface TokenStatusInfo {
   totalUsed: number;
   totalLimit: number;
@@ -70,7 +142,6 @@ export interface TokenStatusInfo {
   criticalLimit: boolean;
   agentBreakdown: Record<string, { used: number; limit: number; percentage: number }>;
 }
-
 export interface AgentStatusInfo {
   id: string;
   name: string;
@@ -79,7 +150,6 @@ export interface AgentStatusInfo {
   lastActivity: Date;
   capabilities: AgentCapabilitiesInfo;
 }
-
 export interface AgentCapabilitiesInfo {
   supportsTools: boolean;
   supportsImages: boolean;
@@ -88,7 +158,6 @@ export interface AgentCapabilitiesInfo {
   maxContextLength: number;
   supportedModels: string[];
 }
-
 export interface SharedNoteInfo {
   id: string;
   name: string;
@@ -97,7 +166,6 @@ export interface SharedNoteInfo {
   tags: string[];
   relevantTo: string[];
 }
-
 export interface EnvironmentInfo {
   worktree: string;
   branch: string;
@@ -109,7 +177,6 @@ export interface EnvironmentInfo {
     networkAccess?: boolean;
   };
 }
-
 export interface GuidelineConfiguration {
   enabled: boolean;
   settings: GuidelineSettings;
@@ -129,7 +196,6 @@ export interface GuidelineConfiguration {
     requireApproval: boolean;
   };
 }
-
 export interface GuidelineExecution {
   id: string;
   guidelineId: string;
@@ -151,7 +217,6 @@ export interface GuidelineExecution {
     stepBreakdown: Record<string, number>;
   };
 }
-
 export type ExecutionStatus =
   | 'pending'
   | 'preparing'
@@ -162,7 +227,6 @@ export type ExecutionStatus =
   | 'failed'
   | 'cancelled'
   | 'awaiting_approval';
-
 export interface StepExecution {
   stepId: string;
   name: string;
@@ -180,7 +244,6 @@ export interface StepExecution {
   artifacts: Artifact[];
   dependencies: string[]; // IDs of steps that must complete first
 }
-
 export type StepStatus =
   | 'pending'
   | 'ready'
@@ -190,7 +253,6 @@ export type StepStatus =
   | 'skipped'
   | 'cancelled'
   | 'blocked';
-
 export interface Artifact {
   id: string;
   name: string;
@@ -200,7 +262,6 @@ export interface Artifact {
   metadata: ArtifactMetadata;
   createdAt: Date;
 }
-
 export interface ExecutionError {
   code: string;
   message: string;
@@ -210,7 +271,6 @@ export interface ExecutionError {
   recoverable: boolean;
   suggestions: string[];
 }
-
 export interface GuidelineResult {
   success: boolean;
   outcome: string;
@@ -229,10 +289,21 @@ export interface GuidelineResult {
     tokenCost: number;
   };
 }
-
 export interface Action {
   id: string;
-  type: 'spawn_agent' | 'send_message' | 'execute_command' | 'create_note' | 'update_prp' | 'create_signal' | 'call_tool' | 'approve-pr' | 'request-changes' | 'add-comments' | 'create-review' | 'escalate';
+  type:
+    | 'spawn_agent'
+    | 'send_message'
+    | 'execute_command'
+    | 'create_note'
+    | 'update_prp'
+    | 'create_signal'
+    | 'call_tool'
+    | 'approve-pr'
+    | 'request-changes'
+    | 'add-comments'
+    | 'create-review'
+    | 'escalate';
   target?: string;
   payload: ActionPayload;
   reasoning: string;
@@ -244,11 +315,10 @@ export interface Action {
   prNumber?: number;
   message?: string;
   issues?: string[];
-  comments?: { path: string; line: number; body: string; }[];
+  comments?: { path: string; line: number; body: string }[];
   review?: PullRequestReview;
   reason?: string;
 }
-
 export interface CheckpointReached {
   checkpointId: string;
   name: string;
@@ -257,7 +327,6 @@ export interface CheckpointReached {
   quality: 'passed' | 'warning' | 'failed';
   notes?: string;
 }
-
 export interface Recommendation {
   id: string;
   type: 'improvement' | 'optimization' | 'warning' | 'best_practice';
@@ -269,7 +338,6 @@ export interface Recommendation {
   impact: 'low' | 'medium' | 'high';
   category: string;
 }
-
 export interface SignalPattern {
   id: string;
   name: string;
@@ -280,15 +348,21 @@ export interface SignalPattern {
   enabled: boolean;
   custom: boolean;
 }
-
 export interface GuidelineRegistry {
   guidelines: Map<string, GuidelineDefinition>;
   categories: Map<string, Set<string>>; // category -> guideline IDs
   dependencies: Map<string, Set<string>>; // guideline -> dependencies
   dependents: Map<string, Set<string>>; // guideline -> dependents
   signalMappings: Map<string, Set<string>>; // signal pattern -> guideline IDs
+  languages: Map<string, Set<string>>; // language -> guideline IDs
+  filePaths: Map<string, string>; // guideline ID -> file path
 }
-
+export interface LanguageSpecificGuideline {
+  language: string;
+  guidelinePath: string;
+  fallbackLanguage?: string; // Fallback language if translation not available
+  isDefault: boolean; // Whether this is the default language for this guideline
+}
 export interface InspectorPrompt {
   id: string;
   guidelineId: string;
@@ -300,7 +374,6 @@ export interface InspectorPrompt {
   maxTokens: number;
   structuredOutput: StructuredOutputSchema;
 }
-
 export interface PromptVariable {
   name: string;
   type: 'string' | 'number' | 'boolean' | 'array' | 'object';
@@ -309,20 +382,17 @@ export interface PromptVariable {
   defaultValue?: unknown;
   validation?: ValidationRule[];
 }
-
 export interface ValidationRule {
   type: 'required' | 'min_length' | 'max_length' | 'pattern' | 'enum';
   value?: unknown;
   message?: string;
 }
-
 export interface StructuredOutputSchema {
   type: 'object';
   properties: Record<string, SchemaProperty>;
   required: string[];
   additionalProperties: boolean;
 }
-
 export interface SchemaProperty {
   type: 'string' | 'number' | 'boolean' | 'array' | 'object';
   description?: string;
@@ -331,7 +401,6 @@ export interface SchemaProperty {
   properties?: Record<string, SchemaProperty>;
   required?: string[];
 }
-
 export interface OrchestratorPrompt {
   id: string;
   guidelineId: string;
@@ -345,7 +414,6 @@ export interface OrchestratorPrompt {
   chainOfThought: boolean;
   contextPreservation: ContextPreservationSettings;
 }
-
 export interface ToolDefinition {
   name: string;
   description: string;
@@ -353,20 +421,17 @@ export interface ToolDefinition {
   required: string[];
   enabled: boolean;
 }
-
 export interface ToolParameters {
   type: 'object';
   properties: Record<string, SchemaProperty>;
   required: string[];
 }
-
 export interface ContextPreservationSettings {
   enabled: boolean;
   maxContextSize: number;
   compressionStrategy: 'summarize' | 'truncate' | 'semantic';
   preserveElements: string[]; // Elements to always preserve
 }
-
 export interface GuidelineMetrics {
   guidelineId: string;
   totalExecutions: number;
@@ -379,7 +444,6 @@ export interface GuidelineMetrics {
   popularSteps: Record<string, number>;
   commonErrors: Record<string, number>;
 }
-
 export interface GuidelineTemplate {
   id: string;
   name: string;
@@ -394,7 +458,6 @@ export interface GuidelineTemplate {
   requirements: TemplateRequirement[];
   tags: string[];
 }
-
 export interface TemplateVariable {
   name: string;
   type: string;
@@ -403,7 +466,6 @@ export interface TemplateVariable {
   defaultValue?: string;
   placeholder?: string;
 }
-
 export interface TemplateRequirement {
   type: 'feature' | 'service' | 'auth' | 'config' | 'tool';
   name: string;
@@ -412,7 +474,6 @@ export interface TemplateRequirement {
   checkCommand?: string;
   errorMessage?: string;
 }
-
 // Event types
 export interface GuidelineTriggeredEvent {
   guidelineId: string;
@@ -420,28 +481,24 @@ export interface GuidelineTriggeredEvent {
   triggerSignal: Signal;
   context: GuidelineContext;
 }
-
 export interface GuidelineCompletedEvent {
   executionId: string;
   guidelineId: string;
   result: GuidelineResult;
   performance: unknown;
 }
-
 export interface GuidelineFailedEvent {
   executionId: string;
   guidelineId: string;
   error: ExecutionError;
   context: GuidelineContext;
 }
-
 export interface GuidelineStepCompletedEvent {
   executionId: string;
   stepId: string;
   result: unknown;
   tokenUsage?: number;
 }
-
 export interface GuidelineApprovalRequiredEvent {
   executionId: string;
   guidelineId: string;
@@ -450,7 +507,6 @@ export interface GuidelineApprovalRequiredEvent {
   context: unknown;
   requires: string[]; // What needs approval
 }
-
 // Event interfaces for executor
 export interface GuidelineTriggeredEventPayload {
   guidelineId: string;
@@ -458,20 +514,19 @@ export interface GuidelineTriggeredEventPayload {
   triggerSignal: Signal;
   context: GuidelineContext;
 }
-
 // Additional type definitions to replace 'any' types
-export interface GuidelineSettings {
-  [key: string]: string | number | boolean | string[] | Record<string, unknown>;
-}
-
-export interface ArtifactMetadata {
-  [key: string]: string | number | boolean | Date | string[] | Record<string, unknown>;
-}
-
-export interface ActionPayload {
-  [key: string]: string | number | boolean | string[] | Record<string, unknown>;
-}
-
+export type GuidelineSettings = Record<
+  string,
+  string | number | boolean | string[] | Record<string, unknown>
+>;
+export type ArtifactMetadata = Record<
+  string,
+  string | number | boolean | Date | string[] | Record<string, unknown>
+>;
+export type ActionPayload = Record<
+  string,
+  string | number | boolean | string[] | Record<string, unknown>
+>;
 export interface PullRequestReview {
   id: number;
   user: {
@@ -484,7 +539,6 @@ export interface PullRequestReview {
   submitted_at?: string;
   commit_id: string;
 }
-
 export interface InspectorAnalysisResult {
   classification: {
     category: string;
@@ -505,7 +559,6 @@ export interface InspectorAnalysisResult {
     [key: string]: number;
   };
 }
-
 export interface ClassificationResult {
   category: string;
   priority: number;
@@ -516,7 +569,6 @@ export interface ClassificationResult {
   nextActions: string[];
   overallPriority: string;
 }
-
 export interface Issue {
   id?: string;
   type: string;
@@ -529,17 +581,182 @@ export interface Issue {
   suggested_fix?: string;
   category?: string;
 }
-
-export interface ActionParameters {
-  [key: string]: unknown;
-}
-
+export type ActionParameters = Record<string, unknown>;
 export interface StepDefinition {
   id: string;
   name: string;
   description: string;
-  type: 'inspector_analysis' | 'orchestrator_decision' | 'action_execution' | 'verification';
+  type:
+    | 'inspector_analysis'
+    | 'orchestrator_decision'
+    | 'action_execution'
+    | 'verification'
+    | 'agent_action';
   required: boolean;
   dependencies?: string[];
   parameters?: Record<string, unknown>;
+  outputs?: string[]; // Expected outputs from this step
+  nextSteps?: string[]; // Next step IDs to execute
+}
+// Validation interfaces - Note: ValidationResult and ValidationError defined above
+// Dependency management interfaces
+export interface DependencyGraph {
+  nodes: Map<string, GuidelineDefinition>;
+  edges: Map<string, Set<string>>; // guideline -> dependencies
+  circularDependencies: string[];
+  missingDependencies: string[];
+}
+// Quality Gates interfaces
+export interface QualityGate {
+  id: string;
+  name: string;
+  description: string;
+  criteria: QualityCriteria[];
+  thresholds: QualityThresholds;
+  enabled: boolean;
+}
+export interface QualityCriteria {
+  id: string;
+  name: string;
+  description: string;
+  type: 'automated' | 'manual' | 'hybrid';
+  weight: number; // 0-1, importance in overall score
+  validator: (_guideline: GuidelineDefinition) => Promise<ValidationResult>;
+}
+export interface QualityThresholds {
+  minimumScore: number; // 0-100
+  criticalIssuesAllowed: number;
+  warningsAllowed: number;
+  maxTokenUsage: number;
+  minTestCoverage: number; // 0-100
+}
+// Research templates interfaces
+export interface ResearchTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: 'competitor' | 'market' | 'technical' | 'user' | 'trend';
+  template: string;
+  variables: ResearchVariable[];
+  methodology: ResearchMethodology;
+  outputs: ResearchOutput[];
+}
+export interface ResearchVariable {
+  name: string;
+  type: 'text' | 'url' | 'file' | 'data' | 'boolean';
+  required: boolean;
+  description: string;
+  source?: string;
+  validation?: ValidationRule;
+}
+export interface ResearchMethodology {
+  approach: 'qualitative' | 'quantitative' | 'mixed';
+  dataCollection: string[];
+  analysisMethods: string[];
+  timeline?: string;
+  tools?: string[];
+}
+export interface ResearchOutput {
+  type: 'report' | 'analysis' | 'recommendations' | 'action_items' | 'metrics';
+  format: 'markdown' | 'json' | 'structured';
+  template?: string;
+  validationCriteria?: string[];
+}
+// Notes system interfaces
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  tags: string[];
+  pattern: SignalPattern; // Signal pattern that triggers this note
+  context?: NoteContext;
+  metadata: NoteMetadata;
+  createdAt: Date;
+  updatedAt: Date;
+  version: number;
+}
+export interface NoteContext {
+  triggerSignals: string[];
+  relevantPRPs: string[];
+  agentContext: string[];
+  environmentalFactors: string[];
+  prerequisites: string[];
+}
+export interface NoteMetadata {
+  author: string;
+  reviewer?: string;
+  status: 'draft' | 'review' | 'approved' | 'archived';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  confidentiality: 'public' | 'internal' | 'confidential';
+  relatedGuidelines: string[];
+  relatedPatterns: string[];
+  lastUsed?: Date;
+  usageCount: number;
+}
+// Base flow interfaces
+export interface BaseFlowTemplate {
+  id: string;
+  name: string;
+  description: string;
+  phase:
+    | 'create-prp'
+    | 'analyse'
+    | 'plan'
+    | 'implement'
+    | 'test'
+    | 'review'
+    | 'release'
+    | 'reflect';
+  steps: FlowStep[];
+  entryCriteria: FlowCriteria[];
+  exitCriteria: FlowCriteria[];
+  successMetrics: FlowMetric[];
+  dependencies: string[]; // Other flows or guidelines
+}
+export interface FlowStep {
+  id: string;
+  name: string;
+  description: string;
+  type: 'action' | 'decision' | 'validation' | 'communication';
+  required: boolean;
+  sequential: boolean;
+  parallelWith?: string[]; // Step IDs that can run in parallel
+  triggers: SignalPattern[];
+  outputs: FlowOutput[];
+  estimatedDuration?: number; // minutes
+  resources: string[]; // Tools, agents, external resources
+}
+export interface FlowCriteria {
+  id: string;
+  name: string;
+  description: string;
+  type: 'must_have' | 'should_have' | 'could_have' | 'wont_have'; // MoSCoW
+  validator: (_context: FlowContext) => Promise<boolean>;
+  errorMessage?: string;
+}
+export interface FlowMetric {
+  id: string;
+  name: string;
+  description: string;
+  type: 'boolean' | 'number' | 'percentage' | 'time' | 'quality_score';
+  target: unknown;
+  measurement: string;
+  frequency: 'once' | 'per_step' | 'continuous';
+}
+export interface FlowOutput {
+  type: 'signal' | 'artifact' | 'state_change' | 'message' | 'tool_result';
+  name: string;
+  description: string;
+  format: string;
+  required: boolean;
+}
+export interface FlowContext {
+  phase: string;
+  step: string;
+  inputs: Record<string, unknown>;
+  environment: EnvironmentInfo;
+  agentContext: AgentStatusInfo[];
+  previousOutputs: unknown[];
+  metadata: Record<string, unknown>;
 }

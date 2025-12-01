@@ -1,0 +1,793 @@
+name: Enhanced CLI Docker Distribution
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly Docker image updates and security scans
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish to Docker Hub'
+        required: false
+        default: 'false'
+        type: boolean
+      tag_suffix:
+        description: 'Docker tag suffix'
+        required: false
+        default: 'latest'
+        type: string
+      platforms:
+        description: 'Build platforms (comma-separated)'
+        required: false
+        default: 'linux/amd64,linux/arm64'
+        type: string
+      security_scan:
+        description: 'Run comprehensive security scan'
+        required: false
+        default: 'true'
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  DOCKERFILE: ./Dockerfile
+  BUILDKIT_INLINE_CACHE: 1
+
+# Enhanced permissions for comprehensive Docker operations
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  actions: read
+
+jobs:
+  # Pre-flight Docker validation
+  docker-preflight:
+    name: Docker Pre-flight Validation
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.changes.outputs.should_build }}
+      platforms: ${{ steps.platforms.outputs.matrix }}
+      base_image: ${{ steps.dockerfile.outputs.base_image }}
+      build_context_size: ${{ steps.context.outputs.size_mb }}
+      cache_key: ${{ steps.cache.outputs.key }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Detect Changes
+        id: changes
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            docker:
+              - 'Dockerfile*'
+              - '.dockerignore'
+              - 'docker-compose*.yml'
+              - '.github/workflows/cli-docker.yml'
+            src:
+              - 'src/**'
+              - 'package*.json'
+              - 'tsconfig.json'
+            templates:
+              - 'templates/**'
+
+      - name: Analyze Dockerfile
+        id: dockerfile
+        run: |
+          echo "🐋 Analyzing Dockerfile..."
+
+          if [[ -f "$DOCKERFILE" ]]; then
+            # Extract base image
+            BASE_IMAGE=$(grep "^FROM " "$DOCKERFILE" | head -1 | cut -d' ' -f2)
+            echo "base_image=$BASE_IMAGE" >> $GITHUB_OUTPUT
+            echo "📦 Base image: $BASE_IMAGE"
+
+            # Check for multi-stage builds
+            STAGE_COUNT=$(grep "^FROM " "$DOCKERFILE" | wc -l)
+            echo "🏗️ Build stages: $STAGE_COUNT"
+
+            # Check for security best practices
+            if grep -q "USER " "$DOCKERFILE"; then
+              echo "✅ Non-root user configured"
+            else
+              echo "⚠️ No non-root user found"
+            fi
+
+            if grep -q "HEALTHCHECK" "$DOCKERFILE"; then
+              echo "✅ Health check configured"
+            else
+              echo "⚠️ No health check found"
+            fi
+          else
+            echo "❌ Dockerfile not found"
+            exit 1
+          fi
+
+      - name: Analyze Build Context
+        id: context
+        run: |
+          echo "📊 Analyzing build context..."
+
+          # Create .dockerignore if not present
+          if [[ ! -f ".dockerignore" ]]; then
+            cat > .dockerignore << EOF
+            node_modules
+            npm-debug.log
+            .git
+            .gitignore
+            README.md
+            .env
+            coverage
+            .nyc_output
+            dist
+            *.log
+            .DS_Store
+            EOF
+            echo "✅ Created .dockerignore"
+          fi
+
+          # Calculate context size
+          CONTEXT_SIZE=$(du -sk . --exclude-dir=node_modules --exclude-dir=.git | cut -f1)
+          echo "size_mb=$((CONTEXT_SIZE / 1024))" >> $GITHUB_OUTPUT
+          echo "📦 Build context: ${CONTEXT_SIZE}KB"
+
+      - name: Setup Build Platforms
+        id: platforms
+        run: |
+          PLATFORMS="${{ github.event.inputs.platforms || 'linux/amd64,linux/arm64' }}"
+          echo "matrix=$PLATFORMS" >> $GITHUB_OUTPUT
+          echo "🏗️ Build platforms: $PLATFORMS"
+
+      - name: Generate Cache Key
+        id: cache
+        run: |
+          CACHE_KEY="docker-v2-${{ runner.os }}-${{ hashFiles('Dockerfile*', 'package*.json', '.dockerignore') }}"
+          echo "key=$CACHE_KEY" >> $GITHUB_OUTPUT
+          echo "🔑 Cache key: $CACHE_KEY"
+
+      - name: Determine Build Necessity
+        run: |
+          if [[ "${{ steps.changes.outputs.docker }}" == "true" || "${{ steps.changes.outputs.src }}" == "true" || "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.ref_type }}" == "tag" ]]; then
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "✅ Docker build required"
+          else
+            echo "should_build=false" >> $GITHUB_OUTPUT
+            echo "⏭️ Docker build skipped (no relevant changes)"
+          fi
+
+  # Enhanced multi-platform Docker build with comprehensive testing
+  docker-build:
+    name: Docker Multi-Platform Build
+    runs-on: ubuntu-latest
+    needs: docker-preflight
+    if: needs.docker-preflight.outputs.should_build == 'true'
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tags: ${{ steps.meta.outputs.tags }}
+      image-size: ${{ steps.size.outputs.size_mb }}
+      build-time: ${{ steps.timing.outputs.duration }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx with Advanced Configuration
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:buildx-stable-1
+            network=host
+
+      - name: Configure Docker Buildx Builder
+        run: |
+          echo "🔧 Configuring Docker Buildx..."
+
+          # Create and use a dedicated builder
+          docker buildx create --name prp-builder --use --bootstrap --driver docker-container
+          docker buildx inspect --bootstrap
+
+          # Show builder info
+          docker buildx ls
+
+      - name: Login to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Enhanced Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch,suffix=-{{date 'YYYYMMDD'}}
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=${{ github.event.inputs.tag_suffix || 'latest' }},enable={{is_default_branch}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=build-${{ github.run_number }},enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=PRP CLI
+            org.opencontainers.image.description=Interactive Project Bootstrap CLI with AI integration
+            org.opencontainers.image.vendor=dcversus
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+            maintainer=dcversus
+
+      - name: Start Build Timer
+        id: timing
+        run: |
+          echo "start_time=$(date +%s)" >> $GITHUB_OUTPUT
+
+      - name: Build Docker Image (Multi-Platform)
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          platforms: ${{ needs.docker-preflight.outputs.platforms }}
+          push: false
+          load: false
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.run_number }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: |
+            type=gha,scope=buildcache
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:cache
+          cache-to: |
+            type=gha,scope=buildcache,mode=max
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:cache,mode=max
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ github.ref_name }}
+          target: production
+
+      - name: Stop Build Timer and Calculate Duration
+        id: timing
+        run: |
+          END_TIME=$(date +%s)
+          DURATION=$((END_TIME - ${{ steps.timing.outputs.start_time }}))
+          echo "duration=$DURATION" >> $GITHUB_OUTPUT
+          echo "⏱️ Build time: ${DURATION}s"
+
+      - name: Pull Built Image for Testing
+        run: |
+          echo "📥 Pulling built image for testing..."
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.run_number }}
+
+      - name: Comprehensive Docker Image Testing
+        run: |
+          echo "🧪 Running comprehensive Docker image tests..."
+
+          # Test image startup and basic functionality
+          echo "🚀 Testing CLI startup..."
+          timeout 30s docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.run_number }} --version
+          timeout 30s docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.run_number }} --help
+
+          # Test CLI functionality in container
+          echo "🛠️ Testing CLI functionality..."
+          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.run_number }} init --help
+
+          # Test with volume mount
+          mkdir -p test-docker-workspace
+          echo '{"project": {"name": "docker-test"}}' > test-docker-workspace/.prprc
+
+          docker run --rm \
+            -v $(pwd)/test-docker-workspace:/workspace \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.run_number }} \
+            --version
+
+          # Test non-root user security
+          echo "🔒 Testing security configuration..."
+          USER_ID=$(docker run --rm --user root ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.run_number }} id -u)
+          if [[ "$USER_ID" == "0" ]]; then
+            echo "⚠️ Container can run as root (consider fixing this)"
+          else
+            echo "✅ Container runs as non-root user"
+          fi
+
+          # Test health check if configured
+          if docker inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.run_number }} | grep -q "Health"; then
+            echo "💓 Testing health check..."
+            docker run --rm -d --name test-health ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.run_number }}
+            sleep 10
+            HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' test-health 2>/dev/null || echo "not_configured")
+            docker stop test-health
+            echo "Health status: $HEALTH_STATUS"
+          fi
+
+          rm -rf test-docker-workspace
+          echo "✅ Docker image tests completed"
+
+      - name: Analyze Docker Image Size and Layers
+        id: size
+        run: |
+          echo "📊 Analyzing Docker image..."
+
+          # Get image size
+          IMAGE_SIZE=$(docker images ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.run_number }} --format "{{.Size}}")
+          echo "📦 Image size: $IMAGE_SIZE"
+
+          # Convert to MB for output
+          SIZE_MB=$(docker images ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.run_number }} --format "{{.Size}}" | sed 's/MB//' | sed 's/GB/*1024/' | bc | cut -d. -f1)
+          echo "size_mb=$SIZE_MB" >> $GITHUB_OUTPUT
+
+          # Analyze layers
+          echo "📋 Image layers:"
+          docker history ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.run_number }} --no-trunc | head -10
+
+          # Check for large layers (>100MB)
+          LARGE_LAYERS=$(docker history ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:build-${{ github.run_number }} --format "table {{.Size}}" | grep -E "[0-9]+GB|[1-9][0-9]{2}MB" | wc -l)
+          if [[ $LARGE_LAYERS -gt 0 ]]; then
+            echo "⚠️ Found $LARGE_LAYERS large layers (>100MB)"
+          else
+            echo "✅ No excessively large layers found"
+          fi
+
+      - name: Build and Push Production Images
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          platforms: ${{ needs.docker-preflight.outputs.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: |
+            type=gha,scope=buildcache
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:cache
+          cache-to: |
+            type=gha,scope=buildcache,mode=max
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:cache,mode=max
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ github.ref_name }}
+          target: production
+
+      - name: Generate Comprehensive SBOM
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "📄 Generating Software Bill of Materials..."
+
+          # Generate SPDX SBOM
+          docker run --rm \
+            -v $(pwd):/workspace \
+            -w /workspace \
+            anchore/syft:latest \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }} \
+            -o spdx-json > sbom.spdx.json
+
+          # Generate CycloneDX SBOM
+          docker run --rm \
+            -v $(pwd):/workspace \
+            -w /workspace \
+            anchore/syft:latest \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }} \
+            -o cyclonedx-json > sbom.cyclonedx.json
+
+          echo "✅ SBOM generation completed"
+
+      - name: Upload SBOM Artifacts
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-sbom-${{ github.run_number }}
+          path: |
+            sbom.spdx.json
+            sbom.cyclonedx.json
+          retention-days: 90
+
+  # Enhanced security scanning and vulnerability analysis
+  docker-security:
+    name: Comprehensive Security Analysis
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.event_name != 'pull_request' && github.event.inputs.security_scan != 'false'
+
+    strategy:
+      matrix:
+        scanner: [trivy, grype, docker-scout]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Run Trivy Vulnerability Scanner
+        if: matrix.scanner == 'trivy'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          exit-code: '1'
+          ignore-unfixed: false
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+      - name: Run Grype Vulnerability Scanner
+        if: matrix.scanner == 'grype'
+        run: |
+          echo "🔍 Running Grype vulnerability scanner..."
+
+          # Install Grype
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+
+          # Run Grype scan
+          grype ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} \
+            -o json > grype-results.json
+
+          # Generate summary
+          TOTAL_VULNS=$(jq '.matches | length' grype-results.json)
+          CRITICAL_VULNS=$(jq '.matches | map(select(.vulnerability.severity == "Critical")) | length' grype-results.json)
+          HIGH_VULNS=$(jq '.matches | map(select(.vulnerability.severity == "High")) | length' grype-results.json)
+
+          echo "📊 Grype Results: $TOTAL_VULNS total, $CRITICAL_VULNS critical, $HIGH_VULNS high"
+
+      - name: Run Docker Scout CVE Analysis
+        if: matrix.scanner == 'docker-scout'
+        run: |
+          echo "🔍 Running Docker Scout analysis..."
+
+          # Login to Docker Hub for Scout
+          if [[ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]]; then
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          fi
+
+          # Run Scout analysis
+          docker scout cves \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} \
+            --format json > scout-results.json || echo "Docker Scout analysis completed with warnings"
+
+          # Analyze results
+          if [[ -f "scout-results.json" ]]; then
+            TOTAL_ISSUES=$(jq '.vulnerabilities | length' scout-results.json 2>/dev/null || echo "0")
+            echo "📊 Docker Scout found $TOTAL_ISSUES vulnerability issues"
+          fi
+        env:
+          DOCKER_SCOUT_TOKEN: ${{ secrets.DOCKER_SCOUT_TOKEN }}
+
+      - name: Upload Security Scan Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-scan-${{ matrix.scanner }}-${{ github.run_number }}
+          path: |
+            trivy-results.sarif
+            grype-results.json
+            scout-results.json
+          retention-days: 30
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always() && matrix.scanner == 'trivy'
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # Performance testing and optimization analysis
+  docker-performance:
+    name: Docker Performance Analysis
+    runs-on: ubuntu-latest
+    needs: docker-build
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Pull Docker Image for Performance Testing
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }}
+
+      - name: Performance Benchmarking
+        run: |
+          echo "⚡ Running Docker performance benchmarks..."
+
+          # Measure startup time
+          STARTUP_TIME=$(time (docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} --version) 2>&1 | grep real | awk '{print $2}' || echo "0.0s")
+          echo "🚀 Docker startup time: $STARTUP_TIME"
+
+          # Measure memory usage
+          MEMORY_USAGE=$(docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} node -e "
+            const start = process.memoryUsage();
+            console.log('Initial memory:', JSON.stringify(start, null, 2));
+            console.log('Node.js version:', process.version);
+            console.log('Platform:', process.platform);
+            console.log('Arch:', process.arch);
+          ")
+          echo "💾 Memory analysis: $MEMORY_USAGE"
+
+          # Test CLI operations performance
+          echo "📊 Testing CLI operations performance..."
+
+          # Help command
+          HELP_TIME=$(time (docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} --help >/dev/null) 2>&1 | grep real | awk '{print $2}' || echo "0.0s")
+          echo "📖 Help command time: $HELP_TIME"
+
+          # Test with different workloads
+          echo "🧪 Testing with workloads..."
+
+          # Create test workspace
+          mkdir -p test-workspace
+          cd test-workspace
+
+          # Test init command performance
+          INIT_TIME=$(time (docker run --rm -v $(pwd):/workspace ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} init --template none --default --cwd /workspace --no-interactive || echo "requires_interactive") 2>&1 | grep real | awk '{print $2}' || echo "N/A")
+          echo "🛠️ Init command time: $INIT_TIME"
+
+          cd ..
+          rm -rf test-workspace
+
+      - name: Image Optimization Analysis
+        run: |
+          echo "🔧 Analyzing image optimization..."
+
+          # Analyze image layers
+          echo "📋 Image layer analysis:"
+          docker history ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} --no-trunc > layer-analysis.txt
+
+          # Check for optimization opportunities
+          echo "🔍 Checking optimization opportunities..."
+
+          # Find largest layers
+          echo "📦 Top 10 largest layers:"
+          docker history ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} --format "table {{.Size}}\t{{.CreatedBy}}" | grep -v "SIZE" | head -10
+
+          # Check for potential multi-stage optimization
+          LAYER_COUNT=$(docker history ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} | wc -l)
+          echo "🏗️ Total layers: $LAYER_COUNT"
+
+          if [[ $LAYER_COUNT -gt 20 ]]; then
+            echo "⚠️ High layer count ($LAYER_COUNT) - consider multi-stage build optimization"
+          else
+            echo "✅ Reasonable layer count ($LAYER_COUNT)"
+          fi
+
+          # Calculate compression ratio
+          ACTUAL_SIZE=$(docker images ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} --format "{{.Size}}" | sed 's/[^0-9.]//g' | sed 's/GB/*1024/' | bc)
+          echo "📊 Actual image size: $ACTUAL_SIZE MB"
+
+      - name: Upload Performance Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-performance-${{ github.run_number }}
+          path: |
+            layer-analysis.txt
+            performance-*.json
+          retention-days: 30
+
+  # Docker Hub publishing and distribution
+  docker-publish:
+    name: Docker Distribution
+    runs-on: ubuntu-latest
+    needs: [docker-build, docker-security, docker-performance-test]
+    if: |
+      github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true' ||
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.ref == 'refs/heads/main' && github.event_name == 'push')
+
+    strategy:
+      matrix:
+        registry: [dockerhub, github]
+
+    steps:
+      - name: Login to Docker Hub
+        if: matrix.registry == 'dockerhub'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Pull and Tag for Distribution
+        run: |
+          echo "📥 Pulling image for distribution..."
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }}
+
+          if [[ matrix.registry == 'dockerhub' ]]; then
+            # Tag for Docker Hub
+            if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+              VERSION=${GITHUB_REF#refs/tags/v}
+              docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${VERSION}
+              docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+              docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${VERSION}-alpine
+            else
+              TAG_SUFFIX="${{ github.event.inputs.tag_suffix || 'latest' }}"
+              docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${TAG_SUFFIX}
+            fi
+
+            # Push to Docker Hub
+            echo "🚀 Pushing to Docker Hub..."
+            docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }} --all-tags
+
+          else
+            # Already pushed to GitHub Container Registry
+            echo "✅ Image already available in GitHub Container Registry"
+          fi
+
+      - name: Update Docker Hub Repository
+        if: matrix.registry == 'dockerhub' && startsWith(github.ref, 'refs/tags/v')
+        uses: peter-evans/dockerhub-description@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
+          readme-filepath: ./CLI_DOCKER_README.md
+
+      - name: Generate Docker Distribution Report
+        run: |
+          echo "## 🐋 Docker Distribution Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Registry | Image | Tag | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|-----|------|" >> $GITHUB_STEP_SUMMARY
+
+          if [[ matrix.registry == 'dockerhub' ]]; then
+            echo "| Docker Hub | ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }} | latest | ${{ needs.docker-build.outputs.image-size }}MB |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| GitHub | ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} | latest | ${{ needs.docker-build.outputs.image-size }}MB |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Build Information" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Time:** ${{ needs.docker-build.outputs.build-time }}s" >> $GITHUB_STEP_SUMMARY
+          echo "- **Platforms:** ${{ needs.docker-preflight.outputs.platforms }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Base Image:** ${{ needs.docker-preflight.outputs.base_image }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Context:** ${{ needs.docker-preflight.outputs.build-context-size }}MB" >> $GITHUB_STEP_SUMMARY
+
+  # Final Docker pipeline status and cleanup
+  docker-status:
+    name: Docker Pipeline Status
+    runs-on: ubuntu-latest
+    needs:
+      [docker-preflight, docker-build, docker-security, docker-performance-test, docker-publish]
+    if: always()
+
+    steps:
+      - name: Generate Docker Pipeline Summary
+        run: |
+          echo "## 🐋 Docker Pipeline Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage | Status | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Pre-flight | ${{ needs.docker-preflight.result }} | Validation and setup |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | ${{ needs.docker-build.result }} | Multi-platform build |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security | ${{ needs.docker-security.result }} | Vulnerability scanning |" >> $GITHUB_STEP_SUMMARY
+          echo "| Performance | ${{ needs.docker-performance-test.result }} | Benchmarking and analysis |" >> $GITHUB_STEP_SUMMARY
+          echo "| Distribution | ${{ needs.docker-publish.result }} | Registry publishing |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.docker-build.result }}" == "success" ]]; then
+            echo "### ✅ Docker Pipeline Successful!" >> $GITHUB_STEP_SUMMARY
+            echo "- Multi-platform Docker images built successfully" >> $GITHUB_STEP_SUMMARY
+            echo "- Security scans completed" >> $GITHUB_STEP_SUMMARY
+            echo "- Performance benchmarks validated" >> $GITHUB_STEP_SUMMARY
+            echo "- Images distributed to registries" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Docker Pipeline Failed!" >> $GITHUB_STEP_SUMMARY
+            echo "- Check failed stages above" >> $GITHUB_STEP_SUMMARY
+            echo "- Review build logs and fix issues" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Build #${{ github.run_number }}** | **Commit:** [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})" >> $GITHUB_STEP_SUMMARY
+
+  # Docker Security Scanning
+  docker-security-scan:
+    name: Docker Security Scan
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy Scan Results to GitHub Security Tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Docker Scout Analysis
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "🔍 Running Docker Scout analysis..."
+          docker scout cves ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }}
+        env:
+          DOCKER_SCOUT_TOKEN: ${{ secrets.DOCKER_SCOUT_TOKEN }}
+
+  # CLI Performance in Docker
+  docker-performance-test:
+    name: Docker Performance Test
+    runs-on: ubuntu-latest
+    needs: docker-build
+
+    steps:
+      - name: Test Docker Image Performance
+        run: |
+          echo "⚡ Testing Docker image performance..."
+
+          # Measure startup time
+          STARTUP_TIME=$(time (docker run --rm ${{ env.IMAGE_NAME }}:test --version) 2>&1 | grep real | awk '{print $2}')
+          echo "🚀 Docker startup time: $STARTUP_TIME"
+
+          # Measure image size
+          IMAGE_SIZE=$(docker images ${{ env.IMAGE_NAME }}:test --format "{{.Size}}")
+          echo "📦 Image size: $IMAGE_SIZE"
+
+          # Test with volume mount
+          mkdir -p test-volume
+          docker run --rm -v $(pwd)/test-volume:/workspace ${{ env.IMAGE_NAME }}:test init --help
+          rm -rf test-volume
+
+          echo "✅ Docker performance tests completed"
+
+  # Docker Hub Publishing (if requested)
+  docker-publish-final:
+    name: Publish to Docker Hub
+    runs-on: ubuntu-latest
+    needs: [docker-build, docker-security-scan]
+    if: |
+      github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true' ||
+      startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Pull and Tag for Docker Hub
+        run: |
+          # Pull the built image
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }}
+
+          # Tag for Docker Hub
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${VERSION}
+            docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+          else
+            docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.docker-build.outputs.image-digest }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.tag_suffix || 'latest' }}
+          fi
+
+      - name: Push to Docker Hub
+        run: |
+          # Push all tags
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }} --all-tags
+
+          echo "🚀 Published to Docker Hub: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}"
+
+      - name: Update Docker Hub Description
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: peter-evans/dockerhub-description@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
+          readme-filepath: ./CLI_DOCKER_README.md

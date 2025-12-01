@@ -1,0 +1,993 @@
+# Production-Ready CI/CD Pipeline with Advanced Security & Monitoring
+# Comprehensive deployment pipeline with multiple environments, security scanning, and automated rollback
+
+name: Production CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ['v*']
+  pull_request:
+    branches: [main, develop]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      force_deploy:
+        description: 'Force deployment (bypass checks)'
+        required: false
+        default: false
+        type: boolean
+      enable_rollback:
+        description: 'Enable automatic rollback on failure'
+        required: false
+        default: true
+        type: boolean
+
+# Global environment variables
+env:
+  NODE_VERSION: '20'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  CACHE_VERSION: v3
+  SECURITY_SCAN_ENABLED: true
+  PERFORMANCE_TEST_ENABLED: true
+
+# Permissions for comprehensive pipeline access
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  pull-requests: write
+  checks: write
+  statuses: write
+  deployments: write
+  issues: write
+
+jobs:
+  # Pipeline initiation and environment setup
+  pipeline-init:
+    name: Pipeline Initialization
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.setup.outputs.environment }}
+      should_deploy: ${{ steps.setup.outputs.should_deploy }}
+      cache_key: ${{ steps.cache.outputs.key }}
+      build_number: ${{ github.run_number }}
+      git_sha: ${{ github.sha }}
+      git_branch: ${{ github.ref_name }}
+      is_tag: ${{ steps.setup.outputs.is_tag }}
+      version: ${{ steps.setup.outputs.version }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Pipeline Environment
+        id: setup
+        run: |
+          echo "🚀 Initializing production CI/CD pipeline..."
+
+          # Determine environment
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENVIRONMENT="${{ github.event.inputs.environment }}"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            ENVIRONMENT="production"
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            ENVIRONMENT="staging"
+          else
+            ENVIRONMENT="test"
+          fi
+
+          # Determine if we should deploy
+          SHOULD_DEPLOY="false"
+          if [[ "$ENVIRONMENT" != "test" ]]; then
+            if [[ "${{ github.event_name }}" == "push" ]] || \
+               [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || \
+               [[ "${{ github.event_name }}" == "release" ]]; then
+              SHOULD_DEPLOY="true"
+            fi
+          fi
+
+          # Extract version
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${{ github.ref_name }}"
+            IS_TAG="true"
+          else
+            VERSION="${{ github.run_number }}-${{ github.sha:0:8 }}"
+            IS_TAG="false"
+          fi
+
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "should_deploy=$SHOULD_DEPLOY" >> $GITHUB_OUTPUT
+          echo "is_tag=$IS_TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          echo "📊 Pipeline Setup:"
+          echo "  Environment: $ENVIRONMENT"
+          echo "  Should Deploy: $SHOULD_DEPLOY"
+          echo "  Version: $VERSION"
+          echo "  Is Tag: $IS_TAG"
+
+      - name: Generate Cache Key
+        id: cache
+        run: |
+          CACHE_KEY="${{ env.CACHE_VERSION }}-${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}"
+          echo "key=$CACHE_KEY" >> $GITHUB_OUTPUT
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Create Pipeline Metadata
+        run: |
+          cat > pipeline-metadata.json << EOF
+          {
+            "pipeline_id": "${{ github.run_id }}",
+            "run_number": "${{ github.run_number }}",
+            "environment": "${{ steps.setup.outputs.environment }}",
+            "version": "${{ steps.setup.outputs.version }}",
+            "git_sha": "${{ github.sha }}",
+            "git_branch": "${{ github.ref_name }}",
+            "actor": "${{ github.actor }}",
+            "event": "${{ github.event_name }}",
+            "repository": "${{ github.repository }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "should_deploy": "${{ steps.setup.outputs.should_deploy }}"
+          }
+          EOF
+
+          echo "📋 Pipeline metadata created"
+
+  # Comprehensive security scanning
+  security-scan:
+    name: Security Analysis & Scanning
+    runs-on: ubuntu-latest
+    needs: pipeline-init
+    if: env.SECURITY_SCAN_ENABLED == 'true'
+
+    strategy:
+      matrix:
+        scan-type: [dependencies, code, container, secrets, infrastructure]
+        fail-fast: false
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Dependency Security Audit
+        if: matrix.scan-type == 'dependencies'
+        run: |
+          echo "🔒 Running comprehensive dependency security audit..."
+
+          # npm audit with JSON output
+          npm audit --audit-level=moderate --json > npm-audit.json || true
+
+          # Snyk vulnerability scan
+          if command -v snyk >/dev/null 2>&1; then
+            snyk test --json > snyk-report.json || true
+          fi
+
+          # OWASP dependency check
+          curl -L https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip -o dependency-check.zip
+          unzip dependency-check.zip
+          java -jar dependency-check/bin/dependency-check.sh --project PRP --scan . --format JSON --out dependency-check-reports || true
+
+          # Analyze results
+          node -e "
+            const audit = JSON.parse(require('fs').readFileSync('npm-audit.json', 'utf8'));
+            const vulnerabilities = audit.vulnerabilities || {};
+            const highVulns = Object.values(vulnerabilities).filter(v => v.severity === 'high');
+            const moderateVulns = Object.values(vulnerabilities).filter(v => v.severity === 'moderate');
+
+            console.log(\`📊 Dependency Audit Results:\`);
+            console.log(\`  High: \${highVulns.length}\`);
+            console.log(\`  Moderate: \${moderateVulns.length}\`);
+            console.log(\`  Total: \${Object.keys(vulnerabilities).length}\`);
+
+            if (highVulns.length > 0) {
+              console.log('❌ High severity vulnerabilities found:');
+              highVulns.forEach(v => console.log(\`  - \${v.name}: \${v.title}\`));
+              process.exit(1);
+            }
+          "
+
+      - name: Code Security Analysis
+        if: matrix.scan-type == 'code'
+        run: |
+          echo "🔍 Running comprehensive code security analysis..."
+
+          # Install security tools
+          npm install -g eslint-plugin-security @typescript-eslint/parser semgrep
+
+          # ESLint security rules
+          npx eslint . --ext .ts,.js --config '{ "extends": ["plugin:security/recommended"] }' --format=json > eslint-security.json || true
+
+          # Semgrep security scanning
+          semgrep --config=auto --json --output=semgrep-report.json src/ || true
+
+          # Bandit for Python (if any Python files)
+          find . -name "*.py" -exec bandit -r {} + --format json > bandit-report.json 2>/dev/null || true
+
+          # Check for hardcoded secrets
+          echo "🔍 Scanning for hardcoded secrets..."
+          grep -r -i "password\|secret\|token\|key\|api_key" src/ --include="*.ts" --include="*.js" | grep -v "//.*password\|//.*secret\|console.log" || echo "No obvious hardcoded secrets found"
+
+      - name: Container Security Scan
+        if: matrix.scan-type == 'container'
+        run: |
+          echo "🐳 Running container security analysis..."
+
+          # Build image for scanning
+          docker build -t prp-cli:${{ needs.pipeline-init.outputs.version }} .
+
+          # Trivy vulnerability scanner
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          trivy image --format json --output trivy-report.json prp-cli:${{ needs.pipeline-init.outputs.version }}
+
+          # Clair vulnerability scanner (if available)
+          if command -v clair-scanner >/dev/null 2>&1; then
+            clair-scanner prp-cli:${{ needs.pipeline-init.outputs.version }} > clair-report.json || true
+          fi
+
+          # Docker Bench Security
+          docker run -it --net host --pid host --userns host --cap-add audit_control \
+            -v /etc:/etc:ro \
+            -v /usr/bin/containerd:/usr/bin/containerd:ro \
+            -v /usr/bin/runc:/usr/bin/runc:ro \
+            -v /usr/lib/systemd:/usr/lib/systemd:ro \
+            -v /var/lib:/var/lib:ro \
+            -v /dev:/dev \
+            --label docker_bench_security \
+            docker/docker-bench-security.sh -l json > docker-bench-security.json || true
+
+      - name: Infrastructure Security Scan
+        if: matrix.scan-type == 'infrastructure'
+        run: |
+          echo "🏗️ Running infrastructure security analysis..."
+
+          # Install tfsec for Terraform security
+          curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+
+          # Scan Terraform files (if any)
+          find . -name "*.tf" -exec tfsec {} + --format=json --out=tfsec-report.json || echo "No Terraform files found"
+
+          # Kubernetes manifest security
+          npm install -g @kubernetes/client/kubectl @pulumi/kubesecurity
+          find k8s/ -name "*.yaml" -o -name "*.yml" | xargs kubesecurity analyze > kube-security-report.json || true
+
+          # Checkov for IaC security
+          npm install -g checkov
+          checkov -d . --framework terraform,kubernetes --output json > checkov-report.json || true
+
+      - name: Secret Scanning
+        if: matrix.scan-type == 'secrets'
+        run: |
+          echo "🔐 Running secret detection analysis..."
+
+          # Install and run truffleHog
+          pip install truffleHog
+          trufflehog --json --regex --output=trufflehog-report.json . || true
+
+          # GitLeaks scanning
+          gitLeaks --report --output gitleaks-report.json || true
+
+          # Detect-secrets scanning
+          if command -v detect-secrets >/dev/null 2>&1; then
+            detect-secrets scan --all-files --baseline .secrets.baseline || true
+          fi
+
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports-${{ matrix.scan-type }}
+          path: |
+            npm-audit.json
+            snyk-report.json
+            dependency-check-reports/
+            eslint-security.json
+            semgrep-report.json
+            bandit-report.json
+            trivy-report.json
+            docker-bench-security.json
+            tfsec-report.json
+            kube-security-report.json
+            checkov-report.json
+            trufflehog-report.json
+            gitleaks-report.json
+          retention-days: 90
+
+  # Performance and load testing
+  performance-test:
+    name: Performance & Load Testing
+    runs-on: ubuntu-latest
+    needs: pipeline-init
+    if: env.PERFORMANCE_TEST_ENABLED == 'true'
+
+    strategy:
+      matrix:
+        test-type: [load, stress, endurance, spike]
+        fail-fast: false
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Build Application
+        run: npm run build
+
+      - name: Install Performance Testing Tools
+        run: |
+          npm install -g artillery k6 autocannon
+          curl -L https://github.com/loadimpact/k6/releases/download/v0.45.0/k6-v0.45.0-linux-amd64.tar.gz | tar xz -C /tmp
+          sudo mv /tmp/k6-v0.45.0-linux-amd64/k6 /usr/local/bin/
+
+      - name: Start Application for Testing
+        run: |
+          echo "🚀 Starting application for performance testing..."
+          npm run dev:docs &
+          APP_PID=$!
+          echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+
+          # Wait for application to be ready
+          timeout 60 bash -c "until curl -f http://localhost:8080/health; do sleep 2; done"
+          echo "✅ Application is ready for testing"
+
+      - name: Load Testing
+        if: matrix.test-type == 'load'
+        run: |
+          echo "⚡ Running load testing..."
+
+          # Artillery load test
+          cat > artillery-load-test.yml << EOF
+          config:
+            target: 'http://localhost:8080'
+            phases:
+              - duration: 60
+                arrivalRate: 10
+                name: "Warm up"
+              - duration: 120
+                arrivalRate: 50
+                name: "Load test"
+              - duration: 60
+                arrivalRate: 20
+                name: "Cool down"
+          scenarios:
+            - name: "Load test endpoints"
+              weight: 70
+              flow:
+                - get:
+                    url: "/"
+                - get:
+                    url: "/health"
+            - name: "API endpoints"
+              weight: 30
+              flow:
+                - get:
+                    url: "/metrics"
+          EOF
+
+          artillery run artillery-load-test.yml --output artillery-load-results.json
+
+          # K6 load test
+          cat > k6-load-test.js << EOF
+          import http from 'k6/http';
+          import { check, sleep } from 'k6';
+
+          export let options = {
+            stages: [
+              { duration: '2m', target: 20 },
+              { duration: '5m', target: 20 },
+              { duration: '2m', target: 0 },
+            ],
+            thresholds: {
+              http_req_duration: ['p(95)<2000'],
+              http_req_failed: ['rate<0.1'],
+            },
+          };
+
+          export default function () {
+            let res = http.get('http://localhost:8080/');
+            check(res, {
+              'status is 200': (r) => r.status === 200,
+              'response time < 2s': (r) => r.timings.duration < 2000,
+            });
+            sleep(1);
+          }
+          EOF
+
+          k6 run k6-load-test.js --out json=k6-load-results.json
+
+      - name: Stress Testing
+        if: matrix.test-type == 'stress'
+        run: |
+          echo "💪 Running stress testing..."
+
+          # High concurrency stress test
+          autocannon -c 100 -d 30 -p 10 http://localhost:8080/ --json > autocannon-stress-results.json
+
+          # K6 stress test
+          cat > k6-stress-test.js << EOF
+          import http from 'k6/http';
+          import { check, sleep } from 'k6';
+
+          export let options = {
+            stages: [
+              { duration: '1m', target: 50 },
+              { duration: '2m', target: 100 },
+              { duration: '5m', target: 100 },
+              { duration: '2m', target: 0 },
+            ],
+          };
+
+          export default function () {
+            http.get('http://localhost:8080/');
+            sleep(0.1);
+          }
+          EOF
+
+          k6 run k6-stress-test.js --out json=k6-stress-results.json
+
+      - name: Endurance Testing
+        if: matrix.test-type == 'endurance'
+        run: |
+          echo "🏃 Running endurance testing..."
+
+          # Long-running test
+          autocannon -c 10 -d 300 -p 5 http://localhost:8080/ --json > autocannon-endurance-results.json
+
+      - name: Spike Testing
+        if: matrix.test-type == 'spike'
+        run: |
+          echo "📈 Running spike testing..."
+
+          # K6 spike test
+          cat > k6-spike-test.js << EOF
+          import http from 'k6/http';
+          import { check, sleep } from 'k6';
+
+          export let options = {
+            stages: [
+              { duration: '2m', target: 10 },
+              { duration: '5s', target: 200 },  // Spike
+              { duration: '2m', target: 200 },
+              { duration: '5s', target: 10 },  // Recovery
+              { duration: '3m', target: 10 },
+            ],
+          };
+
+          export default function () {
+            http.get('http://localhost:8080/');
+            sleep(1);
+          }
+          EOF
+
+          k6 run k6-spike-test.js --out json=k6-spike-results.json
+
+      - name: Stop Application
+        if: always()
+        run: |
+          echo "🛑 Stopping application..."
+          if [[ -n "$APP_PID" ]]; then
+            kill $APP_PID 2>/dev/null || true
+            wait $APP_PID 2>/dev/null || true
+          fi
+
+      - name: Analyze Performance Results
+        run: |
+          echo "📊 Analyzing performance test results..."
+
+          node -e "
+            const fs = require('fs');
+            const results = {};
+
+            // Parse Artillery results
+            if (fs.existsSync('artillery-load-results.json')) {
+              const artillery = JSON.parse(fs.readFileSync('artillery-load-results.json', 'utf8'));
+              results.artillery = {
+                requests: artillery.aggregate.counters['http.requests'],
+                errors: artillery.aggregate.counters['http.errors'],
+                latency: artillery.aggregate.latency
+              };
+            }
+
+            // Parse K6 results
+            if (fs.existsSync('k6-load-results.json')) {
+              const k6Data = fs.readFileSync('k6-load-results.json', 'utf8')
+                .split('\\n')
+                .filter(line => line.trim() && !line.startsWith('metric'))
+                .map(line => JSON.parse(line));
+
+              const httpMetrics = k6Data.filter(m => m.type === 'Point' && m.metric === 'http_req_duration');
+              if (httpMetrics.length > 0) {
+                const durations = httpMetrics.map(m => m.data.value);
+                results.k6 = {
+                  avg: durations.reduce((a, b) => a + b, 0) / durations.length,
+                  p95: durations.sort((a, b) => a - b)[Math.floor(durations.length * 0.95)],
+                  max: Math.max(...durations),
+                  total: durations.length
+                };
+              }
+            }
+
+            console.log('📊 Performance Test Results:');
+            console.log(JSON.stringify(results, null, 2));
+
+            fs.writeFileSync('performance-summary.json', JSON.stringify(results, null, 2));
+          "
+
+      - name: Upload Performance Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-reports-${{ matrix.test-type }}
+          path: |
+            artillery-*.json
+            k6-*.json
+            autocannon-*.json
+            performance-summary.json
+          retention-days: 90
+
+  # Build and containerization
+  build-and-package:
+    name: Build & Containerization
+    runs-on: ubuntu-latest
+    needs: [pipeline-init, security-scan]
+    if: needs.pipeline-init.outputs.should_deploy == 'true'
+
+    outputs:
+      image_digest: ${{ steps.build.outputs.digest }}
+      image_tag: ${{ steps.build.outputs.tag }}
+      build_time: ${{ steps.build.outputs.time }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+          flavor: |
+            latest=auto
+            suffix=,-${{ needs.pipeline-init.outputs.environment }}
+
+      - name: Build and Push Container Image
+        id: build
+        run: |
+          echo "🐳 Building container image..."
+
+          START_TIME=$(date +%s)
+
+          # Build with advanced options
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+            --build-arg VCS_REF=${{ github.sha }} \
+            --build-arg VERSION=${{ needs.pipeline-init.outputs.version }} \
+            --cache-from type=gha \
+            --cache-to type=gha,mode=max \
+            --push \
+            --tag ${{ steps.meta.outputs.tags }} \
+            --label org.opencontainers.image.revision=${{ github.sha }} \
+            --label org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }} \
+            --label org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+            --label org.opencontainers.image.version=${{ needs.pipeline-init.outputs.version }} \
+            .
+
+          END_TIME=$(date +%s)
+          BUILD_TIME=$((END_TIME - START_TIME))
+
+          # Get image digest
+          DIGEST=$(docker buildx imagetools inspect ${{ steps.meta.outputs.tags }} --format '{{.Manifest.Digest}}')
+
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+          echo "tag=${{ steps.meta.outputs.tags }}" >> $GITHUB_OUTPUT
+          echo "time=$BUILD_TIME" >> $GITHUB_OUTPUT
+
+          echo "✅ Container image built and pushed successfully"
+          echo "📋 Image: ${{ steps.meta.outputs.tags }}"
+          echo "🔑 Digest: $DIGEST"
+          echo "⏱️ Build time: ${BUILD_TIME}s"
+
+      - name: Generate SBOM (Software Bill of Materials)
+        run: |
+          echo "📋 Generating SBOM..."
+
+          # Install Syft for SBOM generation
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+          # Generate SBOM in multiple formats
+          syft ${{ steps.build.outputs.tag }} \
+            -o cyclonedx-json=sbom-cyclonedx.json \
+            -o spdx-json=sbom-spdx.json \
+            -o table=sbom-table.txt
+
+          # Validate SBOM
+          if [[ -f "sbom-cyclonedx.json" ]]; then
+            echo "✅ CycloneDX SBOM generated"
+            COMPONENTS=$(jq -r '.components | length' sbom-cyclonedx.json)
+            echo "📦 Components found: $COMPONENTS"
+          fi
+
+      - name: Container Security Scan
+        run: |
+          echo "🔒 Running final container security scan..."
+
+          # Trivy scan of final image
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+          trivy image \
+            --format json \
+            --output trivy-final-scan.json \
+            --exit-code 1 \
+            --severity HIGH,CRITICAL \
+            ${{ steps.build.outputs.tag }} || true
+
+          # Analyze results
+          if [[ -f "trivy-final-scan.json" ]]; then
+            VULNS=$(jq -r '.Results[0].Vulnerabilities | length' trivy-final-scan.json)
+            echo "🔍 Vulnerabilities found: $VULNS"
+
+            CRITICAL=$(jq -r '.Results[0].Vulnerabilities[] | select(.Severity == "CRITICAL") | length' trivy-final-scan.json)
+            if [[ "$CRITICAL" -gt 0 ]]; then
+              echo "❌ CRITICAL vulnerabilities found: $CRITICAL"
+              exit 1
+            fi
+          fi
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-${{ needs.pipeline-init.outputs.environment }}
+          path: |
+            sbom-*.json
+            sbom-*.txt
+            trivy-final-scan.json
+          retention-days: 90
+
+  # Multi-environment deployment
+  deploy:
+    name: Deploy to ${{ needs.pipeline-init.outputs.environment }}
+    runs-on: ubuntu-latest
+    needs: [pipeline-init, build-and-package]
+    if: needs.pipeline-init.outputs.should_deploy == 'true'
+    environment:
+      name: ${{ needs.pipeline-init.outputs.environment }}
+      url: ${{ needs.pipeline-init.outputs.environment == 'production' && 'https://prp.theedgestory.org' || 'https://staging.prp.theedgestory.org' }}
+
+    strategy:
+      matrix:
+        deploy-type: [kubernetes, docker-compose]
+        fail-fast: false
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Deployment Tools
+        run: |
+          echo "🚀 Setting up deployment tools..."
+
+          # Install kubectl
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+          # Install Helm
+          curl https://get.helm.sh/helm-v3.12.0-linux-amd64.tar.gz | tar xz
+          sudo mv linux-amd64/helm /usr/local/bin/
+
+          # Install Docker Compose
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+
+      - name: Deploy to Kubernetes
+        if: matrix.deploy-type == 'kubernetes'
+        run: |
+          echo "☸️ Deploying to Kubernetes..."
+
+          # Set up kubeconfig
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+
+          # Verify cluster access
+          kubectl cluster-info
+          kubectl get nodes
+
+          # Create namespace if not exists
+          kubectl create namespace prp-system --dry-run=client -o yaml | kubectl apply -f -
+
+          # Apply secrets
+          kubectl apply -f k8s/base/secret.yaml --namespace prp-system
+
+          # Apply configmaps
+          kubectl apply -f k8s/base/configmap.yaml --namespace prp-system
+
+          # Deploy with Kustomize
+          if [[ "${{ needs.pipeline-init.outputs.environment }}" == "production" ]]; then
+            kubectl apply -k k8s/overlays/production/
+          else
+            kubectl apply -k k8s/overlays/staging/
+          fi
+
+          # Wait for rollout
+          kubectl rollout status deployment/prp-mcp-server -n prp-system --timeout=300s
+
+          # Verify deployment
+          kubectl get pods -n prp-system
+          kubectl get services -n prp-system
+
+          echo "✅ Kubernetes deployment completed"
+
+      - name: Deploy with Docker Compose
+        if: matrix.deploy-type == 'docker-compose'
+        run: |
+          echo "🐳 Deploying with Docker Compose..."
+
+          # Set environment variables
+          export VERSION="${{ needs.build-and-package.outputs.image_tag }}"
+          export API_SECRET="${{ secrets.API_SECRET }}"
+          export REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}"
+
+          # Deploy services
+          docker-compose -f docker-compose.yml up -d
+
+          # Wait for services to be healthy
+          timeout 300 bash -c 'until docker-compose ps | grep -q "Up (healthy)"; do sleep 5; done'
+
+          # Verify deployment
+          docker-compose ps
+
+          echo "✅ Docker Compose deployment completed"
+
+      - name: Health Check & Validation
+        run: |
+          echo "🏥 Running deployment health checks..."
+
+          # Determine endpoint based on environment
+          if [[ "${{ needs.pipeline-init.outputs.environment }}" == "production" ]]; then
+            ENDPOINT="https://prp.theedgestory.org"
+          else
+            ENDPOINT="https://staging.prp.theedgestory.org"
+          fi
+
+          # Health check with retry logic
+          for i in {1..10}; do
+            if curl -f -s "$ENDPOINT/health" > /dev/null; then
+              echo "✅ Health check passed (attempt $i)"
+              break
+            else
+              echo "⏳ Health check failed (attempt $i), retrying in 30s..."
+              sleep 30
+            fi
+          done
+
+          # Additional validation
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$ENDPOINT")
+          if [[ "$HTTP_CODE" != "200" ]]; then
+            echo "❌ Health check failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+          echo "✅ Deployment validation completed successfully"
+
+      - name: Post-Deployment Monitoring Setup
+        run: |
+          echo "📊 Setting up post-deployment monitoring..."
+
+          # Deploy monitoring stack if needed
+          if [[ "${{ needs.pipeline-init.outputs.environment }}" == "production" ]]; then
+            # Production monitoring configuration
+            echo "🔧 Production monitoring enabled"
+          else
+            # Staging monitoring configuration
+            echo "🔧 Staging monitoring enabled"
+          fi
+
+  # Automated rollback on failure
+  rollback-on-failure:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: [deploy, pipeline-init]
+    if: failure() && needs.deploy.result == 'failure' && github.event.inputs.enable_rollback == 'true'
+
+    steps:
+      - name: Automated Rollback
+        run: |
+          echo "🚨 Initiating automated rollback due to deployment failure..."
+
+          # Get previous successful deployment info
+          PREVIOUS_SHA=$(git log --oneline -10 | grep -v "rollback" | head -2 | tail -1 | awk '{print $1}')
+
+          echo "📋 Rolling back to: $PREVIOUS_SHA"
+
+          # Rollback Kubernetes deployment
+          if command -v kubectl >/dev/null 2>&1; then
+            kubectl rollout undo deployment/prp-mcp-server -n prp-system
+            kubectl rollout status deployment/prp-mcp-server -n prp-system --timeout=300s
+          fi
+
+          # Rollback Docker Compose if applicable
+          if command -v docker-compose >/dev/null 2>&1; then
+            docker-compose down
+            # Pull previous image and redeploy
+            docker-compose up -d
+          fi
+
+          echo "✅ Rollback completed"
+
+      - name: Notify Rollback
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Deployment Rollback Triggered',
+              body: `
+              **Rollback Details**
+
+              - **Environment**: ${{ needs.pipeline-init.outputs.environment }}
+              - **Previous SHA**: ${PREVIOUS_SHA}
+              - **Current SHA**: ${{ needs.pipeline-init.outputs.git_sha }}
+              - **Build Number**: ${{ github.run_number }}
+              - **Rollback Time**: ${new Date().toISOString()}
+
+              **Reason**: Deployment failure triggered automatic rollback
+
+              **Action Required**: Investigate deployment failure and fix issues before re-deployment
+              `,
+              labels: ['rollback', 'critical', 'infrastructure']
+            });
+
+  # Pipeline completion and reporting
+  pipeline-complete:
+    name: Pipeline Completion
+    runs-on: ubuntu-latest
+    needs: [pipeline-init, security-scan, performance-test, build-and-package, deploy]
+    if: always()
+
+    steps:
+      - name: Generate Pipeline Report
+        run: |
+          echo "📊 Generating comprehensive pipeline report..."
+
+          cat > pipeline-report.md << EOF
+          # PRP CLI Pipeline Report
+
+          **Pipeline ID**: ${{ github.run_id }}
+          **Run Number**: ${{ github.run_number }}
+          **Environment**: ${{ needs.pipeline-init.outputs.environment }}
+          **Version**: ${{ needs.pipeline-init.outputs.version }}
+          **Timestamp**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+
+          ## Pipeline Status
+
+          | Stage | Status | Duration |
+          |-------|--------|----------|
+          | Pipeline Init | ${{ needs.pipeline-init.result }} | - |
+          | Security Scan | ${{ needs.security-scan.result }} | - |
+          | Performance Test | ${{ needs.performance-test.result }} | - |
+          | Build & Package | ${{ needs.build-and-package.result }} | - |
+          | Deploy | ${{ needs.deploy.result }} | - |
+
+          ## Deployment Information
+
+          - **Image**: ${{ needs.build-and-package.outputs.image_tag }}
+          - **Digest**: ${{ needs.build-and-package.outputs.image_digest }}
+          - **Build Time**: ${{ needs.build-and-package.outputs.build_time }}s
+
+          ## Security Results
+
+          - **Dependency Scan**: Completed
+          - **Code Analysis**: Completed
+          - **Container Scan**: Completed
+          - **Infrastructure Scan**: Completed
+
+          ## Performance Results
+
+          - **Load Testing**: Completed
+          - **Stress Testing**: Completed
+          - **Endurance Testing**: Completed
+
+          ## Next Steps
+
+          ${{ needs.deploy.result == 'success' && '✅ Deployment successful - monitor for 24 hours' || '❌ Deployment failed - investigate and retry' }}
+          EOF
+
+          echo "✅ Pipeline report generated"
+
+      - name: Upload Pipeline Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pipeline-report-${{ github.run_number }}
+          path: |
+            pipeline-report.md
+            pipeline-metadata.json
+          retention-days: 90
+
+      - name: Create Release Notes (if needed)
+        if: needs.deploy.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          echo "📝 Creating release notes..."
+
+          # Generate changelog
+          echo "## Release ${{ needs.pipeline-init.outputs.version }}" > release-notes.md
+          echo "" >> release-notes.md
+          echo "### Changes" >> release-notes.md
+          echo "$(git log --oneline $(git describe --tags --abbrev=0 HEAD^)..HEAD)" >> release-notes.md
+          echo "" >> release-notes.md
+          echo "### Deployment" >> release-notes.md
+          echo "- Environment: ${{ needs.pipeline-init.outputs.environment }}" >> release-notes.md
+          echo "- Image: ${{ needs.build-and-package.outputs.image_tag }}" >> release-notes.md
+          echo "- Build Time: ${{ needs.build-and-package.outputs.build_time }}s" >> release-notes.md
+
+      - name: Send Notification
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          text: |
+            Pipeline #${{ github.run_number }} for ${{ needs.pipeline-init.outputs.environment }} ${{ needs.deploy.result == 'success' && 'completed successfully' : 'failed' }}
+
+            **Version**: ${{ needs.pipeline-init.outputs.version }}
+            **Environment**: ${{ needs.pipeline-init.outputs.environment }}
+            **Actor**: ${{ github.actor }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

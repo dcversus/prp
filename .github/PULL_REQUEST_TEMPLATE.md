@@ -1,29 +1,36 @@
 # PRP-XXX: [Title]
 
 ## Summary
+
 <!-- Brief description of what this PR does -->
 
 ## Related PRP
+
 - Implements: [PRP-XXX](../PRPs/PRP-XXX.md)
 - Next: [PRP-YYY](../PRPs/PRP-YYY.md) (if applicable)
 
 ## Changes Made
 
 ### Added
+
 -
 
 ### Changed
+
 -
 
 ### Removed
+
 -
 
 ### Fixed
+
 -
 
 ## Definition of Done (DOD)
 
 <!-- Copy from PRP and check each item -->
+
 - [ ] All requirements implemented
 - [ ] Unit tests written and passing
 - [ ] Integration tests written and passing (if applicable)
@@ -36,6 +43,7 @@
 ## CHANGELOG Update
 
 **CRITICAL**: This PR updates CHANGELOG.md
+
 - [ ] I have updated CHANGELOG.md in the [Unreleased] section
 - [ ] Changes are categorized (Added/Changed/Removed/Fixed/Security)
 - [ ] Entry is clear and describes the user-facing impact
@@ -44,30 +52,35 @@
 ## Testing
 
 ### Unit Tests
-<!-- List unit tests added/updated -->
--
+
+## <!-- List unit tests added/updated -->
 
 ### Integration Tests
-<!-- List integration tests added/updated (if applicable) -->
--
+
+## <!-- List integration tests added/updated (if applicable) -->
 
 ### Manual Testing
+
 <!-- Steps to manually test this PR -->
+
 1.
 2.
 3.
 
 ## Screenshots/Logs (if applicable)
+
 <!-- Add screenshots or logs demonstrating the changes -->
 
 ## Breaking Changes
+
 <!-- List any breaking changes and migration steps -->
+
 - [ ] This PR contains breaking changes
 - [ ] Migration guide provided
 
 ## Next Steps
-<!-- What should be done after this PR is merged -->
--
+
+## <!-- What should be done after this PR is merged -->
 
 ## Reviewer Checklist
 

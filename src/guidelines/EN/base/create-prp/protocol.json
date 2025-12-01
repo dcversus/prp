@@ -1,0 +1,168 @@
+{
+  "id": "create-prp-protocol",
+  "name": "Create PRP Protocol",
+  "description": "Complete workflow for creating comprehensive Product Requirement Prompts",
+  "version": "1.0.0",
+  "category": "creation",
+  "priority": "critical",
+  "enabled": true,
+  "protocol": {
+    "id": "create-prp-workflow",
+    "description": "Complete PRP creation workflow from initial idea to validated requirements",
+    "steps": [
+      {
+        "id": "capture-user-requirements",
+        "name": "Capture User Requirements",
+        "description": "Gather and structure user requirements into proper PRP format",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["user-quote", "requirements-list", "scope-definition"],
+        "nextSteps": ["validate-feasibility"]
+      },
+      {
+        "id": "validate-feasibility",
+        "name": "Validate Technical Feasibility",
+        "description": "Assess technical feasibility and identify potential blockers",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["feasibility-assessment", "technical-risks", "required-expertise"],
+        "nextSteps": ["define-scope"]
+      },
+      {
+        "id": "define-scope",
+        "name": "Define Project Scope",
+        "description": "Create clear scope boundaries and acceptance criteria",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["scope-document", "acceptance-criteria", "exclusions"],
+        "nextSteps": ["create-structure"]
+      },
+      {
+        "id": "create-structure",
+        "name": "Create PRP Structure",
+        "description": "Build complete PRP structure with all required sections",
+        "type": "action_execution",
+        "required": true,
+        "outputs": ["prp-file", "checklist-items", "success-metrics"],
+        "nextSteps": ["validate-completeness"]
+      },
+      {
+        "id": "validate-completeness",
+        "name": "Validate PRP Completeness",
+        "description": "Ensure PRP meets all quality standards and requirements",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["validation-report", "quality-score", "missing-items"],
+        "nextSteps": ["final-approval"]
+      },
+      {
+        "id": "final-approval",
+        "name": "Final PRP Approval",
+        "description": "Review and approve the PRP for development readiness",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["approval-status", "feedback-comments", "next-actions"],
+        "nextSteps": []
+      }
+    ],
+    "decisionPoints": [
+      {
+        "id": "feasibility-check",
+        "question": "Is the proposed PRP technically feasible within current constraints?",
+        "options": [
+          {
+            "id": "feasible-approved",
+            "label": "Proceed with PRP creation - technically feasible",
+            "action": "continue-prp-creation",
+            "nextSteps": ["define-scope"]
+          },
+          {
+            "id": "feasible-with-modifications",
+            "label": "Proceed with modifications - adjust scope or requirements",
+            "action": "modify-requirements",
+            "nextSteps": ["capture-user-requirements"]
+          },
+          {
+            "id": "not-feasible",
+            "label": "Not feasible - significant blockers identified",
+            "action": "escalate-feasibility-issue",
+            "nextSteps": []
+          }
+        ],
+        "requiresInput": true
+      },
+      {
+        "id": "completeness-approval",
+        "question": "Does the PRP meet all quality and completeness requirements?",
+        "options": [
+          {
+            "id": "approve-prp",
+            "label": "Approve PRP for development",
+            "action": "mark-ready-for-development",
+            "nextSteps": []
+          },
+          {
+            "id": "request-improvements",
+            "label": "Request improvements before approval",
+            "action": "request-prp-enhancements",
+            "nextSteps": ["create-structure"]
+          }
+        ],
+        "requiresInput": true
+      }
+    ],
+    "successCriteria": [
+      "User requirements captured and structured",
+      "Technical feasibility validated",
+      "Clear scope and acceptance criteria defined",
+      "Complete PRP structure created",
+      "Quality validation passed (80%+ score)",
+      "PRP approved and ready for development"
+    ],
+    "fallbackActions": [
+      "Escalate to system analyst for complex requirements",
+      "Request additional technical expertise",
+      "Break down complex PRP into smaller components",
+      "Create research task for unknown requirements"
+    ]
+  },
+  "requirements": [
+    {
+      "type": "service",
+      "name": "File System Access",
+      "required": true,
+      "check": "async () => await FileUtils.pathExists('.')",
+      "errorMessage": "File system access required for PRP creation"
+    },
+    {
+      "type": "knowledge",
+      "name": "PRP Template Knowledge",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "PRP template knowledge required"
+    }
+  ],
+  "prompts": {
+    "inspector": "You are a PRP Creation Inspector. Your role is to analyze user requirements and create comprehensive Product Requirement Prompts.\n\nTASK: Analyze requirements and create structured PRP\n\nCONTEXT:\n{{context}}\n\nUSER INPUT:\n{{userInput}}\n\nREQUIREMENTS ANALYSIS:\n1. **User Intent**: What does the user want to accomplish?\n2. **Scope Boundaries**: What's included and excluded?\n3. **Success Criteria**: How do we know when it's done?\n4. **Technical Requirements**: What technical constraints apply?\n5. **Business Value**: Why is this important?\n\nRESPOND WITH STRUCTURED JSON:\n{\n  \"requirements_analysis\": {\n    \"user_intent\": string,\n    \"scope_inclusions\": string[],\n    \"scope_exclusions\": string[],\n    \"success_criteria\": string[],\n    \"technical_requirements\": string[],\n    \"business_value\": string,\n    \"assumptions\": string[],\n    \"risks\": string[]\n  },\n  \"feasibility_assessment\": {\n    \"technical_feasibility\": \"high\" | \"medium\" | \"low\",\n    \"complexity_level\": \"simple\" | \"moderate\" | \"complex\",\n    \"required_expertise\": string[],\n    \"potential_blockers\": string[],\n    \"estimated_effort\": \"low\" | \"medium\" | \"high\"\n  },\n  \"prp_structure\": {\n    \"title\": string,\n    \"description\": string,\n    \"user_quote\": string,\n    \"dor_items\": string[],\n    \"dod_items\": string[],\n    \"acceptance_criteria\": string[],\n    \"success_metrics\": string[]\n  },\n  \"quality_assessment\": {\n    \"completeness_score\": number (0-100),\n    \"clarity_score\": number (0-100),\n    \"feasibility_score\": number (0-100),\n    \"missing_elements\": string[],\n    \"recommendations\": string[]\n  }\n}",
+    "orchestrator": "You are a PRP Creation Orchestrator. Based on the Inspector's analysis, make decisions and guide PRP creation.\n\nINSPECTOR ANALYSIS:\n{{inspectorAnalysis}}\n\nCONTEXT:\n{{context}}\n\nYOUR ROLE:\n1. **Review Analysis**: Evaluate the requirements analysis and feasibility\n2. **Make Decisions**: Approve, modify, or escalate based on feasibility\n3. **Guide Creation**: Ensure PRP structure follows standards\n4. **Quality Control**: Validate completeness and readiness\n\nDECISION FRAMEWORK:\n- **High Feasibility**: Proceed with PRP creation\n- **Medium Feasibility**: May require scope adjustments\n- **Low Feasibility**: Escalate or request research\n\nPRP STANDARDS:\n- Clear user quote with all requirements\n- Comprehensive DoR/DoD checklists\n- Measurable success criteria\n- Technical feasibility validated\n- Risk assessment included\n\nEXECUTE ACTIONS:\n1. Create/validate PRP file structure\n2. Ensure all sections included and complete\n3. Validate quality standards met\n4. Provide clear next steps\n\nRESPOND WITH:\n1. Decision on PRP feasibility and approach\n2. PRP structure validation results\n3. Actions taken (file creation, updates)\n4. Quality assessment and recommendations\n5. Clear next steps for development team"
+  },
+  "tokenLimits": {
+    "inspector": 25000,
+    "orchestrator": 20000
+  },
+  "tools": [
+    "file-reader",
+    "file-writer",
+    "template-engine",
+    "validator",
+    "quality-checker"
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "author": "system",
+    "createdAt": "2025-01-09T00:00:00Z",
+    "lastModified": "2025-01-09T00:00:00Z",
+    "tags": ["prp-creation", "requirements", "planning", "quality-assurance"],
+    "dependencies": []
+  }
+}

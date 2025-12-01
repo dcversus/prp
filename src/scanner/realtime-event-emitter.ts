@@ -4,22 +4,21 @@
  * High-performance event emission system for real-time signal detection,
  * processing, and distribution across the scanner-inspector-orchestrator pipeline.
  */
-
 import { EventEmitter } from 'events';
-import { Signal } from '../shared/types';
+
 import { createLayerLogger, HashUtils, TimeUtils } from '../shared';
 
-const logger = createLayerLogger('scanner');
+import type { Signal } from '../shared/types';
 
+const logger = createLayerLogger('scanner');
 export interface SignalEvent {
   id: string;
   type: 'signal_detected' | 'signal_processed' | 'signal_resolved' | 'signal_expired';
   timestamp: Date;
   signal: Signal;
   source: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
-
 export interface ScannerEvent {
   id: string;
   type: 'scan_started' | 'scan_completed' | 'scan_failed' | 'scan_paused' | 'scan_resumed';
@@ -35,7 +34,6 @@ export interface ScannerEvent {
     error?: string;
   };
 }
-
 export interface PRPEvent {
   id: string;
   type: 'prp_created' | 'prp_modified' | 'prp_deleted' | 'prp_signals_updated';
@@ -48,7 +46,6 @@ export interface PRPEvent {
     previousVersion?: number;
   };
 }
-
 export interface GitEvent {
   id: string;
   type: 'commit_detected' | 'branch_changed' | 'pr_detected' | 'merge_detected';
@@ -63,7 +60,6 @@ export interface GitEvent {
     signals?: Signal[];
   };
 }
-
 export interface TokenEvent {
   id: string;
   type: 'token_usage_recorded' | 'token_limit_warning' | 'token_limit_exceeded';
@@ -78,7 +74,6 @@ export interface TokenEvent {
     percentage?: number;
   };
 }
-
 export interface SystemEvent {
   id: string;
   type: 'system_started' | 'system_shutdown' | 'system_error' | 'system_health_check';
@@ -86,12 +81,16 @@ export interface SystemEvent {
   metadata: {
     component: string;
     status: string;
-    details?: any;
+    details?: unknown;
   };
 }
-
-export type RealTimeEvent = SignalEvent | ScannerEvent | PRPEvent | GitEvent | TokenEvent | SystemEvent;
-
+export type RealTimeEvent =
+  | SignalEvent
+  | ScannerEvent
+  | PRPEvent
+  | GitEvent
+  | TokenEvent
+  | SystemEvent;
 export interface EventSubscription {
   id: string;
   eventType: string;
@@ -102,7 +101,6 @@ export interface EventSubscription {
   triggerCount: number;
   active: boolean;
 }
-
 export interface EventMetrics {
   totalEvents: number;
   eventsByType: Record<string, number>;
@@ -112,98 +110,95 @@ export interface EventMetrics {
   eventQueueSize: number;
   droppedEvents: number;
 }
-
 /**
  * Real-time Event Emitter with high-performance event processing
  */
 export class RealTimeEventEmitter {
-  private emitter: EventEmitter;
-  private subscriptions: Map<string, EventSubscription> = new Map();
-  private eventQueue: RealTimeEvent[] = [];
+  private readonly emitter: EventEmitter;
+  private readonly subscriptions = new Map<string, EventSubscription>();
+  private readonly eventQueue: RealTimeEvent[] = [];
   private processing = false;
   private metrics = {
     totalEvents: 0,
     eventsByType: {} as Record<string, number>,
     processingTimes: [] as number[],
     droppedEvents: 0,
-    startTime: TimeUtils.now()
+    startTime: TimeUtils.now(),
   };
-  private maxQueueSize = 10000;
-  private batchSize = 100;
-  private processingInterval = 10; // ms
-
+  private readonly maxQueueSize = 10000;
+  private readonly batchSize = 100;
+  private readonly processingInterval = 10; // ms
   constructor() {
     this.emitter = new EventEmitter();
     this.emitter.setMaxListeners(1000); // Support many listeners
     this.startProcessing();
     this.setupHealthMonitoring();
   }
-
   /**
    * Emit a signal detection event
    */
-  emitSignalDetected(signal: Signal, source: string, metadata: Record<string, any> = {}): void {
+  emitSignalDetected(signal: Signal, source: string, metadata: Record<string, unknown> = {}): void {
     const event: SignalEvent = {
       id: HashUtils.generateId(),
       type: 'signal_detected',
       timestamp: TimeUtils.now(),
       signal,
       source,
-      metadata
+      metadata,
     };
-
     this.emitEvent(event);
     logger.debug('RealTimeEventEmitter', `Signal detected: ${signal.type} from ${source}`);
   }
-
   /**
    * Emit a signal processing event
    */
-  emitSignalProcessed(signal: Signal, source: string, metadata: Record<string, any> = {}): void {
+  emitSignalProcessed(
+    signal: Signal,
+    source: string,
+    metadata: Record<string, unknown> = {},
+  ): void {
     const event: SignalEvent = {
       id: HashUtils.generateId(),
       type: 'signal_processed',
       timestamp: TimeUtils.now(),
       signal,
       source,
-      metadata
+      metadata,
     };
-
     this.emitEvent(event);
   }
-
   /**
    * Emit a signal resolution event
    */
-  emitSignalResolved(signal: Signal, source: string, metadata: Record<string, any> = {}): void {
+  emitSignalResolved(signal: Signal, source: string, metadata: Record<string, unknown> = {}): void {
     const event: SignalEvent = {
       id: HashUtils.generateId(),
       type: 'signal_resolved',
       timestamp: TimeUtils.now(),
       signal,
       source,
-      metadata
+      metadata,
     };
-
     this.emitEvent(event);
   }
-
   /**
    * Emit a scanner event
    */
-  emitScannerEvent(type: ScannerEvent['type'], worktree: string, metadata: ScannerEvent['metadata']): void {
+  emitScannerEvent(
+    type: ScannerEvent['type'],
+    worktree: string,
+    metadata: ScannerEvent['metadata'],
+  ): void {
     const event: ScannerEvent = {
       id: HashUtils.generateId(),
       type,
       timestamp: TimeUtils.now(),
       worktree,
-      scanId: metadata.scanId || HashUtils.generateId(),
-      metadata
+      scanId: metadata.scanId ?? HashUtils.generateId(),
+      metadata,
     };
-
     this.emitEvent(event);
   }
-
   /**
    * Emit a PRP event
    */
@@ -213,12 +208,10 @@ export class RealTimeEventEmitter {
       type,
       timestamp: TimeUtils.now(),
       prpPath,
-      metadata
+      metadata,
     };
-
     this.emitEvent(event);
   }
-
   /**
    * Emit a git event
    */
@@ -228,45 +221,47 @@ export class RealTimeEventEmitter {
       type,
       timestamp: TimeUtils.now(),
       repository,
-      metadata
+      metadata,
     };
-
     this.emitEvent(event);
   }
-
   /**
    * Emit a token event
    */
-  emitTokenEvent(type: TokenEvent['type'], agentId: string, metadata: TokenEvent['metadata']): void {
+  emitTokenEvent(
+    type: TokenEvent['type'],
+    agentId: string,
+    metadata: TokenEvent['metadata'],
+  ): void {
     const event: TokenEvent = {
       id: HashUtils.generateId(),
       type,
       timestamp: TimeUtils.now(),
       agentId,
-      metadata
+      metadata,
     };
-
     this.emitEvent(event);
   }
-
   /**
    * Emit a system event
    */
-  emitSystemEvent(type: SystemEvent['type'], component: string, metadata: Partial<SystemEvent['metadata']> = {}): void {
+  emitSystemEvent(
+    type: SystemEvent['type'],
+    component: string,
+    metadata: Partial<SystemEvent['metadata']> = {},
+  ): void {
     const event: SystemEvent = {
       id: HashUtils.generateId(),
       type,
       timestamp: TimeUtils.now(),
       metadata: {
         component,
-        status: metadata.status || 'unknown',
-        ...metadata
-      }
+        status: metadata.status ?? 'unknown',
+        ...metadata,
+      },
     };
-
     this.emitEvent(event);
   }
-
   /**
    * Generic event emission
    */
@@ -274,8 +269,7 @@ export class RealTimeEventEmitter {
     // Update metrics
     this.metrics.totalEvents++;
     const eventType = event.type;
-    this.metrics.eventsByType[eventType] = (this.metrics.eventsByType[eventType] || 0) + 1;
-
+    this.metrics.eventsByType[eventType] = (this.metrics.eventsByType[eventType] ?? 0) + 1;
     // Add to queue for processing
     if (this.eventQueue.length >= this.maxQueueSize) {
       // Drop oldest events if queue is full
@@ -283,22 +277,19 @@ export class RealTimeEventEmitter {
       this.metrics.droppedEvents++;
       logger.warn('RealTimeEventEmitter', 'Event queue full, dropping oldest event');
     }
-
     this.eventQueue.push(event);
-
     // Also emit immediately for high-priority events
     if (this.isHighPriorityEvent(event)) {
       this.processEvent(event);
     }
   }
-
   /**
    * Subscribe to events with optional filtering
    */
   subscribe(
     eventType: string,
     callback: (event: RealTimeEvent) => void | Promise<void>,
-    filter?: (event: RealTimeEvent) => boolean
+    filter?: (event: RealTimeEvent) => boolean,
   ): string {
     const subscription: EventSubscription = {
       id: HashUtils.generateId(),
@@ -307,68 +298,79 @@ export class RealTimeEventEmitter {
       callback,
       created: TimeUtils.now(),
       triggerCount: 0,
-      active: true
+      active: true,
     };
-
     this.subscriptions.set(subscription.id, subscription);
-
     logger.debug('RealTimeEventEmitter', `Subscription created: ${eventType}`, {
-      subscriptionId: subscription.id
+      subscriptionId: subscription.id,
     });
-
     return subscription.id;
   }
-
   /**
    * Subscribe to signal events
    */
   subscribeToSignals(
     callback: (event: SignalEvent) => void | Promise<void>,
-    filter?: (event: SignalEvent) => boolean
+    filter?: (event: SignalEvent) => boolean,
   ): string {
-    return this.subscribe('signal_detected', callback as any, filter as any);
+    return this.subscribe(
+      'signal_detected',
+      (event: RealTimeEvent) => callback(event as SignalEvent),
+      filter ? (event: RealTimeEvent) => filter(event as SignalEvent) : undefined,
+    );
   }
-
   /**
    * Subscribe to scanner events
    */
   subscribeToScanner(
     callback: (event: ScannerEvent) => void | Promise<void>,
-    filter?: (event: ScannerEvent) => boolean
+    filter?: (event: ScannerEvent) => boolean,
   ): string {
-    return this.subscribe('scan_completed', callback as any, filter as any);
+    return this.subscribe(
+      'scan_completed',
+      (event: RealTimeEvent) => callback(event as ScannerEvent),
+      filter ? (event: RealTimeEvent) => filter(event as ScannerEvent) : undefined,
+    );
   }
-
   /**
    * Subscribe to PRP events
    */
   subscribeToPRP(
     callback: (event: PRPEvent) => void | Promise<void>,
-    filter?: (event: PRPEvent) => boolean
+    filter?: (event: PRPEvent) => boolean,
   ): string {
-    return this.subscribe('prp_modified', callback as any, filter as any);
+    return this.subscribe(
+      'prp_modified',
+      (event: RealTimeEvent) => callback(event as PRPEvent),
+      filter ? (event: RealTimeEvent) => filter(event as PRPEvent) : undefined,
+    );
   }
-
   /**
    * Subscribe to git events
    */
   subscribeToGit(
     callback: (event: GitEvent) => void | Promise<void>,
-    filter?: (event: GitEvent) => boolean
+    filter?: (event: GitEvent) => boolean,
   ): string {
-    return this.subscribe('commit_detected', callback as any, filter as any);
+    return this.subscribe(
+      'commit_detected',
+      (event: RealTimeEvent) => callback(event as GitEvent),
+      filter ? (event: RealTimeEvent) => filter(event as GitEvent) : undefined,
+    );
   }
-
   /**
    * Subscribe to token events
    */
   subscribeToTokens(
     callback: (event: TokenEvent) => void | Promise<void>,
-    filter?: (event: TokenEvent) => boolean
+    filter?: (event: TokenEvent) => boolean,
   ): string {
-    return this.subscribe('token_usage_recorded', callback as any, filter as any);
+    return this.subscribe(
+      'token_usage_recorded',
+      (event: RealTimeEvent) => callback(event as TokenEvent),
+      filter ? (event: RealTimeEvent) => filter(event as TokenEvent) : undefined,
+    );
   }
-
   /**
    * Unsubscribe from events
    */
@@ -377,14 +379,11 @@ export class RealTimeEventEmitter {
     if (!subscription) {
       return false;
     }
-
     subscription.active = false;
     this.subscriptions.delete(subscriptionId);
-
     logger.debug('RealTimeEventEmitter', `Subscription removed: ${subscriptionId}`);
     return true;
   }
-
   /**
    * Get subscription metrics
    */
@@ -394,30 +393,26 @@ export class RealTimeEventEmitter {
     byEventType: Record<string, number>;
     mostTriggered: Array<{ id: string; eventType: string; triggerCount: number }>;
   } {
-    const activeSubscriptions = Array.from(this.subscriptions.values()).filter(sub => sub.active);
+    const activeSubscriptions = Array.from(this.subscriptions.values()).filter((sub) => sub.active);
     const byEventType: Record<string, number> = {};
-
-    activeSubscriptions.forEach(sub => {
-      byEventType[sub.eventType] = (byEventType[sub.eventType] || 0) + 1;
+    activeSubscriptions.forEach((sub) => {
+      byEventType[sub.eventType] = (byEventType[sub.eventType] ?? 0) + 1;
     });
-
     const mostTriggered = activeSubscriptions
       .sort((a, b) => b.triggerCount - a.triggerCount)
       .slice(0, 10)
-      .map(sub => ({
+      .map((sub) => ({
         id: sub.id,
         eventType: sub.eventType,
-        triggerCount: sub.triggerCount
+        triggerCount: sub.triggerCount,
       }));
-
     return {
       total: this.subscriptions.size,
       active: activeSubscriptions.length,
       byEventType,
-      mostTriggered
+      mostTriggered,
     };
   }
-
   /**
    * Start processing events from the queue
    */
@@ -428,7 +423,6 @@ export class RealTimeEventEmitter {
       }
     }, this.processingInterval);
   }
-
   /**
    * Process a batch of events
    */
@@ -436,32 +430,27 @@ export class RealTimeEventEmitter {
     if (this.processing || this.eventQueue.length === 0) {
       return;
     }
-
     this.processing = true;
     const startTime = Date.now();
-
     try {
       const batch = this.eventQueue.splice(0, this.batchSize);
-
-      await Promise.all(batch.map(event => this.processEvent(event)));
-
+      await Promise.all(batch.map((event) => this.processEvent(event)));
       const processingTime = Date.now() - startTime;
       this.metrics.processingTimes.push(processingTime);
-
       // Keep only last 100 processing times for average calculation
       if (this.metrics.processingTimes.length > 100) {
         this.metrics.processingTimes = this.metrics.processingTimes.slice(-100);
       }
-
     } catch (error) {
-      logger.error('RealTimeEventEmitter', 'Error processing event batch', error instanceof Error ? error : new Error(String(error)), {
-        error: error instanceof Error ? error.message : String(error)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorObj = error instanceof Error ? error : new Error(errorMessage);
+      logger.error('RealTimeEventEmitter', 'Error processing event batch', errorObj, {
+        error: errorMessage,
       });
     } finally {
       this.processing = false;
     }
   }
-
   /**
    * Process a single event
    */
@@ -470,43 +459,43 @@ export class RealTimeEventEmitter {
       // Emit to traditional event emitter
       this.emitter.emit(event.type, event);
       this.emitter.emit('*', event); // Wildcard event
-
       // Process subscriptions
-      const relevantSubscriptions = Array.from(this.subscriptions.values())
-        .filter(sub => sub.active && sub.eventType === event.type);
-
-      await Promise.all(relevantSubscriptions.map(async subscription => {
-        try {
-          // Apply filter if present
-          if (subscription.filter && !subscription.filter(event)) {
-            return;
+      const relevantSubscriptions = Array.from(this.subscriptions.values()).filter(
+        (sub) => sub.active && sub.eventType === event.type,
+      );
+      await Promise.all(
+        relevantSubscriptions.map(async (subscription) => {
+          try {
+            // Apply filter if present
+            if (subscription.filter && !subscription.filter(event)) {
+              return;
+            }
+            // Update subscription metrics
+            subscription.triggerCount++;
+            subscription.lastTriggered = TimeUtils.now();
+            // Execute callback
+            await subscription.callback(event);
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorObj = error instanceof Error ? error : new Error(errorMessage);
+            logger.error('RealTimeEventEmitter', 'Error in subscription callback', errorObj, {
+              subscriptionId: subscription.id,
+              eventType: subscription.eventType,
+              error: errorMessage,
+            });
           }
-
-          // Update subscription metrics
-          subscription.triggerCount++;
-          subscription.lastTriggered = TimeUtils.now();
-
-          // Execute callback
-          await subscription.callback(event);
-
-        } catch (error) {
-          logger.error('RealTimeEventEmitter', 'Error in subscription callback', error instanceof Error ? error : new Error(String(error)), {
-            subscriptionId: subscription.id,
-            eventType: subscription.eventType,
-            error: error instanceof Error ? error.message : String(error)
-          });
-        }
-      }));
-
+        }),
+      );
     } catch (error) {
-      logger.error('RealTimeEventEmitter', 'Error processing event', error instanceof Error ? error : new Error(String(error)), {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorObj = error instanceof Error ? error : new Error(errorMessage);
+      logger.error('RealTimeEventEmitter', 'Error processing event', errorObj, {
         eventId: event.id,
         eventType: event.type,
-        error: error instanceof Error ? error.message : String(error)
+        error: errorMessage,
       });
     }
   }
-
   /**
    * Check if an event is high priority
    */
@@ -515,12 +504,10 @@ export class RealTimeEventEmitter {
       'signal_detected',
       'token_limit_exceeded',
       'system_error',
-      'scan_failed'
+      'scan_failed',
     ];
-
     return highPriorityTypes.includes(event.type);
   }
-
   /**
    * Setup health monitoring
    */
@@ -529,68 +516,61 @@ export class RealTimeEventEmitter {
       this.performHealthCheck();
     }, 30000); // Every 30 seconds
   }
-
   /**
    * Perform health check
    */
   private performHealthCheck(): void {
     const metrics = this.getMetrics();
-
     // Log warnings for potential issues
     if (metrics.eventQueueSize > 1000) {
       logger.warn('RealTimeEventEmitter', 'Event queue size is high', {
-        queueSize: metrics.eventQueueSize
+        queueSize: metrics.eventQueueSize,
       });
     }
-
     if (metrics.eventsPerSecond > 1000) {
       logger.warn('RealTimeEventEmitter', 'High event rate detected', {
-        eventsPerSecond: metrics.eventsPerSecond
+        eventsPerSecond: metrics.eventsPerSecond,
       });
     }
-
     if (metrics.droppedEvents > 0) {
       logger.warn('RealTimeEventEmitter', 'Events have been dropped', {
-        droppedEvents: metrics.droppedEvents
+        droppedEvents: metrics.droppedEvents,
       });
     }
-
     if (metrics.averageProcessingTime > 100) {
       logger.warn('RealTimeEventEmitter', 'High processing time detected', {
-        averageProcessingTime: metrics.averageProcessingTime
+        averageProcessingTime: metrics.averageProcessingTime,
       });
     }
-
     // Emit system health event
     this.emitSystemEvent('system_health_check', 'event-emitter', {
       status: 'healthy',
-      details: { metrics }
+      details: { metrics },
     });
   }
-
   /**
    * Get current metrics
    */
   getMetrics(): EventMetrics {
     const now = TimeUtils.now();
     const uptime = now.getTime() - this.metrics.startTime.getTime();
-    const eventsPerSecond = uptime > 0 ? (this.metrics.totalEvents / (uptime / 1000)) : 0;
-
-    const averageProcessingTime = this.metrics.processingTimes.length > 0
-      ? this.metrics.processingTimes.reduce((sum, time) => sum + time, 0) / this.metrics.processingTimes.length
-      : 0;
-
+    const eventsPerSecond = uptime > 0 ? this.metrics.totalEvents / (uptime / 1000) : 0;
+    const averageProcessingTime =
+      this.metrics.processingTimes.length > 0
+        ? this.metrics.processingTimes.reduce((sum, time) => sum + time, 0) /
+          this.metrics.processingTimes.length
+        : 0;
     return {
       totalEvents: this.metrics.totalEvents,
       eventsByType: { ...this.metrics.eventsByType },
       eventsPerSecond,
       averageProcessingTime,
-      activeSubscriptions: Array.from(this.subscriptions.values()).filter(sub => sub.active).length,
+      activeSubscriptions: Array.from(this.subscriptions.values()).filter((sub) => sub.active)
+        .length,
       eventQueueSize: this.eventQueue.length,
-      droppedEvents: this.metrics.droppedEvents
+      droppedEvents: this.metrics.droppedEvents,
     };
   }
-
   /**
    * Reset metrics
    */
@@ -600,40 +580,33 @@ export class RealTimeEventEmitter {
       eventsByType: {},
       processingTimes: [],
       droppedEvents: 0,
-      startTime: TimeUtils.now()
+      startTime: TimeUtils.now(),
     };
-
     logger.info('RealTimeEventEmitter', 'Metrics reset');
   }
-
   /**
    * Shutdown the event emitter
    */
   async shutdown(): Promise<void> {
     logger.info('RealTimeEventEmitter', 'Shutting down event emitter');
-
     // Process remaining events
     while (this.eventQueue.length > 0) {
       await this.processBatch();
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
     }
-
     // Clear all subscriptions
     this.subscriptions.clear();
-
     // Remove all listeners
     this.emitter.removeAllListeners();
-
     logger.info('RealTimeEventEmitter', 'Event emitter shutdown complete');
   }
-
   /**
    * Get detailed event statistics
    */
   getDetailedStatistics(): {
     uptime: number;
     metrics: EventMetrics;
-    subscriptionMetrics: any; // ReturnType<typeof this.getSubscriptionMetrics>
+    subscriptionMetrics: ReturnType<RealTimeEventEmitter['getSubscriptionMetrics']>;
     recentEvents: Array<{
       type: string;
       timestamp: Date;
@@ -641,18 +614,16 @@ export class RealTimeEventEmitter {
     }>;
   } {
     const uptime = TimeUtils.now().getTime() - this.metrics.startTime.getTime();
-
-    const recentEvents = this.eventQueue.slice(-10).map(event => ({
+    const recentEvents = this.eventQueue.slice(-10).map((event) => ({
       type: event.type,
       timestamp: event.timestamp,
-      id: event.id
+      id: event.id,
     }));
-
     return {
       uptime,
       metrics: this.getMetrics(),
       subscriptionMetrics: this.getSubscriptionMetrics(),
-      recentEvents
+      recentEvents,
     };
   }
 }

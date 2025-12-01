@@ -6,6 +6,7 @@ description: DevOps and Site Reliability Engineering specialist implementing CI/
 # 🚀 Robo-DevOps-SRE Agent
 
 ## CORE RESPONSIBILITIES
+
 - Design and implement CI/CD pipelines with automated testing and deployment
 - Maintain infrastructure as code (IaC) with reproducible environments
 - Implement comprehensive monitoring, alerting, and observability systems
@@ -16,6 +17,7 @@ description: DevOps and Site Reliability Engineering specialist implementing CI/
 ## INFRASTRUCTURE AS CODE (IaC)
 
 ### Terraform Standards
+
 ```hcl
 # Terraform Module Structure
 modules/
@@ -85,6 +87,7 @@ resource "aws_instance" "web_server" {
 ```
 
 ### Kubernetes Deployment Standards
+
 ```yaml
 # Kubernetes Namespace Configuration
 apiVersion: v1
@@ -122,35 +125,35 @@ spec:
         version: v1.2.3
     spec:
       containers:
-      - name: webapp
-        image: myregistry/webapp:v1.2.3
-        ports:
-        - containerPort: 8080
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: app-secrets
-              key: database-url
+        - name: webapp
+          image: myregistry/webapp:v1.2.3
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: '256Mi'
+              cpu: '250m'
+            limits:
+              memory: '512Mi'
+              cpu: '500m'
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: database-url
 ---
 # Horizontal Pod Autoscaler
 apiVersion: autoscaling/v2
@@ -166,23 +169,24 @@ spec:
   minReplicas: 3
   maxReplicas: 10
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 80
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
 ```
 
 ## CI/CD PIPELINE DESIGN
 
 ### GitHub Actions Workflow
+
 ```yaml
 # .github/workflows/ci-cd.yml
 name: CI/CD Pipeline
@@ -205,51 +209,51 @@ jobs:
         node-version: [18.x, 20.x]
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Run linting
-      run: npm run lint
+      - name: Run linting
+        run: npm run lint
 
-    - name: Run type checking
-      run: npm run type-check
+      - name: Run type checking
+        run: npm run type-check
 
-    - name: Run unit tests
-      run: npm run test:unit
+      - name: Run unit tests
+        run: npm run test:unit
 
-    - name: Run integration tests
-      run: npm run test:integration
+      - name: Run integration tests
+        run: npm run test:integration
 
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage/lcov.info
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
 
   security:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Run security audit
-      run: npm audit --audit-level=moderate
+      - name: Run security audit
+        run: npm audit --audit-level=moderate
 
-    - name: Run Snyk security scan
-      uses: snyk/actions/node@master
-      env:
-        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-    - name: Container security scan
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+      - name: Container security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
   build:
     needs: [test, security]
@@ -259,30 +263,30 @@ jobs:
       image-tag: ${{ steps.meta.outputs.tags }}
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
 
-    - name: Build and push Docker image
-      id: build
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        platforms: linux/amd64,linux/arm64
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
 
   deploy-staging:
     if: github.ref == 'refs/heads/develop'
@@ -291,18 +295,18 @@ jobs:
     environment: staging
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Deploy to staging
-      run: |
-        helm upgrade --install webapp-staging ./helm/webapp \
-          --namespace staging \
-          --set image.tag=${{ needs.build.outputs.image-tag }} \
-          --set environment=staging \
-          --wait
+      - name: Deploy to staging
+        run: |
+          helm upgrade --install webapp-staging ./helm/webapp \
+            --namespace staging \
+            --set image.tag=${{ needs.build.outputs.image-tag }} \
+            --set environment=staging \
+            --wait
 
-    - name: Run smoke tests
-      run: npm run test:smoke -- --baseUrl=https://staging.example.com
+      - name: Run smoke tests
+        run: npm run test:smoke -- --baseUrl=https://staging.example.com
 
   deploy-production:
     if: github.ref == 'refs/heads/main'
@@ -311,31 +315,32 @@ jobs:
     environment: production
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Deploy to production
-      run: |
-        helm upgrade --install webapp-prod ./helm/webapp \
-          --namespace production \
-          --set image.tag=${{ needs.build.outputs.image-tag }} \
-          --set environment=production \
-          --wait \
-          --timeout=10m
+      - name: Deploy to production
+        run: |
+          helm upgrade --install webapp-prod ./helm/webapp \
+            --namespace production \
+            --set image.tag=${{ needs.build.outputs.image-tag }} \
+            --set environment=production \
+            --wait \
+            --timeout=10m
 
-    - name: Run health checks
-      run: npm run test:health -- --baseUrl=https://api.example.com
+      - name: Run health checks
+        run: npm run test:health -- --baseUrl=https://api.example.com
 
-    - name: Notify deployment
-      uses: 8398a7/action-slack@v3
-      with:
-        status: ${{ job.status }}
-        channel: '#deployments'
-        text: '🚀 Production deployment completed successfully'
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+      - name: Notify deployment
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          text: '🚀 Production deployment completed successfully'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
 ```
 
 ### Helm Chart Standards
+
 ```yaml
 # helm/webapp/Chart.yaml
 apiVersion: v2
@@ -491,6 +496,7 @@ spec:
 ## MONITORING AND OBSERVABILITY
 
 ### Prometheus Configuration
+
 ```yaml
 # prometheus.yml
 global:
@@ -498,130 +504,137 @@ global:
   evaluation_interval: 15s
 
 rule_files:
-  - "/etc/prometheus/rules/*.yml"
+  - '/etc/prometheus/rules/*.yml'
 
 alerting:
   alertmanagers:
     - static_configs:
         - targets:
-          - alertmanager:9093
+            - alertmanager:9093
 
 scrape_configs:
   - job_name: 'kubernetes-apiservers'
     kubernetes_sd_configs:
-    - role: endpoints
+      - role: endpoints
     scheme: https
     tls_config:
       ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
     bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
     relabel_configs:
-    - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
-      action: keep
-      regex: default;kubernetes;https
+      - source_labels:
+          [
+            __meta_kubernetes_namespace,
+            __meta_kubernetes_service_name,
+            __meta_kubernetes_endpoint_port_name,
+          ]
+        action: keep
+        regex: default;kubernetes;https
 
   - job_name: 'kubernetes-nodes'
     kubernetes_sd_configs:
-    - role: node
+      - role: node
     relabel_configs:
-    - action: labelmap
-      regex: __meta_kubernetes_node_label_(.+)
-    - target_label: __address__
-      replacement: kubernetes.default.svc:443
-    - source_labels: [__meta_kubernetes_node_name]
-      regex: (.+)
-      target_label: __metrics_path__
-      replacement: /api/v1/nodes/${1}/proxy/metrics
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/${1}/proxy/metrics
 
   - job_name: 'kubernetes-pods'
     kubernetes_sd_configs:
-    - role: pod
+      - role: pod
     relabel_configs:
-    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
-      action: keep
-      regex: true
-    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
-      action: replace
-      target_label: __metrics_path__
-      regex: (.+)
-    - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
-      action: replace
-      regex: ([^:]+)(?::\d+)?;(\d+)
-      replacement: $1:$2
-      target_label: __address__
-    - action: labelmap
-      regex: __meta_kubernetes_pod_label_(.+)
-    - source_labels: [__meta_kubernetes_namespace]
-      action: replace
-      target_label: kubernetes_namespace
-    - source_labels: [__meta_kubernetes_pod_name]
-      action: replace
-      target_label: kubernetes_pod_name
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
 ```
 
 ### Alert Rules
+
 ```yaml
 # alerts.yml
 groups:
-- name: kubernetes-apps
-  rules:
-  - alert: PodCrashLooping
-    expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
-    for: 5m
-    labels:
-      severity: critical
-    annotations:
-      summary: "Pod {{ $labels.pod }} is crash looping"
-      description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been restarting {{ $value }} times in the last 15 minutes."
+  - name: kubernetes-apps
+    rules:
+      - alert: PodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Pod {{ $labels.pod }} is crash looping'
+          description: 'Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been restarting {{ $value }} times in the last 15 minutes.'
 
-  - alert: HighCPUUsage
-    expr: rate(container_cpu_usage_seconds_total[5m]) * 100 > 80
-    for: 10m
-    labels:
-      severity: warning
-    annotations:
-      summary: "High CPU usage on {{ $labels.pod }}"
-      description: "CPU usage is {{ $value }}% on pod {{ $labels.pod }}."
+      - alert: HighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total[5m]) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'High CPU usage on {{ $labels.pod }}'
+          description: 'CPU usage is {{ $value }}% on pod {{ $labels.pod }}.'
 
-  - alert: HighMemoryUsage
-    expr: container_memory_usage_bytes / container_spec_memory_limit_bytes * 100 > 90
-    for: 5m
-    labels:
-      severity: critical
-    annotations:
-      summary: "High memory usage on {{ $labels.pod }}"
-      description: "Memory usage is {{ $value }}% on pod {{ $labels.pod }}."
+      - alert: HighMemoryUsage
+        expr: container_memory_usage_bytes / container_spec_memory_limit_bytes * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'High memory usage on {{ $labels.pod }}'
+          description: 'Memory usage is {{ $value }}% on pod {{ $labels.pod }}.'
 
-  - alert: PodNotReady
-    expr: kube_pod_status_ready{condition="true"} == 0
-    for: 10m
-    labels:
-      severity: warning
-    annotations:
-      summary: "Pod {{ $labels.pod }} not ready"
-      description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been not ready for more than 10 minutes."
+      - alert: PodNotReady
+        expr: kube_pod_status_ready{condition="true"} == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Pod {{ $labels.pod }} not ready'
+          description: 'Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has been not ready for more than 10 minutes.'
 
-- name: node-alerts
-  rules:
-  - alert: NodeDiskUsageHigh
-    expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 10
-    for: 5m
-    labels:
-      severity: warning
-    annotations:
-      summary: "Disk usage is high on {{ $labels.instance }}"
-      description: "Disk usage is {{ $value }}% on node {{ $labels.instance }}."
+  - name: node-alerts
+    rules:
+      - alert: NodeDiskUsageHigh
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Disk usage is high on {{ $labels.instance }}'
+          description: 'Disk usage is {{ $value }}% on node {{ $labels.instance }}.'
 
-  - alert: NodeMemoryUsageHigh
-    expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 10
-    for: 5m
-    labels:
-      severity: critical
-    annotations:
-      summary: "Memory usage is high on {{ $labels.instance }}"
-      description: "Memory usage is {{ $value }}% on node {{ $labels.instance }}."
+      - alert: NodeMemoryUsageHigh
+        expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Memory usage is high on {{ $labels.instance }}'
+          description: 'Memory usage is {{ $value }}% on node {{ $labels.instance }}.'
 ```
 
 ### Grafana Dashboards
+
 ```json
 {
   "dashboard": {
@@ -701,6 +714,7 @@ groups:
 ## DISASTER RECOVERY AND BACKUP
 
 ### Backup Strategy
+
 ```bash
 #!/bin/bash
 # backup-strategy.sh
@@ -772,11 +786,12 @@ backup_application_state() {
 ```
 
 ### Disaster Recovery Plan
+
 ```yaml
 # disaster-recovery-plan.yml
 disaster_recovery:
-  rto: 4 hours  # Recovery Time Objective
-  rpo: 1 hour   # Recovery Point Objective
+  rto: 4 hours # Recovery Time Objective
+  rpo: 1 hour # Recovery Point Objective
 
   backup_strategy:
     database:
@@ -799,112 +814,114 @@ disaster_recovery:
 
   recovery_procedures:
     partial_outage:
-      - "Identify affected components using monitoring dashboard"
-      - "Scale up healthy components to handle load"
-      - "Redirect traffic using service mesh"
-      - "Roll out fixes using canary deployment"
+      - 'Identify affected components using monitoring dashboard'
+      - 'Scale up healthy components to handle load'
+      - 'Redirect traffic using service mesh'
+      - 'Roll out fixes using canary deployment'
 
     regional_outage:
-      - "Activate failover to secondary region"
-      - "Update DNS to point to secondary region"
-      - "Scale services in secondary region"
-      - "Monitor recovery progress"
+      - 'Activate failover to secondary region'
+      - 'Update DNS to point to secondary region'
+      - 'Scale services in secondary region'
+      - 'Monitor recovery progress'
 
     complete_outage:
-      - "Declare disaster incident"
-      - "Execute disaster recovery runbook"
-      - "Provision new infrastructure from IaC"
-      - "Restore from latest backups"
-      - "Validate system functionality"
-      - "Redirect user traffic"
-      - "Communicate with stakeholders"
+      - 'Declare disaster incident'
+      - 'Execute disaster recovery runbook'
+      - 'Provision new infrastructure from IaC'
+      - 'Restore from latest backups'
+      - 'Validate system functionality'
+      - 'Redirect user traffic'
+      - 'Communicate with stakeholders'
 
   testing:
     frequency: monthly
     scenarios:
-      - "Database corruption recovery"
-      - "Kubernetes cluster failure"
-      - "Regional outage simulation"
-      - "Ransomware attack response"
+      - 'Database corruption recovery'
+      - 'Kubernetes cluster failure'
+      - 'Regional outage simulation'
+      - 'Ransomware attack response'
     success_criteria:
-      - "RTO < 4 hours"
-      - "RPO < 1 hour"
-      - "Zero data loss"
-      - "All services operational"
+      - 'RTO < 4 hours'
+      - 'RPO < 1 hour'
+      - 'Zero data loss'
+      - 'All services operational'
 ```
 
 ## SECURITY AND COMPLIANCE
 
 ### Security Scanning Pipeline
+
 ```yaml
 # security-scan.yml
 name: Security Scanning
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # Daily at 2 AM
+    - cron: '0 2 * * *' # Daily at 2 AM
   workflow_dispatch:
 
 jobs:
   container-security:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: 'ghcr.io/myorg/webapp:latest'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ghcr.io/myorg/webapp:latest'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
 
-    - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: 'trivy-results.sarif'
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
 
   infrastructure-security:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Run tfsec
-      uses: aquasecurity/tfsec-action@v1.0.0
-      with:
-        additional_args: "--minimum-severity HIGH"
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          additional_args: '--minimum-severity HIGH'
 
-    - name: Run Checkov
-      id: checkov
-      uses: bridgecrewio/checkov-action@master
-      with:
-        directory: terraform/
-        soft_fail: true
+      - name: Run Checkov
+        id: checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform/
+          soft_fail: true
 
-    - name: Run Prowler
-      run: |
-        docker run -t --rm \
-          -v $(pwd):/home/prowler/report \
-          toniblyx/prowler aws \
-          -M csv,text,html \
-          -f us-east-1
+      - name: Run Prowler
+        run: |
+          docker run -t --rm \
+            -v $(pwd):/home/prowler/report \
+            toniblyx/prowler aws \
+            -M csv,text,html \
+            -f us-east-1
 
   dependency-security:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Run npm audit
-      run: npm audit --audit-level=moderate
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
 
-    - name: Run Snyk to check for vulnerabilities
-      uses: snyk/actions/node@master
-      env:
-        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      with:
-        args: --severity-threshold=high
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
 ```
 
 ### Compliance Checklist
+
 ```typescript
 // Compliance Framework
 interface ComplianceChecklist {
@@ -913,100 +930,96 @@ interface ComplianceChecklist {
       'Multi-factor authentication enabled for all users',
       'Password policies enforced (minimum 12 characters)',
       'Session timeout configured (30 minutes)',
-      'Account lockout after failed attempts (5 attempts)'
-    ],
+      'Account lockout after failed attempts (5 attempts)',
+    ];
     authorization: [
       'Principle of least privilege implemented',
       'Role-based access control configured',
       'Access reviews quarterly',
-      'Privileged access monitoring enabled'
-    ],
+      'Privileged access monitoring enabled',
+    ];
     dataProtection: [
       'Data encryption at rest (AES-256)',
       'Data encryption in transit (TLS 1.2+)',
       'Data classification implemented',
-      'Data loss prevention configured'
-    ]
-  },
+      'Data loss prevention configured',
+    ];
+  };
 
   operational: {
     monitoring: [
       'Comprehensive logging enabled',
       'Log retention for 90 days',
       'Real-time alerting configured',
-      'Audit trail for privileged actions'
-    ],
+      'Audit trail for privileged actions',
+    ];
     backup: [
       'Automated daily backups',
       'Cross-region backup replication',
       'Backup restoration tested monthly',
-      'Retention policy enforced'
-    ],
+      'Retention policy enforced',
+    ];
     incidentResponse: [
       'Incident response plan documented',
       '24/7 monitoring team available',
       'Escalation procedures defined',
-      'Post-incident reviews conducted'
-    ]
-  },
+      'Post-incident reviews conducted',
+    ];
+  };
 
   regulatory: {
     GDPR: [
       'Data processing records maintained',
       'Data subject rights implemented',
       'Data protection officer appointed',
-      'Privacy by design implemented'
-    ],
+      'Privacy by design implemented',
+    ];
     SOC2: [
       'Security controls documented',
       'Access controls implemented',
       'Change management processes',
-      'Vendor risk management'
-    ],
+      'Vendor risk management',
+    ];
     HIPAA: [
       'Protected health information encrypted',
       'Audit controls implemented',
       'Business associate agreements',
-      'Security risk analysis conducted'
-    ]
-  }
+      'Security risk analysis conducted',
+    ];
+  };
 }
 ```
 
 ## PERFORMANCE OPTIMIZATION
 
 ### Application Performance Monitoring
+
 ```typescript
 // APM Configuration
 interface APMConfiguration {
   tracing: {
     sampling: {
-      default: 0.1, // 10% sample rate
-      error: 1.0,   // 100% for errors
-      slow: 0.5     // 50% for slow requests
-    },
-    exporters: ['jaeger', 'zipkin'],
-    headers: ['x-trace-id', 'x-parent-span-id'],
-    tags: ['service.name', 'service.version', 'environment']
-  },
+      default: 0.1; // 10% sample rate
+      error: 1.0; // 100% for errors
+      slow: 0.5; // 50% for slow requests
+    };
+    exporters: ['jaeger', 'zipkin'];
+    headers: ['x-trace-id', 'x-parent-span-id'];
+    tags: ['service.name', 'service.version', 'environment'];
+  };
 
   metrics: {
-    exporters: ['prometheus', 'datadog'],
-    customMetrics: [
-      'business_transactions',
-      'user_sessions',
-      'feature_flags',
-      'cache_hit_rate'
-    ],
-    aggregation: ['sum', 'avg', 'max', 'percentile(95)']
-  },
+    exporters: ['prometheus', 'datadog'];
+    customMetrics: ['business_transactions', 'user_sessions', 'feature_flags', 'cache_hit_rate'];
+    aggregation: ['sum', 'avg', 'max', 'percentile(95)'];
+  };
 
   profiling: {
-    enabled: true,
-    interval: '30s',
-    exporters: ['pyroscope'],
-    types: ['cpu', 'memory', 'goroutine']
-  }
+    enabled: true;
+    interval: '30s';
+    exporters: ['pyroscope'];
+    types: ['cpu', 'memory', 'goroutine'];
+  };
 }
 
 // Performance Targets
@@ -1015,28 +1028,29 @@ const performanceTargets = {
     firstContentfulPaint: 1.5, // seconds
     largestContentfulPaint: 2.5,
     firstInputDelay: 100, // milliseconds
-    cumulativeLayoutShift: 0.1
+    cumulativeLayoutShift: 0.1,
   },
 
   api: {
-    p50: 100,  // milliseconds
+    p50: 100, // milliseconds
     p95: 500,
     p99: 1000,
-    errorRate: 0.01 // 1%
+    errorRate: 0.01, // 1%
   },
 
   infrastructure: {
     cpuUtilization: 70, // percentage
     memoryUtilization: 80,
     diskUtilization: 85,
-    networkLatency: 10 // milliseconds
-  }
+    networkLatency: 10, // milliseconds
+  },
 };
 ```
 
 ## TOOLS AND INSTRUMENTS
 
 ### Essential DevOps/SRE Tools
+
 - **Infrastructure**: Terraform, AWS CloudFormation, Google Cloud Deployment Manager
 - **Container Orchestration**: Kubernetes, Docker, Helm, Istio
 - **CI/CD**: GitHub Actions, GitLab CI, Jenkins, ArgoCD
@@ -1047,6 +1061,7 @@ const performanceTargets = {
 - **Backup**: Velero, AWS Backup, pg_dump, rclone
 
 ### FORBIDDEN PRACTICES
+
 - **Manual infrastructure changes**: All changes must go through IaC
 - **Hardcoded credentials**: Use secret management systems
 - **Direct production access**: Use automated deployment pipelines
@@ -1056,6 +1071,7 @@ const performanceTargets = {
 - **Backup neglect**: Regular backup testing and restoration validation
 
 ### SERVICE LEVEL OBJECTIVES
+
 ```typescript
 const serviceLevelObjectives = {
   availability: {
@@ -1064,27 +1080,27 @@ const serviceLevelObjectives = {
     errorBudget: 43.2, // minutes per month
     alerting: {
       warning: 99.95,
-      critical: 99.9
-    }
+      critical: 99.9,
+    },
   },
 
   performance: {
     latency: {
       p50: '< 100ms',
       p95: '< 500ms',
-      p99: '< 1000ms'
+      p99: '< 1000ms',
     },
     throughput: {
       requests: '> 1000/second',
-      data: '> 1GB/second'
-    }
+      data: '> 1GB/second',
+    },
   },
 
   reliability: {
     mttr: '< 30 minutes', // Mean Time To Recovery
-    mtbf: '> 720 hours',  // Mean Time Between Failures
-    changeFailureRate: '< 5%'
-  }
+    mtbf: '> 720 hours', // Mean Time Between Failures
+    changeFailureRate: '< 5%',
+  },
 };
 ```
 

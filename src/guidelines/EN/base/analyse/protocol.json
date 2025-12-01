@@ -1,0 +1,174 @@
+{
+  "id": "analyse-protocol",
+  "name": "Analysis Protocol",
+  "description": "Comprehensive analysis workflow for PRP requirements and technical feasibility",
+  "version": "1.0.0",
+  "category": "analysis",
+  "priority": "critical",
+  "enabled": true,
+  "protocol": {
+    "id": "comprehensive-analysis-workflow",
+    "description": "Thorough analysis of PRP requirements, technical feasibility, and implementation approach",
+    "steps": [
+      {
+        "id": "requirements-decomposition",
+        "name": "Requirements Decomposition",
+        "description": "Break down requirements into actionable components",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["decomposed-requirements", "dependencies", "complexity-assessment"],
+        "nextSteps": ["technical-analysis"]
+      },
+      {
+        "id": "technical-analysis",
+        "name": "Technical Analysis",
+        "description": "Analyze technical implementation requirements and constraints",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["technical-approach", "architecture-impact", "technology-stack"],
+        "nextSteps": ["risk-assessment"]
+      },
+      {
+        "id": "risk-assessment",
+        "name": "Risk Assessment",
+        "description": "Identify and assess potential risks and blockers",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["risk-register", "mitigation-strategies", "blocker-analysis"],
+        "nextSteps": ["implementation-strategy"]
+      },
+      {
+        "id": "implementation-strategy",
+        "name": "Implementation Strategy",
+        "description": "Define optimal implementation approach and methodology",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["implementation-plan", "milestone-breakdown", "resource-needs"],
+        "nextSteps": ["validation-check"]
+      },
+      {
+        "id": "validation-check",
+        "name": "Analysis Validation",
+        "description": "Validate analysis completeness and accuracy",
+        "type": "inspector_analysis",
+        "required": true,
+        "outputs": ["validation-report", "gaps-identified", "quality-score"],
+        "nextSteps": ["final-recommendations"]
+      },
+      {
+        "id": "final-recommendations",
+        "name": "Final Recommendations",
+        "description": "Provide final recommendations and go/no-go decision",
+        "type": "orchestrator_decision",
+        "required": true,
+        "outputs": ["recommendations", "go-decision", "next-phases"],
+        "nextSteps": []
+      }
+    ],
+    "decisionPoints": [
+      {
+        "id": "complexity-decision",
+        "question": "What is the complexity level and implementation approach?",
+        "options": [
+          {
+            "id": "simple-implementation",
+            "label": "Simple implementation - direct approach",
+            "action": "plan-simple-implementation",
+            "nextSteps": ["implementation-strategy"]
+          },
+          {
+            "id": "moderate-complexity",
+            "label": "Moderate complexity - phased approach",
+            "action": "plan-phased-implementation",
+            "nextSteps": ["implementation-strategy"]
+          },
+          {
+            "id": "high-complexity",
+            "label": "High complexity - research and experimentation needed",
+            "action": "plan-research-phase",
+            "nextSteps": []
+          }
+        ],
+        "requiresInput": true
+      },
+      {
+        "id": "go-no-go",
+        "question": "Should this PRP proceed to implementation?",
+        "options": [
+          {
+            "id": "go-implementation",
+            "label": "Proceed to implementation - analysis complete",
+            "action": "approve-for-implementation",
+            "nextSteps": []
+          },
+          {
+            "id": "go-with-conditions",
+            "label": "Proceed with conditions - address specific items first",
+            "action": "conditional-approval",
+            "nextSteps": []
+          },
+          {
+            "id": "no-go-research",
+            "label": "No-go - requires additional research",
+            "action": "request-research",
+            "nextSteps": []
+          }
+        ],
+        "requiresInput": true
+      }
+    ],
+    "successCriteria": [
+      "Requirements fully decomposed and understood",
+      "Technical feasibility thoroughly analyzed",
+      "Risks identified with mitigation strategies",
+      "Implementation strategy defined and validated",
+      "Analysis completeness verified (90%+ coverage)",
+      "Clear go/no-go decision with recommendations"
+    ],
+    "fallbackActions": [
+      "Request additional technical expertise",
+      "Conduct research for unknown requirements",
+      "Break down complex PRP into manageable phases",
+      "Escalate to senior architects for complex decisions"
+    ]
+  },
+  "requirements": [
+    {
+      "type": "knowledge",
+      "name": "System Architecture Knowledge",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "System architecture knowledge required for analysis"
+    },
+    {
+      "type": "tool",
+      "name": "Code Analysis Tools",
+      "required": true,
+      "check": "async () => true",
+      "errorMessage": "Code analysis tools required"
+    }
+  ],
+  "prompts": {
+    "inspector": "You are a PRP Analysis Inspector. Your role is to conduct comprehensive analysis of PRP requirements.\n\nTASK: Analyze PRP requirements and provide technical assessment\n\nCONTEXT:\n{{context}}\n\nPRP DETAILS:\n{{prpData}}\n\nANALYSIS FRAMEWORK:\n1. **Requirements Decomposition**: Break down into manageable components\n2. **Technical Analysis**: Assess implementation requirements\n3. **Risk Assessment**: Identify blockers and mitigation strategies\n4. **Implementation Strategy**: Define optimal approach\n\nANALYSIS AREAS:\n- **Functional Requirements**: What must the system do?\n- **Non-Functional Requirements**: How well must it do it?\n- **Technical Constraints**: What limitations exist?\n- **Integration Points**: How does it connect to existing systems?\n- **Data Requirements**: What data is needed/produced?\n- **Performance Requirements**: What are the performance criteria?\n- **Security Requirements**: What security considerations apply?\n\nRESPOND WITH STRUCTURED JSON:\n{\n  \"requirements_decomposition\": {\n    \"primary_requirements\": [\n      {\n        \"id\": string,\n        \"description\": string,\n        \"priority\": \"critical\" | \"high\" | \"medium\" | \"low\",\n        \"complexity\": \"simple\" | \"moderate\" | \"complex\",\n        \"dependencies\": string[],\n        \"acceptance_criteria\": string[]\n      }\n    ],\n    \"secondary_requirements\": string[],\n    \"assumptions\": string[],\n    \"constraints\": string[]\n  },\n  \"technical_analysis\": {\n    \"architecture_impact\": {\n      \"components_affected\": string[],\n      \"changes_required\": string[],\n      \"integration_points\": string[]\n    },\n    \"technology_stack\": {\n      \"required_technologies\": string[],\n      \"new_technologies_needed\": string[],\n      \"compatibility_considerations\": string[]\n    },\n    \"implementation_approach\": {\n      \"recommended_approach\": string,\n      \"alternative_approaches\": string[],\n      \"approach_justification\": string\n    }\n  },\n  \"risk_assessment\": {\n    \"technical_risks\": [\n      {\n        \"risk\": string,\n        \"probability\": \"high\" | \"medium\" | \"low\",\n        \"impact\": \"critical\" | \"high\" | \"medium\" | \"low\",\n        \"mitigation_strategy\": string\n      }\n    ],\n    \"project_risks\": string[],\n    \"blocker_analysis\": {\n      \"potential_blockers\": string[],\n      \"blocker_probability\": \"high\" | \"medium\" | \"low\",\n      \"contingency_plans\": string[]\n    }\n  },\n  \"implementation_strategy\": {\n    \"phases\": [\n      {\n        \"phase\": string,\n        \"description\": string,\n        \"deliverables\": string[],\n        \"estimated_effort\": string\n      }\n    ],\n    \"critical_path\": string[],\n    \"parallel_work_items\": string[],\n    \"resource_requirements\": string[]\n  },\n  \"analysis_quality\": {\n    \"completeness_score\": number (0-100),\n    \"confidence_level\": number (0-100),\n    \"missing_information\": string[],\n    \"additional_analysis_needed\": string[]\n  }\n}",
+    "orchestrator": "You are a PRP Analysis Orchestrator. Based on the Inspector's analysis, make strategic decisions and guide next steps.\n\nINSPECTOR ANALYSIS:\n{{inspectorAnalysis}}\n\nCONTEXT:\n{{context}}\n\nYOUR ROLE:\n1. **Evaluate Analysis**: Review completeness and accuracy\n2. **Strategic Decisions**: Make go/no-go recommendations\n3. **Implementation Guidance**: Provide clear next steps\n4. **Risk Management**: Ensure risks are properly addressed\n\nDECISION CRITERIA:\n- **Requirements Clarity**: Are requirements well-defined?\n- **Technical Feasibility**: Can this be implemented effectively?\n- **Risk Level**: Are risks acceptable and manageable?\n- **Resource Availability**: Do we have necessary resources?\n- **Business Value**: Does this align with business objectives?\n\nRECOMMENDATION FRAMEWORK:\n- **GO**: Proceed with implementation as planned\n- **GO WITH CONDITIONS**: Proceed after addressing specific items\n- **NO-GO**: Halt and address major issues\n- **RESEARCH NEEDED**: More analysis required before decision\n\nEXECUTE ACTIONS:\n1. Validate analysis completeness\n2. Make strategic recommendations\n3. Define next phase activities\n4. Update PRP with analysis results\n5. Coordinate with stakeholders\n\nRESPOND WITH:\n1. Analysis validation results\n2. Strategic decision (go/no-go) with reasoning\n3. Implementation recommendations and approach\n4. Risk mitigation strategies\n5. Clear next steps and phase transitions\n6. PRP updates and documentation required"
+  },
+  "tokenLimits": {
+    "inspector": 30000,
+    "orchestrator": 25000
+  },
+  "tools": [
+    "code-analyzer",
+    "dependency-mapper",
+    "risk-assessor",
+    "architecture-analyzer",
+    "template-engine"
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "author": "system",
+    "createdAt": "2025-01-09T00:00:00Z",
+    "lastModified": "2025-01-09T00:00:00Z",
+    "tags": ["analysis", "requirements", "technical-assessment", "risk-management"],
+    "dependencies": []
+  }
+}

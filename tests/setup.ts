@@ -1,91 +1,38 @@
-/**
- * Jest test setup file
- */
+// Jest setup file for ES modules
+// This file is loaded before all test files
 
-import { jest } from '@jest/globals';
+// Import jest-dom matchers
+import '@testing-library/jest-dom';
 
-// Set up test environment
-global.console = {
-  ...console,
-  // Uncomment to ignore specific console log levels during tests
-  // log: jest.fn(),
-  // debug: jest.fn(),
-  // info: jest.fn(),
-  // warn: jest.fn(),
-  // error: jest.fn(),
-};
+// Mock some global objects if needed
+const { TextEncoder, TextDecoder } = require('util');
 
-// Mock problematic ESM dependencies that cause Jest issues
-jest.mock('chalk', () => ({
-  default: {
-    red: jest.fn((text) => text),
-    green: jest.fn((text) => text),
-    blue: jest.fn((text) => text),
-    yellow: jest.fn((text) => text),
-    cyan: jest.fn((text) => text),
-    magenta: jest.fn((text) => text),
-    gray: jest.fn((text) => text),
-    white: jest.fn((text) => text),
-    bgRed: jest.fn((text) => text),
-    bgGreen: jest.fn((text) => text),
-    bgBlue: jest.fn((text) => text),
-    bold: jest.fn((text) => text),
-    dim: jest.fn((text) => text),
-    italic: jest.fn((text) => text),
-    underline: jest.fn((text) => text)
-  }
-}));
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
 
-jest.mock('ora', () => {
-  const mockSpinner = {
-    start: jest.fn(() => mockSpinner),
-    succeed: jest.fn(() => mockSpinner),
-    fail: jest.fn(() => mockSpinner),
-    stop: jest.fn(() => mockSpinner),
-    clear: jest.fn(() => mockSpinner),
-    render: jest.fn(() => mockSpinner),
-    text: ''
+// Configure jest environment for modules
+Object.defineProperty(global, 'fetch', {
+  writable: true,
+  value: jest.fn(),
+});
+
+
+// Mock execa completely to avoid ESM issues
+jest.mock('execa', () => {
+  return {
+    execa: jest.fn(() => Promise.resolve({ stdout: '', stderr: '', exitCode: 0 })),
+    default: jest.fn(() => Promise.resolve({ stdout: '', stderr: '', exitCode: 0 })),
   };
-  const ora = jest.fn(() => mockSpinner);
-  ora.default = ora;
-  return ora;
 });
 
-jest.mock('inquirer', () => ({
-  prompt: jest.fn(() => Promise.resolve({}))
-}));
-
-jest.mock('figlet', () => ({
-  textSync: jest.fn((text) => text),
-  loadFontSync: jest.fn()
-}));
-
-jest.mock('boxen', () => ({
-  default: jest.fn((text) => text)
-}));
-
-// Mock Node.js modules that might cause issues in tests
-jest.mock('fs', () => ({
-  ...jest.requireActual('fs'),
-  promises: jest.requireActual('fs/promises'),
-  createWriteStream: jest.fn(() => ({
-    write: jest.fn(),
-    end: jest.fn(),
-    on: jest.fn()
-  }))
-}));
-
-// Add custom matchers if needed
-expect.extend({
-  toBeValidTimestamp(received) {
-    const pass = typeof received === 'number' && received > 0;
-    return {
-      message: () =>
-        `expected ${received} to be a valid timestamp`,
-      pass,
-    };
+// Mock git operations
+jest.mock('../src/shared/utils/gitUtils', () => ({
+  GitUtils: {
+    isGitRepository: jest.fn(() => Promise.resolve(true)),
+    getCurrentBranch: jest.fn(() => Promise.resolve('main')),
+    getUncommittedFiles: jest.fn(() => Promise.resolve([])),
+    getTrackedFiles: jest.fn(() => Promise.resolve(['package.json'])),
+    getDiffFiles: jest.fn(() => Promise.resolve([])),
+    getCommitHash: jest.fn(() => Promise.resolve('abc123')),
   },
-});
-
-// Set up global test timeout
-jest.setTimeout(30000);
+}));

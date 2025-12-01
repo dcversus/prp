@@ -1,68 +1,70 @@
 #!/usr/bin/env node
 
-/**
- * Config Command Implementation
- *
- * Provides configuration management functionality
- */
-
 import { Command } from 'commander';
-import { logger } from '../utils/logger';
-import { PRPCli } from '../core/cli';
 
-interface ConfigOptions {
-  get?: string;
+import { logger, initializeLogger } from '../shared/logger';
+
+import type { CommanderOptions, GlobalCLIOptions } from '../cli/types';
+
+interface ConfigOptions extends GlobalCLIOptions {
   set?: string;
-  delete?: string;
+  get?: string;
   list?: boolean;
+  reset?: boolean;
 }
 
 /**
- * Create config command for CLI
+ * Create and return the config command
  */
-export function createConfigCommand(): Command {
+export const createConfigCommand = (): Command => {
   const configCmd = new Command('config')
-    .description('Manage project configuration')
-    .option('-g, --get <key>', 'get configuration value')
-    .option('-s, --set <key=value>', 'set configuration value')
-    .option('-d, --delete <key>', 'delete configuration key')
-    .option('-l, --list', 'list all configuration values')
-    .action(async (options: ConfigOptions) => {
-      await handleConfigCommand(options);
+    .description('Manage PRP configuration')
+    .option('--set <key=value>', 'Set configuration value')
+    .option('--get <key>', 'Get configuration value')
+    .option('--list', 'List all configuration values', false)
+    .option('--reset', 'Reset configuration to defaults', false)
+    .action(async (options: ConfigOptions, command: Command) => {
+      const globalOptions = (command.parent?.opts() as CommanderOptions<ConfigOptions>) ?? {};
+      const mergedOptions = { ...globalOptions, ...options };
+      await handleConfigCommand(mergedOptions);
     });
 
   return configCmd;
-}
+};
 
 /**
  * Handle config command execution
  */
-async function handleConfigCommand(options: ConfigOptions): Promise<void> {
-  try {
-    const cli = new PRPCli({
-      debug: false,
-    });
+export const handleConfigCommand = async (options: ConfigOptions): Promise<void> => {
+  initializeLogger({
+    ci: options.ci,
+    debug: options.debug,
+    logLevel: options.logLevel,
+    logFile: options.logFile,
+    noColor: options.noColor,
+    tuiMode: !(options.ci ?? false),
+  });
 
-    await cli.initialize();
+  logger.info('cli', 'ConfigCommand', 'Managing configuration', {
+    set: options.set,
+    get: options.get,
+    list: options.list,
+    reset: options.reset,
+  });
 
-    // Execute config command
-    const result = await cli.run(['config'], options);
-
-    if (result.success) {
-      logger.info(result.stdout || 'Configuration operation completed successfully');
-    } else {
-      logger.error('❌ Configuration operation failed');
-      if (result.stderr) {
-        logger.error(result.stderr);
-      }
-      process.exit(1);
-    }
-
-  } catch (error) {
-    logger.error('Config command failed:', error);
-    process.exit(1);
+  // TODO: Implement actual config management logic
+  if (options.list) {
+    logger.info('cli', 'ConfigCommand', 'Configuration listing...');
   }
-}
+  if (options.get) {
+    logger.info('cli', 'ConfigCommand', `Getting config for: ${options.get}`);
+  }
+  if (options.set) {
+    logger.info('cli', 'ConfigCommand', `Setting config: ${options.set}`);
+  }
+  if (options.reset) {
+    logger.info('cli', 'ConfigCommand', 'Resetting configuration to defaults');
+  }
+};
 
-// Export for use in main CLI
-export { createConfigCommand as default };
+export type { ConfigOptions };

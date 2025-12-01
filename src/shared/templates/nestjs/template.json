@@ -1,0 +1,6 @@
+{
+  "name": "nestjs",
+  "description": "NestJS project template",
+  "default": false,
+  "files": []
+}

@@ -1,18 +1,39 @@
-# PRP - Product Requirement Prompts
+# ♫ @dcversus/prp - Product Requirement Prompts 🚀
 
-> **Bootstrap context-driven development workflow based on Product Requirement Prompts (PRPs) and orchestrate execution with LOOP MODE**
->
+> **Autonomous Development Orchestration, scored to code.**
 > By Vasilisa Versus
 
-## What is PRP?
+[![npm version](https://img.shields.io/npm/v/@dcversus/prp)](https://www.npmjs.com/package/@dcversus/prp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org/)
+[![Documentation](https://img.shields.io/badge/docs-latest-brightgreen.svg)](docs/README.md)
+[![PRP Status](https://img.shields.io/badge/PRPs-23%20Active-orange.svg)](PRPs/)
 
-**PRP** is both a methodology and a CLI tool that revolutionizes how you approach software development:
+## ✨ What is PRP?
 
-- **📋 PRP Methodology** - Context-driven development using Product Requirement Prompts as living documents
-- **🔄 LOOP MODE** - Continuous agent iteration guided by signals and progress tracking
-- **🤖 Agent Orchestration** - AI agents collaborate through standardized PRPs with emotional signals
-- **⚡ Signal System** - Track progress and emotional state with 14+ signals (ATTENTION, BLOCKED, ENCANTADO, etc.)
-- **🚀 Project Scaffolding** - Bootstrap new projects with best practices and complete infrastructure
+**PRP** transforms software development through intelligent agent orchestration and living requirement documents:
+
+- **🤖 AI Agent Orchestra** - Multiple specialized agents collaborate through structured signals
+- **📋 Living PRPs** - Product Requirement Prompts that evolve with your project
+- **⚡ Signal-Driven** - Real-time progress tracking with 50+ signal types
+- **🔄 Continuous Loop** - Autonomous development workflow with human oversight
+- **🛠️ Complete Toolchain** - From scaffolding to deployment in one unified system
+
+## 🎯 Why PRP?
+
+Traditional project management struggles with:
+
+- ❌ Static requirements that become outdated
+- ❌ Poor communication between team members
+- ❌ Manual progress tracking and status reporting
+- ❌ Fragmented toolchains and context switching
+
+**PRP solves these problems** through:
+
+- ✅ **Dynamic Requirements** - PRPs evolve as your project grows
+- ✅ **Intelligent Coordination** - AI agents understand context and collaborate
+- ✅ **Real-time Visibility** - Signal-based progress tracking across all work
+- ✅ **Unified Workflow** - Single tool from concept to deployment
 
 ### The PRP Workflow (Autonomous Orchestration)
 
@@ -29,6 +50,7 @@ Every development task follows this cycle:
 7. **🔄 Loop** - Continue until DoD met or checkpoint reached
 
 **Orchestrator Rules:**
+
 - ❌ **NO QUESTIONS** to humans for decisions
 - ✅ **DECIDE AUTONOMOUSLY** based on signal analysis
 - ✅ **DOCUMENT** decisions in PRP progress log
@@ -36,6 +58,7 @@ Every development task follows this cycle:
 - ⚠️ **NUDGE** only for critical blocks (Priority 10)
 
 **Quick Start with PRPs**:
+
 ```bash
 # List all PRPs
 ls PRPs/
@@ -49,6 +72,7 @@ ls PRPs/
 ```
 
 **Signal Examples**:
+
 - 🔴 **ATTENTION** (10) - New work or need user input (triggers NUDGE system)
 - 🚫 **BLOCKED** (9) - Can't proceed, need external help
 - ✅ **CONFIDENT** (3) - Work done, ready for review
@@ -72,26 +96,53 @@ ls PRPs/
 - 🐳 **Docker Support** - Optional Dockerfile and docker-compose configuration
 - ⚙️ **Configurable** - Choose exactly what to include in your project
 
-## Quick Start
+## 🚀 Quick Start
 
-### Using npx (no installation required)
+Get PRP running in under 60 seconds with our intelligent setup wizard:
+
+### One-Command Installation (Recommended)
 
 ```bash
-npx @dcversus/prp
+npx @dcversus/prp init my-project
+cd my-project
+npm run dev
 ```
 
-### Global Installation
+That's it! 🎉 PRP will:
+
+- 📁 Analyze your project and detect your tech stack
+- 🤝 Set up AI agents tailored to your needs
+- 📊 Configure real-time monitoring and dashboards
+- 🚀 Launch the development orchestrator
+
+### Manual Installation
 
 ```bash
+# Install globally
 npm install -g @dcversus/prp
-prp
+
+# Or install locally
+npm install @dcversus/prp
+
+# Start the orchestrator
+prp orchestrator
 ```
 
-### Local Installation
+### What Happens Next?
 
-```bash
-npm install @dcversus/prp
-npx prp
+1. **🔍 Project Analysis** - PRP scans your codebase and understands your architecture
+2. **🤖 Agent Configuration** - Specialized AI agents are configured for your stack
+3. **📊 Dashboard Launch** - Real-time monitoring and signal tracking starts
+4. **🔄 Development Loop** - Continuous improvement and autonomous task execution
+
+**Example Output:**
+
+```
+✨ PRP Orchestrator Started
+📊 Active PRPs: 3 | Signals: 147 | Agents: 4
+🤖 Scanner: Watching for changes...
+🔍 Inspector: Analyzing [dp] signal in PRP-001-comprehensive-cleanup
+🎯 Orchestrator: Allocating resources to frontend optimization
 ```
 
 ## Usage
@@ -105,6 +156,7 @@ prp
 ```
 
 The interactive CLI will guide you through:
+
 1. Project metadata (name, description, author)
 2. Template selection (FastAPI, NestJS, React, etc.)
 3. Feature selection (LICENSE, Code of Conduct, GitHub Actions, etc.)
@@ -145,14 +197,14 @@ Options:
 
 ## Supported Templates
 
-| Template | Description | Tech Stack |
-|----------|-------------|------------|
-| `none` | Minimal setup with docs only | N/A |
-| `fastapi` | FastAPI Python web service | Python, FastAPI, Uvicorn |
-| `nestjs` | NestJS TypeScript backend | TypeScript, NestJS, Node.js |
-| `react` | React web application | TypeScript, React, Vite |
-| `typescript-lib` | TypeScript library/package | TypeScript, Node.js |
-| `express` | Express.js backend | TypeScript, Express, Node.js |
+| Template         | Description                  | Tech Stack                   |
+| ---------------- | ---------------------------- | ---------------------------- |
+| `none`           | Minimal setup with docs only | N/A                          |
+| `fastapi`        | FastAPI Python web service   | Python, FastAPI, Uvicorn     |
+| `nestjs`         | NestJS TypeScript backend    | TypeScript, NestJS, Node.js  |
+| `react`          | React web application        | TypeScript, React, Vite      |
+| `typescript-lib` | TypeScript library/package   | TypeScript, Node.js          |
+| `express`        | Express.js backend           | TypeScript, Express, Node.js |
 
 More templates coming soon!
 
@@ -232,8 +284,11 @@ cd prp
 # Install dependencies
 npm install
 
-# Run in development mode
+# Run in development mode with hot reload
 npm run dev
+
+# Run in development mode without watch
+npm run dev:no-watch
 
 # Build
 npm run build
@@ -266,6 +321,48 @@ prp/
 └── docs/                   # Documentation
 ```
 
+## 🔧 Development Mode
+
+PRP includes an enhanced development mode with hot reload and intelligent worktree support:
+
+### Features
+
+- **🔄 Hot Reload** - Automatic orchestrator restart on file changes
+- **🌳 Smart Worktrees** - Automatic git worktree management for feature branches
+- **📁 File Watching** - Monitors source files, templates, and PRPs
+- **🎯 Branch Detection** - Different behavior based on current git branch
+
+### Usage
+
+```bash
+# Start development mode with hot reload (recommended)
+npm run dev
+
+# Start without watch mode
+npm run dev:no-watch
+
+# Start with debug logging
+npm run dev -- --debug
+
+# Use custom branch/worktree
+npx tsx src/cli.ts dev --branch feature-name --worktree /custom/path
+```
+
+### Worktree Logic
+
+- **Main branch** (`main`/`master`): Development in current directory
+- **Feature branches**: Automatic worktree creation at `.prp/worktrees/<branch>`
+- **File changes** trigger intelligent orchestrator restarts with 1-second debounce
+
+### Monitored Files
+
+- `src/**/*.ts`, `src/**/*.tsx` - Source code
+- `.prp/**/*.md`, `PRPs/**/*.md` - Requirements and context
+- `templates/**/*` - Project templates
+- Excludes: `node_modules`, `dist`, `coverage`, test files
+
+For detailed development setup, see [Development Mode Documentation](docs/development-mode.md).
+
 ## Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
@@ -277,22 +374,46 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## Credits
 
 Inspired by:
+
 - [Yeoman](https://yeoman.io/)
 - [Cookiecutter](https://github.com/cookiecutter/cookiecutter)
 - [create-react-app](https://create-react-app.dev/)
 - [Telefonica Open Source Scaffold](https://github.com/Telefonica/opensource-scaffold)
 
 Built with:
+
 - [Ink](https://github.com/vadimdemedes/ink) - React for CLIs
 - [Commander.js](https://github.com/tj/commander.js) - Command-line framework
 - [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
 
-## Links
+## 📚 Documentation & Resources
 
-- [GitHub Repository](https://github.com/dcversus/prp)
-- [npm Package](https://www.npmjs.com/package/@dcversus/prp)
-- [Issue Tracker](https://github.com/dcversus/prp/issues)
-- [Changelog](CHANGELOG.md)
+### 🚀 Getting Started
+
+- **[📖 Quick Start Guide](docs/QUICK_START.md)** - Get PRP running in 5 minutes
+- **[📚 Complete Documentation](docs/README.md)** - Comprehensive documentation hub
+- **[❓ FAQ](docs/FAQ.md)** - Frequently asked questions
+- **[🔧 Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+
+### 🛠️ Guides & References
+
+- **[📋 PRP Template](docs/PRP_TEMPLATE.md)** - Standardized PRP documentation template
+- **[📖 CLI Commands](docs/cli/README.md)** - Complete command reference
+- **[⚙️ Configuration Guide](docs/config/README.md)** - .prprc configuration reference
+- **[🏗️ Architecture Guide](docs/ARCHITECTURE.md)** - System design and architecture
+
+### 🤝 Community & Support
+
+- **[💬 Discord Community](https://discord.gg/prp)** - Chat with the PRP community
+- **[🐛 GitHub Issues](https://github.com/dcversus/prp/issues)** - Bug reports and feature requests
+- **[📧 Email Support](mailto:support@prp.dev)** - Get help from the PRP team
+
+## 🔗 Links
+
+- **[GitHub Repository](https://github.com/dcversus/prp)** - Source code and development
+- **[npm Package](https://www.npmjs.com/package/@dcversus/prp)** - Package information and downloads
+- **[Documentation Site](https://docs.prp.dev)** - Online documentation (coming soon)
+- **[Changelog](CHANGELOG.md)** - Version history and release notes
 
 ---
 

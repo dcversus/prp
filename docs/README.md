@@ -1,212 +1,103 @@
-# PRP CLI Documentation
+# Welcome to PRP ♫
 
-Welcome to the comprehensive documentation for the PRP (Project Requirements & Planning) CLI bootstrap system. This powerful tool transforms project initialization, debugging, and CI/CD management into an efficient, automated experience.
+**Autonomous Development Orchestration - Transform ideas into deployed software through AI agent coordination**
+
+// [da] Documentation welcome page created with quick start guide and navigation - admin-1
+
+---
 
 ## 🚀 Quick Start
 
 ```bash
-# Install the CLI
-npm install -g @prp/cli
+# Install PRP CLI globally
+npm install -g @dcversus/prp
 
 # Initialize a new project
 prp init my-project
 
-# Initialize in existing directory
-prp init
-
-# Start debug mode
-prp debug
-
-# Show help
-prp --help
+# Start autonomous development
+cd my-project
+prp orchestrator
 ```
 
-## 📚 Documentation Sections
+## 📖 What is PRP?
 
-### Core Documentation
-- [CLI Reference](./CLI_REFERENCE.md) - Complete command reference and usage guide
-- [Configuration Guide](./CONFIGURATION_GUIDE.md) - .prprc configuration and customization
-- [Development Workflow](./DEVELOPMENT_WORKFLOW.md) - Complete development lifecycle management
-- [CI/CD Integration](./CICD_GUIDE.md) - Continuous integration and deployment setup
+PRP (Product Requirement Prompts) is a revolutionary methodology that combines:
 
-### Advanced Topics
-- [Debugging Guide](./DEBUGGING_GUIDE.md) - Debug mode and troubleshooting
-- [API Reference](./API_REFERENCE.md) - CLI API and programmatic usage
-- [Token Accounting](./TOKEN_ACCOUNTING.md) - Cost tracking and management
-- [GitHub Integration](./GITHUB_INTEGRATION.md) - GitHub API and automation
+- **Living Requirements** - PRPs evolve with implementation in real-time
+- **Signal-Driven Communication** - 44-signal taxonomy eliminates meeting overhead
+- **Autonomous Coordination** - AI agents manage dependencies and workflow
+- **Zero-Touch Delivery** - From concept to production without human intervention
 
-### Quality & Testing
-- [Quality Gates](./QUALITY_GATES.md) - Automated quality validation
-- [Testing Guide](./TESTING_GUIDE.md) - Testing infrastructure and automation
-- [Security Guide](./SECURITY_GUIDE.md) - Security best practices
+## 📚 Documentation Guide
 
-### Development & Contribution
-- [Architecture Guide](./ARCHITECTURE.md) - System architecture and design
-- [Contributing Guide](./CONTRIBUTING.md) - Development and contribution guidelines
-- [Release Process](./RELEASE_PROCESS.md) - Release management and deployment
+### **Beginner's Path**
 
-## 🎯 Key Features
+1. **[What is PRP?](./what-is-prp.md)** - Understanding the methodology
+   - Learn about living requirements and signal-driven workflow
+   - Understand the core innovation behind PRP
 
-### 🏗️ Project Initialization
-- Interactive wizard for new and existing projects
-- Template-based project scaffolding
-- Automatic dependency management
-- Git repository setup and configuration
-- Development environment validation
+2. **[Context-Driven Development](./context-driven-development.md)** - The PRP way of working
+   - How context flows through the system
+   - Three-layer architecture: Scanner → Inspector → Orchestrator
 
-### 🔍 Debug Mode
-- CI-like console output with verbose logging
-- Debug interface with orchestrator integration (CTRL+D)
-- Comprehensive error reporting and troubleshooting
-- Performance monitoring and profiling
-- Multi-language debugging support (Node.js, Python)
+3. **[Human as Agent](./human-as-agent.md)** - Your role in autonomous development
+   - When and how to intervene
+   - Best practices for human-AI collaboration
 
-### 🚀 CI/CD Pipeline Management
-- Automated workflow validation and setup
-- GitHub Actions integration and management
-- Build pipeline configuration and optimization
-- Test automation and quality enforcement
-- Deployment pipeline monitoring
+### **Setup & Configuration**
 
-### 💰 Token Accounting
-- Real-time token usage tracking
-- Cost calculation with provider-specific pricing
-- Usage limits and quota management
-- Token efficiency optimization
-- Comprehensive cost reporting
+4. **[GitHub Registration](./github-registration.md)** - Prepare your environment
+   - GitHub account setup
+   - API tokens and authentication
 
-### 🔧 Quality Gates
-- Automated code scanning and analysis
-- LLM-based code review integration
-- Data preparation for quality assessment
-- Decision-making algorithms for quality validation
-- E2E self-verification workflows
+5. **[PRP CLI](./prp-cli.md)** - Command-line interface reference
+   - All commands and options
+   - Configuration and customization
 
-### 🐙 GitHub Integration
-- GitHub SDK integration for API operations
-- Pull request creation and management
-- Issue tracking and workflow automation
-- Repository management and collaboration
-- Code review automation
+6. **[PRP Init](./prp-init.md)** - Project initialization guide
+   - Template selection
+   - Project structure generation
 
-### 📊 Shared Context System
-- Cross-PRP context window management
-- Status tracking for all active PRPs
-- Incident logging and resolution tracking
-- Blocker identification and management
-- Progress monitoring and reporting
+### **Advanced Usage**
 
-## 🔧 Configuration
+7. **[PRP Orchestrator](./prp-orchestrator.md)** - Managing autonomous development
+   - TUI interface guide
+   - Agent coordination
+   - Signal monitoring
 
-The CLI uses a `.prprc` configuration file for customization:
-
-```json
-{
-  "name": "my-project",
-  "type": "typescript",
-  "debug": {
-    "enabled": true,
-    "level": "verbose"
-  },
-  "cicd": {
-    "platform": "github",
-    "autoSetup": true
-  },
-  "quality": {
-    "gates": ["eslint", "prettier", "test"],
-    "autoFix": true
-  }
-}
-```
-
-## 🎮 Command Structure
-
-```bash
-prp <command> [options]
-
-Commands:
-  init          Initialize a new or existing project
-  debug         Start debug mode with CI-like output
-  build         Build and optimize your project
-  test          Run tests and quality checks
-  deploy        Deploy your application
-  status        Show project and PRP status
-  config        Manage CLI configuration
-  token         Show token usage and costs
-```
-
-## 🆘 Getting Help
-
-```bash
-# General help
-prp --help
-
-# Command-specific help
-prp init --help
-prp debug --help
-
-# Configuration help
-prp config --help
-
-# Show current configuration
-prp config show
-```
-
-## 🔄 Version Management
-
-```bash
-# Check current version
-prp --version
-
-# Update to latest version
-npm update -g @prp/cli
-
-# Check for updates
-prp update check
-```
-
-## 📝 Examples
-
-### Initialize a New TypeScript Project
-```bash
-prp init my-typescript-app --template typescript --with-eslint --with-prettier
-```
-
-### Start Debug Mode
-```bash
-prp debug --level verbose --output-file debug.log
-```
-
-### Run Quality Gates
-```bash
-prp test --quality-gates --fix-issues
-```
-
-### Deploy with CI/CD
-```bash
-prp deploy --environment production --with-tests
-```
-
-## 🌟 Best Practices
-
-1. **Always use `prp init`** for new projects to ensure proper setup
-2. **Enable debug mode** during development for better visibility
-3. **Configure quality gates** to maintain code quality standards
-4. **Use token accounting** to monitor AI operation costs
-5. **Leverage GitHub integration** for automated workflows
-6. **Keep .prprc updated** with project-specific configurations
-
-## 🤝 Community & Support
-
-- [GitHub Repository](https://github.com/prp/cli)
-- [Issue Tracker](https://github.com/prp/cli/issues)
-- [Discord Community](https://discord.gg/prp)
-- [Documentation Website](https://docs.prp.dev)
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](../LICENSE) file for details.
+8. **[How to Contribute](./how-to-contribute.md)** - Join the community
+   - Contribution guidelines
+   - Code of conduct
+   - Development workflow
 
 ---
 
-For detailed information on any topic, please refer to the specific documentation sections listed above.
+## 🎵 The Musical Metaphor
+
+We use musical terminology because development, like music, is **temporal**:
+
+- **♪ Scanner (Tuner)** - Watches for changes, sets the rhythm
+- **♩ Inspector (Critic)** - Analyzes signals, provides harmony
+- **♫ Orchestrator (Conductor)** - Coordinates the performance
+- **♬ Agents (Players)** - Execute their parts to perfection
+
+> _"Tools disappear. Flow remains."_
+
+---
+
+## 🔗 Quick Links
+
+- **Installation**: `npm install -g @dcversus/prp`
+- **Repository**: [github.com/dcversus/prp](https://github.com/dcversus/prp)
+- **Issues**: [GitHub Issues](https://github.com/dcversus/prp/issues)
+
+---
+
+<div style="text-align: center; margin-top: 3rem; color: #666;">
+  <small>Built with ♫ by the [@dcversus](https://github.com/dcversus)</small>
+</div>
+
+---
+
+**Next**: [What is PRP? →](./what-is-prp.md)

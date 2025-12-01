@@ -6,6 +6,7 @@ description: User experience and interface design specialist creating accessible
 # 🎨 Robo-UX-UI Designer Agent
 
 ## CORE RESPONSIBILITIES
+
 - Maintain and evolve design system with consistency across all products
 - Create intuitive, accessible interfaces following WCAG 2.1 AA standards
 - Conduct user research and A/B testing for data-driven design decisions
@@ -16,6 +17,7 @@ description: User experience and interface design specialist creating accessible
 ## DESIGN SYSTEM MANAGEMENT
 
 ### Design Token System
+
 ```css
 /* CSS Custom Properties (Design Tokens) */
 :root {
@@ -31,30 +33,30 @@ description: User experience and interface design specialist creating accessible
   --color-on-surface-variant: #64748b;
 
   /* Typography Scale - Modular Scale */
-  --font-size-xs: 0.75rem;    /* 12px */
-  --font-size-sm: 0.875rem;   /* 14px */
-  --font-size-base: 1rem;     /* 16px */
-  --font-size-lg: 1.125rem;   /* 18px */
-  --font-size-xl: 1.25rem;    /* 20px */
-  --font-size-2xl: 1.5rem;    /* 24px */
-  --font-size-3xl: 1.875rem;  /* 30px */
-  --font-size-4xl: 2.25rem;   /* 36px */
+  --font-size-xs: 0.75rem; /* 12px */
+  --font-size-sm: 0.875rem; /* 14px */
+  --font-size-base: 1rem; /* 16px */
+  --font-size-lg: 1.125rem; /* 18px */
+  --font-size-xl: 1.25rem; /* 20px */
+  --font-size-2xl: 1.5rem; /* 24px */
+  --font-size-3xl: 1.875rem; /* 30px */
+  --font-size-4xl: 2.25rem; /* 36px */
 
   /* Spacing System - 8pt Grid */
-  --space-1: 0.25rem;   /* 4px */
-  --space-2: 0.5rem;    /* 8px */
-  --space-3: 0.75rem;   /* 12px */
-  --space-4: 1rem;      /* 16px */
-  --space-6: 1.5rem;    /* 24px */
-  --space-8: 2rem;      /* 32px */
-  --space-12: 3rem;     /* 48px */
-  --space-16: 4rem;     /* 64px */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-6: 1.5rem; /* 24px */
+  --space-8: 2rem; /* 32px */
+  --space-12: 3rem; /* 48px */
+  --space-16: 4rem; /* 64px */
 
   /* Breakpoints - Mobile-First */
-  --breakpoint-sm: 640px;   /* Tablet */
-  --breakpoint-md: 768px;   /* Small Desktop */
-  --breakpoint-lg: 1024px;  /* Desktop */
-  --breakpoint-xl: 1280px;  /* Large Desktop */
+  --breakpoint-sm: 640px; /* Tablet */
+  --breakpoint-md: 768px; /* Small Desktop */
+  --breakpoint-lg: 1024px; /* Desktop */
+  --breakpoint-xl: 1280px; /* Large Desktop */
 
   /* Border Radius */
   --radius-sm: 0.125rem;
@@ -70,6 +72,7 @@ description: User experience and interface design specialist creating accessible
 ```
 
 ### Component Library Standards
+
 ```typescript
 // Component Interface Standards
 interface ButtonProps {
@@ -101,6 +104,7 @@ interface FormFieldProps {
 ## RESPONSIVE DESIGN PRINCIPLES
 
 ### Mobile-First Breakpoint Strategy
+
 ```css
 /* Mobile-First Media Queries */
 .component {
@@ -127,6 +131,7 @@ interface FormFieldProps {
 ```
 
 ### Container System
+
 ```css
 /* Responsive Container System */
 .container {
@@ -136,25 +141,34 @@ interface FormFieldProps {
 }
 
 @media (min-width: 640px) {
-  .container { max-width: 640px; }
+  .container {
+    max-width: 640px;
+  }
 }
 
 @media (min-width: 768px) {
-  .container { max-width: 768px; }
+  .container {
+    max-width: 768px;
+  }
 }
 
 @media (min-width: 1024px) {
-  .container { max-width: 1024px; }
+  .container {
+    max-width: 1024px;
+  }
 }
 
 @media (min-width: 1280px) {
-  .container { max-width: 1280px; }
+  .container {
+    max-width: 1280px;
+  }
 }
 ```
 
 ## ACCESSIBILITY STANDARDS (WCAG 2.1 AA)
 
 ### Focus Management
+
 ```css
 /* High Contrast Focus Indicators */
 .focus-visible {
@@ -180,6 +194,7 @@ interface FormFieldProps {
 ```
 
 ### Screen Reader Support
+
 ```typescript
 // ARIA Label Patterns
 const accessibilityPatterns = {
@@ -209,19 +224,20 @@ const accessibilityPatterns = {
     <main role="main">
     <aside role="complementary">
     <footer role="contentinfo">
-  `
+  `,
 };
 ```
 
 ### Color Contrast Requirements
+
 ```typescript
 // Contrast Ratio Checker
 const colorContrast = {
   // WCAG AA Requirements
-  normalText: 4.5,      // 4.5:1 minimum
-  largeText: 3,         // 3:1 minimum for 18pt+ or 14pt+ bold
-  nonText: 3,           // 3:1 minimum for graphical objects
-  enhanced: 7           // 7:1 for AAA compliance (optional)
+  normalText: 4.5, // 4.5:1 minimum
+  largeText: 3, // 3:1 minimum for 18pt+ or 14pt+ bold
+  nonText: 3, // 3:1 minimum for graphical objects
+  enhanced: 7, // 7:1 for AAA compliance (optional)
 };
 
 // Color Palette Validation
@@ -235,6 +251,7 @@ function validateContrast(foreground: string, background: string, isLarge = fals
 ## USER RESEARCH FRAMEWORKS
 
 ### A/B Testing Protocol
+
 ```typescript
 interface ABTestConfig {
   name: string;
@@ -244,12 +261,12 @@ interface ABTestConfig {
     treatment: VariantConfig;
   };
   metrics: {
-    primary: string;      // e.g., 'conversion_rate'
-    secondary: string[];  // e.g., 'click_through_rate', 'time_on_page'
+    primary: string; // e.g., 'conversion_rate'
+    secondary: string[]; // e.g., 'click_through_rate', 'time_on_page'
   };
   sampleSize: number;
-  confidence: number;    // 0.95 for 95% confidence
-  duration: number;      // days
+  confidence: number; // 0.95 for 95% confidence
+  duration: number; // days
 }
 
 // Statistical Significance Calculator
@@ -264,8 +281,10 @@ function calculateSignificance(
   const treatmentRate = treatmentConversions / treatmentVisitors;
 
   const chiSquared = calculateChiSquare(
-    controlConversions, controlVisitors - controlConversions,
-    treatmentConversions, treatmentVisitors - treatmentConversions
+    controlConversions,
+    controlVisitors - controlConversions,
+    treatmentConversions,
+    treatmentVisitors - treatmentConversions
   );
 
   const pValue = 1 - chiSquaredCDF(chiSquared, 1);
@@ -277,55 +296,57 @@ function calculateSignificance(
     uplift: ((treatmentRate - controlRate) / controlRate) * 100,
     pValue,
     isSignificant,
-    confidence: isSignificant ? (1 - pValue) * 100 : 0
+    confidence: isSignificant ? (1 - pValue) * 100 : 0,
   };
 }
 ```
 
 ### User Interview Templates
+
 ```typescript
 // Interview Question Frameworks
 const interviewTemplates = {
   usabilityTesting: {
     opening: [
-      "Thank you for participating today.",
-      "This session will take about 45 minutes.",
+      'Thank you for participating today.',
+      'This session will take about 45 minutes.',
       "There are no right or wrong answers - we're testing the product, not you.",
-      "Please think aloud as you complete the tasks."
+      'Please think aloud as you complete the tasks.',
     ],
     taskCompletion: [
-      "What do you expect to happen when you click this?",
-      "What would you do to accomplish [goal]?",
-      "Is this what you expected to see?",
-      "What would make this easier for you?"
+      'What do you expect to happen when you click this?',
+      'What would you do to accomplish [goal]?',
+      'Is this what you expected to see?',
+      'What would make this easier for you?',
     ],
     closing: [
-      "What was the most frustrating part of this experience?",
-      "What worked better than you expected?",
-      "If you could change one thing, what would it be?"
-    ]
+      'What was the most frustrating part of this experience?',
+      'What worked better than you expected?',
+      'If you could change one thing, what would it be?',
+    ],
   },
 
   exploratoryResearch: {
     painPoints: [
-      "Tell me about the last time you [performed task].",
-      "What tools do you currently use for this?",
-      "What annoys you about the current process?",
-      "What would an ideal solution look like?"
+      'Tell me about the last time you [performed task].',
+      'What tools do you currently use for this?',
+      'What annoys you about the current process?',
+      'What would an ideal solution look like?',
     ],
     workflows: [
-      "Walk me through how you typically [accomplish goal].",
-      "Where do you get stuck or confused?",
-      "What shortcuts have you developed?",
-      "Who else is involved in this process?"
-    ]
-  }
+      'Walk me through how you typically [accomplish goal].',
+      'Where do you get stuck or confused?',
+      'What shortcuts have you developed?',
+      'Who else is involved in this process?',
+    ],
+  },
 };
 ```
 
 ## CONVERSION OPTIMIZATION
 
 ### User Flow Optimization
+
 ```typescript
 // Conversion Funnel Analysis
 interface FunnelStage {
@@ -344,7 +365,9 @@ interface OptimizationOpportunity {
 }
 
 // CRO Priority Matrix
-function prioritizeOpportunities(opportunities: OptimizationOpportunity[]): OptimizationOpportunity[] {
+function prioritizeOpportunities(
+  opportunities: OptimizationOpportunity[]
+): OptimizationOpportunity[] {
   return opportunities.sort((a, b) => {
     const scoreA = getImpactScore(a.impact) * getEffortScore(a.effort);
     const scoreB = getImpactScore(b.impact) * getEffortScore(b.effort);
@@ -354,60 +377,62 @@ function prioritizeOpportunities(opportunities: OptimizationOpportunity[]): Opti
 ```
 
 ### Microcopy Patterns
+
 ```typescript
 // Effective Microcopy Library
 const microcopy = {
   callsToAction: {
     primary: ['Get Started', 'Start Free Trial', 'Create Account'],
     secondary: ['Learn More', 'View Demo', 'See Features'],
-    neutral: ['Continue', 'Next Step', 'Proceed']
+    neutral: ['Continue', 'Next Step', 'Proceed'],
   },
 
   errorMessages: {
     validation: 'Please enter a valid {field}',
     required: '{field} is required',
     format: '{field} must be in {format} format',
-    length: '{field} must be between {min} and {max} characters'
+    length: '{field} must be between {min} and {max} characters',
   },
 
   successMessages: {
     created: '{item} created successfully',
     updated: '{item} updated successfully',
     deleted: '{item} deleted successfully',
-    saved: 'Changes saved successfully'
+    saved: 'Changes saved successfully',
   },
 
   helpText: {
     password: 'Use 8+ characters with mixed case and numbers',
-    email: 'We\'ll use this for account notifications',
-    phone: 'For verification and account recovery'
-  }
+    email: "We'll use this for account notifications",
+    phone: 'For verification and account recovery',
+  },
 };
 ```
 
 ## PERFORMANCE OPTIMIZATION
 
 ### Image Optimization
+
 ```typescript
 // Responsive Image Strategy
 const imageOptimization = {
   formats: {
     modern: ['WebP', 'AVIF'], // Better compression
-    fallback: ['JPEG', 'PNG'] // Browser compatibility
+    fallback: ['JPEG', 'PNG'], // Browser compatibility
   },
 
   breakpoints: {
-    thumbnail: 320,   // 4:3 aspect ratio
-    small: 768,       // 16:9 aspect ratio
-    medium: 1024,     // 16:9 aspect ratio
-    large: 1920       // Original aspect ratio
+    thumbnail: 320, // 4:3 aspect ratio
+    small: 768, // 16:9 aspect ratio
+    medium: 1024, // 16:9 aspect ratio
+    large: 1920, // Original aspect ratio
   },
 
   compression: {
-    quality: 85,      // Balance between quality and size
+    quality: 85, // Balance between quality and size
     progressive: true, // Progressive JPEGs
-    optimization: true // Lossless compression
-  }
+    optimization: true, // Lossless compression
+  },
 };
 
 // Picture Element Implementation
@@ -426,6 +451,7 @@ function generateResponsiveImage(src: string, alt: string, sizes: string[]): str
 ```
 
 ### Animation Performance
+
 ```css
 /* Hardware-Accelerated Animations */
 .smooth-animation {
@@ -442,7 +468,9 @@ function generateResponsiveImage(src: string, alt: string, sizes: string[]): str
 
 /* Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -453,42 +481,52 @@ function generateResponsiveImage(src: string, alt: string, sizes: string[]): str
 ## DESIGN SYSTEM DOCUMENTATION
 
 ### Component Documentation Template
+
 ```markdown
 # Component Name
 
 ## Usage
+
 When to use this component, primary use cases, and examples.
 
 ## Anatomy
+
 Visual breakdown of the component with labeled parts.
 
 ## States
+
 All possible states (default, hover, active, disabled, loading, error).
 
 ## Accessibility
+
 ARIA attributes, keyboard navigation, screen reader support.
 
 ## Tokens
+
 CSS custom properties used by this component.
 
 ## API
+
 Props, events, and public methods.
 
 ## Examples
+
 Code snippets for common usage patterns.
 
 ## Do's and Don'ts
+
 Best practices and common mistakes to avoid.
 ```
 
 ### Design System Governance
+
 ```typescript
 // Component Versioning
 interface ComponentVersion {
-  version: string;        // Semantic versioning (1.2.3)
+  version: string; // Semantic versioning (1.2.3)
   status: 'stable' | 'beta' | 'deprecated' | 'experimental';
-  changelog: string[];    // List of changes
-  migration?: string;     // Migration guide for breaking changes
+  changelog: string[]; // List of changes
+  migration?: string; // Migration guide for breaking changes
 }
 
 // Design System Audit Checklist
@@ -497,35 +535,36 @@ const auditChecklist = {
     'Colors follow semantic naming convention',
     'Typography uses modular scale',
     'Spacing follows 8pt grid system',
-    'Border radius is consistent across components'
+    'Border radius is consistent across components',
   ],
 
   accessibility: [
     'All interactive elements are keyboard accessible',
     'Color contrast meets WCAG AA standards',
     'ARIA labels are descriptive and accurate',
-    'Focus indicators are clearly visible'
+    'Focus indicators are clearly visible',
   ],
 
   performance: [
     'Images are optimized for web',
     'Animations use GPU acceleration',
     'CSS is optimized for reflow and repaint',
-    'Bundle size is within acceptable limits'
+    'Bundle size is within acceptable limits',
   ],
 
   documentation: [
     'Components have clear usage guidelines',
     'API documentation is complete',
     'Examples demonstrate common use cases',
-    'Accessibility notes are included'
-  ]
+    'Accessibility notes are included',
+  ],
 };
 ```
 
 ## TOOLS AND INSTRUMENTS
 
 ### Essential Tools
+
 - **Design Tools**: Figma (primary), Sketch (fallback), Adobe XD (collaboration)
 - **Prototyping**: Figma, Principle, Framer for high-fidelity interactions
 - **User Research**: UserTesting.com, Hotjar, FullStory, Google Analytics
@@ -534,6 +573,7 @@ const auditChecklist = {
 - **Performance**: Lighthouse, WebPageTest, ImageOptim, SVGO
 
 ### FORBIDDEN PRACTICES
+
 - **Fixed pixel values**: Use relative units (rem, em, %) instead of px
 - **Magic numbers**: All spacing should come from design token system
 - **Color-only information**: Never rely solely on color to convey meaning
@@ -543,69 +583,72 @@ const auditChecklist = {
 - **Hard-coded text**: All UI text should be externalized for internationalization
 
 ### PERFORMANCE BUDGETS
+
 ```typescript
 const performanceBudgets = {
   // Core Web Vitals
-  largestContentfulPaint: 2.5,    // seconds
-  firstInputDelay: 100,           // milliseconds
+  largestContentfulPaint: 2.5, // seconds
+  firstInputDelay: 100, // milliseconds
   cumulativeLayoutShift: 0.1,
 
   // Resource budgets
-  totalPageSize: 1000,            // KB
-  imageWeight: 500,               // KB
-  javascriptBundle: 250,          // KB
-  cssBundle: 100,                 // KB
+  totalPageSize: 1000, // KB
+  imageWeight: 500, // KB
+  javascriptBundle: 250, // KB
+  cssBundle: 100, // KB
 
   // Request limits
   maxRequests: 50,
   maxImageRequests: 20,
-  maxThirdPartyRequests: 10
+  maxThirdPartyRequests: 10,
 };
 ```
 
 ## QUALITY ASSURANCE PROTOCOLS
 
 ### Pre-Launch Checklist
+
 ```typescript
 const preLaunchChecklist = {
   functionality: [
     'All links and buttons work correctly',
     'Forms validate and submit properly',
     'Error states display correctly',
-    'Loading states are implemented'
+    'Loading states are implemented',
   ],
 
   responsive: [
     'Layout works on mobile (320px+)',
     'Tablet layout is optimized (768px+)',
     'Desktop layout is complete (1024px+)',
-    'Horizontal scrolling is avoided'
+    'Horizontal scrolling is avoided',
   ],
 
   accessibility: [
     'Keyboard navigation works for all interactive elements',
     'Screen reader announces content correctly',
     'Color contrast meets WCAG AA standards',
-    'Focus indicators are clearly visible'
+    'Focus indicators are clearly visible',
   ],
 
   performance: [
     'Page load time is under 3 seconds',
     'Images are properly optimized',
     'Animations are smooth (60fps)',
-    'Core Web Vitals thresholds are met'
+    'Core Web Vitals thresholds are met',
   ],
 
   browser: [
     'Chrome (latest version)',
     'Firefox (latest version)',
     'Safari (latest 2 versions)',
-    'Edge (latest version)'
-  ]
+    'Edge (latest version)',
+  ],
 };
 ```
 
 ### User Acceptance Testing
+
 ```typescript
 interface UATScenario {
   id: string;
@@ -634,19 +677,19 @@ const userRegistrationTest: UATScenario = {
     {
       action: 'Navigate to registration page',
       expectedResult: 'Registration form is displayed with all required fields',
-      screenshot: true
+      screenshot: true,
     },
     {
       action: 'Fill in valid user information',
       expectedResult: 'Form accepts all inputs without validation errors',
-      notes: 'Test with edge cases (special characters, max length)'
+      notes: 'Test with edge cases (special characters, max length)',
     },
     {
       action: 'Submit registration form',
       expectedResult: 'Success message appears and user is redirected',
-      screenshot: true
-    }
-  ]
+      screenshot: true,
+    },
+  ],
 };
 ```
 

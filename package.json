@@ -6,33 +6,56 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "prp": "dist/cli.js"
+    "prp": "dist/cli.mjs"
   },
   "files": [
     "dist",
     "templates"
   ],
   "scripts": {
-    "dev": "tsx src/cli.ts",
-    "build": "tsc && chmod +x dist/cli.js",
-    "build:watch": "tsc --watch",
-    "start": "node dist/cli.js",
-    "test": "jest --passWithNoTests",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage --passWithNoTests",
-    "test:e2e": "jest tests/e2e --passWithNoTests --runInBand",
+    "dev": "tsx src/cli.ts dev --watch",
+    "dev:no-watch": "tsx src/cli.ts dev",
+    "fix": "npm run lint:fix && npm run format",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\"",
-    "typecheck": "tsc --noEmit",
-    "typecheck:watch": "tsc --noEmit --watch",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,md}\" \"tests/**/*.{ts,tsx,js,jsx}\" \"*.{md,yml,yaml}\" \"!src/guidelines/**/*.json\" \"!**/jest.setup.js\" --ignore-path .gitignore",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,md}\" \"tests/**/*.{ts,tsx,js,jsx}\" \"*.{md,yml,yaml}\" \"!src/guidelines/**/*.json\" \"!**/jest.setup.js\" --ignore-path .gitignore",
+    "typecheck": "tsc --noEmit --project tsconfig.ci.json",
+    "typecheck:watch": "tsc --noEmit --project tsconfig.ci.json --watch",
+    "test": "jest --config jest.parallel.config.js --passWithNoTests",
+    "test:watch": "jest --config jest.parallel.config.js --watch",
+    "test:coverage": "jest --config jest.parallel.config.js --coverage --passWithNoTests",
+    "test:parallel": "jest --config jest.parallel.config.js --maxWorkers=8 --passWithNoTests",
+    "test:unit": "jest --config jest.parallel.config.js src/**/__tests__/**/*.test.ts --passWithNoTests",
+    "test:integration": "jest --config jest.parallel.config.js tests/integration/**/*.test.ts --passWithNoTests",
+    "test:e2e": "jest --config jest.parallel.config.js tests/e2e --passWithNoTests --runInBand",
+    "test:e2e:journeys": "jest --config jest.parallel.config.js tests/e2e/comprehensive-init-journeys.test.ts --passWithNoTests",
+    "test:e2e:init": "jest --config jest.parallel.config.js tests/e2e/init-command.test.ts --passWithNoTests",
+    "test:performance": "jest --config jest.parallel.config.js tests/performance --passWithNoTests --runInBand",
+    "test:performance:cli": "jest --config jest.parallel.config.js tests/performance/cli-performance.test.ts --passWithNoTests",
+    "test:performance:startup": "jest --config jest.parallel.config.js tests/performance/cli-performance.test.ts --passWithNoTests --testNamePattern=\"startup\"",
+    "test:performance:memory": "jest --config jest.parallel.config.js tests/performance/cli-performance.test.ts --passWithNoTests --testNamePattern=\"memory\"",
+    "test:performance:stress": "jest --config jest.parallel.config.js tests/performance/cli-performance.test.ts --passWithNoTests --testNamePattern=\"stress\"",
+    "benchmark": "node scripts/benchmark.js",
+    "benchmark:compare": "node scripts/benchmark.js --compare",
+    "benchmark:verbose": "node scripts/benchmark.js --verbose",
+    "melody:generate": "tsx scripts/generate-melody.ts generate",
+    "melody:decode": "tsx scripts/generate-melody.ts decode",
+    "melody:list": "tsx scripts/generate-melody.ts list",
+    "video:install-deps": "tsx scripts/install-video-deps.ts",
+    "video:test": "tsx scripts/video-test.ts",
+    "start": "node dist/cli.js",
+    "build": "tsdown",
+    "build:prod": "tsdown --minify",
+    "build:min": "tsdown --minify",
+    "build:docs": "node scripts/build-docs.js",
+    "dev:docs": "node scripts/build-docs.js --dev",
+    "serve:docs": "node scripts/build-docs.js --serve --static",
+    "prepublishOnly": "npm run validate && npm run build:prod",
+    "publish": "npm run build:prod && npm publish",
+    "validate": "npm run typecheck && npm run lint && npm run test",
     "debug:demo": "tsx examples/debug-screen-demo.ts",
     "debug:test": "tsx src/tui/debug-screen.test.ts",
-    "validate": "npm run typecheck && npm run lint && npm run test",
-    "build:docs": "webpack --mode production && node scripts/add-analytics.js",
-    "dev:docs": "webpack serve --mode development",
-    "prepublishOnly": "npm run validate && npm run build",
     "prepare": "husky"
   },
   "keywords": [
@@ -50,8 +73,8 @@
     "fastapi",
     "nestjs"
   ],
-  "author": "dcversus",
-  "license": "MIT",
+  "author": "Vasilisa Versus (dcversus)",
+  "license": "AGPL-3.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dcversus/prp.git"
@@ -61,8 +84,21 @@
   },
   "homepage": "https://github.com/dcversus/prp#readme",
   "engines": {
-    "node": ">=20.0.0",
+    "node": "20.11.0",
     "npm": ">=10.0.0"
+  },
+  "prettier": {
+    "semi": true,
+    "trailingComma": "all",
+    "singleQuote": true,
+    "printWidth": 100,
+    "tabWidth": 2,
+    "useTabs": false,
+    "arrowParens": "always",
+    "endOfLine": "lf",
+    "bracketSpacing": true,
+    "jsxSingleQuote": false,
+    "quoteProps": "as-needed"
   },
   "dependencies": {
     "@types/boxen": "^2.1.0",
@@ -70,60 +106,94 @@
     "@types/figlet": "^1.7.0",
     "@types/jsonschema": "^0.0.5",
     "@types/lru-cache": "^7.10.9",
+    "@types/lz-string": "^1.3.34",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
     "axios": "^1.13.1",
     "boxen": "^8.0.1",
     "chalk": "^5.3.0",
-    "chokidar": "^4.0.3",
     "commander": "^12.1.0",
+    "cors": "^2.8.5",
     "execa": "^9.4.0",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.1",
     "figlet": "^1.9.3",
     "fs-extra": "^11.2.0",
     "handlebars": "^4.7.8",
+    "helmet": "^8.0.0",
     "ink": "^5.0.1",
+    "ink-big-text": "^2.0.0",
+    "ink-divider": "^4.1.1",
+    "ink-gradient": "^3.0.0",
     "ink-select-input": "^6.0.0",
     "ink-spinner": "^5.0.0",
     "ink-text-input": "^6.0.0",
-    "inquirer": "^12.0.1",
+    "inquirer": "^9.2.23",
     "jsonschema": "^1.5.0",
+    "jsonwebtoken": "^9.0.2",
     "lru-cache": "^11.2.2",
+    "lz-string": "^1.5.0",
     "nanoid": "^5.0.7",
+    "openai": "^6.8.1",
     "ora": "^8.1.0",
+    "prom-client": "^15.1.3",
     "react": "^18.3.1",
+    "semver": "^7.6.3",
+    "socket.io": "^4.7.5",
+    "tree-sitter": "^0.25.0",
+    "tree-sitter-javascript": "^0.25.0",
+    "tree-sitter-markdown": "^0.7.0",
+    "validate-npm-package-name": "^5.0.1",
     "yaml": "^2.6.0"
   },
   "devDependencies": {
     "@babel/core": "^7.28.5",
     "@babel/preset-env": "^7.28.5",
     "@babel/preset-react": "^7.28.5",
-    "@mdx-js/loader": "^3.1.1",
-    "@mdx-js/react": "^3.1.1",
+    "@babel/preset-typescript": "^7.28.5",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
     "@types/fs-extra": "^11.0.4",
+    "@types/inquirer": "^9.0.7",
+    "@types/jest": "^30.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.7.5",
     "@types/react": "^18.3.11",
-    "@typescript-eslint/eslint-plugin": "^8.8.1",
-    "@typescript-eslint/parser": "^8.8.1",
-    "babel-loader": "^10.0.0",
-    "copy-webpack-plugin": "^13.0.1",
-    "css-loader": "^7.1.2",
-    "eslint": "^9.12.0",
-    "eslint-config-prettier": "^9.1.0",
+    "@types/semver": "^7.5.8",
+    "@typescript-eslint/eslint-plugin": "^8.46.4",
+    "@typescript-eslint/parser": "^8.46.4",
+    "browser-sync": "^3.0.4",
+    "chokidar": "^4.0.3",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-formatter-compact": "^9.0.1",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-n": "^17.15.1",
     "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-promise": "^7.2.1",
     "eslint-plugin-react": "^7.37.1",
     "eslint-plugin-react-hooks": "^5.1.0-rc-fb9a90fa48-20240614",
     "glob": "^11.0.3",
-    "html-webpack-plugin": "^5.6.4",
+    "highlight.js": "^11.11.1",
     "husky": "^9.1.7",
+    "ink-testing-library": "^4.0.0",
     "jest": "^29.7.0",
+    "jest-environment-jsdom": "^30.2.0",
+    "jsonwebtoken": "^9.0.2",
     "lint-staged": "^16.2.6",
+    "marked": "^16.4.1",
+    "node-pty": "^1.0.0",
     "prettier": "^3.3.3",
     "react-dom": "^18.3.1",
-    "style-loader": "^4.0.0",
     "ts-jest": "^29.2.5",
+    "tsdown": "^0.16.5",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3",
-    "typescript-eslint": "^8.46.2",
-    "webpack": "^5.102.1",
-    "webpack-cli": "^6.0.1"
+    "typescript-eslint": "^8.46.2"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -133,5 +203,212 @@
     "*.{json,md,yml,yaml}": [
       "prettier --write"
     ]
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "node": true,
+      "es2022": true,
+      "jest": true
+    },
+    "extends": [
+      "eslint:recommended",
+      "plugin:@typescript-eslint/recommended",
+      "plugin:@typescript-eslint/recommended-requiring-type-checking",
+      "plugin:react/recommended",
+      "plugin:react-hooks/recommended",
+      "plugin:@typescript-eslint/strict",
+      "plugin:@typescript-eslint/stylistic",
+      "prettier"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+      "ecmaVersion": "latest",
+      "sourceType": "module",
+      "project": "./tsconfig.json",
+      "ecmaFeatures": {
+        "jsx": true
+      }
+    },
+    "plugins": [
+      "@typescript-eslint",
+      "react",
+      "react-hooks",
+      "prettier"
+    ],
+    "rules": {
+      "prettier/prettier": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          "argsIgnorePattern": "^_",
+          "caughtErrorsIgnorePattern": "^_",
+          "destructuredArrayIgnorePattern": "^_",
+          "varsIgnorePattern": "^_",
+          "ignoreRestSiblings": false
+        }
+      ],
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-non-null-assertion": "error",
+      "@typescript-eslint/prefer-optional-chain": "error",
+      "@typescript-eslint/prefer-nullish-coalescing": "error",
+      "@typescript-eslint/strict-boolean-expressions": [
+        "error",
+        {
+          "allowString": true,
+          "allowNumber": true,
+          "allowNullableObject": true,
+          "allowNullableBoolean": true,
+          "allowNullableString": true,
+          "allowNullableNumber": true
+        }
+      ],
+      "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/await-thenable": "error",
+      "@typescript-eslint/no-misused-promises": "error",
+      "@typescript-eslint/require-await": "error",
+      "@typescript-eslint/return-await": [
+        "error",
+        "in-try-catch"
+      ],
+      "@typescript-eslint/no-unsafe-assignment": "error",
+      "@typescript-eslint/no-unsafe-call": "error",
+      "@typescript-eslint/no-unsafe-member-access": "error",
+      "@typescript-eslint/no-unsafe-return": "error",
+      "@typescript-eslint/no-unsafe-argument": "error",
+      "@typescript-eslint/prefer-as-const": "error",
+      "@typescript-eslint/no-var-requires": "error",
+      "@typescript-eslint/no-inferrable-types": "error",
+      "@typescript-eslint/ban-ts-comment": "error",
+      "@typescript-eslint/consistent-type-exports": "error",
+      "@typescript-eslint/no-duplicate-enum-values": "error",
+      "@typescript-eslint/no-duplicate-type-constituents": "error",
+      "@typescript-eslint/no-extra-non-null-assertion": "error",
+      "@typescript-eslint/no-non-null-asserted-nullish-coalescing": "error",
+      "@typescript-eslint/no-non-null-asserted-optional-chain": "error",
+      "@typescript-eslint/no-unnecessary-type-assertion": "error",
+      "@typescript-eslint/no-unsafe-enum-comparison": "error",
+      "@typescript-eslint/array-type": "off",
+      "@typescript-eslint/switch-exhaustiveness-check": "error",
+      "@typescript-eslint/use-unknown-in-catch-callback-variable": "error",
+      "prefer-const": "error",
+      "no-var": "error",
+      "no-console": "warn",
+      "curly": [
+        "error",
+        "all"
+      ],
+      "react/prop-types": "off",
+      "react/react-in-jsx-scope": "off",
+      "react/display-name": "off"
+    },
+    "settings": {
+      "react": {
+        "version": "detect"
+      }
+    },
+    "ignorePatterns": [
+      "dist/",
+      "node_modules/",
+      "*.js",
+      "coverage/",
+      "templates/"
+    ]
+  },
+  "jest": {
+    "preset": "ts-jest/presets/default-esm",
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.ts"
+    ],
+    "roots": [
+      "<rootDir>/src",
+      "<rootDir>/tests"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.ts",
+      "**/__tests__/**/*.tsx",
+      "**/?(*.)+(spec|test).ts",
+      "**/?(*.)+(spec|test).tsx"
+    ],
+    "extensionsToTreatAsEsm": [
+      ".ts",
+      ".tsx"
+    ],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1",
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^@shared/(.*)$": "<rootDir>/src/shared/$1",
+      "^@tui/(.*)$": "<rootDir>/src/tui/$1",
+      "axios$": "axios/dist/node/axios.cjs",
+      "execa$": "execa",
+      "tree-sitter$": "<rootDir>/node_modules/tree-sitter",
+      "tree-sitter-javascript$": "<rootDir>/node_modules/tree-sitter-javascript"
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(axios|chalk|ansi-styles|supports-color|ink|ink-testing-library|@testing-library|execa|fs-extra|tmp|glob|yaml|boxen|figlet|ora|semver|validate-npm-package-name|nanoid|lru-cache|lz-string|jsonwebtoken|openai|marked|highlight\\.js|socket\\.io|prom-client|tree-sitter|tree-sitter-javascript|tree-sitter-markdown))/"
+    ],
+    "transform": {
+      "^.+\\.tsx?$": [
+        "ts-jest",
+        {
+          "tsconfig": {
+            "jsx": "react-jsx",
+            "module": "ESNext",
+            "target": "ES2022",
+            "strict": true,
+            "noUnusedLocals": false,
+            "noUnusedParameters": false,
+            "exactOptionalPropertyTypes": false,
+            "allowSyntheticDefaultImports": true,
+            "esModuleInterop": true,
+            "moduleResolution": "node",
+            "resolveJsonModule": true,
+            "isolatedModules": true,
+            "skipLibCheck": true,
+            "forceConsistentCasingInFileNames": true
+          },
+          "useESM": true
+        }
+      ]
+    },
+    "collectCoverageFrom": [
+      "src/**/*.{ts,tsx}",
+      "!src/**/*.d.ts",
+      "!src/**/*.test.ts",
+      "!src/**/*.test.tsx",
+      "!src/**/__tests__/**",
+      "!src/cli.ts"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      },
+      "./src/shared/": {
+        "branches": 100,
+        "functions": 100,
+        "lines": 100,
+        "statements": 100
+      }
+    },
+    "maxWorkers": 4,
+    "testTimeout": 30000,
+    "verbose": true,
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json"
+    ],
+    "testEnvironmentOptions": {
+      "customExportConditions": [
+        "node",
+        "node-addons"
+      ]
+    }
   }
 }

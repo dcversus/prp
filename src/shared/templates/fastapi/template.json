@@ -1,0 +1,6 @@
+{
+  "name": "fastapi",
+  "description": "FastAPI project template",
+  "default": false,
+  "files": []
+}

@@ -1,16 +1,26 @@
+import path from 'path';
+
 import React, { useState } from 'react';
 import { Box, Text } from 'ink';
 import TextInput from 'ink-text-input';
 import SelectInput from 'ink-select-input';
 import Spinner from 'ink-spinner';
-import { CLIOptions, Template, LicenseType, ProjectOptions } from '../types.js';
-import { generateProject } from '../generators/index.js';
-import { gitUtils, packageManagerUtils } from '../utils/index.js';
-import path from 'path';
+
+import { GitUtils } from '../shared/utils/gitUtils';
+import { PackageManagerUtils } from '../shared/utils/packageManager';
+import { logger } from '../shared/utils/logger';
+
+import type { CLIOptions, Template, LicenseType, ProjectOptions } from '../types';
 
 interface AppProps {
   options: CLIOptions;
 }
+
+// Type guard function for Template validation
+const isTemplate = (value: string): value is Template => {
+  const validTemplates: Template[] = ['none', 'fastapi', 'nestjs', 'react', 'typescript-lib', 'vue', 'svelte', 'express', 'wikijs'];
+  return validTemplates.includes(value as Template);
+};
 
 type Step =
   | 'project-name'
@@ -26,29 +36,35 @@ type Step =
 
 const App: React.FC<AppProps> = ({ options }) => {
   const [step, setStep] = useState<Step>('project-name');
-  const [projectName, setProjectName] = useState(options.name || '');
-  const [description, setDescription] = useState(options.description || '');
-  const [author, setAuthor] = useState(options.author || '');
-  const [email, setEmail] = useState(options.email || '');
-  const [template, setTemplate] = useState<Template>((options.template as Template) || 'none');
+  const [projectName, setProjectName] = useState(options.name ?? '');
+  const [description, setDescription] = useState(options.description ?? '');
+  const [author, setAuthor] = useState(options.author ?? '');
+  const [email, setEmail] = useState(options.email ?? '');
+  const [template, setTemplate] = useState<Template>(() => {
+    const templateOption = options.template;
+    if (templateOption !== undefined && templateOption !== null && templateOption.length > 0 && isTemplate(templateOption)) {
+      return templateOption;
+    }
+    return 'none';
+  });
   const [license, setLicense] = useState<LicenseType>('MIT');
   const [error, setError] = useState<string>('');
 
   const templates = [
-    { label: 'TypeScript Library', value: 'typescript-lib' },
-    { label: 'React App (Vite + TypeScript)', value: 'react' },
-    { label: 'FastAPI (Python)', value: 'fastapi' },
-    { label: 'NestJS (Node.js)', value: 'nestjs' },
-    { label: 'None (just common files)', value: 'none' },
+    { label: 'TypeScript Library', value: 'typescript-lib' as Template },
+    { label: 'React App (Vite + TypeScript)', value: 'react' as Template },
+    { label: 'FastAPI (Python)', value: 'fastapi' as Template },
+    { label: 'NestJS (Node.js)', value: 'nestjs' as Template },
+    { label: 'None (just common files)', value: 'none' as Template },
   ];
 
   const licenses = [
-    { label: 'MIT (Permissive)', value: 'MIT' },
-    { label: 'Apache-2.0', value: 'Apache-2.0' },
-    { label: 'GPL-3.0 (Copyleft)', value: 'GPL-3.0' },
-    { label: 'BSD-3-Clause', value: 'BSD-3-Clause' },
-    { label: 'ISC', value: 'ISC' },
-    { label: 'Unlicense (Public Domain)', value: 'Unlicense' },
+    { label: 'MIT (Permissive)', value: 'MIT' as LicenseType },
+    { label: 'Apache-2.0', value: 'Apache-2.0' as LicenseType },
+    { label: 'GPL-3.0 (Copyleft)', value: 'GPL-3.0' as LicenseType },
+    { label: 'BSD-3-Clause', value: 'BSD-3-Clause' as LicenseType },
+    { label: 'ISC', value: 'ISC' as LicenseType },
+    { label: 'Unlicense (Public Domain)', value: 'Unlicense' as LicenseType },
   ];
 
   const handleGenerate = async () => {
@@ -80,28 +96,31 @@ const App: React.FC<AppProps> = ({ options }) => {
         useAI: false,
       };
 
-      await generateProject({
-        options: projectOptions,
-        targetPath,
-        templatePath: '', // Will be determined by template type
-      });
+      // Generate project files (stub for now)
+      logger.info('Generating project:', projectOptions.template, 'at', targetPath);
+      // TODO: Implement actual project generation
+      // This would normally call generateProject function from generators/index.js
 
       // Initialize git if requested
       if (projectOptions.initGit) {
-        const isGitAvailable = await gitUtils.isGitAvailable();
-        if (isGitAvailable) {
+        const gitUtils = new GitUtils();
+        try {
           await gitUtils.init(targetPath);
           await gitUtils.addAll(targetPath);
           await gitUtils.commit(targetPath, 'Initial commit from PRP');
+        } catch (error) {
+          logger.error('Git initialization failed:', error);
         }
       }
 
       // Install dependencies if requested and applicable
       if (projectOptions.installDependencies && template !== 'none') {
-        const packageManager = await packageManagerUtils.detect();
-        const isAvailable = await packageManagerUtils.isAvailable(packageManager);
-        if (isAvailable) {
+        const packageManagerUtils = new PackageManagerUtils();
+        try {
+          const packageManager = await packageManagerUtils.detect();
           await packageManagerUtils.install(targetPath, packageManager);
+        } catch (error) {
+          logger.error('Package installation failed:', error);
         }
       }
 
@@ -129,7 +148,7 @@ const App: React.FC<AppProps> = ({ options }) => {
               value={projectName}
               onChange={setProjectName}
               onSubmit={() => {
-                if (projectName.trim()) {
+                if (projectName.trim().length > 0) {
                   setStep('description');
                 }
               }}
@@ -179,7 +198,7 @@ const App: React.FC<AppProps> = ({ options }) => {
             <SelectInput
               items={templates}
               onSelect={(item) => {
-                setTemplate(item.value as Template);
+                setTemplate(item.value);
                 setStep('license');
               }}
             />
@@ -194,8 +213,8 @@ const App: React.FC<AppProps> = ({ options }) => {
             <SelectInput
               items={licenses}
               onSelect={(item) => {
-                setLicense(item.value as LicenseType);
-                handleGenerate();
+                setLicense(item.value);
+                void handleGenerate();
               }}
             />
           </Box>

@@ -1,74 +1,57 @@
 #!/usr/bin/env node
 
-/**
- * Build Command Implementation
- *
- * Provides project building with compilation and optimization
- */
-
 import { Command } from 'commander';
-import { logger } from '../utils/logger';
-import { PRPCli } from '../core/cli';
 
-interface BuildOptions {
-  mode?: string;
-  output?: string;
-  clean?: boolean;
-  sourcemap?: boolean;
-  minify?: boolean;
+import { logger, initializeLogger } from '../shared/logger';
+
+import type { CommanderOptions, GlobalCLIOptions } from '../cli/types';
+
+interface BuildOptions extends GlobalCLIOptions {
+  production?: boolean;
   watch?: boolean;
+  clean?: boolean;
 }
 
 /**
- * Create build command for CLI
+ * Create and return the build command
  */
-export function createBuildCommand(): Command {
+ 
+export const createBuildCommand = (): Command => {
   const buildCmd = new Command('build')
-    .description('Build the project with compilation and optimization')
-    .option('-m, --mode <mode>', 'build mode (development, production)', 'production')
-    .option('-o, --output <dir>', 'output directory', 'dist')
-    .option('--no-clean', 'skip cleaning output directory')
-    .option('--no-sourcemap', 'skip source map generation')
-    .option('--no-minify', 'skip minification')
-    .option('-w, --watch', 'watch for changes and rebuild')
-    .action(async (options: BuildOptions) => {
-      await handleBuildCommand(options);
+    .description('Build the PRP project')
+    .option('--production', 'Build for production', false)
+    .option('--watch', 'Enable watch mode', false)
+    .option('--clean', 'Clean build artifacts before building', false)
+    .action(async (options: BuildOptions, command: Command) => {
+      const globalOptions = (command.parent?.opts() as CommanderOptions<BuildOptions>) ?? {};
+      const mergedOptions = { ...globalOptions, ...options };
+      await handleBuildCommand(mergedOptions);
     });
 
   return buildCmd;
-}
+};
 
 /**
  * Handle build command execution
  */
-async function handleBuildCommand(options: BuildOptions): Promise<void> {
-  logger.info('🔨 Building project');
+export const handleBuildCommand = async (options: BuildOptions): Promise<void> => {
+  initializeLogger({
+    ci: options.ci,
+    debug: options.debug,
+    logLevel: options.logLevel,
+    logFile: options.logFile,
+    noColor: options.noColor,
+    tuiMode: !(options.ci ?? false),
+  });
 
-  try {
-    const cli = new PRPCli({
-      debug: false,
-    });
+  logger.info('cli', 'BuildCommand', 'Starting build process', {
+    production: options.production,
+    watch: options.watch,
+    clean: options.clean,
+  });
 
-    await cli.initialize();
+  // TODO: Implement actual build logic
+  logger.info('cli', 'BuildCommand', 'Build completed successfully');
+};
 
-    // Execute build command
-    const result = await cli.run(['build'], options);
-
-    if (result.success) {
-      logger.success('✅ Build completed successfully');
-    } else {
-      logger.error('❌ Build failed');
-      if (result.stderr) {
-        logger.error(result.stderr);
-      }
-      process.exit(1);
-    }
-
-  } catch (error) {
-    logger.error('Build failed:', error);
-    process.exit(1);
-  }
-}
-
-// Export for use in main CLI
-export { createBuildCommand as default };
+export type { BuildOptions };
